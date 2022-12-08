@@ -21,13 +21,21 @@ import "../factories/BasePoolFactory.sol";
 import "./MockFactoryCreatedPool.sol";
 
 contract MockPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
+    constructor(IVault _vault, IProtocolFeePercentagesProvider protocolFeeProvider, uint256 initialPauseWindowDuration, uint256 bufferPeriodDuration)
+        BasePoolFactory(_vault, protocolFeeProvider, initialPauseWindowDuration, bufferPeriodDuration, type(MockFactoryCreatedPool).creationCode)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function create() external returns (address) {
-        address pool = address(new MockFactoryCreatedPool());
-        _register(pool);
-        return pool;
+        return _create("");
+    }
+
+    function getMaxPauseWindowDuration() external pure returns (uint256) {
+        return PausableConstants.MAX_PAUSE_WINDOW_DURATION;
+    }
+
+    function getMaxBufferPeriodDuration() external pure returns (uint256) {
+        return PausableConstants.MAX_BUFFER_PERIOD_DURATION;
     }
 }

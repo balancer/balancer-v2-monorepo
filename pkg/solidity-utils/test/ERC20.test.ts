@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -107,8 +108,7 @@ describe('ERC20', () => {
 
       it('emits a transfer event', async () => {
         const receipt = await (await token.connect(holder).transfer(to, amount)).wait();
-
-        expectEvent.inReceipt(receipt, 'Transfer', { from: holder.address, to, value: amount });
+        expectTransferEvent(receipt, { from: holder.address, to, value: amount }, token);
       });
     };
 
@@ -209,7 +209,7 @@ describe('ERC20', () => {
               const tx = await token.connect(spender).transferFrom(holder.address, to, amount);
               const receipt = await tx.wait();
 
-              expectEvent.inReceipt(receipt, 'Transfer', { from: holder.address, to, value: amount });
+              expectTransferEvent(receipt, { from: holder.address, to, value: amount }, token);
             });
 
             it('decreases the spender allowance', async () => {
@@ -396,7 +396,7 @@ describe('ERC20', () => {
       it('emits a transfer event', async () => {
         const receipt = await (await token.mint(to, amount)).wait();
 
-        expectEvent.inReceipt(receipt, 'Transfer', { from: ZERO_ADDRESS, to, value: amount });
+        expectTransferEvent(receipt, { from: ZERO_ADDRESS, to, value: amount }, token);
       });
     };
 
@@ -446,7 +446,7 @@ describe('ERC20', () => {
       it('emits a transfer event', async () => {
         const receipt = await (await token.burn(holder.address, amount)).wait();
 
-        expectEvent.inReceipt(receipt, 'Transfer', { from: holder.address, to: ZERO_ADDRESS, value: amount });
+        expectTransferEvent(receipt, { from: holder.address, to: ZERO_ADDRESS, value: amount }, token);
       });
     };
 

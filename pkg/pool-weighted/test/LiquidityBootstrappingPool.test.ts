@@ -10,6 +10,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
+import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 
 describe('LiquidityBootstrappingPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
@@ -21,6 +22,20 @@ describe('LiquidityBootstrappingPool', function () {
   const MAX_TOKENS = 4;
 
   let allTokens: TokenList, tokens: TokenList;
+
+  // Add the weighted pool tests for the joins/exits, etc.
+
+  context('for a 2 token pool', () => {
+    itBehavesAsWeightedPool(2);
+  });
+
+  context('for a 3 token pool', () => {
+    itBehavesAsWeightedPool(3);
+  });
+
+  context('for a 4 token pool', () => {
+    itBehavesAsWeightedPool(4);
+  });
 
   sharedBeforeEach('deploy tokens', async () => {
     allTokens = await TokenList.create(MAX_TOKENS + 1, { sorted: true });
@@ -84,7 +99,7 @@ describe('LiquidityBootstrappingPool', function () {
           const normalizedWeights = await pool.getNormalizedWeights();
 
           for (let i = 0; i < numTokens; i++) {
-            expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.0001);
+            expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.001);
           }
         });
 
@@ -164,14 +179,14 @@ describe('LiquidityBootstrappingPool', function () {
         const normalizedWeights = await pool.getNormalizedWeights();
 
         // Not exactly equal due to weight compression
-        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.001);
       });
 
       it('stores the initial weights as a zero duration weight change', async () => {
         const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
 
         expect(startTime).to.equal(endTime);
-        expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+        expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.001);
       });
 
       describe('permissioned actions', () => {

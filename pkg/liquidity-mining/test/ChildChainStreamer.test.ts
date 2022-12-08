@@ -1,27 +1,22 @@
 import { ethers } from 'hardhat';
-import { Contract, ContractReceipt } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { parseFixed } from '@ethersproject/bignumber';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, DAY, receiptTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
-async function getReceiptTimestamp(receipt: ContractReceipt | Promise<ContractReceipt>): Promise<number> {
-  const blockHash = (await receipt).blockHash;
-  const block = await ethers.provider.getBlock(blockHash);
-  return block.timestamp;
-}
-
 describe('ChildChainStreamer', () => {
   let vault: Vault;
-  let adaptor: Contract;
+  let adaptorEntrypoint: Contract;
 
   let token: Token;
   let balToken: Token;
@@ -37,9 +32,8 @@ describe('ChildChainStreamer', () => {
 
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
+    const adaptor = vault.authorizerAdaptor;
+    adaptorEntrypoint = vault.authorizerAdaptorEntrypoint;
 
     token = await Token.create({ symbol: 'BPT' });
     balToken = await Token.create({ symbol: 'BAL' });
@@ -62,25 +56,28 @@ describe('ChildChainStreamer', () => {
   describe('remove_reward', () => {
     sharedBeforeEach('send tokens to streamer', async () => {
       await balToken.mint(streamer, 100);
-
-      const removeRewardRole = await actionId(adaptor, 'remove_reward', streamer.interface);
+      const removeRewardRole = await actionId(adaptorEntrypoint, 'remove_reward', streamer.interface);
       await vault.grantPermissionsGlobally([removeRewardRole], admin);
     });
 
     it('allows tokens to be recovered', async () => {
       const tokenBalanceBefore = await balToken.balanceOf(streamer);
-      const tx = await adaptor
+      const tx = await adaptorEntrypoint
         .connect(admin)
         .performAction(
           streamer.address,
           streamer.interface.encodeFunctionData('remove_reward', [balToken.address, other.address])
         );
 
-      expectEvent.inIndirectReceipt(await tx.wait(), balToken.instance.interface, 'Transfer', {
-        from: streamer.address,
-        to: other.address,
-        value: tokenBalanceBefore,
-      });
+      expectTransferEvent(
+        await tx.wait(),
+        {
+          from: streamer.address,
+          to: other.address,
+          value: tokenBalanceBefore,
+        },
+        balToken
+      );
     });
   });
 
@@ -88,14 +85,14 @@ describe('ChildChainStreamer', () => {
     const rewardAmount = parseFixed('1', 18);
 
     sharedBeforeEach('set up distributor on streamer', async () => {
-      const setDistributorActionId = await actionId(adaptor, 'set_reward_distributor', streamer.interface);
+      const setDistributorActionId = await actionId(adaptorEntrypoint, 'set_reward_distributor', streamer.interface);
       await vault.grantPermissionsGlobally([setDistributorActionId], admin);
 
       const calldata = streamer.interface.encodeFunctionData('set_reward_distributor', [
         balToken.address,
         distributor.address,
       ]);
-      await adaptor.connect(admin).performAction(streamer.address, calldata);
+      await adaptorEntrypoint.connect(admin).performAction(streamer.address, calldata);
     });
 
     function itUpdatesTimestamp() {
@@ -103,7 +100,7 @@ describe('ChildChainStreamer', () => {
         const tx = await streamer.get_reward();
         const lastUpdateTime = await streamer.last_update_time();
 
-        expect(lastUpdateTime).to.be.eq(await getReceiptTimestamp(tx.wait()));
+        expect(lastUpdateTime).to.be.eq(await receiptTimestamp(tx.wait()));
       });
     }
 

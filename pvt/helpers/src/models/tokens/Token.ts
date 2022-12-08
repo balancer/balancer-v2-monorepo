@@ -19,11 +19,16 @@ export default class Token {
     return TokensDeployer.deployToken(params);
   }
 
-  static async deployedAt(address: string): Promise<Token> {
-    const instance = await deployedAt('v2-standalone-utils/TestToken', address);
+  static async deployedAt(address: Account): Promise<Token> {
+    const instance = await deployedAt('v2-standalone-utils/TestToken', TypesConverter.toAddress(address));
     const [name, symbol, decimals] = await Promise.all([instance.name(), instance.symbol(), instance.decimals()]);
     if (symbol === 'WETH') {
-      return new Token(name, symbol, decimals, await deployedAt('v2-standalone-utils/TestWETH', address));
+      return new Token(
+        name,
+        symbol,
+        decimals,
+        await deployedAt('v2-standalone-utils/TestWETH', TypesConverter.toAddress(address))
+      );
     }
     return new Token(name, symbol, decimals, instance);
   }
@@ -49,7 +54,11 @@ export default class Token {
     if (this.symbol === 'WETH') {
       await token.deposit({ value: amount });
       await token.transfer(TypesConverter.toAddress(to), amount);
-    } else {
+    } else if (this.symbol !== 'wstETH' && this.symbol != 'wampl') {
+      // wstETH and wampl need permissioned calls (wrap() in the case of wstETH); calling it
+      // generically from init() would fail. So tests that mint these tokens (e.g.,
+      // UnbuttonAaveLinearPool) need to do it separately, and we need to add these exceptions
+      // here, so that mint() is a no-op for these tokens.
       await token.mint(TypesConverter.toAddress(to), amount ?? MAX_UINT256);
     }
   }

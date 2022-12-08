@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
 import "../solidity-utils/openzeppelin/IERC20.sol";
 
@@ -22,6 +22,8 @@ import "../solidity-utils/openzeppelin/IERC20.sol";
 
 interface IChildChainStreamer {
     function initialize(address gauge) external;
+
+    function get_reward() external;
 
     function reward_tokens(uint256 index) external view returns (IERC20);
 

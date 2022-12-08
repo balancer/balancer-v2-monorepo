@@ -1,3 +1,5 @@
+import './skipFoundryTests.ts';
+
 type ContractSettings = Record<
   string,
   {
@@ -9,25 +11,21 @@ type ContractSettings = Record<
 const contractSettings: ContractSettings = {
   '@balancer-labs/v2-vault/contracts/Vault.sol': {
     version: '0.7.1',
-    runs: 1500,
-  },
-  '@balancer-labs/v2-pool-weighted/contracts/OracleWeightedPoolFactory.sol': {
-    version: '0.7.1',
-    runs: 200,
+    runs: 500,
   },
   '@balancer-labs/v2-pool-weighted/contracts/LiquidityBootstrappingPoolFactory.sol': {
     version: '0.7.1',
     runs: 200,
   },
-  '@balancer-labs/v2-pool-stable/contracts/meta/MetaStablePool.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/managed/ManagedPoolFactory.sol': {
     version: '0.7.1',
     runs: 200,
   },
-  '@balancer-labs/v2-pool-stable/contracts/meta/MetaStablePoolFactory.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/managed/ManagedPool.sol': {
     version: '0.7.1',
     runs: 200,
   },
-  '@balancer-labs/v2-pool-weighted/contracts/smart/ManagedPoolFactory.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/test/MockManagedPool.sol': {
     version: '0.7.1',
     runs: 200,
   },
@@ -71,4 +69,18 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
   }
 
   return overrides;
+};
+
+export const warnings = {
+  // Ignore code-size in test files: mocks may make contracts not deployable on real networks, but we don't care about
+  // that.
+  'contracts/test/**/*': {
+    'code-size': 'off',
+  },
+  // Make all warnings cause errors, except code-size (contracts may go over the limit during development).
+  '*': {
+    'code-size': 'warn',
+    'shadowing-opcode': 'off',
+    default: 'error',
+  },
 };

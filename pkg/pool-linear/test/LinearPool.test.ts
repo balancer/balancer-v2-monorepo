@@ -3,8 +3,8 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
+import { bn, fp, FP_ONE, FP_ZERO, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { MAX_UINT112, MAX_UINT32 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
@@ -30,6 +30,10 @@ describe('LinearPool', function () {
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
 
+  const MAX_UPPER_TARGET = MAX_UINT32.mul(bn(1e18));
+
+  const ASSET_MANAGERS = [ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address];
+
   before('setup', async () => {
     [, lp, trader, admin, owner, other] = await ethers.getSigners();
   });
@@ -53,7 +57,7 @@ describe('LinearPool', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         upperTarget = fp(2000);
-        await deployPool({ mainToken, wrappedToken, upperTarget }, false);
+        await deployPool({ mainToken, wrappedToken, upperTarget, assetManagers: ASSET_MANAGERS }, false);
       });
 
       it('sets the vault', async () => {
@@ -74,10 +78,13 @@ describe('LinearPool', function () {
       });
 
       it('sets the asset managers', async () => {
-        await tokens.asyncEach(async (token) => {
+        await tokens.asyncEach(async (token, i) => {
           const { assetManager } = await pool.getTokenInfo(token);
-          expect(assetManager).to.be.zeroAddress;
+          expect(assetManager).to.equal(ASSET_MANAGERS[i]);
         });
+
+        const { assetManager: bptAssetManager } = await pool.vault.instance.getPoolTokenInfo(pool.poolId, pool.address);
+        expect(bptAssetManager).to.be.zeroAddress;
       });
 
       it('sets swap fee', async () => {
@@ -108,10 +115,16 @@ describe('LinearPool', function () {
         await expect(deployPool({ mainToken, wrappedToken: mainToken }, false)).to.be.revertedWith('UNSORTED_ARRAY');
       });
 
-      it('reverts if upperTarget is greater than the maximum', async () => {
-        await expect(deployPool({ mainToken, wrappedToken, upperTarget: MAX_UINT96.add(1) }, false)).to.be.revertedWith(
-          'UPPER_TARGET_TOO_HIGH'
+      it('reverts if upperTarget is fractional', async () => {
+        await expect(deployPool({ mainToken, wrappedToken, upperTarget: fp(1.1) }, false)).to.be.revertedWith(
+          'FRACTIONAL_TARGET'
         );
+      });
+
+      it('reverts if upperTarget is greater than the maximum', async () => {
+        await expect(
+          deployPool({ mainToken, wrappedToken, upperTarget: MAX_UPPER_TARGET.add(1) }, false)
+        ).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
       });
     });
   });
@@ -146,18 +159,55 @@ describe('LinearPool', function () {
 
     it('cannot be initialized twice', async () => {
       await pool.initialize();
-      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(pool.initialize()).to.be.revertedWith('UNIMPLEMENTED');
+    });
+  });
+
+  describe('joins and exits', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      await deployPool({ mainToken, wrappedToken }, false);
+      await pool.initialize();
+    });
+
+    it('regular joins should revert', async () => {
+      const { tokens: allTokens } = await pool.getTokens();
+
+      const tx = pool.vault.joinPool({
+        poolAddress: pool.address,
+        poolId: await pool.getPoolId(),
+        recipient: lp.address,
+        tokens: allTokens,
+        data: '0x',
+      });
+
+      await expect(tx).to.be.revertedWith('UNIMPLEMENTED');
+    });
+
+    it('regular exits should revert', async () => {
+      const { tokens: allTokens } = await pool.getTokens();
+
+      const tx = pool.vault.exitPool({
+        poolAddress: pool.address,
+        poolId: await pool.getPoolId(),
+        recipient: lp.address,
+        tokens: allTokens,
+        data: '0x',
+      });
+
+      await expect(tx).to.be.revertedWith('UNIMPLEMENTED');
     });
   });
 
   describe('set targets', () => {
     const originalLowerTarget = fp(1000);
-    const originalUpperTarget = fp(2000);
+    const originalUpperTarget = fp(5000);
+    const originalSwapFee = fp(0.057);
 
     sharedBeforeEach('deploy pool and set initial targets', async () => {
       await deployPool({ mainToken, wrappedToken, upperTarget: originalUpperTarget }, true);
       await setBalances(pool, { mainBalance: originalLowerTarget.add(originalUpperTarget).div(2) });
       await pool.setTargets(originalLowerTarget, originalUpperTarget);
+      await pool.setSwapFeePercentage(originalSwapFee);
     });
 
     const setBalances = async (
@@ -166,7 +216,7 @@ describe('LinearPool', function () {
     ) => {
       const poolId = await pool.getPoolId();
 
-      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+      const updatedBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
         i == pool.mainIndex
           ? balances.mainBalance ?? bn(0)
           : i == pool.wrappedIndex
@@ -176,7 +226,7 @@ describe('LinearPool', function () {
           : bn(0)
       );
 
-      await pool.vault.updateBalances(poolId, updateBalances);
+      await pool.vault.updateCash(poolId, updatedBalances);
     };
 
     context('when outside the current free zone', () => {
@@ -229,7 +279,7 @@ describe('LinearPool', function () {
 
         it('can set an extreme upper target', async () => {
           const newLowerTarget = originalLowerTarget.div(2);
-          const newUpperTarget = MAX_UINT96;
+          const newUpperTarget = MAX_UPPER_TARGET;
 
           await pool.setTargets(newLowerTarget, newUpperTarget);
 
@@ -249,7 +299,7 @@ describe('LinearPool', function () {
         });
 
         it('can increase the lower target', async () => {
-          const newLowerTarget = originalLowerTarget.mul(4).div(3);
+          const newLowerTarget = originalLowerTarget.mul(2);
           const newUpperTarget = originalUpperTarget;
 
           await pool.setTargets(newLowerTarget, newUpperTarget);
@@ -279,6 +329,36 @@ describe('LinearPool', function () {
             lowerTarget: newLowerTarget,
             upperTarget: newUpperTarget,
           });
+        });
+
+        it('does not overwrite other state', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = originalUpperTarget.mul(2);
+
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+
+          expect(await pool.getSwapFeePercentage()).to.equal(originalSwapFee);
+        });
+
+        it('reverts if the lower target is fractional', async () => {
+          const newLowerTarget = originalLowerTarget.add(1);
+          const newUpperTarget = originalUpperTarget;
+
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('FRACTIONAL_TARGET');
+        });
+
+        it('reverts if the upper target is fractional', async () => {
+          const newLowerTarget = originalLowerTarget;
+          const newUpperTarget = originalUpperTarget.add(1);
+
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('FRACTIONAL_TARGET');
+        });
+
+        it('reverts if the upper target is too high', async () => {
+          const newLowerTarget = originalLowerTarget;
+          const newUpperTarget = MAX_UPPER_TARGET.add(1);
+
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
         });
 
         it('reverts if the sender is not the owner', async () => {
@@ -311,7 +391,7 @@ describe('LinearPool', function () {
     ) => {
       const poolId = await pool.getPoolId();
 
-      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+      const updatedBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
         i == pool.mainIndex
           ? balances.mainBalance ?? bn(0)
           : i == pool.wrappedIndex
@@ -321,7 +401,7 @@ describe('LinearPool', function () {
           : bn(0)
       );
 
-      await pool.vault.updateBalances(poolId, updateBalances);
+      await pool.vault.updateCash(poolId, updatedBalances);
     };
 
     context('when outside the targets', () => {
@@ -369,7 +449,7 @@ describe('LinearPool', function () {
       await deployPool({ mainToken, wrappedToken, upperTarget, owner }, true);
 
       poolId = await pool.getPoolId();
-      await pool.vault.updateBalances(
+      await pool.vault.updateCash(
         poolId,
         Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)))
       );
@@ -377,7 +457,9 @@ describe('LinearPool', function () {
 
     context('without balances', () => {
       it('reverts', async () => {
-        await expect(pool.getRate()).to.be.revertedWith('ZERO_DIVISION');
+        // Previously, it would get the approximate virtual supply (0), then try to divide by it, failing with DIVISION_BY_ZERO
+        // Now, it is calculating the real virtual supply, which tries to subtract a huge value from 0, failing with SUB_OVERFLOW
+        await expect(pool.getRate()).to.be.revertedWith('SUB_OVERFLOW');
       });
     });
 
@@ -405,12 +487,12 @@ describe('LinearPool', function () {
 
       before('calculate expected rate', async () => {
         const nominalMainBalance = math.toNominal(mainBalance, params);
-        const invariant = math.calcInvariant(nominalMainBalance, wrappedBalance);
+        const invariant = math.calculateInvariant(nominalMainBalance, wrappedBalance);
         expectedRate = invariant.div(bptBalance);
       });
 
       sharedBeforeEach('update balances and rate', async () => {
-        await pool.vault.updateBalances(poolId, balances);
+        await pool.vault.updateCash(poolId, balances);
         await pool.setTargets(lowerTarget, upperTarget);
       });
 
@@ -436,7 +518,7 @@ describe('LinearPool', function () {
           });
 
           it('rate remains the same', async () => {
-            await pool.vault.updateBalances(poolId, balances);
+            await pool.vault.updateCash(poolId, balances);
 
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
@@ -459,7 +541,7 @@ describe('LinearPool', function () {
           });
 
           it('rate remains the same', async () => {
-            await pool.vault.updateBalances(poolId, balances);
+            await pool.vault.updateCash(poolId, balances);
 
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
@@ -484,7 +566,7 @@ describe('LinearPool', function () {
           });
 
           it('rate remains the same', async () => {
-            await pool.vault.updateBalances(poolId, balances);
+            await pool.vault.updateCash(poolId, balances);
 
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
@@ -507,7 +589,7 @@ describe('LinearPool', function () {
           });
 
           it('rate remains the same', async () => {
-            await pool.vault.updateBalances(poolId, balances);
+            await pool.vault.updateCash(poolId, balances);
 
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
@@ -520,12 +602,12 @@ describe('LinearPool', function () {
           const newLowerTarget = lowerTarget.div(2);
           const newUpperTarget = upperTarget.mul(2);
 
-          await pool.vault.updateBalances(poolId, balances);
+          await pool.vault.updateCash(poolId, balances);
           await pool.setTargets(newLowerTarget, newUpperTarget);
         });
 
         it('rate remains the same', async () => {
-          await pool.vault.updateBalances(poolId, balances);
+          await pool.vault.updateCash(poolId, balances);
           const currentRate = await pool.getRate();
           expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
         });
@@ -533,12 +615,12 @@ describe('LinearPool', function () {
 
       context('with swap fee updated', () => {
         sharedBeforeEach('update swap fee', async () => {
-          await pool.vault.updateBalances(poolId, balances);
+          await pool.vault.updateCash(poolId, balances);
           await pool.instance.connect(owner).setSwapFeePercentage(POOL_SWAP_FEE_PERCENTAGE.mul(2));
         });
 
         it('rate remains the same', async () => {
-          await pool.vault.updateBalances(poolId, balances);
+          await pool.vault.updateCash(poolId, balances);
           const currentRate = await pool.getRate();
           expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
         });
@@ -554,8 +636,8 @@ describe('LinearPool', function () {
     });
 
     const itAdaptsTheScalingFactorsCorrectly = () => {
-      const expectedBptScalingFactor = fp(1);
-      const expectedMainTokenScalingFactor = fp(1);
+      const expectedBptScalingFactor = FP_ONE;
+      const expectedMainTokenScalingFactor = FP_ONE;
 
       it('adapt the scaling factors with the price rate', async () => {
         const scalingFactors = await pool.getScalingFactors();
@@ -582,7 +664,7 @@ describe('LinearPool', function () {
 
     context('with a price rate equal to 1', () => {
       sharedBeforeEach('mock rate', async () => {
-        await pool.instance.setWrappedTokenRate(fp(1));
+        await pool.instance.setWrappedTokenRate(FP_ONE);
       });
 
       itAdaptsTheScalingFactorsCorrectly();
@@ -603,9 +685,11 @@ describe('LinearPool', function () {
     let params: math.Params;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      lowerTarget = fp(0);
+      lowerTarget = FP_ZERO;
       upperTarget = fp(2000);
       await deployPool({ mainToken, wrappedToken, upperTarget }, true);
+      await pool.instance.setTotalSupply(MAX_UINT112);
+
       currentBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
 
       params = {
@@ -790,128 +874,87 @@ describe('LinearPool', function () {
     });
   });
 
-  describe('emergency proportional exit', () => {
-    let upperTarget: BigNumber;
+  describe('recovery mode', () => {
+    let allTokens: string[];
 
-    sharedBeforeEach('deploy and initialize pool', async () => {
-      upperTarget = fp(2000);
+    sharedBeforeEach('deploy pool', async () => {
+      const upperTarget = fp(2000);
       await deployPool({ mainToken, wrappedToken, upperTarget }, false);
+
       await pool.initialize();
+
+      const result = await pool.getTokens();
+      allTokens = result.tokens;
     });
 
-    sharedBeforeEach('swap to prepare for exit', async () => {
-      await tokens.approve({ to: pool.vault.address, from: [lp], amount: fp(50) });
+    context('when not in recovery mode', () => {
+      it('reverts', async () => {
+        const totalBptBalance = await pool.balanceOf(lp);
+        const currentBalances = await pool.getBalances();
 
-      let balances = await pool.getBalances();
-      await pool.swapGivenIn({
-        in: pool.mainIndex,
-        out: pool.bptIndex,
-        amount: fp(50),
-        balances,
-        from: lp,
-        recipient: lp,
-      });
-      balances = await pool.getBalances();
-      await pool.swapGivenIn({
-        in: pool.wrappedIndex,
-        out: pool.mainIndex,
-        amount: fp(30),
-        balances,
-        from: lp,
-        recipient: lp,
+        await expect(
+          pool.recoveryModeExit({
+            from: lp,
+            tokens: allTokens,
+            currentBalances,
+            bptIn: totalBptBalance,
+          })
+        ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
       });
     });
 
-    context('when not paused', () => {
-      it('cannot exit proportionally', async () => {
-        const bptIn = fp(10);
-        await expect(pool.emergencyProportionalExit({ from: lp, bptIn })).to.be.revertedWith('NOT_PAUSED');
-      });
-    });
-
-    context('when paused', () => {
-      context('one lp', () => {
-        sharedBeforeEach('pause pool', async () => {
-          await pool.pause();
-        });
-
-        it('can exit proportionally', async () => {
-          const previousVirtualSupply = await pool.getVirtualSupply();
-          const previousLpBptBalance = await pool.balanceOf(lp);
-          const currentBalances = await pool.getBalances();
-
-          //Exit with 25% of BPT balance
-          const bptIn = MAX_UINT112.sub(currentBalances[pool.bptIndex]).div(4);
-
-          const expectedAmountsOut = currentBalances.map((balance, i) =>
-            i == pool.bptIndex ? bn(0) : bn(balance).div(4)
-          );
-
-          const result = await pool.emergencyProportionalExit({ from: lp, bptIn });
-
-          // Protocol fees should be zero
-          expect(result.dueProtocolFeeAmounts).to.be.zeros;
-          // Balances are reduced by half because we are returning half of the BPT supply
-          expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
-
-          const currentLpBptBalance = await pool.balanceOf(lp);
-          expect(previousLpBptBalance.sub(currentLpBptBalance)).to.be.equalWithError(bptIn, 0.00001);
-
-          // Current virtual supply
-          const currentVirtualSupply = await pool.getVirtualSupply();
-          expect(currentVirtualSupply).to.be.equalWithError(previousVirtualSupply.sub(bptIn), 0.00001);
-        });
+    context('when in recovery mode', () => {
+      sharedBeforeEach('enable recovery mode', async () => {
+        await pool.enableRecoveryMode(admin);
+        await tokens.approve({ from: lp, to: pool.vault });
       });
 
-      context('two lps', () => {
-        const amount = fp(100);
+      context('recovery mode exit', () => {
+        it('can partially exit', async () => {
+          const amountIn = fp(100);
 
-        sharedBeforeEach('second lp swaps', async () => {
-          await tokens.mint({ to: other, amount });
-          await tokens.approve({ from: other, to: pool.vault });
-
-          const balances = await pool.getBalances();
+          // Join from main
           await pool.swapGivenIn({
             in: pool.mainIndex,
             out: pool.bptIndex,
-            amount: fp(50),
-            balances,
-            from: other,
-            recipient: other,
+            amount: amountIn,
+            balances: await pool.getBalances(),
+            from: lp,
+            recipient: lp,
           });
-        });
 
-        sharedBeforeEach('pause pool', async () => {
-          await pool.pause();
-        });
-
-        sharedBeforeEach('first lp exits', async () => {
-          const bptIn = await pool.balanceOf(lp);
-          await pool.emergencyProportionalExit({ from: lp, bptIn });
-        });
-
-        it('can fully exit proportionally', async () => {
-          const previousVirtualSupply = await pool.getVirtualSupply();
-          const previousOtherBptBalance = await pool.balanceOf(other);
+          // Join again from wrapped
+          await pool.swapGivenIn({
+            in: pool.wrappedIndex,
+            out: pool.bptIndex,
+            amount: amountIn,
+            balances: await pool.getBalances(),
+            from: lp,
+            recipient: lp,
+          });
 
           const currentBalances = await pool.getBalances();
-          const expectedAmountsOut = currentBalances.map((balance, i) =>
-            i == pool.bptIndex ? bn(0) : bn(balance).mul(previousOtherBptBalance).div(previousVirtualSupply)
-          );
+          const previousVirtualSupply = await pool.getVirtualSupply();
+          const previousBptBalance = await pool.balanceOf(lp);
 
-          //Exit with all BPT balance
-          const result = await pool.emergencyProportionalExit({ from: other, bptIn: previousOtherBptBalance });
+          // Exit with 1/4 of BPT balance. This should result in a withdrawal of 1/4 of non-BPT balances.
+          const bptIn = previousBptBalance.div(4);
 
-          // Protocol fees should be zero
-          expect(result.dueProtocolFeeAmounts).to.be.zeros;
-          expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
+          const result = await pool.recoveryModeExit({
+            from: lp,
+            tokens: allTokens,
+            bptIn,
+            recipient: lp,
+          });
 
-          const currentOtherBptBalance = await pool.balanceOf(other);
-          expect(currentOtherBptBalance).to.be.equal(0);
+          const expectedAmountsOut = currentBalances.map((b, i) => (i == pool.bptIndex ? bn(0) : b.div(4)));
+          expect(result.amountsOut).to.almostEqual(expectedAmountsOut);
 
-          // Current virtual supply after full exit is cero
+          const currentBptBalance = await pool.balanceOf(lp);
+          expect(previousBptBalance.sub(currentBptBalance)).to.be.equal(bptIn);
+
           const currentVirtualSupply = await pool.getVirtualSupply();
-          expect(currentVirtualSupply).to.be.equalWithError(bn(0), 0.00001);
+          expect(currentVirtualSupply).to.be.equal(previousVirtualSupply.sub(bptIn));
         });
       });
     });

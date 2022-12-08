@@ -17,12 +17,8 @@ pragma solidity ^0.7.0;
 import "../StableMath.sol";
 
 contract MockStableMath {
-    function invariant(
-        uint256 amp,
-        uint256[] memory balances,
-        bool roundUp
-    ) external pure returns (uint256) {
-        return StableMath._calculateInvariant(amp, balances, roundUp);
+    function invariant(uint256 amp, uint256[] memory balances) external pure returns (uint256) {
+        return StableMath._calculateInvariant(amp, balances);
     }
 
     function outGivenIn(
@@ -39,7 +35,7 @@ contract MockStableMath {
                 tokenIndexIn,
                 tokenIndexOut,
                 tokenAmountIn,
-                StableMath._calculateInvariant(amp, balances, true)
+                StableMath._calculateInvariant(amp, balances)
             );
     }
 
@@ -57,7 +53,7 @@ contract MockStableMath {
                 tokenIndexIn,
                 tokenIndexOut,
                 tokenAmountOut,
-                StableMath._calculateInvariant(amp, balances, true)
+                StableMath._calculateInvariant(amp, balances)
             );
     }
 
@@ -66,9 +62,18 @@ contract MockStableMath {
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFee
     ) external pure returns (uint256) {
-        return StableMath._calcBptOutGivenExactTokensIn(amp, balances, amountsIn, bptTotalSupply, swapFee);
+        return
+            StableMath._calcBptOutGivenExactTokensIn(
+                amp,
+                balances,
+                amountsIn,
+                bptTotalSupply,
+                currentInvariant,
+                swapFee
+            );
     }
 
     function tokenInForExactBPTOut(
@@ -77,10 +82,19 @@ contract MockStableMath {
         uint256 tokenIndex,
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFee
     ) external pure returns (uint256) {
         return
-            StableMath._calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptAmountOut, bptTotalSupply, swapFee);
+            StableMath._calcTokenInGivenExactBptOut(
+                amp,
+                balances,
+                tokenIndex,
+                bptAmountOut,
+                bptTotalSupply,
+                currentInvariant,
+                swapFee
+            );
     }
 
     function exactBPTInForTokenOut(
@@ -89,17 +103,19 @@ contract MockStableMath {
         uint256 tokenIndex,
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFee
     ) external pure returns (uint256) {
-        return StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptAmountIn, bptTotalSupply, swapFee);
-    }
-
-    function exactBPTInForTokensOut(
-        uint256[] memory balances,
-        uint256 bptAmountIn,
-        uint256 bptTotalSupply
-    ) external pure returns (uint256[] memory) {
-        return StableMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, bptTotalSupply);
+        return
+            StableMath._calcTokenOutGivenExactBptIn(
+                amp,
+                balances,
+                tokenIndex,
+                bptAmountIn,
+                bptTotalSupply,
+                currentInvariant,
+                swapFee
+            );
     }
 
     function bptInForExactTokensOut(
@@ -107,25 +123,32 @@ contract MockStableMath {
         uint256[] memory balances,
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFee
     ) external pure returns (uint256) {
-        return StableMath._calcBptInGivenExactTokensOut(amp, balances, amountsOut, bptTotalSupply, swapFee);
-    }
-
-    function calculateDueTokenProtocolSwapFeeAmount(
-        uint256 amp,
-        uint256[] memory balances,
-        uint256 lastInvariant,
-        uint256 tokenIndex,
-        uint256 protocolSwapFeePercentage
-    ) external pure returns (uint256) {
         return
-            StableMath._calcDueTokenProtocolSwapFeeAmount(
+            StableMath._calcBptInGivenExactTokensOut(
                 amp,
                 balances,
-                lastInvariant,
-                tokenIndex,
-                protocolSwapFeePercentage
+                amountsOut,
+                bptTotalSupply,
+                currentInvariant,
+                swapFee
+            );
+    }
+
+    function getTokenBalanceGivenInvariantAndAllOtherBalances(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 currentInvariant,
+        uint256 tokenIndex
+    ) external pure returns (uint256) {
+        return
+            StableMath._getTokenBalanceGivenInvariantAndAllOtherBalances(
+                amplificationParameter,
+                balances,
+                currentInvariant,
+                tokenIndex
             );
     }
 }

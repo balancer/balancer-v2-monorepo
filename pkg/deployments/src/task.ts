@@ -22,8 +22,12 @@ import {
   TaskRunOptions,
 } from './types';
 import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
+import { getTaskActionIds } from './actionId';
+import { getArtifactFromContractOutput } from './artifact';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
+const DEPRECATED_DIRECTORY = path.join(TASKS_DIRECTORY, 'deprecated');
+const SCRIPTS_DIRECTORY = path.join(TASKS_DIRECTORY, 'scripts');
 
 export enum TaskMode {
   LIVE, // Deploys and saves outputs
@@ -89,19 +93,19 @@ export default class Task {
       return await this.check(name, args, libs);
     }
 
-    const output = this.output({ ensure: false });
-    if (force || !output[name]) {
-      const instance = await this.deploy(name, args, from, libs);
-      await this.verify(name, instance.address, args, libs);
-      return instance;
-    } else {
-      logger.info(`${name} already deployed at ${output[name]}`);
-      await this.verify(name, output[name], args, libs);
-      return this.instanceAt(name, output[name]);
-    }
+    const instance = await this.deploy(name, args, from, force, libs);
+
+    await this.verify(name, instance.address, args, libs);
+    return instance;
   }
 
-  async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress, libs?: Libraries): Promise<Contract> {
+  async deploy(
+    name: string,
+    args: Array<Param> = [],
+    from?: SignerWithAddress,
+    force?: boolean,
+    libs?: Libraries
+  ): Promise<Contract> {
     if (this.mode == TaskMode.CHECK) {
       return await this.check(name, args, libs);
     }
@@ -110,13 +114,21 @@ export default class Task {
       throw Error(`Cannot deploy in tasks of mode ${TaskMode[this.mode]}`);
     }
 
-    const instance = await deploy(this.artifact(name), args, from, libs);
-    this.save({ [name]: instance });
-    logger.success(`Deployed ${name} at ${instance.address}`);
+    let instance: Contract;
+    const output = this.output({ ensure: false });
+    if (force || !output[name]) {
+      instance = await deploy(this.artifact(name), args, from, libs);
+      this.save({ [name]: instance });
+      logger.success(`Deployed ${name} at ${instance.address}`);
 
-    if (this.mode === TaskMode.LIVE) {
-      await saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
+      if (this.mode === TaskMode.LIVE) {
+        saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
+      }
+    } else {
+      logger.info(`${name} already deployed at ${output[name]}`);
+      instance = await this.instanceAt(name, output[name]);
     }
+
     return instance;
   }
 
@@ -157,17 +169,18 @@ export default class Task {
     const { ethers } = await import('hardhat');
 
     const deployedAddress = this.output()[name];
-    const deploymentTxHash = await getContractDeploymentTransactionHash(deployedAddress, this.network);
+    const deploymentTxHash = getContractDeploymentTransactionHash(deployedAddress, this.network);
     const deploymentTx = await ethers.provider.getTransaction(deploymentTxHash);
 
     const expectedDeploymentAddress = getContractAddress(deploymentTx);
     if (deployedAddress !== expectedDeploymentAddress) {
       throw Error(
-        `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' does not match the address which would be deployed by the transaction ${deploymentTxHash} (${expectedDeploymentAddress})`
+        `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' (${deployedAddress}) does not match the address which would be deployed by the transaction ${deploymentTxHash} (which instead deploys to ${expectedDeploymentAddress})`
       );
     }
 
-    if (deploymentTx.data === deploymentTxData(this.artifact(name), args, libs)) {
+    const expectedDeploymentTxData = await deploymentTxData(this.artifact(name), args, libs);
+    if (deploymentTx.data === expectedDeploymentTxData) {
       logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
     } else {
       throw Error(
@@ -188,7 +201,26 @@ export default class Task {
 
   dir(): string {
     if (!this.id) throw Error('Please provide a task deployment ID to run');
-    return this._dirAt(TASKS_DIRECTORY, this.id);
+
+    // The task might be deprecated, so it may not exist in the main directory. We first look there, but don't require
+    // that the directory exists.
+
+    const nonDeprecatedDir = this._dirAt(TASKS_DIRECTORY, this.id, false);
+    if (this._existsDir(nonDeprecatedDir)) {
+      return nonDeprecatedDir;
+    }
+
+    const deprecatedDir = this._dirAt(DEPRECATED_DIRECTORY, this.id, false);
+    if (this._existsDir(deprecatedDir)) {
+      return deprecatedDir;
+    }
+
+    const scriptsDir = this._dirAt(SCRIPTS_DIRECTORY, this.id, false);
+    if (this._existsDir(scriptsDir)) {
+      return scriptsDir;
+    }
+
+    throw Error(`Could not find a directory at ${nonDeprecatedDir}, ${deprecatedDir} or ${scriptsDir}`);
   }
 
   buildInfo(fileName: string): BuildInfo {
@@ -215,7 +247,19 @@ export default class Task {
     );
 
     if (!sourceName) throw Error(`Could not find artifact for ${contractName}`);
-    return builds[sourceName][contractName];
+    return getArtifactFromContractOutput(sourceName, contractName, builds[sourceName][contractName]);
+  }
+
+  actionId(contractName: string, signature: string): string {
+    const taskActionIds = getTaskActionIds(this);
+    if (taskActionIds === undefined) throw new Error('Could not find action IDs for task');
+    const contractInfo = taskActionIds[contractName];
+    if (contractInfo === undefined)
+      throw new Error(`Could not find action IDs for contract ${contractName} on task ${this.id}`);
+    const actionIds = taskActionIds[contractName].actionIds;
+    if (actionIds[signature] === undefined)
+      throw new Error(`Could not find function ${contractName}.${signature} on task ${this.id}`);
+    return actionIds[signature];
   }
 
   rawInput(): RawInputKeyValue {
@@ -291,8 +335,7 @@ export default class Task {
   }
 
   private _write(path: string, output: Output): void {
-    const timestamp = new Date().getTime();
-    const finalOutputJSON = JSON.stringify({ ...output, timestamp }, null, 2);
+    const finalOutputJSON = JSON.stringify(output, null, 2);
     fs.writeFileSync(path, finalOutputJSON);
   }
 
@@ -322,7 +365,7 @@ export default class Task {
   }
 
   private _findTaskId(idAlias: string): string {
-    const matches = fs.readdirSync(TASKS_DIRECTORY).filter((taskDirName) => taskDirName.includes(idAlias));
+    const matches = Task.getAllTaskIds().filter((taskDirName) => taskDirName.includes(idAlias));
 
     if (matches.length == 1) {
       return matches[0];
@@ -335,5 +378,12 @@ export default class Task {
         );
       }
     }
+  }
+
+  static getAllTaskIds(): string[] {
+    return [TASKS_DIRECTORY, DEPRECATED_DIRECTORY, SCRIPTS_DIRECTORY]
+      .map((dir) => fs.readdirSync(dir))
+      .flat()
+      .sort();
   }
 }

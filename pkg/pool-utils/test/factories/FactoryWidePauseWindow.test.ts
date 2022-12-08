@@ -12,7 +12,7 @@ describe('FactoryWidePauseWindow', function () {
   const BUFFER_PERIOD_DURATION = DAY * 30;
 
   sharedBeforeEach(async () => {
-    factory = await deploy('FactoryWidePauseWindow');
+    factory = await deploy('FactoryWidePauseWindow', { args: [PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
     factoryDeployTime = await currentTimestamp();
   });
 

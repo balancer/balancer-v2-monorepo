@@ -7,15 +7,9 @@ async function main() {
 
   await measureDeployment('v2-pool-weighted/WeightedPool');
 
-  await measureDeployment('v2-pool-weighted/OracleWeightedPoolFactory');
-
   await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPool');
 
-  await measureDeployment('v2-pool-stable/StablePoolFactory');
-
   await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPoolFactory');
-
-  await measureDeployment('v2-pool-stable/meta/MetaStablePool');
 
   await measureDeployment('v2-pool-weighted/ManagedPoolFactory');
 }
@@ -23,7 +17,7 @@ async function main() {
 async function measureDeployment(name: string) {
   console.log(`\n# ${name}`);
 
-  const artifact = await getArtifact(name);
+  const artifact = getArtifact(name);
   const bytecodeSizeBytes = artifact.deployedBytecode.slice(2).length / 2;
 
   console.log(`Deployed bytecode size is ${bytecodeSizeBytes} bytes`);

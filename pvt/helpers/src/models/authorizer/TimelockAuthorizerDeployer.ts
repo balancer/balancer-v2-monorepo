@@ -9,11 +9,11 @@ import TypesConverter from '../types/TypesConverter';
 
 export default {
   async deploy(deployment: TimelockAuthorizerDeployment): Promise<TimelockAuthorizer> {
-    const admin = deployment.admin || deployment.from || (await ethers.getSigners())[0];
-    const vault = TypesConverter.toAddress(deployment.vault);
+    const root = deployment.root || deployment.from || (await ethers.getSigners())[0];
     const rootTransferDelay = deployment.rootTransferDelay || MONTH;
-    const args = [TypesConverter.toAddress(admin), vault, rootTransferDelay];
+    const entrypoint = await deploy('MockAuthorizerAdaptorEntrypoint');
+    const args = [TypesConverter.toAddress(root), entrypoint.address, rootTransferDelay];
     const instance = await deploy('TimelockAuthorizer', { args });
-    return new TimelockAuthorizer(instance, admin);
+    return new TimelockAuthorizer(instance, root);
   },
 };

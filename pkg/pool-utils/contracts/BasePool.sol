@@ -15,23 +15,28 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
+import "./lib/PoolRegistrationLib.sol";
+
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
+import "./RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
 /**
+ * @notice Reference implementation for the base layer of a Pool contract.
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with optional
  * Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
@@ -49,9 +54,17 @@ import "./BasePoolAuthorization.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
+abstract contract BasePool is
+    IBasePool,
+    IControlledPool,
+    BasePoolAuthorization,
+    BalancerPoolToken,
+    TemporarilyPausable,
+    RecoveryMode
+{
     using WordCodec for bytes32;
     using FixedPoint for uint256;
+    using BasePoolUserData for bytes;
 
     uint256 private constant _MIN_TOKENS = 2;
 
@@ -61,12 +74,25 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10% - this fits in 64 bits
 
-    // Storage slot that can be used to store unrelated pieces of information. In particular, by default is used
-    // to store only the swap fee percentage of a pool. But it can be extended to store some more pieces of information.
-    // The swap fee percentage is stored in the most-significant 64 bits, therefore the remaining 192 bits can be
-    // used to store any other piece of information.
+    // `_miscData` is a storage slot that can be used to store unrelated pieces of information. All pools store the
+    // recovery mode flag and swap fee percentage, but `miscData` can be extended to store more pieces of information.
+    // The most signficant bit is reserved for the recovery mode flag, and the swap fee percentage is stored in
+    // the next most significant 63 bits, leaving the remaining 192 bits free to store any other information derived
+    // pools might need.
+    //
+    // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
+    // and therefore warm.
+
+    // [ recovery | swap  fee | available ]
+    // [   1 bit  |  63 bits  |  192 bits ]
+    // [ MSB                          LSB ]
     bytes32 private _miscData;
+
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
+    uint256 private constant _RECOVERY_MODE_BIT_OFFSET = 255;
+
+    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits, so 63 is more than enough.
+    uint256 private constant _SWAP_FEE_PERCENTAGE_BIT_LENGTH = 63;
 
     bytes32 private immutable _poolId;
 
@@ -100,18 +126,14 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);
 
-        // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
-        // to make the developer experience consistent, we are requiring this condition for all the native pools.
-        // Also, since these Pools will register tokens only once, we can ensure the Pool tokens will follow the same
-        // order. We rely on this property to make Pools simpler to write, as it lets us assume that the
-        // order of token-specific parameters (such as token weights) will not change.
-        InputHelpers.ensureArrayIsSorted(tokens);
-
         _setSwapFeePercentage(swapFeePercentage);
 
-        bytes32 poolId = vault.registerPool(specialization);
-
-        vault.registerTokens(poolId, tokens, assetManagers);
+        bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
+            vault,
+            specialization,
+            tokens,
+            assetManagers
+        );
 
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;
@@ -120,6 +142,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     // Getters / Setters
 
+    /**
+     * @notice Return the pool id.
+     */
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
     }
@@ -139,15 +164,28 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _DEFAULT_MINIMUM_BPT;
     }
 
-    function getSwapFeePercentage() public view virtual returns (uint256) {
-        return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
+    /**
+     * @notice Return the current value of the swap fee percentage.
+     * @dev This is stored in `_miscData`.
+     */
+    function getSwapFeePercentage() public view virtual override returns (uint256) {
+        return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
 
+    /**
+     * @notice Return the ProtocolFeesCollector contract.
+     * @dev This is immutable, and retrieved from the Vault on construction. (It is also immutable in the Vault.)
+     */
     function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
         return _protocolFeesCollector;
     }
 
-    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
+     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     */
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual override authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -155,7 +193,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
+        _miscData = _miscData.insertUint(
+            swapFeePercentage,
+            _SWAP_FEE_PERCENTAGE_OFFSET,
+            _SWAP_FEE_PERCENTAGE_BIT_LENGTH
+        );
+
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
@@ -167,34 +210,55 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
-    function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
-        public
-        virtual
-        authenticate
-        whenNotPaused
-    {
-        _setAssetManagerPoolConfig(token, poolConfig);
+    /**
+     * @notice Returns whether the pool is in Recovery Mode.
+     */
+    function inRecoveryMode() public view override returns (bool) {
+        return _miscData.decodeBool(_RECOVERY_MODE_BIT_OFFSET);
     }
 
-    function _setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig) private {
-        bytes32 poolId = getPoolId();
-        (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, token);
+    /**
+     * @dev Sets the recoveryMode state, and emits the corresponding event.
+     */
+    function _setRecoveryMode(bool enabled) internal virtual override {
+        _miscData = _miscData.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);
 
-        IAssetManager(assetManager).setConfig(poolId, poolConfig);
+        emit RecoveryModeStateChanged(enabled);
+
+        // Some pools need to update their state when leaving recovery mode to ensure proper functioning of the Pool.
+        // We do not allow an `_onEnableRecoveryMode()` hook as this may jeopardize the ability to enable Recovery mode.
+        if (!enabled) _onDisableRecoveryMode();
     }
 
+    /**
+     * @dev Performs any necessary actions on the disabling of Recovery Mode.
+     * This is usually to reset any fee collection mechanisms to ensure that they operate correctly going forward.
+     */
+    function _onDisableRecoveryMode() internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /**
+     * @notice Pause the pool: an emergency action which disables all pool functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
+     * deployment (see `TemporarilyPausable`).
+     */
     function pause() external authenticate {
         _setPaused(true);
     }
 
+    /**
+     * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
+     * pool factory deployment (see `TemporarilyPausable`). Note that any paused pools will automatically unpause
+     * after the Buffer Period expires.
+     */
     function unpause() external authenticate {
         _setPaused(false);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return
-            (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(this.setAssetManagerPoolConfig.selector));
+        return (actionId == getActionId(this.setSwapFeePercentage.selector)) || super._isOwnerOnlyAction(actionId);
     }
 
     function _getMiscData() internal view returns (bytes32) {
@@ -202,7 +266,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * Inserts data into the least-significant 192 bits of the misc data storage slot.
+     * @dev Inserts data into the least-significant 192 bits of the misc data storage slot.
      * Note that the remaining 64 bits are used for the swap fee percentage and cannot be overloaded.
      */
     function _setMiscData(bytes32 newData) internal {
@@ -217,6 +281,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _;
     }
 
+    /**
+     * @notice Vault hook for adding liquidity to a pool (including the first time, "initializing" the pool).
+     * @dev This function can only be called from the Vault, from `joinPool`.
+     */
     function onJoinPool(
         bytes32 poolId,
         address sender,
@@ -225,7 +293,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+        _beforeSwapJoinExit();
+
         uint256[] memory scalingFactors = _scalingFactors();
 
         if (totalSupply() == 0) {
@@ -256,7 +326,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 recipient,
                 balances,
                 lastChangeBlock,
-                protocolSwapFeePercentage,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
                 scalingFactors,
                 userData
             );
@@ -273,6 +343,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         }
     }
 
+    /**
+     * @notice Vault hook for removing liquidity from a pool.
+     * @dev This function can only be called from the Vault, from `exitPool`.
+     */
     function onExitPool(
         bytes32 poolId,
         address sender,
@@ -281,27 +355,46 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(balances, scalingFactors);
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+        uint256[] memory amountsOut;
+        uint256 bptAmountIn;
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _onExitPool(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            scalingFactors,
-            userData
-        );
+        // When a user calls `exitPool`, this is the first point of entry from the Vault.
+        // We first check whether this is a Recovery Mode exit - if so, we proceed using this special lightweight exit
+        // mechanism which avoids computing any complex values, interacting with external contracts, etc., and generally
+        // should always work, even if the Pool's mathematics or a dependency break down.
+        if (userData.isRecoveryModeExitKind()) {
+            // This exit kind is only available in Recovery Mode.
+            _ensureInRecoveryMode();
+
+            // Note that we don't upscale balances nor downscale amountsOut - we don't care about scaling factors during
+            // a recovery mode exit.
+            (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
+        } else {
+            // Note that we only call this if we're not in a recovery mode exit.
+            _beforeSwapJoinExit();
+
+            uint256[] memory scalingFactors = _scalingFactors();
+            _upscaleArray(balances, scalingFactors);
+
+            (bptAmountIn, amountsOut) = _onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
+                scalingFactors,
+                userData
+            );
+
+            // amountsOut are amounts exiting the Pool, so we round down.
+            _downscaleDownArray(amountsOut, scalingFactors);
+        }
 
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
 
         _burnPoolTokens(sender, bptAmountIn);
-
-        // amountsOut are amounts exiting the Pool, so we round down.
-        _downscaleDownArray(amountsOut, scalingFactors);
 
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
         return (amountsOut, new uint256[](balances.length));
@@ -310,6 +403,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Query functions
 
     /**
+     * @notice "Dry run" `onJoinPool`.
      * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook were called by the
      * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
@@ -327,7 +421,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
+    ) external override returns (uint256 bptOut, uint256[] memory amountsIn) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
 
         _queryAction(
@@ -348,6 +442,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
+     * @notice "Dry run" `onExitPool`.
      * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook were called by the
      * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
@@ -365,7 +460,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
+    ) external override returns (uint256 bptIn, uint256[] memory amountsOut) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
 
         _queryAction(
@@ -465,13 +560,32 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut);
 
+    /**
+     * @dev Called at the very beginning of swaps, joins and exits, even before the scaling factors are read. Derived
+     * contracts can extend this implementation to perform any state-changing operations they might need (including e.g.
+     * updating the scaling factors),
+     *
+     * The only scenario in which this function is not called is during a recovery mode exit. This makes it safe to
+     * perform non-trivial computations or interact with external dependencies here, as recovery mode will not be
+     * affected.
+     *
+     * Since this contract does not implement swaps, derived contracts must also make sure this function is called on
+     * swap handlers.
+     */
+    function _beforeSwapJoinExit() internal virtual {
+        // All joins, exits and swaps are disabled (except recovery mode exits).
+        _ensureNotPaused();
+    }
+
     // Internal functions
 
     /**
      * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
      */
     function _payProtocolFees(uint256 bptAmount) internal {
-        _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+        if (bptAmount > 0) {
+            _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+        }
     }
 
     /**
@@ -479,7 +593,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(FixedPoint.ONE.sub(getSwapFeePercentage()));
+        return amount.divUp(getSwapFeePercentage().complement());
     }
 
     /**
@@ -531,66 +645,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
-    function getScalingFactors() external view returns (uint256[] memory) {
+    function getScalingFactors() external view override returns (uint256[] memory) {
         return _scalingFactors();
-    }
-
-    /**
-     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
-     * scaling or not.
-     */
-    function _upscale(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        // Upscale rounding wouldn't necessarily always go in the same direction: in a swap for example the balance of
-        // token in should be rounded up, and that of token out rounded down. This is the only place where we round in
-        // the same direction for all amounts, as the impact of this rounding is expected to be minimal (and there's no
-        // rounding error unless `_scalingFactor()` is overriden).
-        return FixedPoint.mulDown(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
-     */
-    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
-        }
-    }
-
-    /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded down.
-     */
-    function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.divDown(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
-     */
-    function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
-        }
-    }
-
-    /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded up.
-     */
-    function _downscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.divUp(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
-     */
-    function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
-        }
     }
 
     function _getAuthorizer() internal view override returns (IAuthorizer) {
@@ -682,6 +738,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                     }
             }
         } else {
+            // This imitates the relevant parts of the bodies of onJoin and onExit. Since they're not virtual, we know
+            // that their implementations will match this regardless of what derived contracts might do.
+
+            _beforeSwapJoinExit();
+
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
 

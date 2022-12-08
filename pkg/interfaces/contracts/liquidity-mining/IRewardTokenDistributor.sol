@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
 import "../solidity-utils/openzeppelin/IERC20.sol";
@@ -42,4 +42,8 @@ interface IRewardTokenDistributor {
     function set_reward_distributor(IERC20 rewardToken, address distributor) external;
 
     function deposit_reward_token(IERC20 rewardToken, uint256 amount) external;
+
+    function claimable_reward(address rewardToken, address user) external view returns (uint256);
+
+    function claimable_reward_write(address rewardToken, address user) external returns (uint256);
 }

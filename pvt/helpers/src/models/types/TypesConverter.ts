@@ -2,16 +2,14 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { ethers } from 'ethers';
 
-import { bn, fp } from '../../numbers';
+import { BigNumberish, bn, fp, FP_100_PCT, FP_ZERO } from '../../numbers';
 import { DAY, MONTH } from '../../time';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
-
+import { ZERO_ADDRESS } from '../../constants';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
-import { RawVaultDeployment, VaultDeployment } from '../vault/types';
-import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
+import { ProtocolFee, RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
-import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
+import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import {
   RawWeightedPoolDeployment,
   WeightedPoolDeployment,
@@ -29,21 +27,23 @@ import {
 } from '../tokens/types';
 
 export function computeDecimalsFromIndex(i: number): number {
-  // Produces repeating series (18..0)
-  return 18 - (i % 19);
+  // Produces repeating series (0..18)
+  return i % 19;
 }
 
 export default {
   toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
-    let { mocked, admin, pauseWindowDuration, bufferPeriodDuration } = params;
+    let { mocked, admin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue } = params;
     if (!mocked) mocked = false;
     if (!admin) admin = params.from;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
-    return { mocked, admin, pauseWindowDuration, bufferPeriodDuration };
+    if (!maxYieldValue) maxYieldValue = FP_100_PCT;
+    if (!maxAUMValue) maxAUMValue = FP_100_PCT;
+    return { mocked, admin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue };
   },
 
-  toRawVaultDeployment(params: RawWeightedPoolDeployment | RawStablePoolDeployment): RawVaultDeployment {
+  toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
     let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!admin) admin = params.from;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
@@ -57,18 +57,19 @@ export default {
     let {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
       poolType,
+      aumFeeId,
+      factoryVersion,
+      poolVersion,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
@@ -77,34 +78,55 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e16);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!oracleEnabled) oracleEnabled = true;
+    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
+    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
-    if (undefined == protocolSwapFeePercentage) protocolSwapFeePercentage = MAX_UINT256;
-    if (undefined == managementSwapFeePercentage) managementSwapFeePercentage = fp(0);
-    if (undefined == managementAumFeePercentage) managementAumFeePercentage = fp(0);
-    if (poolType == WeightedPoolType.ORACLE_WEIGHTED_POOL && tokens.length !== 2)
-      throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
+    if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
+    if (undefined == factoryVersion) factoryVersion = 'default factory version';
+    if (undefined == poolVersion) poolVersion = 'default pool version';
     return {
       tokens,
       weights,
+      rateProviders: this.toAddresses(rateProviders),
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
+      aumFeeId,
+      factoryVersion,
+      poolVersion,
+    };
+  },
+
+  toLinearPoolDeployment(params: RawLinearPoolDeployment): LinearPoolDeployment {
+    let { upperTarget, assetManagers, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+
+    if (!upperTarget) upperTarget = bn(0);
+    if (!swapFeePercentage) swapFeePercentage = bn(1e12);
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!assetManagers) assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];
+
+    return {
+      mainToken: params.mainToken,
+      wrappedToken: params.wrappedToken,
+      upperTarget,
+      assetManagers,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner: params.owner,
     };
   },
 
@@ -112,67 +134,13 @@ export default {
     let {
       tokens,
       rateProviders,
-      priceRateCacheDuration,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      oracleEnabled,
-      meta,
-    } = params;
-
-    if (!tokens) tokens = new TokenList();
-    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!priceRateCacheDuration) priceRateCacheDuration = Array(tokens.length).fill(DAY);
-    if (!amplificationParameter) amplificationParameter = bn(200);
-    if (!swapFeePercentage) swapFeePercentage = bn(1e12);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!oracleEnabled) oracleEnabled = true;
-    if (!meta) meta = false;
-
-    return {
-      tokens,
-      rateProviders,
-      priceRateCacheDuration,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      oracleEnabled,
-      meta,
-      owner: params.owner,
-    };
-  },
-
-  toLinearPoolDeployment(params: RawLinearPoolDeployment): LinearPoolDeployment {
-    let { upperTarget, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
-
-    if (!upperTarget) upperTarget = bn(0);
-    if (!swapFeePercentage) swapFeePercentage = bn(1e12);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-
-    return {
-      mainToken: params.mainToken,
-      wrappedToken: params.wrappedToken,
-      upperTarget,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      owner: params.owner,
-    };
-  },
-
-  toStablePhantomPoolDeployment(params: RawStablePhantomPoolDeployment): StablePhantomPoolDeployment {
-    let {
-      tokens,
-      rateProviders,
       tokenRateCacheDurations,
+      exemptFromYieldProtocolFeeFlags,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
+      version,
     } = params;
 
     if (!tokens) tokens = new TokenList();
@@ -182,16 +150,20 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!exemptFromYieldProtocolFeeFlags) exemptFromYieldProtocolFeeFlags = Array(tokens.length).fill(false);
+    if (!version) version = 'test';
 
     return {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
+      exemptFromYieldProtocolFeeFlags,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
       owner: params.owner,
+      version,
     };
   },
 
@@ -272,7 +244,7 @@ export default {
     return typeof to === 'string' ? to : to.address;
   },
 
-  toBytes32(value: number): string {
+  toBytes32(value: BigNumberish): string {
     const hexy = ethers.utils.hexlify(value);
     return ethers.utils.hexZeroPad(hexy, 32);
   },

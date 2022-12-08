@@ -18,17 +18,19 @@ import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
-contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
-    uint256 private _rate = 1e27;
+contract MockStaticAToken is TestToken, IStaticAToken {
     address private immutable _ASSET;
+    ILendingPool private immutable _lendingPool;
 
     constructor(
         string memory name,
         string memory symbol,
         uint8 decimals,
-        address underlyingAsset
+        address underlyingAsset,
+        ILendingPool lendingPool
     ) TestToken(name, symbol, decimals) {
         _ASSET = underlyingAsset;
+        _lendingPool = lendingPool;
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -38,18 +40,31 @@ contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
 
     // solhint-disable-next-line func-name-mixedcase
     function LENDING_POOL() external view override returns (ILendingPool) {
-        return ILendingPool(this);
+        return _lendingPool;
     }
 
     function rate() external pure override returns (uint256) {
         revert("Should not call this");
     }
 
-    function getReserveNormalizedIncome(address) external view override returns (uint256) {
-        return _rate;
+    function deposit(
+        address,
+        uint256,
+        uint16,
+        bool
+    ) external pure override returns (uint256) {
+        return 0;
     }
 
-    function setReserveNormalizedIncome(uint256 newRate) external {
-        _rate = newRate;
+    function withdraw(
+        address,
+        uint256,
+        bool
+    ) external pure override returns (uint256, uint256) {
+        return (0, 0);
+    }
+
+    function staticToDynamicAmount(uint256 amount) external pure override returns (uint256) {
+        return amount;
     }
 }

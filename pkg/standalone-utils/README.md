@@ -6,7 +6,7 @@
 
 This package contains standalone Solidity utilities that can be used to perform advanced actions in the Balancer V2 protocol.
 
-- [`BalancerHelpers`](./contracts/BalancerHelpers.sol) can be used by off-chain clients to simulate Pool joins and exits, computing the expected result of these operations.
+- [`BalancerQueries`](./contracts/BalancerQueries.sol) can be used by off-chain clients to simulate Pool joins and exits, computing the expected result of these operations.
 
 ## Overview
 

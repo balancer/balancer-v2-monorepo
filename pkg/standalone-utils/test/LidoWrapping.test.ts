@@ -9,6 +9,7 @@ import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/Stable
 
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -22,7 +23,6 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
-import { expectTransferEvent } from './helpers/tokenTransfer';
 
 describe('LidoWrapping', function () {
   let stETH: Token, wstETH: Token;
@@ -55,7 +55,7 @@ describe('LidoWrapping', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, wstETH.address] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, wstETH.address, ZERO_ADDRESS] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
@@ -508,6 +508,7 @@ describe('LidoWrapping', function () {
     let poolTokens: TokenList;
     let poolId: string;
     let pool: StablePool;
+    let bptIndex: number;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
@@ -528,7 +529,10 @@ describe('LidoWrapping', function () {
       await wstETH.instance.connect(admin).wrap(fp(150));
       await wstETH.approve(vault, MAX_UINT256, { from: admin });
 
-      await pool.init({ initialBalances: fp(100), from: admin });
+      bptIndex = await pool.getBptIndex();
+      const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
+
+      await pool.init({ initialBalances, from: admin });
     });
 
     describe('swap', () => {
@@ -756,7 +760,7 @@ describe('LidoWrapping', function () {
         poolId: string;
         sender: Account;
         recipient: Account;
-        assets: TokenList;
+        assets: string[];
         maxAmountsIn: BigNumberish[];
         userData: string;
         outputReference?: BigNumberish;
@@ -767,7 +771,7 @@ describe('LidoWrapping', function () {
           TypesConverter.toAddress(params.sender),
           TypesConverter.toAddress(params.recipient),
           {
-            assets: params.assets.addresses,
+            assets: params.assets,
             maxAmountsIn: params.maxAmountsIn,
             userData: params.userData,
             fromInternalBalance: false,
@@ -782,6 +786,8 @@ describe('LidoWrapping', function () {
       const amount = fp(1);
 
       sharedBeforeEach('join the pool', async () => {
+        const { tokens: allTokens } = await pool.getTokens();
+
         senderWstETHBalanceBefore = await wstETH.balanceOf(senderUser);
         receipt = await (
           await relayer.connect(senderUser).multicall([
@@ -789,10 +795,10 @@ describe('LidoWrapping', function () {
             encodeApprove(wstETH, MAX_UINT256),
             encodeJoin({
               poolId,
-              assets: poolTokens,
+              assets: allTokens,
               sender: relayer,
               recipient: recipientUser,
-              maxAmountsIn: poolTokens.map(() => MAX_UINT256),
+              maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
               userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
                 poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
                 0
@@ -809,11 +815,7 @@ describe('LidoWrapping', function () {
         });
 
         // BPT minted to recipient
-        expectTransferEvent(
-          receipt,
-          { from: ZERO_ADDRESS, to: recipientUser.address },
-          await Token.deployedAt(pool.address)
-        );
+        expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, pool);
       });
 
       it('does not take wstETH from the user', async () => {

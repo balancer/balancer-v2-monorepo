@@ -1,0 +1,20 @@
+{
+  "ignoredFunctions": [
+    "approve(address,uint256)",
+    "transfer(address,uint256)",
+    "transferFrom(address,address,uint256)",
+    "safeTransferFrom(address,address,uint256)",
+    "safeTransferFrom(address,address,uint256,bytes)",
+    "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+    "decreaseApproval(address,uint256)",
+    "increaseApproval(address,uint256)",
+    "decreaseAllowance(address,uint256)",
+    "increaseAllowance(address,uint256)",
+    "onExitPool(bytes32,address,address,uint256[],uint256,uint256,bytes)",
+    "onJoinPool(bytes32,address,address,uint256[],uint256,uint256,bytes)",
+    "queryExit(bytes32,address,address,uint256[],uint256,uint256,bytes)",
+    "queryJoin(bytes32,address,address,uint256[],uint256,uint256,bytes)",
+    "onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)",
+    "onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)"
+  ]
+}

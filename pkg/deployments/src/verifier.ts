@@ -4,6 +4,7 @@ import { BuildInfo, CompilerInput, Network } from 'hardhat/types';
 import { getLongVersion } from '@nomiclabs/hardhat-etherscan/dist/src/solc/version';
 import { encodeArguments } from '@nomiclabs/hardhat-etherscan/dist/src/ABIEncoder';
 import { getLibraryLinks, Libraries } from '@nomiclabs/hardhat-etherscan/dist/src/solc/libraries';
+import { chainConfig } from '@nomiclabs/hardhat-etherscan/dist/src/ChainConfig';
 
 import {
   Bytecode,
@@ -11,11 +12,7 @@ import {
   extractMatchingContractInformation,
 } from '@nomiclabs/hardhat-etherscan/dist/src/solc/bytecode';
 
-import {
-  EtherscanURLs,
-  getEtherscanEndpoints,
-  retrieveContractBytecode,
-} from '@nomiclabs/hardhat-etherscan/dist/src/network/prober';
+import { getEtherscanEndpoints, retrieveContractBytecode } from '@nomiclabs/hardhat-etherscan/dist/src/network/prober';
 
 import {
   toVerifyRequest,
@@ -23,15 +20,19 @@ import {
   EtherscanVerifyRequest,
 } from '@nomiclabs/hardhat-etherscan/dist/src/etherscan/EtherscanVerifyContractRequest';
 
-import EtherscanResponse, {
+import {
   delay,
+  EtherscanResponse,
   getVerificationStatus,
 } from '@nomiclabs/hardhat-etherscan/dist/src/etherscan/EtherscanService';
+
+import { EtherscanNetworkEntry } from '@nomiclabs/hardhat-etherscan/dist/src/types';
 
 import * as parser from '@solidity-parser/parser';
 
 import Task from './task';
 import logger from './logger';
+import { findContractSourceName, getAllFullyQualifiedNames } from './buildinfo';
 
 const MAX_VERIFICATION_INTENTS = 3;
 
@@ -55,8 +56,9 @@ export default class Verifier {
     const response = await this.verify(task, name, address, constructorArguments, libraries);
 
     if (response.isVerificationSuccess()) {
-      const etherscanAPIEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name);
-      const contractURL = new URL(`/address/${address}#code`, etherscanAPIEndpoints.browserURL);
+      const etherscanEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name, chainConfig, []);
+
+      const contractURL = new URL(`/address/${address}#code`, etherscanEndpoints.urls.browserURL);
       return contractURL.toString();
     } else if (intent < MAX_VERIFICATION_INTENTS && response.isBytecodeMissingInNetworkError()) {
       logger.info(`Could not find deployed bytecode in network, retrying ${intent++}/${MAX_VERIFICATION_INTENTS}...`);
@@ -80,7 +82,7 @@ export default class Verifier {
     const buildInfo = this.findBuildInfoWithContract(buildInfos, name);
     buildInfo.input = this.trimmedBuildInfoInput(name, buildInfo.input);
 
-    const sourceName = this.findContractSourceName(buildInfo, name);
+    const sourceName = findContractSourceName(buildInfo, name);
     const contractInformation = await extractMatchingContractInformation(sourceName, name, buildInfo, deployedBytecode);
     if (!contractInformation) throw Error('Could not find a bytecode matching the requested contract');
 
@@ -99,10 +101,11 @@ export default class Verifier {
           );
 
     const solcFullVersion = await getLongVersion(contractInformation.solcVersion);
-    const etherscanAPIEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name);
+
+    const etherscanEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name, chainConfig, []);
 
     const verificationStatus = await this.attemptVerification(
-      etherscanAPIEndpoints,
+      etherscanEndpoints,
       contractInformation,
       address,
       this.apiKey,
@@ -116,7 +119,7 @@ export default class Verifier {
   }
 
   private async attemptVerification(
-    etherscanAPIEndpoints: EtherscanURLs,
+    etherscanEndpoints: EtherscanNetworkEntry,
     contractInformation: ContractInformation,
     contractAddress: string,
     etherscanAPIKey: string,
@@ -135,11 +138,11 @@ export default class Verifier {
       constructorArguments: deployArgumentsEncoded,
     });
 
-    const response = await this.verifyContract(etherscanAPIEndpoints.apiURL, request);
+    const response = await this.verifyContract(etherscanEndpoints.urls.apiURL, request);
     const pollRequest = toCheckStatusRequest({ apiKey: etherscanAPIKey, guid: response.message });
 
     await delay(700);
-    const verificationStatus = await getVerificationStatus(etherscanAPIEndpoints.apiURL, pollRequest);
+    const verificationStatus = await getVerificationStatus(etherscanEndpoints.urls.apiURL, pollRequest);
 
     if (verificationStatus.isVerificationFailure() || verificationStatus.isVerificationSuccess()) {
       return verificationStatus;
@@ -171,7 +174,7 @@ export default class Verifier {
 
   private findBuildInfoWithContract(buildInfos: BuildInfo[], contractName: string): BuildInfo {
     const found = buildInfos.find((buildInfo) =>
-      this.getAllFullyQualifiedNames(buildInfo).some((name) => name.contractName === contractName)
+      getAllFullyQualifiedNames(buildInfo).some((name) => name.contractName === contractName)
     );
 
     if (found === undefined) {
@@ -179,24 +182,6 @@ export default class Verifier {
     } else {
       return found;
     }
-  }
-
-  private findContractSourceName(buildInfo: BuildInfo, contractName: string): string {
-    const names = this.getAllFullyQualifiedNames(buildInfo);
-    const contractMatches = names.filter((name) => name.contractName === contractName);
-    if (contractMatches.length === 0)
-      throw Error(`Could not find a source file for the requested contract ${contractName}`);
-    if (contractMatches.length > 1) throw Error(`More than one source file was found to match ${contractName}`);
-    return contractMatches[0].sourceName;
-  }
-
-  private getAllFullyQualifiedNames(buildInfo: BuildInfo): Array<{ sourceName: string; contractName: string }> {
-    const contracts = buildInfo.output.contracts;
-    return Object.keys(contracts).reduce((names: { sourceName: string; contractName: string }[], sourceName) => {
-      const contractsNames = Object.keys(contracts[sourceName]);
-      const qualifiedNames = contractsNames.map((contractName) => ({ sourceName, contractName }));
-      return names.concat(qualifiedNames);
-    }, []);
   }
 
   // Trims the inputs of the build info to only keep imported files, avoiding submitting unnecessary source files for

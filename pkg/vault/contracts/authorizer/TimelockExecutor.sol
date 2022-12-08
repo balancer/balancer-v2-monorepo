@@ -15,16 +15,18 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+
 import "./TimelockAuthorizer.sol";
 
-contract TimelockExecutor {
+contract TimelockExecutor is ReentrancyGuard {
     TimelockAuthorizer public immutable authorizer;
 
     constructor() {
         authorizer = TimelockAuthorizer(msg.sender);
     }
 
-    function execute(address target, bytes memory data) external returns (bytes memory result) {
+    function execute(address target, bytes memory data) external nonReentrant returns (bytes memory result) {
         require(msg.sender == address(authorizer), "ERR_SENDER_NOT_AUTHORIZER");
         return Address.functionCall(target, data);
     }

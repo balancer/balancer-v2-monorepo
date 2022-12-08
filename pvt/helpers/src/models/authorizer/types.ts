@@ -5,7 +5,7 @@ import { BigNumberish } from '../../numbers';
 
 export type TimelockAuthorizerDeployment = {
   vault?: Account;
-  admin?: SignerWithAddress;
+  root?: SignerWithAddress;
   rootTransferDelay?: BigNumberish;
   from?: SignerWithAddress;
 };

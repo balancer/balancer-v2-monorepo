@@ -1,9 +1,6 @@
-import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
-
-import { actionId } from '../../misc/actions';
-import { BigNumberish, bn, fp, FP_SCALING_FACTOR } from '../../../numbers';
+import { BigNumber, Contract, ContractFunction, ContractReceipt, ContractTransaction } from 'ethers';
+import { BigNumberish, bn, fp, fpMul } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
-
 import * as expectEvent from '../../../test/expectEvent';
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -11,7 +8,6 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import WeightedPoolDeployer from './WeightedPoolDeployer';
 import { MinimalSwap } from '../../vault/types';
-import { Account, TxParams } from '../../types/types';
 import {
   JoinExitWeightedPool,
   InitWeightedPool,
@@ -29,12 +25,10 @@ import {
   ExitQueryResult,
   JoinQueryResult,
   PoolQueryResult,
-  MiscData,
-  Sample,
   GradualWeightUpdateParams,
   GradualSwapFeeUpdateParams,
   WeightedPoolType,
-  VoidResult,
+  CircuitBreakerState,
 } from './types';
 import {
   calculateInvariant,
@@ -48,29 +42,27 @@ import {
   calculateSpotPrice,
   calculateBPTPrice,
 } from './math';
-import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+
+import { Account, accountToAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import BasePool from '../base/BasePool';
+import assert from 'assert';
 
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
 const MAX_INVARIANT_RATIO = fp(3);
 const MIN_INVARIANT_RATIO = fp(0.7);
 
-export default class WeightedPool {
-  instance: Contract;
-  poolId: string;
-  tokens: TokenList;
+export default class WeightedPool extends BasePool {
   weights: BigNumberish[];
+  rateProviders: string[];
   assetManagers: string[];
-  swapFeePercentage: BigNumberish;
-  vault: Vault;
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  protocolSwapFeePercentage: BigNumberish;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
+  poolVersion: string;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -82,34 +74,28 @@ export default class WeightedPool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
+    rateProviders: string[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
-    protocolSwapFeePercentage: BigNumberish,
-    managementSwapFeePercentage: BigNumberish,
     managementAumFeePercentage: BigNumberish,
-    aumProtocolFeesCollector: string
+    aumProtocolFeesCollector: string,
+    poolVersion: string,
+    owner?: SignerWithAddress
   ) {
-    this.instance = instance;
-    this.poolId = poolId;
-    this.vault = vault;
-    this.tokens = tokens;
+    super(instance, poolId, vault, tokens, swapFeePercentage, owner);
+
     this.weights = weights;
+    this.rateProviders = rateProviders;
     this.assetManagers = assetManagers;
-    this.swapFeePercentage = swapFeePercentage;
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
-    this.protocolSwapFeePercentage = protocolSwapFeePercentage;
-    this.managementSwapFeePercentage = managementSwapFeePercentage;
     this.managementAumFeePercentage = managementAumFeePercentage;
     this.aumProtocolFeesCollector = aumProtocolFeesCollector;
-  }
-
-  get address(): string {
-    return this.instance.address;
+    this.poolVersion = poolVersion;
   }
 
   get maxWeight(): BigNumberish {
@@ -125,120 +111,48 @@ export default class WeightedPool {
     return bn(maxIdx);
   }
 
-  async name(): Promise<string> {
-    return this.instance.name();
-  }
-
-  async symbol(): Promise<string> {
-    return this.instance.symbol();
-  }
-
-  async decimals(): Promise<BigNumber> {
-    return this.instance.decimals();
-  }
-
-  async totalSupply(): Promise<BigNumber> {
-    return this.instance.totalSupply();
-  }
-
-  async balanceOf(account: Account): Promise<BigNumber> {
-    return this.instance.balanceOf(TypesConverter.toAddress(account));
-  }
-
-  async getVault(): Promise<string> {
-    return this.instance.getVault();
-  }
-
-  async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
-    return this.vault.getPool(this.poolId);
-  }
-
-  async getPoolId(): Promise<string> {
-    return this.instance.getPoolId();
-  }
-
-  async getLastInvariant(): Promise<BigNumber> {
-    return this.instance.getLastInvariant();
+  async getLastPostJoinExitInvariant(): Promise<BigNumber> {
+    return this.instance.getLastPostJoinExitInvariant();
   }
 
   async getMaxInvariantDecrease(): Promise<BigNumber> {
     const supply = await this.totalSupply();
-    return supply.sub(MIN_INVARIANT_RATIO.mul(supply).div(fp(1)));
+    return supply.sub(fpMul(MIN_INVARIANT_RATIO, supply));
   }
 
   async getMaxInvariantIncrease(): Promise<BigNumber> {
     const supply = await this.totalSupply();
-    return MAX_INVARIANT_RATIO.mul(supply).div(fp(1)).sub(supply);
+    return fpMul(MAX_INVARIANT_RATIO, supply).sub(supply);
   }
 
   async getMaxIn(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return currentBalances[tokenIndex].mul(MAX_IN_RATIO).div(fp(1));
+    return fpMul(currentBalances[tokenIndex], MAX_IN_RATIO);
   }
 
   async getMaxOut(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return currentBalances[tokenIndex].mul(MAX_OUT_RATIO).div(fp(1));
+    return fpMul(currentBalances[tokenIndex], MAX_OUT_RATIO);
   }
 
-  async isOracleEnabled(): Promise<boolean> {
-    if (this.poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL)
-      throw Error('Cannot query misc data for non-2-tokens weighted pool');
-    return (await this.getMiscData()).oracleEnabled;
-  }
-
-  async getMiscData(): Promise<MiscData> {
-    if (this.poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL)
-      throw Error('Cannot query misc data for non-2-tokens weighted pool');
-    return this.instance.getMiscData();
-  }
-
-  async getOracleSample(oracleIndex?: BigNumberish): Promise<Sample> {
-    if (!oracleIndex) oracleIndex = (await this.getMiscData()).oracleIndex;
-    return this.instance.getSample(oracleIndex);
-  }
-
-  async getOwner(): Promise<string> {
-    return this.instance.getOwner();
-  }
-
-  async getSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getSwapFeePercentage();
+  async getJoinExitEnabled(from: SignerWithAddress): Promise<boolean> {
+    return this.instance.connect(from).getJoinExitEnabled();
   }
 
   async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
     return this.instance.connect(from).getSwapEnabled();
   }
 
-  async getManagementSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getManagementSwapFeePercentage();
-  }
-
-  async getManagementAumFeePercentage(): Promise<BigNumber> {
-    return this.instance.getManagementAumFeePercentage();
+  async getManagementAumFeeParams(): Promise<[BigNumber, BigNumber]> {
+    return this.instance.getManagementAumFeeParams();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
     return this.instance.getNormalizedWeights();
   }
 
-  async getScalingFactors(): Promise<BigNumber[]> {
-    return this.instance.getScalingFactors();
-  }
-
-  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
-    return this.vault.getPoolTokens(this.poolId);
-  }
-
-  async getBalances(): Promise<BigNumber[]> {
-    const { balances } = await this.getTokens();
-    return balances;
-  }
-
-  async getTokenInfo(
-    token: Token
-  ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
-    return this.vault.getPoolTokenInfo(this.poolId, token);
+  async version(): Promise<string[]> {
+    return this.instance.version();
   }
 
   async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
@@ -246,7 +160,7 @@ export default class WeightedPool {
 
     const scalingFactors = await this.getScalingFactors();
     return calculateSpotPrice(
-      currentBalances.map((x, i) => bn(x).mul(scalingFactors[i]).div(FP_SCALING_FACTOR)),
+      currentBalances.map((x, i) => fpMul(x, scalingFactors[i])),
       this.weights
     );
   }
@@ -262,7 +176,7 @@ export default class WeightedPool {
     const scalingFactors = await this.getScalingFactors();
 
     return calculateBPTPrice(
-      bn(currentBalance).mul(scalingFactors[tokenIndex]).div(FP_SCALING_FACTOR),
+      fpMul(currentBalance, scalingFactors[tokenIndex]),
       this.weights[tokenIndex],
       currentSupply
     );
@@ -273,7 +187,7 @@ export default class WeightedPool {
     const scalingFactors = await this.getScalingFactors();
 
     return calculateInvariant(
-      currentBalances.map((x, i) => bn(x).mul(scalingFactors[i]).div(FP_SCALING_FACTOR)),
+      currentBalances.map((x, i) => fpMul(x, scalingFactors[i])),
       this.weights
     );
   }
@@ -287,7 +201,7 @@ export default class WeightedPool {
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
     const feeAmount = calculateOneTokenSwapFeeAmount(currentBalances, this.weights, lastInvariant, paidTokenIndex);
-    return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
+    return fpMul(bn(feeAmount), protocolFeePercentage);
   }
 
   async estimateMaxSwapFeeAmount(
@@ -303,7 +217,7 @@ export default class WeightedPool {
       MIN_INVARIANT_RATIO,
       paidTokenIndex
     );
-    return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
+    return fpMul(bn(feeAmount), protocolFeePercentage);
   }
 
   async estimateGivenIn(params: SwapWeightedPool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
@@ -392,17 +306,41 @@ export default class WeightedPool {
     return this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
   }
 
-  async swap(params: MinimalSwap): Promise<SwapResult> {
-    const tx = await this.vault.minimalSwap(params);
-    const receipt = await tx.wait();
-    const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
-    return { amount, receipt };
+  async updateProtocolFeePercentageCache(): Promise<ContractTransaction> {
+    return this.instance.updateProtocolFeePercentageCache();
   }
 
-  async dirtyUninitializedOracleSamples(startSlot: number, endSlot: number): Promise<VoidResult> {
-    const tx = await this.instance.dirtyUninitializedOracleSamples(startSlot, endSlot);
-    const receipt = await tx.wait();
-    return { receipt };
+  async swap(params: MinimalSwap): Promise<SwapResult> {
+    let receipt: ContractReceipt;
+    if (this.vault.mocked) {
+      const tx = await this.vault.minimalSwap(params);
+      receipt = await tx.wait();
+    } else {
+      if (!params.from) throw new Error('No signer provided');
+      const tx = await this.vault.instance.connect(params.from).swap(
+        {
+          poolId: params.poolId,
+          kind: params.kind,
+          assetIn: params.tokenIn,
+          assetOut: params.tokenOut,
+          amount: params.amount,
+          userData: params.data,
+        },
+        {
+          sender: TypesConverter.toAddress(params.from),
+          recipient: TypesConverter.toAddress(params.to) ?? ZERO_ADDRESS,
+          fromInternalBalance: false,
+          toInternalBalance: false,
+        },
+        params.kind == 0 ? 0 : MAX_UINT256,
+        MAX_UINT256
+      );
+      receipt = await tx.wait();
+    }
+    const { amountIn, amountOut } = expectEvent.inReceipt(receipt, 'Swap').args;
+    const amount = params.kind == SwapKind.GivenIn ? amountOut : amountIn;
+
+    return { amount, receipt };
   }
 
   async init(params: InitWeightedPool): Promise<JoinResult> {
@@ -465,22 +403,23 @@ export default class WeightedPool {
   async join(params: JoinExitWeightedPool): Promise<JoinResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+    const { tokens } = await this.getTokens();
 
-    const tx = this.vault.joinPool({
+    const tx = await this.vault.joinPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
       currentBalances,
-      tokens: this.tokens.addresses,
+      tokens,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
     });
 
-    const receipt = await (await tx).wait();
-    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees, receipt };
+    const receipt = await tx.wait();
+    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFeeAmounts, receipt };
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
@@ -491,22 +430,23 @@ export default class WeightedPool {
   async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+    const { tokens } = await this.getTokens();
 
     const tx = await this.vault.exitPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
       currentBalances,
-      tokens: this.tokens.addresses,
+      tokens,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
     });
 
-    const receipt = await (await tx).wait();
-    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees, receipt };
+    const receipt = await tx.wait();
+    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFeeAmounts, receipt };
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
@@ -526,17 +466,19 @@ export default class WeightedPool {
 
   private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<MinimalSwap> {
     const currentBalances = await this.getBalances();
-    const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    const { tokens } = await this.vault.getPoolTokens(this.poolId);
+    const tokenIn = typeof params.in === 'number' ? tokens[params.in] : params.in.address;
+    const tokenOut = typeof params.out === 'number' ? tokens[params.out] : params.out.address;
     return {
       kind,
       poolAddress: this.address,
       poolId: this.poolId,
       from: params.from,
       to: params.recipient ?? ZERO_ADDRESS,
-      tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
-      tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-      balanceTokenIn: currentBalances[tokenIn] || bn(0),
-      balanceTokenOut: currentBalances[tokenOut] || bn(0),
+      tokenIn: tokenIn ?? ZERO_ADDRESS,
+      tokenOut: tokenOut ?? ZERO_ADDRESS,
+      balanceTokenIn: currentBalances[tokens.indexOf(tokenIn)] || bn(0),
+      balanceTokenOut: currentBalances[tokens.indexOf(tokenOut)] || bn(0),
       lastChangeBlock: params.lastChangeBlock ?? 0,
       data: params.data ?? '0x',
       amount: params.amount,
@@ -626,28 +568,17 @@ export default class WeightedPool {
     };
   }
 
-  async pause(): Promise<void> {
-    const pauseAction = await actionId(this.instance, 'pause');
-    const unpauseAction = await actionId(this.instance, 'unpause');
-    await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
-    await this.instance.pause();
+  private _isManagedPool() {
+    return (
+      this.poolType == WeightedPoolType.MANAGED_POOL ||
+      this.poolType == WeightedPoolType.MOCK_MANAGED_POOL ||
+      this.poolType == WeightedPoolType.MOCK_MANAGED_POOL_SETTINGS
+    );
   }
 
-  async setPaused(paused: boolean): Promise<void> {
-    paused ? await this.instance.pause() : await this.instance.unpause();
-  }
-
-  async isPaused(): Promise<boolean> {
-    const result = await this.instance.getPausedState();
-
-    return result.paused;
-  }
-
-  async enableOracle(txParams: TxParams): Promise<VoidResult> {
-    const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
-    const tx = await pool.enableOracle();
-    const receipt = await tx.wait();
-    return { receipt };
+  async setJoinExitEnabled(from: SignerWithAddress, joinExitEnabled: boolean): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setJoinExitEnabled(joinExitEnabled);
   }
 
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
@@ -656,16 +587,11 @@ export default class WeightedPool {
   }
 
   async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
+    if (this._isManagedPool()) {
+      throw new Error('Not available in managed pool');
+    }
     const pool = this.instance.connect(from);
     return pool.setSwapFeePercentage(swapFeePercentage);
-  }
-
-  async setManagementSwapFeePercentage(
-    from: SignerWithAddress,
-    managementFee: BigNumberish
-  ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-    return pool.setManagementSwapFeePercentage(managementFee);
   }
 
   async setManagementAumFeePercentage(
@@ -676,14 +602,14 @@ export default class WeightedPool {
     return pool.setManagementAumFeePercentage(managementFee);
   }
 
-  async addAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
+  async addAllowedAddress(from: SignerWithAddress, member: Account): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return pool.addAllowedAddress(member);
+    return pool.addAllowedAddress(TypesConverter.toAddress(member));
   }
 
-  async removeAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
+  async removeAllowedAddress(from: SignerWithAddress, member: Account): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return pool.removeAllowedAddress(member);
+    return pool.removeAllowedAddress(TypesConverter.toAddress(member));
   }
 
   async getMustAllowlistLPs(): Promise<boolean> {
@@ -708,9 +634,25 @@ export default class WeightedPool {
     from: SignerWithAddress,
     startTime: BigNumberish,
     endTime: BigNumberish,
-    endWeights: BigNumberish[]
+    endWeights: BigNumberish[],
+    tokens?: string[]
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
+
+    if (this._isManagedPool()) {
+      if (!tokens) {
+        const { tokens: registeredTokens } = await this.getTokens();
+        // If the first token is BPT then we can assume that the Pool is composable.
+        if (registeredTokens[0] == this.address) {
+          tokens = registeredTokens.slice(1);
+        } else {
+          tokens = registeredTokens;
+        }
+      }
+
+      return await pool.updateWeightsGradually(startTime, endTime, tokens, endWeights);
+    }
+
     return await pool.updateWeightsGradually(startTime, endTime, endWeights);
   }
 
@@ -721,8 +663,22 @@ export default class WeightedPool {
     startSwapFeePercentage: BigNumberish,
     endSwapFeePercentage: BigNumberish
   ): Promise<ContractTransaction> {
+    assert(this._isManagedPool(), 'Only available in managed pool');
     const pool = this.instance.connect(from);
     return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+  }
+
+  async setCircuitBreakers(
+    from: SignerWithAddress,
+    tokens: Token[] | string[],
+    bptPrices: BigNumber[],
+    lowerBounds: BigNumber[],
+    upperBounds: BigNumber[]
+  ): Promise<ContractTransaction> {
+    const tokensArg = tokens.map((t) => TypesConverter.toAddress(t));
+    const pool = this.instance.connect(from);
+
+    return await pool.setCircuitBreakers(tokensArg, bptPrices, lowerBounds, upperBounds);
   }
 
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualWeightUpdateParams> {
@@ -735,25 +691,37 @@ export default class WeightedPool {
     return await pool.getGradualSwapFeeUpdateParams();
   }
 
+  async getCircuitBreakerState(token: Token | string): Promise<CircuitBreakerState> {
+    return await this.instance.getCircuitBreakerState(TypesConverter.toAddress(token));
+  }
+
   async addToken(
     from: SignerWithAddress,
-    token: Token,
+    token: Token | string,
+    assetManager: Account,
     normalizedWeight: BigNumberish,
-    tokenAmountIn: BigNumberish,
-    mintAmount: BigNumberish,
-    recipient: string
+    mintAmount?: BigNumberish,
+    recipient?: string
   ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-    return await pool.addToken(token.address, normalizedWeight, tokenAmountIn, mintAmount, recipient);
+    return this.instance
+      .connect(from)
+      .addToken(
+        TypesConverter.toAddress(token),
+        accountToAddress(assetManager),
+        normalizedWeight,
+        mintAmount ?? 0,
+        recipient ?? from.address
+      );
   }
 
   async removeToken(
     from: SignerWithAddress,
-    token: string,
-    recipient: string,
-    extra: { burnAmount?: BigNumberish; minAmountOut?: BigNumberish } = {}
+    token: Token | string,
+    sender?: string,
+    burnAmount?: BigNumberish
   ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-    return await pool.removeToken(token, recipient, extra.burnAmount ?? 0, extra.minAmountOut ?? 0);
+    return this.instance
+      .connect(from)
+      .removeToken(TypesConverter.toAddress(token), burnAmount ?? 0, sender ?? from.address);
   }
 }

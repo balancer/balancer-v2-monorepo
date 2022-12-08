@@ -1,10 +1,11 @@
 import { Contract, BigNumber } from 'ethers';
-import { CompilerOutputBytecode } from 'hardhat/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+export { Artifact, Libraries } from 'hardhat/types';
 
 import Task from './task';
 
-export const NETWORKS = ['goerli', 'kovan', 'mainnet', 'rinkeby', 'ropsten', 'polygon', 'arbitrum', 'optimism'];
+export const NETWORKS = ['goerli', 'mainnet', 'polygon', 'arbitrum', 'optimism', 'gnosis', 'bsc'];
 
 export type Network = typeof NETWORKS[number];
 
@@ -38,17 +39,4 @@ export type Output = {
 
 export type RawOutput = {
   [key: string]: string | Contract;
-};
-
-export type Libraries = { [key: string]: string };
-
-export type Artifact = {
-  abi: unknown[];
-  evm: {
-    bytecode: CompilerOutputBytecode;
-    deployedBytecode: CompilerOutputBytecode;
-    methodIdentifiers: {
-      [methodSignature: string]: string;
-    };
-  };
 };

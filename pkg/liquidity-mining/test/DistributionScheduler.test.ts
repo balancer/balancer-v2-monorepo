@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -139,7 +139,15 @@ describe('DistributionScheduler', () => {
         });
 
         context('when distribution starts at the beginning of a week', () => {
-          context('no rewards currently exist for this gauge', () => {
+          context('when distribution is scheduled too far in the future', () => {
+            it('revert', async () => {
+              await expect(scheduleDistribution(amount, startTime.add(53 * WEEK))).to.be.revertedWith(
+                'Distribution too far into the future'
+              );
+            });
+          });
+
+          context('when no rewards currently exist for this gauge', () => {
             it('updates the the head node to point at the new node', async () => {
               expect(await getNextNodeKey(HEAD)).to.be.eq(0);
 
@@ -174,7 +182,7 @@ describe('DistributionScheduler', () => {
               let insertedTime: BigNumber;
 
               sharedBeforeEach('set insertedTime', async () => {
-                insertedTime = startTime.add(999 * WEEK);
+                insertedTime = startTime.add(51 * WEEK);
               });
 
               it('updates the previous node to point at the new node', async () => {
@@ -306,11 +314,15 @@ describe('DistributionScheduler', () => {
 
       const receipt = await startDistributionForToken();
 
-      expectEvent.inIndirectReceipt(receipt, rewardToken.instance.interface, 'Transfer', {
-        from: distributionScheduler.address,
-        to: rewardTokenDistributor.address,
-        value: pendingRewards,
-      });
+      expectTransferEvent(
+        receipt,
+        {
+          from: distributionScheduler.address,
+          to: rewardTokenDistributor.address,
+          value: pendingRewards,
+        },
+        rewardToken
+      );
     });
 
     it('resets pending rewards to zero', async () => {
@@ -397,28 +409,24 @@ describe('DistributionScheduler', () => {
       const tx = await distributionScheduler.startDistributions(rewardTokenDistributor.address);
       const receipt = await tx.wait();
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         receipt,
-        rewardToken.instance.interface,
-        'Transfer',
         {
           from: distributionScheduler.address,
           to: rewardTokenDistributor.address,
           value: pendingToken1,
         },
-        rewardToken.address
+        rewardToken
       );
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         receipt,
-        rewardToken.instance.interface,
-        'Transfer',
         {
           from: distributionScheduler.address,
           to: rewardTokenDistributor.address,
           value: pendingToken2,
         },
-        rewardToken2.address
+        rewardToken2
       );
     });
   });
