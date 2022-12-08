@@ -256,14 +256,33 @@ abstract contract ComposableStablePoolProtocolFees is
 
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
-        uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
-            postJoinExitInvariant.divDown(preJoinExitInvariant),
-            preJoinExitSupply,
-            postJoinExitSupply,
-            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
-        );
+        // Compute the portion of the invariant increase due to fees
+        uint256 supplyGrowthRatio = postJoinExitSupply.divDown(preJoinExitSupply);
+        uint256 feelessInvariant = preJoinExitInvariant.mulDown(supplyGrowthRatio);
 
-        _payProtocolFees(protocolFeeAmount);
+        // The postJoinExitInvariant should always be greater than the feelessInvariant (since the invariant and total
+        // supply move proportionally outside of fees, which the postJoinInvariant includes and the feelessInvariant
+        // does not). However, in the unexpected case in which due to rounding errors this is not true, we simply skip
+        // further computation of protocol fees.
+        if (postJoinExitInvariant > feelessInvariant) {
+            uint256 invariantDeltaFromFees = postJoinExitInvariant - feelessInvariant;
+
+            // To convert to a percentage of pool ownership, multiply by the rate,
+            // then normalize against the final invariant
+            uint256 protocolOwnershipPercentage = Math.divDown(
+                Math.mul(invariantDeltaFromFees, getProtocolFeePercentageCache(ProtocolFeeType.SWAP)),
+                postJoinExitInvariant
+            );
+
+            if (protocolOwnershipPercentage > 0) {
+                uint256 protocolFeeAmount = ExternalFees.bptForPoolOwnershipPercentage(
+                    postJoinExitSupply,
+                    protocolOwnershipPercentage
+                );
+
+                _payProtocolFees(protocolFeeAmount);
+            }
+        }
 
         _updatePostJoinExit(currentAmp, postJoinExitInvariant);
     }

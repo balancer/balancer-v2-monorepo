@@ -1,16 +1,19 @@
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { MONTH, DAY, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('BasePoolFactory', function () {
+  const PAUSE_WINDOW_DURATION = 90 * DAY;
+  const BUFFER_PERIOD_DURATION = 30 * DAY;
+
   let vault: Contract;
   let factory: Contract;
   let authorizer: Contract;
@@ -35,7 +38,9 @@ describe('BasePoolFactory', function () {
       maxAUMValue: fp(1),
     }));
 
-    factory = await deploy('MockPoolFactory', { args: [vault.address, protocolFeesProvider.address] });
+    factory = await deploy('MockPoolFactory', {
+      args: [vault.address, protocolFeesProvider.address, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+    });
 
     const action = await actionId(factory, 'disable');
     await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
@@ -105,6 +110,58 @@ describe('BasePoolFactory', function () {
 
       it('should not allow disabling twice', async () => {
         await expect(factory.connect(admin).disable()).to.be.revertedWith('DISABLED');
+      });
+    });
+  });
+
+  describe('pause durations', () => {
+    let factoryDeployTime: BigNumber;
+
+    sharedBeforeEach(async () => {
+      factory = await deploy('MockPoolFactory', {
+        args: [vault.address, protocolFeesProvider.address, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+      });
+      factoryDeployTime = await currentTimestamp();
+    });
+
+    context('with invalid durations', () => {
+      let maxPauseWindow: number;
+      let maxBuffer: number;
+
+      sharedBeforeEach(async () => {
+        maxPauseWindow = await factory.getMaxPauseWindowDuration();
+        maxBuffer = await factory.getMaxBufferPeriodDuration();
+      });
+
+      it('rejects a pause window duration above the max', async () => {
+        await expect(
+          deploy('MockPoolFactory', {
+            args: [vault.address, protocolFeesProvider.address, maxPauseWindow + 1, BUFFER_PERIOD_DURATION],
+          })
+        ).to.be.revertedWith('MAX_PAUSE_WINDOW_DURATION');
+      });
+
+      it('rejects a buffer duration above the max', async () => {
+        await expect(
+          deploy('MockPoolFactory', {
+            args: [vault.address, protocolFeesProvider.address, PAUSE_WINDOW_DURATION, maxBuffer + 1],
+          })
+        ).to.be.revertedWith('MAX_BUFFER_PERIOD_DURATION');
+      });
+    });
+
+    context('with valid durations', () => {
+      it('returns the current pause window duration', async () => {
+        const now = await currentTimestamp();
+        const expectedDuration = bn(PAUSE_WINDOW_DURATION).sub(now.sub(factoryDeployTime));
+
+        const { pauseWindowDuration } = await factory.getPauseConfiguration();
+        expect(pauseWindowDuration).to.equal(expectedDuration);
+      });
+
+      it('returns the buffer period duration', async () => {
+        const { bufferPeriodDuration } = await factory.getPauseConfiguration();
+        expect(bufferPeriodDuration).to.equal(BUFFER_PERIOD_DURATION);
       });
     });
   });

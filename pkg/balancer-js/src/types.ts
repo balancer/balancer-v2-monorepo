@@ -113,6 +113,8 @@ export type PoolBalanceOp = {
   amount: BigNumberish;
 };
 
+// Stakeless gauges
+
 export enum GaugeType {
   LiquidityMiningCommittee = 0,
   veBAL,
