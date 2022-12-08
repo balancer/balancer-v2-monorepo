@@ -7,15 +7,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { advanceTime, currentTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate } from '../../../src/signers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
 describeForkTest('ArbitrumRootGaugeFactoryV2', 'mainnet', 15397200, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
@@ -50,7 +48,7 @@ describeForkTest('ArbitrumRootGaugeFactoryV2', 'mainnet', 15397200, function () 
     admin = await getSigner(0);
     recipient = await getSigner(1);
 
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
+    veBALHolder = await impersonate(VEBAL_HOLDER);
   });
 
   before('setup contracts', async () => {
@@ -97,7 +95,7 @@ describeForkTest('ArbitrumRootGaugeFactoryV2', 'mainnet', 15397200, function () 
   it('grant permissions', async () => {
     // We need to grant permission to the admin to add the Arbitrum factory to the GaugeAdder, and also to then add
     // gauges from said factory to the GaugeController.
-    const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    const govMultisig = await impersonate(GOV_MULTISIG);
 
     await Promise.all(
       ['addGaugeFactory', 'addArbitrumGauge'].map(

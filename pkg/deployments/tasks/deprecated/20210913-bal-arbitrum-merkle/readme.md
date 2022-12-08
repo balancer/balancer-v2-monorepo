@@ -9,4 +9,4 @@ Distributor contract for BAL rewards on Arbitrum.
 ## Useful Files
 
 - [Arbitrum mainnet address](./output/arbitrum.json)
-- [`MerkleRedeem` ABI](./abi/MerkleRedeem.json)
+- [`MerkleRedeem` artifact](./artifact/MerkleRedeem.json)

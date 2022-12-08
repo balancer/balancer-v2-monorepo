@@ -350,6 +350,10 @@ describe('BaseRelayerLibrary', function () {
         });
         expect(await token.allowance(relayerLibrary.address, vault.address)).to.equal(allowance);
       });
+
+      it('is payable', async () => {
+        await expect(relayerLibrary.approveVault(token.address, approveAmount, { value: fp(1) })).to.not.be.reverted;
+      });
     }
 
     context('when using values as argument', () => {

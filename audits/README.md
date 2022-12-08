@@ -10,11 +10,12 @@ This directory the reports of audits performed on Balancer smart contracts by di
 | Scope                             | Firm          | Report                                         |
 | --------------------------------- | ------------- | ---------------------------------------------- |
 | Vault, Weighted Pool, Stable Pool | OpenZeppelin  | [`2021-03-15`](./openzeppelin/2021-03-15.pdf)  |
-| Vault, Weighted Pool, Stable Pool | Trail Of Bits | [`2021-04-05`](./trail-of-bits/2021-04-05.pdf) |
-| Vault                             | Certora       | [`2021-04-19`](./certora/2021-04-19.pdf)       |
+| Vault, Weighted Pool, Stable Pool | Trail Of Bits | [`2021-04-02`](./trail-of-bits/2021-04-02.pdf) |
+| Vault                             | Certora       | [`2021-04-22`](./certora/2021-04-22.pdf)       |
 | MultiRewards, Stable Pool         | OpenZeppelin  | [`2021-10-09`](./openzeppelin/2021-10-09.pdf)  |
-| Linear Pool, Stable Phantom Pool  | Trail Of Bits | [`2021-12-22`](./trail-of-bits/2021-12-22.pdf) |
-| Timelock Authorizer               | ABDK          | [`2022-04-15`](./abdk/2022-04-15.pdf)          |
-| Batch Relayer                     | Trail Of Bits | [`2022-05-23`](./trail-of-bits/2022-05-23.pdf) |
-| Composable Stable Pool            | Certora       | [`2022-09-01`](./certora/2022-09-01.pdf)       |
-| Composable Stable Pool            | Trail Of Bits | [`2022-09-22`](./trail-of-bits/2022-09-22.pdf) |
+| Linear Pool, Stable Phantom Pool  | Trail Of Bits | [`2021-10-08`](./trail-of-bits/2021-10-08.pdf) |
+| Timelock Authorizer               | ABDK          | [`2022-05-27`](./abdk/2022-05-27.pdf)          |
+| Batch Relayer                     | Trail Of Bits | [`2022-05-27`](./trail-of-bits/2022-05-27.pdf) |
+| Composable Stable Pool            | Certora       | [`2022-09-23`](./certora/2022-09-23.pdf)       |
+| Composable Stable Pool            | Trail Of Bits | [`2022-09-02`](./trail-of-bits/2022-09-02.pdf) |
+| Managed Pool                      | Trail Of Bits | [`2022-10-25`](./trail-of-bits/2022-10-25.pdf) |

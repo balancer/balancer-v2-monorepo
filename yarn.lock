@@ -146,6 +146,7 @@ __metadata:
   resolution: "@balancer-labs/v2-common@workspace:pvt/common"
   dependencies:
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@nomicfoundation/hardhat-network-helpers": ^1.0.6
     "@typescript-eslint/eslint-plugin": ^5.41.0
     "@typescript-eslint/parser": ^5.41.0
     eslint: ^8.26.0
@@ -161,6 +162,7 @@ __metadata:
   dependencies:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@nomicfoundation/hardhat-network-helpers": ^1.0.6
     "@nomiclabs/hardhat-ethers": ^2.2.1
     "@nomiclabs/hardhat-etherscan": ^3.1.2
     "@solidity-parser/parser": ^0.14.5
@@ -181,49 +183,8 @@ __metadata:
     ts-node: ^10.9.1
     typescript: ^4.0.2
   peerDependencies:
-    "@nomiclabs/hardhat-ethers": ^2.0.6
+    "@ethersproject/contracts": ^5.0.0
     hardhat: ^2.8.3
-  languageName: unknown
-  linkType: soft
-
-"@balancer-labs/v2-distributors@workspace:pkg/distributors":
-  version: 0.0.0-use.local
-  resolution: "@balancer-labs/v2-distributors@workspace:pkg/distributors"
-  dependencies:
-    "@balancer-labs/balancer-js": "workspace:*"
-    "@balancer-labs/v2-interfaces": "workspace:*"
-    "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@nomiclabs/hardhat-ethers": ^2.2.1
-    "@nomiclabs/hardhat-waffle": ^2.0.3
-    "@types/chai": ^4.3.3
-    "@types/lodash": ^4.14.186
-    "@types/mocha": ^10.0.0
-    "@types/node": ^14.14.31
-    "@typescript-eslint/eslint-plugin": ^5.41.0
-    "@typescript-eslint/parser": ^5.41.0
-    chai: ^4.3.6
-    decimal.js: ^10.4.2
-    eslint: ^8.26.0
-    eslint-plugin-mocha-no-only: ^1.1.1
-    eslint-plugin-prettier: ^4.2.1
-    ethereum-waffle: ^3.4.4
-    ethereumjs-util: ^7.1.5
-    ethers: ^5.7.2
-    hardhat: ^2.12.2
-    hardhat-ignore-warnings: ^0.2.4
-    lodash.frompairs: ^4.0.1
-    lodash.pick: ^4.4.0
-    lodash.range: ^3.2.0
-    lodash.times: ^4.3.2
-    lodash.zip: ^4.2.0
-    mocha: ^10.1.0
-    nodemon: ^2.0.20
-    prettier: ^2.7.1
-    prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.2.0
-    solhint-plugin-prettier: ^0.0.4
-    ts-node: ^10.9.1
-    typescript: ^4.0.2
   languageName: unknown
   linkType: soft
 
@@ -267,6 +228,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-helpers@workspace:pvt/helpers"
   dependencies:
+    "@nomicfoundation/hardhat-network-helpers": ^1.0.6
     "@nomiclabs/hardhat-ethers": ^2.2.1
     "@types/lodash": ^4.14.186
     "@types/node": ^14.14.31
@@ -275,6 +237,7 @@ __metadata:
     decimal.js: ^10.4.2
     eslint: ^8.26.0
     eslint-plugin-prettier: ^4.2.1
+    ethereumjs-util: ^7.1.5
     ethers: ^5.7.2
     hardhat: ^2.12.2
     lodash.frompairs: ^4.0.1
@@ -457,6 +420,7 @@ __metadata:
     "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
+    "@nomicfoundation/hardhat-network-helpers": ^1.0.6
     "@nomiclabs/hardhat-ethers": ^2.2.1
     "@nomiclabs/hardhat-waffle": ^2.0.3
     "@types/chai": ^4.3.3
@@ -2136,6 +2100,17 @@ __metadata:
     mcl-wasm: ^0.7.1
     rustbn.js: ~0.2.0
   checksum: 4cb2de3821f5b3b649e3652473aa1e2661fc8f958770720a027cfdeb8887b8946e9ad85f98703e44e2d23b53def89fec73e5192de6b9ef0243ccc33dfd6975f8
+  languageName: node
+  linkType: hard
+
+"@nomicfoundation/hardhat-network-helpers@npm:^1.0.6":
+  version: 1.0.6
+  resolution: "@nomicfoundation/hardhat-network-helpers@npm:1.0.6"
+  dependencies:
+    ethereumjs-util: ^7.1.4
+  peerDependencies:
+    hardhat: ^2.9.5
+  checksum: e237b65fbcbe9deb97080c389ca3a778fe004b41d9e9e4c31d92557ccc10b3da19a10316b25ee6acc63729ba48aee46494cce76b3abfd6d957cfed8380191059
   languageName: node
   linkType: hard
 
@@ -6665,7 +6640,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ethereumjs-util@npm:^7.1.5":
+"ethereumjs-util@npm:^7.1.4, ethereumjs-util@npm:^7.1.5":
   version: 7.1.5
   resolution: "ethereumjs-util@npm:7.1.5"
   dependencies:

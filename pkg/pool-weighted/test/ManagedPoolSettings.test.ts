@@ -83,8 +83,7 @@ describe('ManagedPoolSettings', function () {
     const fullParams = {
       ...params,
       swapFeePercentage: INITIAL_SWAP_FEE,
-      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
-      mockContractName: 'MockManagedPoolSettings',
+      poolType: WeightedPoolType.MOCK_MANAGED_POOL_SETTINGS,
     };
     return WeightedPool.create(fullParams);
   }
@@ -161,13 +160,6 @@ describe('ManagedPoolSettings', function () {
               const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
 
               expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
-            });
-
-            it('sets asset managers', async () => {
-              await tokens.asyncEach(async (token, i) => {
-                const info = await pool.getTokenInfo(token);
-                expect(info.assetManager).to.eq(assetManagers[i]);
-              });
             });
           });
         });
@@ -270,6 +262,16 @@ describe('ManagedPoolSettings', function () {
           it('getMustAllowlistLPs() returns true', async () => {
             expect(await pool.instance.getMustAllowlistLPs()).to.be.true;
           });
+        });
+      });
+
+      context('join / exit enabled by default', () => {
+        sharedBeforeEach(async () => {
+          pool = await createMockPool({ tokens: poolTokens });
+        });
+
+        it('joins and exits show enabled on start', async () => {
+          expect(await pool.instance.getJoinExitEnabled()).to.be.true;
         });
       });
     });
@@ -392,6 +394,58 @@ describe('ManagedPoolSettings', function () {
   });
 
   describe('permissioned actions', () => {
+    describe('enable/disable joins and exits', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner: owner.address,
+          vault,
+        };
+        pool = await createMockPool(params);
+      });
+
+      context('when the sender is not the owner', () => {
+        it('non-owners cannot disable joins and exits', async () => {
+          await expect(pool.setJoinExitEnabled(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender to owner', () => {
+          sender = owner;
+        });
+
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ from: sender, initialBalances });
+        });
+
+        it('joins and exits can be enabled and disabled', async () => {
+          await pool.setJoinExitEnabled(sender, false);
+          expect(await pool.instance.getJoinExitEnabled()).to.be.false;
+
+          await pool.setJoinExitEnabled(sender, true);
+          expect(await pool.instance.getJoinExitEnabled()).to.be.true;
+        });
+
+        it('disabling joins and exits emits an event', async () => {
+          const receipt = await pool.setJoinExitEnabled(sender, false);
+
+          expectEvent.inReceipt(await receipt.wait(), 'JoinExitEnabledSet', {
+            joinExitEnabled: false,
+          });
+        });
+
+        it('enabling joins and exits emits an event', async () => {
+          const receipt = await pool.setJoinExitEnabled(sender, true);
+
+          expectEvent.inReceipt(await receipt.wait(), 'JoinExitEnabledSet', {
+            joinExitEnabled: true,
+          });
+        });
+      });
+    });
+
     describe('enable/disable swaps', () => {
       sharedBeforeEach('deploy pool', async () => {
         const params = {
@@ -462,7 +516,6 @@ describe('ManagedPoolSettings', function () {
       context('when the sender is not the owner', () => {
         it('non-owners cannot update weights', async () => {
           const now = await currentTimestamp();
-
           await expect(pool.updateWeightsGradually(other, now, now, poolWeights)).to.be.revertedWith(
             'SENDER_NOT_ALLOWED'
           );

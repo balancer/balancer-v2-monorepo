@@ -9,10 +9,12 @@
     "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.6",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@types/lodash": "^4.14.186",
     "@types/node": "^14.14.31",
     "decimal.js": "^10.4.2",
+    "ethereumjs-util": "^7.1.5",
     "ethers": "^5.7.2",
     "hardhat": "^2.12.2",
     "lodash.frompairs": "^4.0.1",

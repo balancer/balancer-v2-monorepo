@@ -1,10 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2022-12-01)
 
 ### New Interfaces
 
 - Added `IProtocolFeeSplitter`.
+- Added `IL2GaugeCheckpointer`.
+- Added `IAuthorizerAdaptorEntrypoint`.
+- Added `IRateProviderPool`.
+- Added `IVersion`.
+- Added `IFactoryCreatedPoolVersion`.
+- Added `IRecoveryModeHelper`.
 
 ### New Features
 
@@ -13,6 +19,7 @@
 ### Breaking Changes
 
 - Removed `IAssetManager`, which was unused.
+- `IGaugeAdder`: authorizer adaptor getter replaced with authorizer adaptor entrypoint getter.
 
 ## 0.1.0 (2022-10-25)
 

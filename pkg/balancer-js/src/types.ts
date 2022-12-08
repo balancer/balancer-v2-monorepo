@@ -112,3 +112,16 @@ export type PoolBalanceOp = {
   token: string;
   amount: BigNumberish;
 };
+
+// Stakeless gauges
+
+export enum GaugeType {
+  LiquidityMiningCommittee = 0,
+  veBAL,
+  Ethereum,
+  Polygon,
+  Arbitrum,
+  Optimism,
+  Gnosis,
+  ZkSync,
+}

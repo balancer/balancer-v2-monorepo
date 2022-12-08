@@ -22,8 +22,13 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVeDelegation.so
 
 contract MockVeDelegation is IVeDelegation {
     uint256 private _adjustedBalance;
+    uint256 private _totalSupply;
 
     function adjusted_balance_of(address) external view override returns (uint256) {
         return _adjustedBalance;
+    }
+
+    function totalSupply() external view override returns (uint256) {
+        return _totalSupply;
     }
 }

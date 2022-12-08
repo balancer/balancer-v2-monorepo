@@ -45,8 +45,17 @@ export type JoinGivenInStablePool = {
   lastChangeBlock?: BigNumberish;
 };
 
-export type JoinGivenOutStablePool = {
+export type SingleJoinGivenOutStablePool = {
   token: number | Token;
+  bptOut: BigNumberish;
+  from?: SignerWithAddress;
+  recipient?: Account;
+  currentBalances?: BigNumberish[];
+  protocolFeePercentage?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
+};
+
+export type MultiJoinGivenOutStablePool = {
   bptOut: BigNumberish;
   from?: SignerWithAddress;
   recipient?: Account;
@@ -125,6 +134,7 @@ export type RawStablePoolDeployment = {
   from?: SignerWithAddress;
   vault?: Vault;
   mockedVault?: boolean;
+  version?: string;
 };
 
 export type StablePoolDeployment = {
@@ -134,6 +144,7 @@ export type StablePoolDeployment = {
   rateProviders: Account[];
   tokenRateCacheDurations: BigNumberish[];
   exemptFromYieldProtocolFeeFlags: boolean[];
+  version: string;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: SignerWithAddress;
