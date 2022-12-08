@@ -14,6 +14,7 @@ import "./Orderbook.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/pool-secondary/SecondaryPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
@@ -22,6 +23,7 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 contract SecondaryIssuePool is BasePool, IGeneralPool {
     using SecondaryPoolUserData for bytes;
     using StringUtils for *;
+    using SafeERC20 for IERC20;
 
     Orderbook public _orderbook;
     
@@ -33,6 +35,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
     uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
 
     uint256 private _MAX_TOKEN_BALANCE;
+    uint256 private _swapFee;
 
     uint256 private immutable _bptIndex;
     uint256 private immutable _securityIndex;
@@ -58,7 +61,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
 
     event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
 
-    event Offer(address indexed security, uint256 secondaryOffer);    
+    event Offer(address indexed security, uint256 secondaryOffer, address currency, address orderBook);    
 
     constructor(
         IVault vault,
@@ -102,11 +105,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         // set max total balance of securities
         _MAX_TOKEN_BALANCE = maxSecurityOffered;
 
+        //swap fee
+        _swapFee = tradeFeePercentage;
+
         _balancerManager = payable(owner);
 
         _orderbook = new Orderbook(_balancerManager, _security, _currency);
 
-        emit Offer(_security, _MAX_TOKEN_BALANCE);
+        emit Offer(_security, _MAX_TOKEN_BALANCE, _currency, address(_orderbook));
     }
 
     function getOrderbook() public view returns (Orderbook) {
@@ -160,6 +166,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                             "Pending",
                             tradeToReport.dt
                         );
+                        if(request.tokenIn==IERC20(_currency)){
+                            IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), Math.mul(amount, _swapFee));
+                        }
                         return _downscaleDown(amount, scalingFactors[indexOut]);
                     }
                 }
@@ -180,6 +189,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                             "Pending",
                             tradeToReport.dt
                         );
+                        if(request.tokenOut==IERC20(_security)){
+                            IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), Math.mul(amount, _swapFee));
+                        }
                         return _downscaleDown(amount, scalingFactors[indexIn]);
                     }
                 }

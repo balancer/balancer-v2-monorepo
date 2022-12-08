@@ -12,6 +12,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-primary/IPrimaryPool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-primary/PrimaryPoolUserData.sol";
@@ -27,6 +28,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     using PrimaryPoolUserData for bytes;
     using BokkyPooBahsDateTimeLibrary for uint256;
     using FixedPoint for uint256;
+    using SafeERC20 for IERC20;
 
     IERC20 private immutable _security;
     IERC20 private immutable _currency;
@@ -40,6 +42,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
     uint256 private _minPrice;
     uint256 private _maxPrice;
+    uint256 private _swapFee;
 
     uint256 private _MAX_TOKEN_BALANCE;
     uint256 private _cutoffTime;
@@ -58,7 +61,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 maxPrice;
     }
 
-    event OpenIssue(address indexed security, uint256 openingPrice, uint256 maxPrice, uint256 securityOffered, uint256 cutoffTime, string offeringDocs);
+    event OpenIssue(address indexed security, uint256 openingPrice, address currency, uint256 securityOffered, uint256 cutoffTime, string offeringDocs);
     event Subscription(address indexed security, address assetIn, string assetName, uint256 amount, address investor, uint256 price);
 
     constructor(
@@ -103,6 +106,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         _minPrice = factoryPoolParams.minimumPrice;
         _maxPrice = factoryPoolParams.basePrice;
 
+        //swap fee
+        _swapFee = factoryPoolParams.swapFeePercentage;
+
         // set max total balance of securities
         _MAX_TOKEN_BALANCE = factoryPoolParams.maxAmountsIn;
 
@@ -116,7 +122,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         //set owner
         _balancerManager = owner;     
 
-        emit OpenIssue(factoryPoolParams.security, _minPrice, _maxPrice, _MAX_TOKEN_BALANCE, _cutoffTime, _offeringDocs);
+        emit OpenIssue(factoryPoolParams.security, _maxPrice, factoryPoolParams.currency, _MAX_TOKEN_BALANCE, _cutoffTime, _offeringDocs);
     }
 
     function getSecurity() external view override returns (IERC20) {
@@ -213,7 +219,10 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         require (postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
         emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
-        return tokenOutAmt;        
+        if (tokenOutAmt > 0) {
+            _currency.safeTransfer(address(getProtocolFeesCollector()), Math.mul(tokenOutAmt, _swapFee));
+        }
+        return Math.sub(tokenOutAmt, Math.mul(tokenOutAmt, _swapFee));        
     }
 
     function _swapCurrencyIn(
@@ -232,6 +241,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
         emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
+        if (tokenOutAmt > 0) {
+            _currency.safeTransfer(address(getProtocolFeesCollector()), Math.mul(request.amount, _swapFee));
+        }
         return tokenOutAmt;
     }
 
@@ -266,7 +278,10 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt, true);
         emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt);
-        return tokenInAmt;
+        if (tokenInAmt > 0) {
+            _currency.safeTransfer(address(getProtocolFeesCollector()), Math.mul(tokenInAmt, _swapFee));
+        }
+        Math.sub(tokenInAmt, Math.mul(tokenInAmt, _swapFee));
     }
 
     function _swapCurrencyOut(
@@ -285,6 +300,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt, false);
         emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt);
+        if (tokenInAmt > 0) {
+            _currency.safeTransfer(address(getProtocolFeesCollector()), Math.mul(request.amount, _swapFee));
+        }
         return tokenInAmt;
     }
 
