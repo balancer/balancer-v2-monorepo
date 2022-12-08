@@ -15,6 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 //import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
 
@@ -35,5 +36,9 @@ contract MockBaseRelayerLibrary is BaseRelayerLibrary {
 
     function getChainedReferenceValue(uint256 ref) public {
         emit ChainedReferenceValueRead(_getChainedReferenceValue(ref));
+    }
+
+    function bytesTunnel(bytes memory input) public pure returns (bytes memory) {
+        return input;
     }
 }

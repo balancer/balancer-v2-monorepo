@@ -18,7 +18,7 @@ enum GaugeType {
 describe('GaugeRelativeWeightCap', () => {
   let vault: Vault;
   let gaugeController: Contract;
-  let adaptor: Contract;
+  let adaptorEntrypoint: Contract;
   let admin: SignerWithAddress, other: SignerWithAddress;
   let BAL: Contract, token: Contract;
 
@@ -35,8 +35,9 @@ describe('GaugeRelativeWeightCap', () => {
 
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
+    const adaptor = vault.authorizerAdaptor;
+    adaptorEntrypoint = vault.authorizerAdaptorEntrypoint;
 
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
     // Type weight is ignored in the mock controller.
@@ -51,6 +52,7 @@ describe('GaugeRelativeWeightCap', () => {
   sharedBeforeEach('deploy gauge implementation and factory', async () => {
     const balTokenAdmin = await deploy('MockBalancerTokenAdmin', { args: [vault.address, BAL.address] });
     const balMinter = await deploy('BalancerMinter', { args: [balTokenAdmin.address, gaugeController.address] });
+    const adaptor = vault.authorizerAdaptor;
 
     // We won't be using the code that requires the VotingEscrowDelegationProxy so we just use any address, since we
     // must initialize to a non-zero value.
@@ -64,7 +66,7 @@ describe('GaugeRelativeWeightCap', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const action = await actionId(adaptor, 'setRelativeWeightCap', liquidityGaugeImplementation.interface);
+    const action = await actionId(adaptorEntrypoint, 'setRelativeWeightCap', liquidityGaugeImplementation.interface);
     await vault.grantPermissionsGlobally([action], admin);
   });
 
@@ -86,7 +88,7 @@ describe('GaugeRelativeWeightCap', () => {
     let gauge: Contract;
     async function setCap(relativeWeightCap: BigNumber): Promise<ContractTransaction> {
       const calldata = gauge.interface.encodeFunctionData('setRelativeWeightCap', [relativeWeightCap]);
-      return adaptor.connect(admin).performAction(gauge.address, calldata);
+      return adaptorEntrypoint.connect(admin).performAction(gauge.address, calldata);
     }
 
     describe('gauge creation', () => {

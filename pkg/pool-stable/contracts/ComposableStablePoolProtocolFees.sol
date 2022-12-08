@@ -17,8 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/InvariantGrowthProtocolSwapFees.sol";
 
 import "./ComposableStablePoolStorage.sol";
 import "./ComposableStablePoolRates.sol";
@@ -85,7 +85,7 @@ abstract contract ComposableStablePoolProtocolFees is
         // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how
         // much BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value
         // of each BPT is going to be reduced as all LPs get diluted.
-        uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
+        uint256 protocolFeeAmount = ExternalFees.bptForPoolOwnershipPercentage(
             virtualSupply,
             expectedProtocolOwnershipPercentage
         );
@@ -256,14 +256,33 @@ abstract contract ComposableStablePoolProtocolFees is
 
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
-        uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
-            postJoinExitInvariant.divDown(preJoinExitInvariant),
-            preJoinExitSupply,
-            postJoinExitSupply,
-            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
-        );
+        // Compute the portion of the invariant increase due to fees
+        uint256 supplyGrowthRatio = postJoinExitSupply.divDown(preJoinExitSupply);
+        uint256 feelessInvariant = preJoinExitInvariant.mulDown(supplyGrowthRatio);
 
-        _payProtocolFees(protocolFeeAmount);
+        // The postJoinExitInvariant should always be greater than the feelessInvariant (since the invariant and total
+        // supply move proportionally outside of fees, which the postJoinInvariant includes and the feelessInvariant
+        // does not). However, in the unexpected case in which due to rounding errors this is not true, we simply skip
+        // further computation of protocol fees.
+        if (postJoinExitInvariant > feelessInvariant) {
+            uint256 invariantDeltaFromFees = postJoinExitInvariant - feelessInvariant;
+
+            // To convert to a percentage of pool ownership, multiply by the rate,
+            // then normalize against the final invariant
+            uint256 protocolOwnershipPercentage = Math.divDown(
+                Math.mul(invariantDeltaFromFees, getProtocolFeePercentageCache(ProtocolFeeType.SWAP)),
+                postJoinExitInvariant
+            );
+
+            if (protocolOwnershipPercentage > 0) {
+                uint256 protocolFeeAmount = ExternalFees.bptForPoolOwnershipPercentage(
+                    postJoinExitSupply,
+                    protocolOwnershipPercentage
+                );
+
+                _payProtocolFees(protocolFeeAmount);
+            }
+        }
 
         _updatePostJoinExit(currentAmp, postJoinExitInvariant);
     }

@@ -72,7 +72,10 @@ export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
   // ceil(x/y) == (x + y - 1) / y
   x.add(y).sub(1).div(y);
 
-export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
+const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
+export const FP_ZERO = fp(0);
+export const FP_ONE = fp(1);
+export const FP_100_PCT = fp(1);
 
 export function printGas(gas: number | BigNumber): string {
   if (typeof gas !== 'number') {
@@ -127,4 +130,9 @@ function parseScientific(num: string): string {
   }
 
   return numberSign < 0 ? '-' + num : num;
+}
+
+export function randomFromInterval(min: number, max: number): number {
+  // min and max included
+  return Math.random() * (max - min) + min;
 }

@@ -227,7 +227,8 @@ abstract contract LinearPoolRebalancer {
         deposit[1].token = token;
 
         // Before we can deposit tokens into the Vault however, we must approve them.
-        token.approve(address(_vault), amount);
+        token.safeApprove(address(_vault), amount);
+
         _vault.managePoolBalance(deposit);
     }
 

@@ -15,57 +15,79 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/controllers/ManagedPoolController.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
-import "./BaseManagedPoolFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
+
+import "./ManagedPool.sol";
+import "../ExternalWeightedMath.sol";
 
 /**
- * @dev Deploys a new `ManagedPool` owned by a ManagedPoolController with the specified rights.
- * It uses the BaseManagedPoolFactory to deploy the pool.
+ * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
+ * with a particular contract as the owner. This contract might have a privileged or admin account
+ * to perform permissioned actions: this account is often called the pool manager.
+ *
+ * This factory should NOT be used directly to deploy ManagedPools owned by EOAs. ManagedPools
+ * owned by EOAs would be very dangerous for LPs. There are no restrictions on what the owner
+ * can do, so a malicious owner could easily manipulate prices and drain the pool.
+ *
+ * In this design, other client-specific factories will deploy a contract, then call this factory
+ * to deploy the pool, passing in that contract address as the owner.
  */
-contract ManagedPoolFactory {
-    // The address of the BaseManagedPoolFactory used to deploy the ManagedPool
-    address public immutable baseManagedPoolFactory;
+contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory {
+    IExternalWeightedMath private immutable _weightedMath;
+    string private _poolVersion;
 
-    mapping(address => bool) private _isPoolFromFactory;
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        string memory factoryVersion,
+        string memory poolVersion,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(ManagedPool).creationCode
+        )
+        Version(factoryVersion)
+    {
+        _weightedMath = new ExternalWeightedMath();
+        _poolVersion = poolVersion;
+    }
 
-    event ManagedPoolCreated(address indexed pool, address indexed poolController);
+    function getPoolVersion() public view override returns (string memory) {
+        return _poolVersion;
+    }
 
-    constructor(address baseFactory) {
-        baseManagedPoolFactory = baseFactory;
+    function getWeightedMath() external view returns (IExternalWeightedMath) {
+        return _weightedMath;
     }
 
     /**
-     * @dev Deploys a new `ManagedPool`.
+     * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
     function create(
-        ManagedPool.NewPoolParams memory poolParams,
-        BasePoolController.BasePoolRights calldata basePoolRights,
-        ManagedPoolController.ManagedPoolRights calldata managedPoolRights,
-        uint256 minWeightChangeDuration,
-        address manager
+        ManagedPool.ManagedPoolParams memory params,
+        ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams,
+        address owner
     ) external returns (address pool) {
-        ManagedPoolController poolController = new ManagedPoolController(
-            basePoolRights,
-            managedPoolRights,
-            minWeightChangeDuration,
-            manager
-        );
+        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        // Let the base factory deploy the pool (owner is the controller)
-        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(poolParams, address(poolController));
+        ManagedPool.ManagedPoolConfigParams memory configParams = ManagedPool.ManagedPoolConfigParams({
+            vault: getVault(),
+            protocolFeeProvider: getProtocolFeePercentagesProvider(),
+            weightedMath: _weightedMath,
+            pauseWindowDuration: pauseWindowDuration,
+            bufferPeriodDuration: bufferPeriodDuration,
+            version: getPoolVersion()
+        });
 
-        // Finally, initialize the controller
-        poolController.initialize(pool);
-
-        _isPoolFromFactory[pool] = true;
-        emit ManagedPoolCreated(pool, address(poolController));
-    }
-
-    /**
-     * @dev Returns true if `pool` was created by this factory.
-     */
-    function isPoolFromFactory(address pool) external view returns (bool) {
-        return _isPoolFromFactory[pool];
+        return _create(abi.encode(params, configParams, settingsParams, owner));
     }
 }

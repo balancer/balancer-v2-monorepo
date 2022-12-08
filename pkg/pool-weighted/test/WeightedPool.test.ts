@@ -8,7 +8,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
-import { fp, fpDiv, fpMul, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpDiv, fpMul, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
 import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFees.behavior';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -62,7 +62,8 @@ describe('WeightedPool', function () {
 
         // Perform a recovery mode exit. This will reduce the invariant but this isn't tracked due to recovery mode.
         const preExitInvariant = await pool.getLastPostJoinExitInvariant();
-        await pool.recoveryModeExit({ from: lp, bptIn: fp(100) });
+        const lpBptBalance = await pool.balanceOf(lp);
+        await pool.recoveryModeExit({ from: lp, bptIn: lpBptBalance.div(2) });
         const realPostExitInvariant = await pool.estimateInvariant();
 
         // Check that the real invariant is has dropped as a result of the exit.
@@ -137,13 +138,13 @@ describe('WeightedPool', function () {
     });
 
     function itIsOwnerOnly(method: string) {
-      it(`${method} can only be called by non-delegated owners`, async () => {
+      it(`${method} requires the caller to be the owner`, async () => {
         expect(await pool.isOwnerOnlyAction(await actionId(pool, method))).to.be.true;
       });
     }
 
     function itIsNotOwnerOnly(method: string) {
-      it(`${method} can never be called by the owner`, async () => {
+      it(`${method} doesn't require the caller to be the owner`, async () => {
         expect(await pool.isOwnerOnlyAction(await actionId(pool, method))).to.be.false;
       });
     }
@@ -156,7 +157,7 @@ describe('WeightedPool', function () {
       )
       .map((fn) => fn.name);
 
-    const expectedOwnerOnlyFunctions = ['setSwapFeePercentage', 'setAssetManagerPoolConfig'];
+    const expectedOwnerOnlyFunctions = ['setSwapFeePercentage'];
 
     const expectedNotOwnerOnlyFunctions = nonViewFunctions.filter((fn) => !expectedOwnerOnlyFunctions.includes(fn));
 
@@ -238,12 +239,12 @@ describe('WeightedPool', function () {
           await vaultContract.connect(lp).swap(singleSwap, funds, 0, MAX_UINT256);
 
           const postInvariant = await pool.instance.getInvariant();
-          const swapFeesPercentage = FP_SCALING_FACTOR.sub(fpDiv(originalInvariant, postInvariant));
+          const swapFeesPercentage = FP_100_PCT.sub(fpDiv(originalInvariant, postInvariant));
           const protocolOwnershipPercentage = fpMul(swapFeesPercentage, protocolFeePercentage);
 
           unmintedBPT = fpMul(
             await pool.totalSupply(),
-            fpDiv(protocolOwnershipPercentage, FP_SCALING_FACTOR.sub(protocolOwnershipPercentage))
+            fpDiv(protocolOwnershipPercentage, FP_100_PCT.sub(protocolOwnershipPercentage))
           );
         });
 

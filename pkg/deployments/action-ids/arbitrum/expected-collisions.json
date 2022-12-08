@@ -320,5 +320,19 @@
       "signature": "multicall(bytes[])",
       "useAdaptor": true
     }
+  ],
+  "0xf30af7479cfcd4e7270ce592c1bb3c208dae2172a952b757164f0e975f759426": [
+    {
+      "taskId": "20220325-authorizer-adaptor",
+      "contractName": "AuthorizerAdaptor",
+      "signature": "performAction(address,bytes)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221124-authorizer-adaptor-entrypoint",
+      "contractName": "AuthorizerAdaptorEntrypoint",
+      "signature": "performAction(address,bytes)",
+      "useAdaptor": false
+    }
   ]
 }

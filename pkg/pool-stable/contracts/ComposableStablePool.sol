@@ -19,6 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.so
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -26,6 +27,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
 import "./ComposableStablePoolStorage.sol";
@@ -50,6 +52,7 @@ import "./StableMath.sol";
  */
 contract ComposableStablePool is
     IRateProvider,
+    IVersion,
     BaseGeneralPool,
     StablePoolAmplification,
     ComposableStablePoolRates,
@@ -63,6 +66,8 @@ contract ComposableStablePool is
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
     // We are preminting half of that value (rounded up).
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
+
+    string private _version;
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -79,6 +84,7 @@ contract ComposableStablePool is
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
+        string version;
     }
 
     constructor(NewPoolParams memory params)
@@ -97,9 +103,12 @@ contract ComposableStablePool is
         StablePoolAmplification(params.amplificationParameter)
         ComposableStablePoolStorage(_extractStorageParams(params))
         ComposableStablePoolRates(_extractRatesParams(params))
-        ProtocolFeeCache(params.protocolFeeProvider)
+        ProtocolFeeCache(
+            params.protocolFeeProvider,
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
+        )
     {
-        // solhint-disable-previous-line no-empty-blocks
+        _version = params.version;
     }
 
     // Translate parameters to avoid stack-too-deep issues in the constructor
@@ -128,6 +137,10 @@ contract ComposableStablePool is
                 tokenRateProviders: params.rateProviders,
                 exemptFromYieldProtocolFeeFlags: params.exemptFromYieldProtocolFeeFlags
             });
+    }
+
+    function version() external view override returns (string memory) {
+        return _version;
     }
 
     /**
@@ -712,7 +725,7 @@ contract ComposableStablePool is
     }
 
     /**
-     * @dev Support single- and multi-token joins, but not explicit proportional joins.
+     * @dev Support single- and multi-token joins, plus explicit proportional joins.
      */
     function _doJoin(
         uint256[] memory balances,
@@ -733,11 +746,27 @@ contract ComposableStablePool is
                     scalingFactors,
                     userData
                 );
+        } else if (kind == StablePoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return _joinAllTokensInForExactBptOut(preJoinExitSupply, balances, userData);
         } else if (kind == StablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
+    }
+
+    /**
+     * @dev Proportional join. Pays no swap fees.
+     */
+    function _joinAllTokensInForExactBptOut(
+        uint256 actualSupply,
+        uint256[] memory balances,
+        bytes memory userData
+    ) private pure returns (uint256, uint256[] memory) {
+        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
+        uint256[] memory amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, actualSupply, bptAmountOut);
+
+        return (bptAmountOut, amountsIn);
     }
 
     /**
@@ -808,8 +837,8 @@ contract ComposableStablePool is
     // Exit Hooks
 
     /**
-     * @dev Support single- and multi-token exits, but not explicit proportional exits, which are
-     * supported through Recovery Mode.
+     * @dev Support single- and multi-token exits, plus explicit proportional exits (in addition to the
+     * recovery mode exit).
      */
     function _doExit(
         uint256[] memory balances,
@@ -830,11 +859,29 @@ contract ComposableStablePool is
                     scalingFactors,
                     userData
                 );
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+            return _exitExactBPTInForTokensOut(preJoinExitSupply, balances, userData);
         } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
+    }
+
+    /**
+     * @dev Proportional exit. Pays no swap fees. This is functionally equivalent to the recovery mode exit,
+     * except this doesn't skip protocol fee collection, calling rate providers, etc., and doesn't require
+     * recovery mode to be enabled.
+     */
+    function _exitExactBPTInForTokensOut(
+        uint256 actualSupply,
+        uint256[] memory balances,
+        bytes memory userData
+    ) private pure returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        uint256[] memory amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, actualSupply, bptAmountIn);
+
+        return (bptAmountIn, amountsOut);
     }
 
     /**
@@ -900,14 +947,11 @@ contract ComposableStablePool is
         return (bptAmountIn, amountsOut);
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory registeredBalances,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256, uint256[] memory) {
         // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
         // adjust the balances array by removing BPT from it.
         // Note that we don't compute the actual supply, which would require a lot of complex calculations and
@@ -915,11 +959,13 @@ contract ComposableStablePool is
         // recovery mode is enabled (since all protocol fees are forfeit and the fee percentages zeroed out).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(registeredBalances);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
-            balances,
-            virtualSupply,
-            userData
-        );
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        uint256[] memory amountsOut = new uint256[](balances.length);
+
+        uint256 bptRatio = bptAmountIn.divDown(virtualSupply);
+        for (uint256 i = 0; i < balances.length; i++) {
+            amountsOut[i] = balances[i].mulDown(bptRatio);
+        }
 
         // The vault requires an array including BPT, so add it back in here.
         return (bptAmountIn, _addBptItem(amountsOut, 0));
@@ -972,7 +1018,7 @@ contract ComposableStablePool is
             currentInvariantWithLastJoinExitAmp
         ) = _getProtocolPoolOwnershipPercentage(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
 
-        protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
+        protocolFeeAmount = ExternalFees.bptForPoolOwnershipPercentage(
             virtualSupply,
             expectedProtocolOwnershipPercentage
         );

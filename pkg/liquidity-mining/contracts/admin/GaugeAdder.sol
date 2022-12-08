@@ -28,7 +28,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
 
     IGaugeController private immutable _gaugeController;
     IERC20 private immutable _balWethBpt;
-    IAuthorizerAdaptor private _authorizerAdaptor;
+    IAuthorizerAdaptorEntrypoint private _authorizerAdaptorEntrypoint;
 
     IGaugeAdder private immutable _previousGaugeAdder;
 
@@ -37,11 +37,13 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     // Mapping from mainnet BPT addresses to canonical liquidity gauge as listed on the GaugeController
     mapping(IERC20 => ILiquidityGauge) internal _poolGauge;
 
-    constructor(IGaugeController gaugeController, IGaugeAdder previousGaugeAdder)
-        SingletonAuthentication(gaugeController.admin().getVault())
-    {
+    constructor(
+        IGaugeController gaugeController,
+        IGaugeAdder previousGaugeAdder,
+        IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint
+    ) SingletonAuthentication(gaugeController.admin().getVault()) {
         _gaugeController = gaugeController;
-        _authorizerAdaptor = gaugeController.admin();
+        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
         _previousGaugeAdder = previousGaugeAdder;
 
         // Cache the BAL 80 WETH 20 BPT on this contract.
@@ -49,10 +51,10 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the address of the Authorizer adaptor contract.
+     * @notice Returns the address of the Authorizer adaptor entrypoint contract.
      */
-    function getAuthorizerAdaptor() external view returns (IAuthorizerAdaptor) {
-        return _authorizerAdaptor;
+    function getAuthorizerAdaptorEntrypoint() external view override returns (IAuthorizerAdaptorEntrypoint) {
+        return _authorizerAdaptorEntrypoint;
     }
 
     /**
@@ -201,7 +203,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         require(isGaugeFromValidFactory(gauge, gaugeType), "Invalid gauge");
 
         // `_gaugeController` enforces that duplicate gauges may not be added so we do not need to check here.
-        _authorizerAdaptor.performAction(
+        _authorizerAdaptorEntrypoint.performAction(
             address(_gaugeController),
             abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, gaugeType)
         );

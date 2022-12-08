@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+
 import "../StakelessGauge.sol";
 
 interface IPolygonRootChainManager {
@@ -25,6 +27,8 @@ interface IPolygonRootChainManager {
 }
 
 contract PolygonRootGauge is StakelessGauge {
+    using SafeERC20 for IERC20;
+
     IPolygonRootChainManager private immutable _polygonRootChainManager;
     address private immutable _polygonERC20Predicate;
 
@@ -61,7 +65,7 @@ contract PolygonRootGauge is StakelessGauge {
 
     function _postMintAction(uint256 mintAmount) internal override {
         // Token needs to be approved on the predicate NOT the main bridge contract
-        _balToken.approve(_polygonERC20Predicate, mintAmount);
+        _balToken.safeApprove(_polygonERC20Predicate, mintAmount);
 
         // This will transfer BAL to `_recipient` on the Polygon chain
         _polygonRootChainManager.depositFor(_recipient, _balToken, abi.encode(mintAmount));

@@ -2,12 +2,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { ethers } from 'ethers';
 
-import { BigNumberish, bn, fp } from '../../numbers';
+import { BigNumberish, bn, fp, FP_100_PCT, FP_ZERO } from '../../numbers';
 import { DAY, MONTH } from '../../time';
 import { ZERO_ADDRESS } from '../../constants';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
-import { RawVaultDeployment, VaultDeployment } from '../vault/types';
+import { ProtocolFee, RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import {
@@ -27,8 +27,8 @@ import {
 } from '../tokens/types';
 
 export function computeDecimalsFromIndex(i: number): number {
-  // Produces repeating series (18..0)
-  return 18 - (i % 19);
+  // Produces repeating series (0..18)
+  return i % 19;
 }
 
 export default {
@@ -38,8 +38,8 @@ export default {
     if (!admin) admin = params.from;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
-    if (!maxYieldValue) maxYieldValue = fp(1);
-    if (!maxAUMValue) maxAUMValue = fp(1);
+    if (!maxYieldValue) maxYieldValue = FP_100_PCT;
+    if (!maxAUMValue) maxAUMValue = FP_100_PCT;
     return { mocked, admin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue };
   },
 
@@ -64,10 +64,12 @@ export default {
       bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
       poolType,
+      aumFeeId,
+      factoryVersion,
+      poolVersion,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
@@ -80,10 +82,12 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
+    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
-    if (undefined == managementSwapFeePercentage) managementSwapFeePercentage = fp(0);
-    if (undefined == managementAumFeePercentage) managementAumFeePercentage = fp(0);
+    if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
+    if (undefined == factoryVersion) factoryVersion = 'default factory version';
+    if (undefined == poolVersion) poolVersion = 'default pool version';
     return {
       tokens,
       weights,
@@ -94,12 +98,14 @@ export default {
       bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
+      aumFeeId,
+      factoryVersion,
+      poolVersion,
     };
   },
 
@@ -134,6 +140,7 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
+      version,
     } = params;
 
     if (!tokens) tokens = new TokenList();
@@ -144,6 +151,7 @@ export default {
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!exemptFromYieldProtocolFeeFlags) exemptFromYieldProtocolFeeFlags = Array(tokens.length).fill(false);
+    if (!version) version = 'test';
 
     return {
       tokens,
@@ -155,6 +163,7 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       owner: params.owner,
+      version,
     };
   },
 

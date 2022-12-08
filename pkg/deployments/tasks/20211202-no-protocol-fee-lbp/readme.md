@@ -8,4 +8,4 @@ Deployment of the `NoProtocolFeeLiquidityBootstrappingPool`, for Liquidity Boots
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
-- [`NoProtocolFeeLiquidityBootstrappingPool` ABI](./abi/NoProtocolFeeLiquidityBootstrappingPool.json)
+- [`NoProtocolFeeLiquidityBootstrappingPool` artifact](./artifact/NoProtocolFeeLiquidityBootstrappingPool.json)

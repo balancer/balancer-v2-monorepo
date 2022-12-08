@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
@@ -21,4 +21,6 @@ pragma solidity ^0.7.0;
 interface IVeDelegation {
     // solhint-disable-next-line func-name-mixedcase
     function adjusted_balance_of(address user) external view returns (uint256);
+
+    function totalSupply() external view returns (uint256);
 }

@@ -14,10 +14,13 @@ import {
   fp,
   pct,
   arrayAdd,
-  bnSum,
   arrayFpMul,
+  bnSum,
   fpDiv,
   fpMul,
+  FP_ONE,
+  FP_ZERO,
+  FP_100_PCT,
 } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
@@ -94,7 +97,7 @@ describe('ComposableStablePool', () => {
 
       for (let i = 0; i < numberOfTokens; i++) {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
-        await rateProviders[i].mockRate(rates[i] || fp(1));
+        await rateProviders[i].mockRate(rates[i] || FP_ONE);
         tokenRateCacheDurations[i] = MONTH + i;
         exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
@@ -359,7 +362,7 @@ describe('ComposableStablePool', () => {
               const preVirtualSupply = await pool.getVirtualSupply();
               expectedBptAmount = preVirtualSupply
                 .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+                .div(FP_100_PCT.sub(expectedProtocolOwnershipPercentage));
             });
 
             it('returns the total supply after protocol fees are paid', async () => {
@@ -484,7 +487,7 @@ describe('ComposableStablePool', () => {
 
         context('when the pool was not initialized', () => {
           it('reverts', async () => {
-            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: fp(0), recipient });
+            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: FP_ZERO, recipient });
             await expect(tx).to.be.reverted;
           });
         });
@@ -995,7 +998,7 @@ describe('ComposableStablePool', () => {
 
           function itJoinsExactBPTOutCorrectly() {
             it('fails if not initialized', async () => {
-              await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('UNINITIALIZED');
+              await expect(pool.singleJoinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('UNINITIALIZED');
             });
 
             context('once initialized', () => {
@@ -1007,9 +1010,9 @@ describe('ComposableStablePool', () => {
                 const previousBptBalance = await pool.balanceOf(recipient);
                 const bptOut = pct(previousBptBalance, 0.2);
 
-                await expect(pool.joinGivenOut({ from: recipient, recipient, bptOut, token: 100 })).to.be.revertedWith(
-                  'OUT_OF_BOUNDS'
-                );
+                await expect(
+                  pool.singleJoinGivenOut({ from: recipient, recipient, bptOut, token: 100 })
+                ).to.be.revertedWith('OUT_OF_BOUNDS');
               });
 
               it('grants exact BPT for token in', async () => {
@@ -1018,7 +1021,7 @@ describe('ComposableStablePool', () => {
                 const bptOut = pct(previousBptBalance, 0.2);
                 const expectedAmountIn = await pool.estimateTokenInGivenBptOut(token, bptOut);
 
-                const result = await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+                const result = await pool.singleJoinGivenOut({ from: recipient, recipient, bptOut, token });
 
                 // Only token in should be the one transferred
                 expect(result.amountsIn[tokenIndexWithBpt]).to.be.equalWithError(expectedAmountIn, 0.001);
@@ -1034,12 +1037,12 @@ describe('ComposableStablePool', () => {
                 // 20% of previous balance
                 const bptOut = pct(previousBptBalance, 0.2);
 
-                const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+                const queryResult = await pool.querySingleJoinGivenOut({ recipient, bptOut, token });
 
                 expect(queryResult.bptOut).to.be.equal(bptOut);
                 expect(queryResult.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
-                const result = await pool.joinGivenOut({ from: recipient, bptOut, token });
+                const result = await pool.singleJoinGivenOut({ from: recipient, bptOut, token });
                 // Query and join should match exactly
                 expect(result.amountsIn[tokenIndexWithBpt]).to.equal(queryResult.amountsIn[tokenIndexWithBpt]);
               });
@@ -1049,7 +1052,7 @@ describe('ComposableStablePool', () => {
                 // 32.5% of previous balance
                 const bptOut = pct(previousBptBalance, 0.325);
 
-                const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+                const queryResult = await pool.querySingleJoinGivenOut({ recipient, bptOut, token });
 
                 const amountIn = await pool.querySwapGivenOut({
                   from: recipient,
@@ -1065,13 +1068,65 @@ describe('ComposableStablePool', () => {
               itStoresThePostInvariantAndAmp(async () => {
                 const previousBptBalance = await pool.balanceOf(recipient);
                 const bptOut = pct(previousBptBalance, 0.2);
-                await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+                await pool.singleJoinGivenOut({ from: recipient, recipient, bptOut, token });
               });
 
               it('reverts if paused', async () => {
                 await pool.pause();
 
-                await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('PAUSED');
+                await expect(pool.singleJoinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('PAUSED');
+              });
+            });
+          }
+        });
+
+        describe('join all tokens in for exact BPT out', () => {
+          context('not in recovery mode', () => {
+            itJoinsGivenExactBPTOutCorrectly();
+          });
+
+          context('in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
+            });
+
+            itJoinsGivenExactBPTOutCorrectly();
+          });
+
+          function itJoinsGivenExactBPTOutCorrectly() {
+            it('fails if not initialized', async () => {
+              await expect(pool.joinGivenOut({ recipient, bptOut: fp(1) })).to.be.revertedWith('UNINITIALIZED');
+            });
+
+            context('once initialized', () => {
+              let bptOut: BigNumberish;
+              let expectedAmountsIn: BigNumberish[];
+              let previousBptBalance: BigNumberish;
+
+              sharedBeforeEach('initialize pool', async () => {
+                await pool.init({ recipient, initialBalances });
+                bptIndex = await pool.getBptIndex();
+                expectedAmountsIn = initialBalances.map((n, i) => (i != bptIndex ? bn(n).div(3) : 0));
+                previousBptBalance = await pool.balanceOf(recipient);
+
+                bptOut = previousBptBalance.div(3);
+              });
+
+              it('grants tokens for exact BPT', async () => {
+                const result = await pool.joinGivenOut({ bptOut, recipient, from: recipient });
+
+                // Amounts out should be 1/3 the initial balances
+                expect(result.amountsIn).to.equalWithError(expectedAmountsIn, 0.0000001);
+
+                // Make sure received BPT is close to what we expect
+                const currentBptBalance = await pool.balanceOf(recipient);
+                expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).add(bptOut), 0.001);
+              });
+
+              it('reverts if paused', async () => {
+                await pool.pause();
+
+                await expect(pool.joinGivenOut({ bptOut })).to.be.revertedWith('PAUSED');
               });
             });
           }
@@ -1292,6 +1347,43 @@ describe('ComposableStablePool', () => {
             });
           }
         });
+
+        describe('exit exact BPT in for all tokens out', () => {
+          context('not in recovery mode', () => {
+            itExitsExactBptInForTokensOutProperly();
+          });
+
+          context('in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
+            });
+
+            itExitsExactBptInForTokensOutProperly();
+          });
+
+          function itExitsExactBptInForTokensOutProperly() {
+            it('grants tokens for exact bpt', async () => {
+              // Request a third of the token balances
+              const expectedAmountsOut = initialBalances.map((balance) => bn(balance).div(3));
+              // Exit with a third of the BPT balance
+              const expectedBptIn = previousBptBalance.div(3);
+
+              const result = await pool.exitGivenIn({ from: lp, bptIn: expectedBptIn });
+
+              // Token balances should been reduced as requested
+              expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
+
+              // BPT balance should have been reduced to 2/3 because we are returning 1/3 of the tokens
+              expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.sub(expectedBptIn), 0.001);
+            });
+
+            it('reverts if paused', async () => {
+              await pool.pause();
+
+              await expect(pool.exitGivenIn({ from: lp, bptIn: previousBptBalance })).to.be.revertedWith('PAUSED');
+            });
+          }
+        });
       });
     });
 
@@ -1393,7 +1485,7 @@ describe('ComposableStablePool', () => {
               const value = Math.random() / 5;
 
               await rateProviders[i].mockRate(
-                previousCache.rate.mul(Math.random() > 0.5 ? fp(1 + value) : fp(1 - value)).div(fp(1))
+                fpMul(previousCache.rate, Math.random() > 0.5 ? fp(1 + value) : fp(1 - value))
               );
             });
           }
@@ -1408,7 +1500,7 @@ describe('ComposableStablePool', () => {
               expect(actualFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
             });
 
-            expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));
+            expect(newScalingFactors[pool.bptIndex]).to.be.equal(FP_ONE);
           }
 
           sharedBeforeEach('fund lp and pool', async () => {
@@ -1484,9 +1576,9 @@ describe('ComposableStablePool', () => {
             const bptOut = pct(previousBptBalance, 0.18);
 
             const query = async () =>
-              (await pool.queryJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
+              (await pool.querySingleJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
             const actual = async () =>
-              (await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
+              (await pool.singleJoinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
 
             await expectScalingFactorsToBeUpdated(query, actual);
           });
@@ -2002,7 +2094,6 @@ describe('ComposableStablePool', () => {
 
       const expectedOwnerOnlyFunctions = [
         'setSwapFeePercentage',
-        'setAssetManagerPoolConfig',
         'startAmplificationParameterUpdate',
         'stopAmplificationParameterUpdate',
         'setTokenRateCacheDuration',
