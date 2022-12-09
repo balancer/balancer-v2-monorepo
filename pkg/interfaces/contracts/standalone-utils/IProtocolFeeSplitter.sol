@@ -96,11 +96,6 @@ interface IProtocolFeeSplitter {
     function getProtocolFeesWithdrawer() external view returns (IProtocolFeesWithdrawer);
 
     /**
-     * @notice Returns Balancer's vault address.
-     */
-    function getVault() external view returns (IVault);
-
-    /**
      * @notice Returns a Pool's settings.
      */
     function getPoolSettings(bytes32 poolId)
