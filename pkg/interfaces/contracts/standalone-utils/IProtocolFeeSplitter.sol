@@ -65,6 +65,12 @@ interface IProtocolFeeSplitter {
     function setDefaultRevenueSharingFeePercentage(uint256 feePercentage) external;
 
     /**
+     * @notice Ignore any previously set revenue sharing percentage, and begin using the default.
+     * @param poolId - the poolId of the pool to begin using the default revenue share percentage.
+     */
+    function clearRevenueSharingFeePercentage(bytes32 poolId) external;
+
+    /**
      * @notice Collects and distributes fees for a `poolId`
      * @param poolId - the poolId of the pool for which we collect fees
      * @return beneficiaryAmount The amount of tokens sent to pool's beneficiary
@@ -106,5 +112,5 @@ interface IProtocolFeeSplitter {
     function getPoolSettings(bytes32 poolId)
         external
         view
-        returns (uint256 revenueSharePercentageOverride, address beneficiary);
+        returns (uint256 revenueSharePercentageOverride, address beneficiary, bool overrideSet);
 }
