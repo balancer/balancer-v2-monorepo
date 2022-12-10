@@ -371,16 +371,12 @@ describe('ProtocolFeeSplitter', function () {
         });
 
         describe('disable revenue sharing', () => {
-          it('emits PoolRevenueShareCleared and PoolRevenueShareChanged events', async () => {
+          it('emits a PoolRevenueShareCleared event', async () => {
             const receipt = await (
               await protocolFeeSplitter.connect(admin).clearRevenueSharingFeePercentage(poolId)
             ).wait();
 
             expectEvent.inReceipt(receipt, 'PoolRevenueShareCleared', { poolId });
-            expectEvent.inReceipt(receipt, 'PoolRevenueShareChanged', {
-              poolId,
-              revenueSharePercentage: defaultRevenueShare,
-            });
           });
 
           it('reverts if caller is not authorized', async () => {
