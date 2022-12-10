@@ -73,23 +73,11 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         _vault = protocolFeesWithdrawer.getProtocolFeesCollector().vault();
     }
 
-    /// @inheritdoc IProtocolFeeSplitter
-    function setRevenueSharePercentage(bytes32 poolId, uint256 revenueSharePercentage) external override authenticate {
-        _require(revenueSharePercentage <= _MAX_REVENUE_SHARE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH);
-        _poolSettings[poolId].revenueSharePercentageOverride = uint96(revenueSharePercentage);
-
-        emit PoolRevenueShareChanged(poolId, revenueSharePercentage);
-    }
+    // Fund recipients
 
     /// @inheritdoc IProtocolFeeSplitter
-    function setDefaultRevenueSharePercentage(uint256 defaultRevenueSharePercentage) external override authenticate {
-        _require(
-            defaultRevenueSharePercentage <= _MAX_REVENUE_SHARE_PERCENTAGE,
-            Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH
-        );
-        _defaultRevenueSharePercentage = defaultRevenueSharePercentage;
-
-        emit DefaultRevenueSharePercentageChanged(defaultRevenueSharePercentage);
+    function getDaoFundsRecipient() external view override returns (address) {
+        return _daoFundsRecipient;
     }
 
     /// @inheritdoc IProtocolFeeSplitter
@@ -109,6 +97,54 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         emit PoolBeneficiaryChanged(poolId, newBeneficiary);
     }
 
+    // Revenue share settings
+
+    /// @inheritdoc IProtocolFeeSplitter
+    function getPoolSettings(bytes32 poolId)
+        external
+        view
+        override
+        returns (uint256 revenueSharePercentageOverride, address beneficiary)
+    {
+        RevenueShareSettings memory settings = _poolSettings[poolId];
+
+        return (settings.revenueSharePercentageOverride, settings.beneficiary);
+    }
+
+    /// @inheritdoc IProtocolFeeSplitter
+    function getDefaultRevenueSharePercentage() external view override returns (uint256) {
+        return _defaultRevenueSharePercentage;
+    }
+
+    /// @inheritdoc IProtocolFeeSplitter
+    function setDefaultRevenueSharePercentage(uint256 defaultRevenueSharePercentage) external override authenticate {
+        _require(
+            defaultRevenueSharePercentage <= _MAX_REVENUE_SHARE_PERCENTAGE,
+            Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH
+        );
+        _defaultRevenueSharePercentage = defaultRevenueSharePercentage;
+
+        emit DefaultRevenueSharePercentageChanged(defaultRevenueSharePercentage);
+    }
+
+    /// @inheritdoc IProtocolFeeSplitter
+    function setRevenueSharePercentage(bytes32 poolId, uint256 revenueSharePercentage) external override authenticate {
+        _require(revenueSharePercentage <= _MAX_REVENUE_SHARE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH);
+        _poolSettings[poolId].revenueSharePercentageOverride = uint96(revenueSharePercentage);
+
+        emit PoolRevenueShareChanged(poolId, revenueSharePercentage);
+    }
+
+    // Permissionless fee collection functions
+
+    /// @inheritdoc IProtocolFeeSplitter
+    function getAmounts(bytes32 poolId) external view override returns (uint256 beneficiaryAmount, uint256 daoAmount) {
+        (address pool, ) = _vault.getPool(poolId);
+        IERC20 bpt = IERC20(pool);
+
+        return _getAmounts(bpt, poolId);
+    }
+
     /// @inheritdoc IProtocolFeeSplitter
     function collectFees(bytes32 poolId) external override returns (uint256 beneficiaryAmount, uint256 daoAmount) {
         (address pool, ) = _vault.getPool(poolId);
@@ -123,13 +159,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         emit FeesCollected(poolId, beneficiary, beneficiaryAmount, _daoFundsRecipient, daoAmount);
     }
 
-    /// @inheritdoc IProtocolFeeSplitter
-    function getAmounts(bytes32 poolId) external view override returns (uint256 beneficiaryAmount, uint256 daoAmount) {
-        (address pool, ) = _vault.getPool(poolId);
-        IERC20 bpt = IERC20(pool);
-
-        return _getAmounts(bpt, poolId);
-    }
+    // Misc getters
 
     /// @inheritdoc IProtocolFeeSplitter
     function getProtocolFeesWithdrawer() external view override returns (IProtocolFeesWithdrawer) {
@@ -137,31 +167,11 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     }
 
     /// @inheritdoc IProtocolFeeSplitter
-    function getDefaultRevenueSharePercentage() external view override returns (uint256) {
-        return _defaultRevenueSharePercentage;
-    }
-
-    /// @inheritdoc IProtocolFeeSplitter
     function getVault() external view override returns (IVault) {
         return _vault;
     }
 
-    /// @inheritdoc IProtocolFeeSplitter
-    function getDaoFundsRecipient() external view override returns (address) {
-        return _daoFundsRecipient;
-    }
-
-    /// @inheritdoc IProtocolFeeSplitter
-    function getPoolSettings(bytes32 poolId)
-        external
-        view
-        override
-        returns (uint256 revenueSharePercentageOverride, address beneficiary)
-    {
-        RevenueShareSettings memory settings = _poolSettings[poolId];
-
-        return (settings.revenueSharePercentageOverride, settings.beneficiary);
-    }
+    // Internal functions
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
         return _getAuthorizer().canPerform(actionId, account, address(this));
