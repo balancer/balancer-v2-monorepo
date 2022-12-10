@@ -53,6 +53,15 @@ interface IProtocolFeeSplitter {
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external;
 
     /**
+     * @notice Allows governance to change the pool beneficiary settings
+     * @dev This is designed for cases where the pool owner is a contract, or otherwise cannot easily
+     * set the beneficiary.
+     * @param poolId - the poolId of the pool where we want to change fee beneficiary
+     * @param newBeneficiary - beneficiary address
+     */
+    function setPoolBeneficiaryOverride(bytes32 poolId, address newBeneficiary) external;
+
+    /**
      * @notice Allows a authorized user to change the treasury address
      * @param newTreasury - beneficiary address
      */

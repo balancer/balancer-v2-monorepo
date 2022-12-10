@@ -92,6 +92,15 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external override {
         (address pool, ) = _vault.getPool(poolId);
         _require(msg.sender == Pool(pool).getOwner(), Errors.SENDER_NOT_ALLOWED);
+
+        _setPoolBeneficiary(poolId, newBeneficiary);
+    }
+
+    function setPoolBeneficiaryOverride(bytes32 poolId, address newBeneficiary) external override authenticate {
+        _setPoolBeneficiary(poolId, newBeneficiary);
+    }
+
+    function _setPoolBeneficiary(bytes32 poolId, address newBeneficiary) private {
         _poolSettings[poolId].beneficiary = newBeneficiary;
         emit PoolBeneficiaryChanged(poolId, newBeneficiary);
     }
