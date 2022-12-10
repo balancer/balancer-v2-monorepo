@@ -197,6 +197,35 @@ describe('ProtocolFeeSplitter', function () {
     });
   });
 
+  describe('setPoolBeneficiaryOverride', async () => {
+    sharedBeforeEach('set permissions', async () => {
+      const setBeneficiaryOverrideRole = await actionId(protocolFeeSplitter, 'setPoolBeneficiaryOverride');
+      await vault.grantPermissionsGlobally([setBeneficiaryOverrideRole], admin);
+    });
+
+    it('reverts if caller is not authorized', async () => {
+      await expect(
+        protocolFeeSplitter.connect(owner).setPoolBeneficiaryOverride(poolId, owner.address)
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+
+    it('sets pool beneficiary', async () => {
+      await protocolFeeSplitter.connect(admin).setPoolBeneficiaryOverride(poolId, other.address);
+      const poolSettings = await protocolFeeSplitter.getPoolSettings(poolId);
+      expect(poolSettings.beneficiary).to.be.eq(other.address);
+    });
+
+    it('emits a PoolBeneficiaryChanged event', async () => {
+      const receipt = await (
+        await protocolFeeSplitter.connect(admin).setPoolBeneficiaryOverride(poolId, other.address)
+      ).wait();
+      expectEvent.inReceipt(receipt, 'PoolBeneficiaryChanged', {
+        poolId,
+        newBeneficiary: other.address,
+      });
+    });
+  });
+
   context('when the fee collector holds BPT', async () => {
     let bptBalanceOfLiquidityProvider: BigNumber;
 
