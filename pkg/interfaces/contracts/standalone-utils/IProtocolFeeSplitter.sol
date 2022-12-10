@@ -86,7 +86,7 @@ interface IProtocolFeeSplitter {
      * @param factory - address of the factory
      */
     function clearFactoryDefaultRevenueSharingFeePercentage(address factory) external;
-    
+
     /**
      * @notice Ignore any previously set revenue sharing percentage, and begin using the default.
      * @param poolId - the poolId of the pool to begin using the default revenue share percentage.
