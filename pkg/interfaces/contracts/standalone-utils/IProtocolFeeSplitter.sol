@@ -113,5 +113,9 @@ interface IProtocolFeeSplitter {
     function getPoolSettings(bytes32 poolId)
         external
         view
-        returns (uint256 revenueSharePercentageOverride, address beneficiary, bool overrideSet);
+        returns (
+            uint256 revenueSharePercentageOverride,
+            address beneficiary,
+            bool overrideSet
+        );
 }
