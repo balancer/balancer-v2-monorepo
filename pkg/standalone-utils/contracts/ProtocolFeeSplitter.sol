@@ -100,7 +100,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     // Revenue share settings
 
     /// @inheritdoc IProtocolFeeSplitter
-    function getPoolSettings(bytes32 poolId)
+    function getRevenueShareSettings(bytes32 poolId)
         external
         view
         override

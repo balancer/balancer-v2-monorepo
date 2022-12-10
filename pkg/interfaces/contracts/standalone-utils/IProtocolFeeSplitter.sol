@@ -69,7 +69,7 @@ interface IProtocolFeeSplitter {
      * @return revenueSharePercentageOverride - the percentage of the split sent to the pool beneficiary.
      * @return beneficiary - the address of the pool beneficiary.
      */
-    function getPoolSettings(bytes32 poolId)
+    function getRevenueShareSettings(bytes32 poolId)
         external
         view
         returns (uint256 revenueSharePercentageOverride, address beneficiary);
