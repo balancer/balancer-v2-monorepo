@@ -88,7 +88,6 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         _poolSettings[poolId].overrideSet = false;
 
         emit PoolRevenueShareCleared(poolId);
-        emit PoolRevenueShareChanged(poolId, _defaultRevenueSharingFeePercentage);
     }
 
     function setDefaultRevenueSharingFeePercentage(uint256 feePercentage) external override authenticate {
