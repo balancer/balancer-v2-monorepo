@@ -34,6 +34,7 @@ interface IProtocolFeeSplitter {
     );
 
     event PoolRevenueShareChanged(bytes32 indexed poolId, uint256 revenueSharePercentage);
+    event PoolRevenueShareCleared(bytes32 indexed poolId);
     event PoolBeneficiaryChanged(bytes32 indexed poolId, address newBeneficiary);
     event DefaultRevenueSharingFeePercentageChanged(uint256 revenueSharePercentage);
     event TreasuryChanged(address newTreasury);

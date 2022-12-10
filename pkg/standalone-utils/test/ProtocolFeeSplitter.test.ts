@@ -280,10 +280,12 @@ describe('ProtocolFeeSplitter', function () {
         });
 
         describe('disable revenue sharing', () => {
-          it('emits a PoolRevenueShareChanged event', async () => {
+          it('emits PoolRevenueShareCleared and PoolRevenueShareChanged events', async () => {
             const receipt = await (
               await protocolFeeSplitter.connect(admin).clearRevenueSharingFeePercentage(poolId)
             ).wait();
+
+            expectEvent.inReceipt(receipt, 'PoolRevenueShareCleared', { poolId });
             expectEvent.inReceipt(receipt, 'PoolRevenueShareChanged', {
               poolId,
               revenueSharePercentage: defaultRevenueShare,
