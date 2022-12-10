@@ -37,6 +37,8 @@ interface IProtocolFeeSplitter {
     event PoolRevenueShareCleared(bytes32 indexed poolId);
     event PoolBeneficiaryChanged(bytes32 indexed poolId, address newBeneficiary);
     event DefaultRevenueSharingFeePercentageChanged(uint256 revenueSharePercentage);
+    event FactoryDefaultRevenueSharingFeePercentageChanged(address indexed factory, uint256 revenueSharePercentage);
+    event FactoryDefaultRevenueSharingFeePercentageCleared(address indexed factory);
     event TreasuryChanged(address newTreasury);
 
     /**
@@ -65,6 +67,19 @@ interface IProtocolFeeSplitter {
      */
     function setDefaultRevenueSharingFeePercentage(uint256 feePercentage) external;
 
+    /**
+     * @notice Allows a authorized user to change the default revenue sharing fee percentage for a given factory
+     * @param factory - address of the factory
+     * @param feePercentage - new default revenue sharing fee percentage
+     */
+    function setFactoryDefaultRevenueSharingFeePercentage(address factory, uint256 feePercentage) external;
+
+    /**
+     * @notice Allows a authorized user to remove a default revenue sharing fee override for a given factory
+     * @param factory - address of the factory
+     */
+    function clearFactoryDefaultRevenueSharingFeePercentage(address factory) external;
+    
     /**
      * @notice Ignore any previously set revenue sharing percentage, and begin using the default.
      * @param poolId - the poolId of the pool to begin using the default revenue share percentage.
