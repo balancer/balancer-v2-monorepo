@@ -251,6 +251,24 @@ describe('ProtocolFeeSplitter', function () {
         expectEqualWithError(ownerBalance, ownerExpectedBalance);
         expectEqualWithError(treasuryBalance, treasuryExpectedBalance);
       });
+
+      it('emits an event with collected fees', async () => {
+        const tx = await protocolFeeSplitter.collectFees(poolId);
+        const receipt = await tx.wait();
+
+        // 10% of bptBalanceOfLiquidityProvider should go to owner
+        const ownerExpectedBalance = bptBalanceOfLiquidityProvider.mul(fp(0.1)).div(FP_ONE);
+        // The rest goes to the treasury
+        const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
+
+        expectEvent.inReceipt(receipt, 'FeesCollected', {
+          poolId,
+          beneficiary: owner.address,
+          poolEarned: ownerExpectedBalance,
+          treasury: treasury.address,
+          treasuryEarned: treasuryExpectedBalance,
+        });
+      });
     });
 
     describe('collect fees', async () => {
