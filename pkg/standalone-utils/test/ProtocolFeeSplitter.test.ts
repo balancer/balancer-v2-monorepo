@@ -146,7 +146,7 @@ describe('ProtocolFeeSplitter', function () {
 
       await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, newFee);
 
-      const poolSettings = await protocolFeeSplitter.getPoolSettings(poolId);
+      const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
       expect(poolSettings.revenueSharePercentageOverride).to.be.eq(newFee);
     });
 
@@ -180,7 +180,7 @@ describe('ProtocolFeeSplitter', function () {
 
     it('sets pool beneficiary', async () => {
       await protocolFeeSplitter.connect(owner).setPoolBeneficiary(poolId, other.address);
-      const poolSettings = await protocolFeeSplitter.getPoolSettings(poolId);
+      const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
       expect(poolSettings.beneficiary).to.be.eq(other.address);
     });
 
