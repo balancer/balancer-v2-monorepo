@@ -55,7 +55,7 @@ contract AaveLinearPoolFactory is
 
     // This event allows off-chain tools to differentiate between different protocols that use this factory
     // to deploy Aave Linear Pools.
-    event AaveLinearPoolCreated(address indexed pool, uint256 protocolId);
+    event AaveLinearPoolCreated(address indexed pool, uint256 indexed protocolId);
 
     // Record protocol ID registrations.
     event AaveLinearPoolProtocolIdRegistered(uint256 indexed protocolId, string name);
@@ -65,8 +65,19 @@ contract AaveLinearPoolFactory is
         IProtocolFeePercentagesProvider protocolFeeProvider,
         IBalancerQueries queries,
         string memory factoryVersion,
-        string memory poolVersion
-    ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) Version(factoryVersion) {
+        string memory poolVersion,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(AaveLinearPool).creationCode
+        )
+        Version(factoryVersion)
+    {
         _queries = queries;
         _poolVersion = poolVersion;
     }
