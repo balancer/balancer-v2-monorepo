@@ -3,18 +3,21 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { fp, fpMul, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
-import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { bn, fp, fpMul, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
+import { toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('ProtocolFeeSplitter', function () {
   const defaultRevenueShare = fp(0.1); // 10%
+  const factoryDefaultRevenueShare = fp(0.2); // 20%
   const poolRevenueShare = fp(0.5); // 50%
 
   let vault: Vault;
@@ -31,8 +34,10 @@ describe('ProtocolFeeSplitter', function () {
 
   let tokens: TokenList;
 
-  let pool: WeightedPool;
+  let pool: Contract;
   let poolId: string;
+
+  let bptBalanceOfLiquidityProvider: BigNumber;
 
   before(async () => {
     [, admin, owner, liquidityProvider, treasury, newTreasury, other] = await ethers.getSigners();
@@ -47,7 +52,8 @@ describe('ProtocolFeeSplitter', function () {
   });
 
   sharedBeforeEach('create and initialize pools', async () => {
-    pool = await WeightedPool.create({ vault, tokens, owner });
+    const poolObj = await WeightedPool.create({ vault, tokens, owner });
+    pool = poolObj.instance;
     poolId = await pool.getPoolId();
 
     const initialBalances = Array(tokens.length).fill(fp(1000));
@@ -81,6 +87,19 @@ describe('ProtocolFeeSplitter', function () {
     );
     await vault.grantPermissionsGlobally([setDefaultRevenueSharingFeePercentageRole], admin);
 
+    const setFactoryDefaultRevenueSharingFeeRole = await actionId(
+      protocolFeeSplitter,
+      'setFactoryDefaultRevenueSharingFeePercentage'
+    );
+    const clearFactoryDefaultRevenueSharingFeeRole = await actionId(
+      protocolFeeSplitter,
+      'clearFactoryDefaultRevenueSharingFeePercentage'
+    );
+    await vault.grantPermissionsGlobally(
+      [setFactoryDefaultRevenueSharingFeeRole, clearFactoryDefaultRevenueSharingFeeRole],
+      admin
+    );
+
     // Allow withdrawer to pull from collector
     const withdrawCollectedFeesRole = await actionId(await vault.getFeesCollector(), 'withdrawCollectedFees');
     await vault.grantPermissionsGlobally([withdrawCollectedFeesRole], protocolFeesWithdrawer);
@@ -92,6 +111,19 @@ describe('ProtocolFeeSplitter', function () {
     const setTreasuryRole = await actionId(protocolFeeSplitter, 'setTreasury');
     await vault.grantPermissionsGlobally([setTreasuryRole], admin);
   });
+
+  async function itShouldDistributeRevenueCorrectly(
+    ownerExpectedBalance: BigNumber,
+    treasuryExpectedBalance: BigNumber
+  ) {
+    await protocolFeeSplitter.collectFees(poolId);
+
+    const ownerBalance = await pool.balanceOf(owner.address);
+    const treasuryBalance = await pool.balanceOf(treasury.address);
+
+    expectEqualWithError(ownerBalance, ownerExpectedBalance);
+    expectEqualWithError(treasuryBalance, treasuryExpectedBalance);
+  }
 
   describe('constructor', () => {
     it('sets the protocolFeesWithdrawer', async () => {
@@ -141,6 +173,80 @@ describe('ProtocolFeeSplitter', function () {
       await expect(
         protocolFeeSplitter.connect(liquidityProvider).setDefaultRevenueSharingFeePercentage(defaultRevenueShare)
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+  });
+
+  describe('setFactoryDefaultRevenueSharingFeePercentage', async () => {
+    it('sets a factory default fee', async () => {
+      await protocolFeeSplitter
+        .connect(admin)
+        .setFactoryDefaultRevenueSharingFeePercentage(ANY_ADDRESS, factoryDefaultRevenueShare);
+
+      expect(await protocolFeeSplitter.getFactoryDefaultRevenueSharingFeePercentage(ANY_ADDRESS)).to.be.eq(
+        factoryDefaultRevenueShare
+      );
+    });
+
+    it('emits a FactoryDefaultRevenueSharingFeePercentageChanged event', async () => {
+      const receipt = await (
+        await protocolFeeSplitter
+          .connect(admin)
+          .setFactoryDefaultRevenueSharingFeePercentage(ANY_ADDRESS, factoryDefaultRevenueShare)
+      ).wait();
+      expectEvent.inReceipt(receipt, 'FactoryDefaultRevenueSharingFeePercentageChanged', {
+        factory: ANY_ADDRESS,
+        revenueSharePercentage: factoryDefaultRevenueShare,
+      });
+    });
+
+    it('reverts if caller is not authorized', async () => {
+      await expect(
+        protocolFeeSplitter
+          .connect(liquidityProvider)
+          .setFactoryDefaultRevenueSharingFeePercentage(ANY_ADDRESS, factoryDefaultRevenueShare)
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+
+    it('reverts when getting the revenue share for an invalid factory', async () => {
+      await expect(
+        protocolFeeSplitter.connect(admin).getFactoryDefaultRevenueSharingFeePercentage(ZERO_ADDRESS)
+      ).to.be.revertedWith('Share undefined for this factory');
+    });
+  });
+
+  describe('clearFactoryDefaultRevenueSharingFeePercentage', async () => {
+    context('with a factory default set', () => {
+      sharedBeforeEach('set a factory default', async () => {
+        await protocolFeeSplitter
+          .connect(admin)
+          .setFactoryDefaultRevenueSharingFeePercentage(ANY_ADDRESS, factoryDefaultRevenueShare);
+
+        expect(await protocolFeeSplitter.getFactoryDefaultRevenueSharingFeePercentage(ANY_ADDRESS)).to.be.eq(
+          factoryDefaultRevenueShare
+        );
+      });
+
+      it('emits a FactoryDefaultRevenueSharingFeePercentageCleared event', async () => {
+        const receipt = await (
+          await protocolFeeSplitter.connect(admin).clearFactoryDefaultRevenueSharingFeePercentage(ANY_ADDRESS)
+        ).wait();
+
+        expectEvent.inReceipt(receipt, 'FactoryDefaultRevenueSharingFeePercentageCleared', { factory: ANY_ADDRESS });
+      });
+    });
+
+    context('without a factory default set', () => {
+      it('reverts if caller is not authorized', async () => {
+        await expect(
+          protocolFeeSplitter.connect(liquidityProvider).clearFactoryDefaultRevenueSharingFeePercentage(ANY_ADDRESS)
+        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+
+      it('reverts when clearing the revenue share for an invalid factory', async () => {
+        await expect(
+          protocolFeeSplitter.connect(admin).clearFactoryDefaultRevenueSharingFeePercentage(ZERO_ADDRESS)
+        ).to.be.revertedWith('Share undefined for this factory');
+      });
     });
   });
 
@@ -218,30 +324,15 @@ describe('ProtocolFeeSplitter', function () {
   });
 
   describe('when the fee collector holds BPT', () => {
-    let bptBalanceOfLiquidityProvider: BigNumber;
-
     sharedBeforeEach('transfer BPT to fees collector', async () => {
       // transfer BPT tokens to feesCollector
       bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
-      await pool.instance
+      await pool
         .connect(liquidityProvider)
         .transfer((await vault.getFeesCollector()).address, bptBalanceOfLiquidityProvider);
 
       await protocolFeeSplitter.connect(admin).setDefaultRevenueSharingFeePercentage(defaultRevenueShare);
     });
-
-    async function itShouldDistributeRevenueCorrectly(
-      ownerExpectedBalance: BigNumber,
-      treasuryExpectedBalance: BigNumber
-    ) {
-      await protocolFeeSplitter.collectFees(poolId);
-
-      const ownerBalance = await pool.balanceOf(owner.address);
-      const treasuryBalance = await pool.balanceOf(treasury.address);
-
-      expectEqualWithError(ownerBalance, ownerExpectedBalance);
-      expectEqualWithError(treasuryBalance, treasuryExpectedBalance);
-    }
 
     context('without a beneficiary', () => {
       it('sends all fees to the treasury', async () => {
@@ -326,6 +417,102 @@ describe('ProtocolFeeSplitter', function () {
           await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
         });
       });
+    });
+  });
+
+  describe('with a factory override', () => {
+    const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
+    const BASE_BUFFER_PERIOD_DURATION = MONTH;
+    const swapFeePercentage = fp(0.01);
+
+    let factory: Contract;
+
+    sharedBeforeEach('deploy pool from a known factory', async () => {
+      let weights = Array(tokens.length).fill(fp(1));
+      weights = toNormalizedWeights(weights.map(bn));
+
+      factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
+        args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
+        from: admin,
+      });
+
+      const tx = await factory.create(
+        'Test Pool',
+        'TWP',
+        tokens.addresses,
+        weights,
+        Array(tokens.length).fill(ZERO_ADDRESS),
+        swapFeePercentage,
+        owner.address
+      );
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      pool = await deployedAt('v2-pool-weighted/WeightedPool', event.args.pool);
+      poolId = await pool.getPoolId();
+    });
+
+    sharedBeforeEach('initialize pool', async () => {
+      const initialBalances = Array(tokens.length).fill(fp(1000));
+
+      await vault.instance
+        .connect(liquidityProvider)
+        .joinPool(poolId, liquidityProvider.address, liquidityProvider.address, {
+          assets: tokens.addresses,
+          maxAmountsIn: initialBalances,
+          userData: WeightedPoolEncoder.joinInit(initialBalances),
+          fromInternalBalance: false,
+        });
+    });
+
+    sharedBeforeEach('transfer BPT to fees collector', async () => {
+      // transfer BPT tokens to feesCollector
+      bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
+      await pool
+        .connect(liquidityProvider)
+        .transfer((await vault.getFeesCollector()).address, bptBalanceOfLiquidityProvider);
+    });
+
+    sharedBeforeEach('set pool beneficiary and default revenue share', async () => {
+      await protocolFeeSplitter.connect(owner).setPoolBeneficiary(poolId, owner.address);
+      await protocolFeeSplitter.connect(admin).setDefaultRevenueSharingFeePercentage(defaultRevenueShare);
+    });
+
+    sharedBeforeEach('set a factory override', async () => {
+      await protocolFeeSplitter
+        .connect(admin)
+        .setFactoryDefaultRevenueSharingFeePercentage(factory.address, factoryDefaultRevenueShare);
+
+      expect(await protocolFeeSplitter.getFactoryDefaultRevenueSharingFeePercentage(factory.address)).to.be.eq(
+        factoryDefaultRevenueShare
+      );
+    });
+
+    it('uses a specific pool override before the factory default', async () => {
+      await protocolFeeSplitter.connect(admin).setRevenueSharingFeePercentage(poolId, poolRevenueShare);
+
+      // Should use the override value for the owner share
+      const ownerExpectedBalance = fpMul(bptBalanceOfLiquidityProvider, poolRevenueShare);
+      const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
+
+      await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
+    });
+
+    it('uses the factory default with no pool override', async () => {
+      // Should use the factory override value for the owner share
+      const ownerExpectedBalance = fpMul(bptBalanceOfLiquidityProvider, factoryDefaultRevenueShare);
+      const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
+
+      await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
+    });
+
+    it('falls back on the general default with no factory or pool overrides', async () => {
+      await protocolFeeSplitter.connect(admin).clearFactoryDefaultRevenueSharingFeePercentage(factory.address);
+
+      // Should use the factory override value for the owner share
+      const ownerExpectedBalance = fpMul(bptBalanceOfLiquidityProvider, defaultRevenueShare);
+      const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
+
+      await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
     });
   });
 });
