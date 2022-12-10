@@ -40,6 +40,8 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using FixedPoint for uint256;
 
+    string private constant _UNDEFINED_FACTORY_SHARE = "Share undefined for this factory";
+
     // All fee percentages are 18-decimal fixed point numbers.
     // Absolute maximum fee percentage (1e18 = 100%).
     uint256 private constant _MAX_REVENUE_SHARING_FEE_PERCENTAGE = 50e16; // 50%
@@ -119,10 +121,9 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     }
 
     function clearFactoryDefaultRevenueSharingFeePercentage(address factory) external override authenticate {
-        require(_revenueShareFactoryOverrides.remove(IERC20(factory)), "No default revenue share set for this factory");
+        require(_revenueShareFactoryOverrides.remove(IERC20(factory)), _UNDEFINED_FACTORY_SHARE);
 
         emit FactoryDefaultRevenueSharingFeePercentageCleared(factory);
-        emit FactoryDefaultRevenueSharingFeePercentageChanged(factory, _defaultRevenueSharingFeePercentage);
     }
 
     function setTreasury(address newTreasury) external override authenticate {
@@ -191,6 +192,13 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         RevenueShareSettings memory settings = _poolSettings[poolId];
 
         return (settings.revenueSharePercentageOverride, settings.beneficiary, settings.overrideSet);
+    }
+
+    function getFactoryDefaultRevenueSharingFeePercentage(address factory) external view override returns (uint256) {
+        require(_revenueShareFactoryOverrides.contains(IERC20(factory)), _UNDEFINED_FACTORY_SHARE);
+
+        // We have checked about that the key exists, so `get` should not revert.
+        return _revenueShareFactoryOverrides.get(IERC20(factory), Errors.SHOULD_NOT_HAPPEN);
     }
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {

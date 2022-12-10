@@ -68,6 +68,13 @@ interface IProtocolFeeSplitter {
     function setDefaultRevenueSharingFeePercentage(uint256 feePercentage) external;
 
     /**
+     * @notice Returns the revenue share associated with the given factory
+     * @dev Reverts if no revenue share was set for this factory
+     * @param factory - the address of the factory with a default revenue share percentage
+     */
+    function getFactoryDefaultRevenueSharingFeePercentage(address factory) external view returns (uint256);
+
+    /**
      * @notice Allows a authorized user to change the default revenue sharing fee percentage for a given factory
      * @param factory - address of the factory
      * @param feePercentage - new default revenue sharing fee percentage
