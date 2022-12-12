@@ -1,8 +1,8 @@
 # Changelog
 
-## 2.1.0 (unreleased)
+## 3.0.0 (2022-12-12)
 
-- Grant infinite BPT allowance to the Vault.
+- Re-release, potentially breaking backwards compatibility.
 
 ## 2.0.1 (2021-09-14)
 
