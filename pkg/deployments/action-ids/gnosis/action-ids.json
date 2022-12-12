@@ -225,5 +225,15 @@
         "create(string,string,address,address,uint256,uint256,address)": "0xf9d27f783f06c33f198165d11f500f70ae99e14c6624f234cac46e1fc1978bec"
       }
     }
+  },
+  "20221123-pool-recovery-helper": {
+    "PoolRecoveryHelper": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addPoolFactory(address)": "0x27f2737d0304362f4d515085adcfa1319a27436bb556d75e8ce5216c8ad601be",
+        "enableRecoveryMode(address)": "0x32ae16017f0d7c12020f27aca68678c9a3e0fb6cafdb9580f61d3395225a48db",
+        "removePoolFactory(address)": "0xf73432698cd2e092161276906856b882c56056a85b0a0792733cc87cc6d49e57"
+      }
+    }
   }
 }
