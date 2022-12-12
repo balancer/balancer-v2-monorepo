@@ -142,5 +142,14 @@
         "disable()": "0x0a7c328c61ac04bc0e79818b5fa98658f18c222d04e7433de4d87fcbfa15e08e"
       }
     }
+  },
+  "20211202-no-protocol-fee-lbp": {
+    "NoProtocolFeeLiquidityBootstrappingPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],uint256,address,bool)": "0x64a472fecada50f544efe7f4cf5c748a80d400544a9425c675ffb2e34d67f7f8",
+        "disable()": "0x0a35dcf04fdcf4e2119802287b94a1cf758427e74e9bb450cb31af7c660d7735"
+      }
+    }
   }
 }
