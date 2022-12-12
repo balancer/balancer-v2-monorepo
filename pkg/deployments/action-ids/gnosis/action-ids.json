@@ -159,5 +159,14 @@
         "create(string,string,address,address,uint256,uint256,address)": "0xf9d27f783f06c33f198165d11f500f70ae99e14c6624f234cac46e1fc1978bec"
       }
     }
+  },
+  "20220609-stable-pool-v2": {
+    "StablePoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256,uint256,address)": "0x48453570be67198c7e351cbc0d8ae38840caccd425ed446800ad3fcd11308642",
+        "disable()": "0x06efe7e891755c060de5033e398e2d4d9f1bc713591717209ef84b7e021bd154"
+      }
+    }
   }
 }
