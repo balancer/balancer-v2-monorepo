@@ -217,5 +217,13 @@
         "unpause()": "0x185a18e7d0123f2d672af9514ca30dbbc1ebc37c347e887255425f7310210efa"
       }
     }
+  },
+  "20220425-unbutton-aave-linear-pool": {
+    "UnbuttonAaveLinearPoolFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address)": "0xf9d27f783f06c33f198165d11f500f70ae99e14c6624f234cac46e1fc1978bec"
+      }
+    }
   }
 }
