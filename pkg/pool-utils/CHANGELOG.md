@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.0.1 (2022-12-12)
+
+### Misc
+
+- Updated readme.
+- Removed unnecessary dependency on the `v2-vault` package.
+
 ## 3.0.0 (2022-12-12)
 
 - Re-release, potentially breaking backwards compatibility.
