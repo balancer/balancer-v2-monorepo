@@ -568,9 +568,20 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     }
 
     /**
-     * @dev Should be an 18-decimal fixed point value that represents the value of the wrapped token in terms of the
-     * main token. The final wrapped token scaling factor is this value multiplied by the wrapped token's decimal
-     * scaling factor.
+     * @dev Returns a 18-decimal fixed point value that represents the value of the wrapped token in terms of the main
+     * token. The final wrapped token scaling factor is this value multiplied by the wrapped token's decimal scaling
+     * factor.
+     *
+     * WARNING: care must be take if calling external contracts from here, even `view` or `pure` functions. If said
+     * calls revert, any revert data must not be bubbled-up directly but instead passed to `bubbleUpNonMaliciousRevert`
+     * from `ExternalCallLib` (located in the `v2-pool-utils` package). See the following example:
+     *
+     *  try externalContract.someCall() returns (uint256 value) {
+     *    return value;
+     *  } catch (bytes memory revertData) {
+     *    // Don't automatically bubble-up revert data.
+     *    ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
+     *  }
      */
     function _getWrappedTokenRate() internal view virtual returns (uint256);
 
