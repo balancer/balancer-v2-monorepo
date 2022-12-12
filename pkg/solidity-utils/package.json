@@ -13,8 +13,8 @@
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "files": [
-    "contracts/**/*",
-    "!contracts/test/*"
+    "contracts/**/*.sol",
+    "!contracts/test/**/*.sol"
   ],
   "scripts": {
     "build": "yarn compile",
