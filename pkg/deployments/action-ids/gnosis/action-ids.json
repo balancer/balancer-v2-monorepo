@@ -133,5 +133,14 @@
         "performAction(address,bytes)": "0x6fef9a8dcafc0cebe8ac27f7da400eca76b1550c0c7b475c9a6ce1334f4cd1b3"
       }
     }
+  },
+  "20220908-weighted-pool-v2": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address)": "0x737b3eb524e40f471925572c70ba79fdfe3cf273844aa81f67552e060002da81",
+        "disable()": "0x0a7c328c61ac04bc0e79818b5fa98658f18c222d04e7433de4d87fcbfa15e08e"
+      }
+    }
   }
 }
