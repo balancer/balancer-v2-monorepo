@@ -67,9 +67,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     // Allow the default revenue sharing fee percentage to be overridden for individual factories.
     EnumerableMap.IERC20ToUint256Map private _revenueShareFactoryOverrides;
 
-    // The revenue share percentage has a sentinel value of 0, so that all pools will use the default unless
-    // overridden. However, it should also be possible to set the share to actual 0. To accommodate this, we
-    // add an `overrideSet` flag. When this is set, use `revenueSharePercentageOverride`; otherwise, use the default.
+    // By default, the `overrideSet` flag is false, and all Pools use the default revenue share percentage.
 
     // Packed to use 1 storage slot
     // 1e18 (100% - maximum fee value) can fit in uint88
