@@ -34,11 +34,13 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15924497, function () {
   const FINAL_LOWER_TARGET = fp(0.2e7);
   const FINAL_UPPER_TARGET = fp(5e7);
 
+  const PROTOCOL_ID = 0;
+
   let pool: Contract;
   let poolId: string;
 
   before('run task', async () => {
-    task = new Task('20221115-aave-rebalanced-linear-pool', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20221207-aave-rebalanced-linear-pool-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('AaveLinearPoolFactory');
   });
@@ -116,7 +118,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15924497, function () {
 
   describe('create, join, and rebalance', () => {
     it('deploy a linear pool', async () => {
-      const tx = await factory.create('', '', USDC, waUSDC, INITIAL_UPPER_TARGET, SWAP_FEE_PERCENTAGE, owner.address);
+      const tx = await factory.create('', '', USDC, waUSDC, INITIAL_UPPER_TARGET, SWAP_FEE_PERCENTAGE, owner.address, PROTOCOL_ID);
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
       pool = await task.instanceAt('AaveLinearPool', event.args.pool);
