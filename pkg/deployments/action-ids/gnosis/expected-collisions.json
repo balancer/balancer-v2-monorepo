@@ -40,5 +40,19 @@
       "signature": "performAction(address,bytes)",
       "useAdaptor": false
     }
+  ],
+  "0xf9d27f783f06c33f198165d11f500f70ae99e14c6624f234cac46e1fc1978bec": [
+    {
+      "taskId": "20220404-erc4626-linear-pool-v2",
+      "contractName": "ERC4626LinearPoolFactory",
+      "signature": "create(string,string,address,address,uint256,uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220425-unbutton-aave-linear-pool",
+      "contractName": "UnbuttonAaveLinearPoolFactory",
+      "signature": "create(string,string,address,address,uint256,uint256,address)",
+      "useAdaptor": true
+    }
   ]
 }

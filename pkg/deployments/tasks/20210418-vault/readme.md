@@ -8,9 +8,11 @@ Aditionally, the `WETH` argument may represent different things in different net
 
 ## Useful Files
 
-- [Ethereum mainnet address](./output/mainnet.json)
-- [Polygon mainnet address](./output/polygon.json)
-- [Arbitrum mainnet address](./output/arbitrum.json)
-- [Optimism mainnet address](./output/optimism.json)
-- [Gnosis mainnet address](./output/gnosis.json)
+- [Ethereum mainnet addresses](./output/mainnet.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [BSC mainnet addresses](./output/bsc.json)
+- [Gnosis mainnet addresses](./output/gnosis.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`Vault` artifact](./artifact/Vault.json)
