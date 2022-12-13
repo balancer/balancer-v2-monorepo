@@ -42,13 +42,19 @@ interface IProtocolFeeSplitter {
     event FactoryDefaultRevenueSharePercentageCleared(address indexed factory);
     event DAOFundsRecipientChanged(address newDaoFundsRecipient);
 
+    // Fund recipients
+
     /**
-     * @notice Allows an authorized user to change the revenueShare for a given pool.
-     * @dev This is a permissioned function.
-     * @param poolId - the poolId of the pool where the revenue share will change.
-     * @param revenueSharePercentage - the new revenue share percentage.
+     * @notice Returns the DAO funds recipient that will receive any balance not due to the pool beneficiary.
      */
-    function setRevenueSharePercentage(bytes32 poolId, uint256 revenueSharePercentage) external;
+    function getDaoFundsRecipient() external view returns (address);
+
+    /**
+     * @notice Allows a authorized user to change the DAO funds recipient.
+     * @dev This is a permissioned function.
+     * @param newDaoFundsRecipient - address of the new DAO funds recipient.
+     */
+    function setDaoFundsRecipient(address newDaoFundsRecipient) external;
 
     /**
      * @notice Allows a pool owner to change the revenue share beneficiary for a given pool.
@@ -58,12 +64,28 @@ interface IProtocolFeeSplitter {
      */
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external;
 
+    // Revenue share settings
+
     /**
-     * @notice Allows a authorized user to change the DAO funds recipient.
-     * @dev This is a permissioned function.
-     * @param newDaoFundsRecipient - address of the new DAO funds recipient.
+     * @dev Returns the current protocol fee split configuration for a given pool.
+     * @param poolId - the poolId of a pool with accrued protocol fees.
+     * @return revenueSharePercentageOverride - the percentage of the split sent to the pool beneficiary.
+     * @return beneficiary - the address of the pool beneficiary.
      */
-    function setDaoFundsRecipient(address newDaoFundsRecipient) external;
+    function getRevenueShareSettings(bytes32 poolId)
+        external
+        view
+        returns (
+            uint256 revenueSharePercentageOverride,
+            address beneficiary,
+            bool overrideSet
+        );
+
+    /**
+     * @dev Returns the default revenue share percentage a pool will receive, unless overridden by a call
+     * to `setRevenueSharePercentage`.
+     */
+    function getDefaultRevenueSharePercentage() external view returns (uint256);
 
     /**
      * @notice Allows an authorized user to change the default revenue share percentage.
@@ -98,21 +120,16 @@ interface IProtocolFeeSplitter {
      * @notice Ignore any previously set revenue sharing percentage, and begin using the default.
      * @param poolId - the poolId of the pool to begin using the default revenue share percentage.
      */
+    function setRevenueSharePercentage(bytes32 poolId, uint256 revenueSharePercentage) external;
+
+    /**
+     * @notice Allows an authorized user to change the revenueShare for a given pool.
+     * @dev This is a permissioned function.
+     * @param poolId - the poolId of the pool where the revenue share will change.
+     */
     function clearRevenueSharePercentage(bytes32 poolId) external;
 
-    /**
-     * @notice Collects and distributes fees for a `poolId`
-     * @param poolId - the poolId of the pool for which we collect fees
-     * @return beneficiaryAmount The amount of tokens sent to pool's beneficiary
-     * @return daoAmount The amount of tokens sent to Balancer's treasury
-     */
-    function collectFees(bytes32 poolId) external returns (uint256 beneficiaryAmount, uint256 daoAmount);
-
-    /**
-     * @dev Returns the default revenue share percentage a pool will receive, unless overridden by a call
-     * to `setRevenueSharePercentage`.
-     */
-    function getDefaultRevenueSharePercentage() external view returns (uint256);
+    // Permissionless fee collection functions
 
     /**
      * @dev Returns the amount of fees that would be sent to each beneficiary in a call to `collectFees`.
@@ -123,9 +140,14 @@ interface IProtocolFeeSplitter {
     function getAmounts(bytes32 poolId) external view returns (uint256 beneficiaryAmount, uint256 daoAmount);
 
     /**
-     * @notice Returns the DAO funds recipient that will receive any balance not due to the pool beneficiary.
+     * @dev Permissionless function to collect and distribute any accrued protocol fees for the given pool.
+     * @param poolId - the poolId of a pool with accrued protocol fees.
+     * @return beneficiaryAmount - the BPT amount sent to the pool beneficiary.
+     * @return daoAmount - the BPT amount sent to the DAO funds recipient.
      */
-    function getDaoFundsRecipient() external view returns (address);
+    function collectFees(bytes32 poolId) external returns (uint256 beneficiaryAmount, uint256 daoAmount);
+
+    // Misc getters
 
     /**
      * @notice Returns the `ProtocolFeesWithdrawer`, used to withdraw funds from the `ProtocolFeesCollector`.
@@ -136,19 +158,4 @@ interface IProtocolFeeSplitter {
      * @notice Returns the address of the Balancer Vault.
      */
     function getVault() external view returns (IVault);
-
-    /**
-     * @dev Returns the current protocol fee split configuration for a given pool.
-     * @param poolId - the poolId of a pool with accrued protocol fees.
-     * @return revenueSharePercentageOverride - the percentage of the split sent to the pool beneficiary.
-     * @return beneficiary - the address of the pool beneficiary.
-     */
-    function getRevenueShareSettings(bytes32 poolId)
-        external
-        view
-        returns (
-            uint256 revenueSharePercentageOverride,
-            address beneficiary,
-            bool overrideSet
-        );
 }
