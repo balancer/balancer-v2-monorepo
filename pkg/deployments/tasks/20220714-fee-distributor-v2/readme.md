@@ -6,4 +6,5 @@ This version contains some bugfixes, and lets users (both EOAs and contracts) pr
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`FeeDistributor` artifact](./artifact/FeeDistributor.json)
