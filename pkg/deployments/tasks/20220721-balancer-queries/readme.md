@@ -9,4 +9,7 @@ result they would have if called on the Vault given the current state.
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
-- [`BalancerQueries` ABI](./abi/BalancerQueries.json)
+- [BSC mainnet addresses](./output/bsc.json)
+- [Gnosis mainnet addresses](./output/gnosis.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`BalancerQueries` artifact](./artifact/BalancerQueries.json)

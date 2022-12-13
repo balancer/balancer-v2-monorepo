@@ -7,6 +7,8 @@ The relayer is mostly useful on mainnet, as it included mainnet hardcoded addres
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Polygon addresses](./output/polygon.json)
-- [Arbitrum addresses](./output/arbitrum.json)
-- [`DoubleEntryPointFixRelayer` ABI](./abi/DoubleEntryPointFixRelayer.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`DoubleEntryPointFixRelayer` artifact](./artifact/DoubleEntryPointFixRelayer.json)

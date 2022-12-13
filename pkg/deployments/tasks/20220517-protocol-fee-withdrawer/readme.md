@@ -7,7 +7,10 @@ See [the Double Entrypoint Fix Relayer](../20220513-double-entrypoint-fix-relaye
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Polygon addresses](./output/polygon.json)
-- [Arbitrum addresses](./output/arbitrum.json)
-- [Optimism addresses](./output/optimism.json)
-- [`ProtocolFeesWithdrawer` ABI](./abi/ProtocolFeesWithdrawer.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [BSC mainnet addresses](./output/bsc.json)
+- [Gnosis mainnet addresses](./output/gnosis.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`ProtocolFeesWithdrawer` artifact](./artifact/ProtocolFeesWithdrawer.json)

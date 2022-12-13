@@ -4,8 +4,10 @@ Second deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with a ERC
 
 ## Useful Files
 
-- [Ethereum mainnet address](./output/mainnet.json)
-- [Polygon address](./output/polygon.json)
-- [Arbitrum address](./output/arbitrum.json)
-- [Optimism address](./output/optimism.json)
-- [`ERC4626LinearPool` ABI](./abi/ERC4626LinearPool.json)
+- [Ethereum mainnet addresses](./output/mainnet.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [Gnosis mainnet addresses](./output/gnosis.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`ERC4626LinearPool` artifact](./artifact/ERC4626LinearPool.json)

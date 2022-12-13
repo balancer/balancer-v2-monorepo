@@ -5,4 +5,4 @@ Deployment of the `veBALDeploymentCoordinator`, responsible for activating the v
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`veBALDeploymentCoordinator` ABI](./abi/veBALDeploymentCoordinator.json)
+- [`veBALDeploymentCoordinator` artifact](./artifact/veBALDeploymentCoordinator.json)

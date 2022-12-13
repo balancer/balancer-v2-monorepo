@@ -4,8 +4,10 @@ Deployment of the `ChildChainLiquidityGaugeFactory`, for liquidity gauges to be 
 
 ## Useful Files
 
-- [Polygon addresses](./output/polygon.json)
-- [Arbitrum addresses](./output/arbitrum.json)
-- [`ChildChainStreamer` ABI](./abi/ChildChainStreamer.json)
-- [`RewardsOnlyGauge` ABI](./abi/RewardsOnlyGauge.json)
-- [`ChildChainGaugeFactory` ABI](./abi/ChildChainGaugeFactory.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`ChildChainStreamer` artifact](./artifact/ChildChainStreamer.json)
+- [`RewardsOnlyGauge` artifact](./artifact/RewardsOnlyGauge.json)
+- [`ChildChainGaugeFactory` artifact](./artifact/ChildChainGaugeFactory.json)

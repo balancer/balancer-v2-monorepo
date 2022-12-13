@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 
@@ -30,11 +31,19 @@ contract ManagedPoolStorageLibTest is Test {
     uint256 private constant _SWAP_ENABLED_OFFSET = _SWAP_FEE_END_PCT_OFFSET + _SWAP_FEE_PCT_WIDTH;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = _SWAP_ENABLED_OFFSET + 1;
     uint256 private constant _RECOVERY_MODE_OFFSET = _MUST_ALLOWLIST_LPS_OFFSET + 1;
+    uint256 private constant _JOIN_EXIT_ENABLED_OFFSET = _RECOVERY_MODE_OFFSET + 1;
 
     uint256 private constant _TIMESTAMP_WIDTH = 32;
     uint256 private constant _SWAP_FEE_PCT_WIDTH = 62;
 
     uint256 private constant _MAX_SWAP_FEE = (1 << _SWAP_FEE_PCT_WIDTH) - 1;
+
+    function testSetJoinExitEnabled(bytes32 poolState, bool enabled) public {
+        bytes32 newPoolState = ManagedPoolStorageLib.setJoinExitEnabled(poolState, enabled);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _JOIN_EXIT_ENABLED_OFFSET, 1));
+
+        assertEq(ManagedPoolStorageLib.getJoinExitEnabled(newPoolState), enabled);
+    }
 
     function testSetRecoveryMode(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setRecoveryModeEnabled(poolState, enabled);
@@ -43,11 +52,11 @@ contract ManagedPoolStorageLibTest is Test {
         assertEq(ManagedPoolStorageLib.getRecoveryModeEnabled(newPoolState), enabled);
     }
 
-    function testSwapsEnabled(bytes32 poolState, bool enabled) public {
-        bytes32 newPoolState = ManagedPoolStorageLib.setSwapsEnabled(poolState, enabled);
+    function testSwapEnabled(bytes32 poolState, bool enabled) public {
+        bytes32 newPoolState = ManagedPoolStorageLib.setSwapEnabled(poolState, enabled);
         assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1));
 
-        assertEq(ManagedPoolStorageLib.getSwapsEnabled(newPoolState), enabled);
+        assertEq(ManagedPoolStorageLib.getSwapEnabled(newPoolState), enabled);
     }
 
     function testLPAllowlistEnabled(bytes32 poolState, bool enabled) public {

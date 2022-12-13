@@ -6,6 +6,6 @@ See [the forum post](https://forum.balancer.fi/t/tribe-dao-unclaimable-bal-rewar
 
 ## Useful Files
 
-- [Ethereum addresses](./output/mainnet.json)
-- [Optimism addresses](./output/optimism.json)
-- [`SNXRecoveryCoordinator` ABI](./abi/SNXRecoveryCoordinator.json)
+- [Ethereum mainnet addresses](./output/mainnet.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [`SNXRecoveryCoordinator` artifact](./artifact/SNXRecoveryCoordinator.json)

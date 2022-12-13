@@ -5,6 +5,6 @@ Deployment of `VotingEscrowDelegation`, for delegation of veBAL-related boosts.
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Kovan addresses](./output/kovan.json)
-- [`VotingEscrowDelegation` ABI](./abi/VotingEscrowDelegation.json)
-- [`VotingEscrowDelegationProxy` ABI](./abi/VotingEscrowDelegationProxy.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`VotingEscrowDelegation` artifact](./artifact/VotingEscrowDelegation.json)
+- [`VotingEscrowDelegationProxy` artifact](./artifact/VotingEscrowDelegationProxy.json)

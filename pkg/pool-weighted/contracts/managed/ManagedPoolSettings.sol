@@ -91,12 +91,9 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
-    struct NewPoolParams {
-        string name;
-        string symbol;
+    struct ManagedPoolSettingsParams {
         IERC20[] tokens;
         uint256[] normalizedWeights;
-        address[] assetManagers;
         uint256 swapFeePercentage;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
@@ -104,7 +101,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         uint256 aumFeeId;
     }
 
-    constructor(NewPoolParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
+    constructor(ManagedPoolSettingsParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
         ProtocolFeeCache(
             protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: params.aumFeeId })
@@ -114,7 +111,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         _require(totalTokens >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(totalTokens <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
-        InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
+        InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length);
 
         // Validate and set initial fees
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
@@ -147,6 +144,9 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
+
+        // Joins and exits are enabled by default on start.
+        _setJoinExitEnabled(true);
     }
 
     function _getPoolState() internal view returns (bytes32) {
@@ -376,10 +376,26 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
+    // Join / Exit Enabled
+
+    function getJoinExitEnabled() external view override returns (bool) {
+        return ManagedPoolStorageLib.getJoinExitEnabled(_poolState);
+    }
+
+    function setJoinExitEnabled(bool joinExitEnabled) external override authenticate whenNotPaused {
+        _setJoinExitEnabled(joinExitEnabled);
+    }
+
+    function _setJoinExitEnabled(bool joinExitEnabled) private {
+        _poolState = ManagedPoolStorageLib.setJoinExitEnabled(_poolState, joinExitEnabled);
+
+        emit JoinExitEnabledSet(joinExitEnabled);
+    }
+
     // Swap Enabled
 
     function getSwapEnabled() external view override returns (bool) {
-        return ManagedPoolStorageLib.getSwapsEnabled(_poolState);
+        return ManagedPoolStorageLib.getSwapEnabled(_poolState);
     }
 
     function setSwapEnabled(bool swapEnabled) external override authenticate whenNotPaused {
@@ -387,7 +403,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     }
 
     function _setSwapEnabled(bool swapEnabled) private {
-        _poolState = ManagedPoolStorageLib.setSwapsEnabled(_poolState, swapEnabled);
+        _poolState = ManagedPoolStorageLib.setSwapEnabled(_poolState, swapEnabled);
 
         emit SwapEnabledSet(swapEnabled);
     }
@@ -828,6 +844,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         return
             (actionId == getActionId(ManagedPoolSettings.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.updateSwapFeeGradually.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setJoinExitEnabled.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setSwapEnabled.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeAllowedAddress.selector)) ||

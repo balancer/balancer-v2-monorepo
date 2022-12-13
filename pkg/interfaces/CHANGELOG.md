@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2022-12-01)
 
 ### New Interfaces
 
@@ -10,6 +10,7 @@
 - Added `IRateProviderPool`.
 - Added `IVersion`.
 - Added `IFactoryCreatedPoolVersion`.
+- Added `IRecoveryModeHelper`.
 
 ### New Features
 

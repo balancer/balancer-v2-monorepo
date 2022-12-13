@@ -30,11 +30,11 @@ library ManagedPoolStorageLib {
     // Store non-token-based values:
     // Start/end timestamps for gradual weight and swap fee updates
     // Start/end values of the swap fee
-    // Flags for the LP allowlist, enabling/disabling trading, and recovery mode
+    // Flags for the LP allowlist, enabling/disabling trading, enabling/disabling joins and exits, and recovery mode
     //
-    // [  1 bit |   1 bit  |  1 bit  |   1 bit   |    62 bits   |     62 bits    |    32 bits   |     32 bits    | 32 bits |  32 bits  ]
-    // [ unused | recovery | LP flag | swap flag | end swap fee | start swap fee | end fee time | start fee time | end wgt | start wgt ]
-    // |MSB                                                                                                                         LSB|
+    // [     1 bit      |   1 bit  |  1 bit  |   1 bit   |    62 bits   |     62 bits    |    32 bits   |     32 bits    | 32 bits |  32 bits  ]
+    // [ join-exit flag | recovery | LP flag | swap flag | end swap fee | start swap fee | end fee time | start fee time | end wgt | start wgt ]
+    // |MSB                                                                                                                                 LSB|
     /* solhint-enable max-line-length */
     uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
     uint256 private constant _WEIGHT_END_TIME_OFFSET = _WEIGHT_START_TIME_OFFSET + _TIMESTAMP_WIDTH;
@@ -45,12 +45,21 @@ library ManagedPoolStorageLib {
     uint256 private constant _SWAP_ENABLED_OFFSET = _SWAP_FEE_END_PCT_OFFSET + _SWAP_FEE_PCT_WIDTH;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = _SWAP_ENABLED_OFFSET + 1;
     uint256 private constant _RECOVERY_MODE_OFFSET = _MUST_ALLOWLIST_LPS_OFFSET + 1;
+    uint256 private constant _JOIN_EXIT_ENABLED_OFFSET = _RECOVERY_MODE_OFFSET + 1;
 
     uint256 private constant _TIMESTAMP_WIDTH = 32;
     // 2**60 ~= 1.1e18 so this is sufficient to store the full range of potential swap fees.
     uint256 private constant _SWAP_FEE_PCT_WIDTH = 62;
 
     // Getters
+
+    /**
+     * @notice Returns whether the Pool allows regular joins and exits (recovery exits not included).
+     * @param poolState - The byte32 state of the Pool.
+     */
+    function getJoinExitEnabled(bytes32 poolState) internal pure returns (bool) {
+        return poolState.decodeBool(_JOIN_EXIT_ENABLED_OFFSET);
+    }
 
     /**
      * @notice Returns whether the Pool is currently in Recovery Mode.
@@ -64,7 +73,7 @@ library ManagedPoolStorageLib {
      * @notice Returns whether the Pool currently allows swaps (and by extension, non-proportional joins/exits).
      * @param poolState - The byte32 state of the Pool.
      */
-    function getSwapsEnabled(bytes32 poolState) internal pure returns (bool) {
+    function getSwapEnabled(bytes32 poolState) internal pure returns (bool) {
         return poolState.decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
@@ -144,6 +153,15 @@ library ManagedPoolStorageLib {
     // Setters
 
     /**
+     * @notice Sets the "Joins/Exits enabled" flag to `enabled`.
+     * @param poolState - The byte32 state of the Pool.
+     * @param enabled - A boolean flag for whether Joins and Exits are to be enabled.
+     */
+    function setJoinExitEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
+        return poolState.insertBool(enabled, _JOIN_EXIT_ENABLED_OFFSET);
+    }
+
+    /**
      * @notice Sets the "Recovery Mode enabled" flag to `enabled`.
      * @param poolState - The byte32 state of the Pool.
      * @param enabled - A boolean flag for whether Recovery Mode is to be enabled.
@@ -157,7 +175,7 @@ library ManagedPoolStorageLib {
      * @param poolState - The byte32 state of the Pool.
      * @param enabled - A boolean flag for whether swaps are to be enabled.
      */
-    function setSwapsEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
+    function setSwapEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
         return poolState.insertBool(enabled, _SWAP_ENABLED_OFFSET);
     }
 

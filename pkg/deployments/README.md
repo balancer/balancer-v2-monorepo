@@ -77,6 +77,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Gauge Registrant                                        | [`20220325-gauge-adder`](./tasks/20220325-gauge-adder)                                               |
 | Liquidity Mining: veBAL, Gauge Controller and Minter    | [`20220325-gauge-controller`](./tasks/20220325-gauge-controller)                                     |
 | Single Recipient Stakeless Gauges                       | [`20220325-single-recipient-gauge-factory`](./tasks/20220325-single-recipient-gauge-factory)         |
+| Test Balancer Token                                     | [`20220325-test-balancer-token`](./tasks/20220325-test-balancer-token)                               |
 | Delegation of veBAL boosts                              | [`20220325-ve-delegation`](./tasks/20220325-ve-delegation)                                           |
 | Linear Pools for ERC4626 Tokens V2                      | [`20220404-erc4626-linear-pool-v2`](./tasks/20220404-erc4626-linear-pool-v2)                         |
 | Gauges on child networks (L2s and sidechains)           | [`20220413-child-chain-gauge-factory`](./tasks/20220413-child-chain-gauge-factory)                   |
@@ -95,16 +96,19 @@ Returns an object with all contracts from a deployment and their addresses.
 | Child Chain Gauge Reward Helper                         | [`20220812-child-chain-reward-helper`](./tasks/20220812-child-chain-reward-helper)                   |
 | Mainnet Staking Gauges V2                               | [`20220822-mainnet-gauge-factory-v2`](./tasks/20220822-mainnet-gauge-factory-v2)                     |
 | Arbitrum Root Gauges V2, for veBAL voting               | [`20220823-arbitrum-root-gauge-factory-v2`](./tasks/20220823-arbitrum-root-gauge-factory-v2)         |
-| Polygon Root Gauges V2, for veBAL voting                | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
-| Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
+| Polygon Root Gauges V2, for veBAL voting                | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
 | Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
 | Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
-| Protocol Fee Splitter                                   | [`20221027-fee-splitter`](./tasks/20221027-fee-splitter)                                             |
-| Authorizer Adaptor Entrypoint                           | [`20221111-authorizer-adaptor-entrypoint`](./tasks/20221111-authorizer-adaptor-entrypoint)           |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20221115-aave-rebalanced-linear-pool`](./tasks/20221115-aave-rebalanced-linear-pool)               |
+| Composable Stable Pools V2                              | [`20221122-composable-stable-pool-v2`](./tasks/20221122-composable-stable-pool-v2)                   |
 | Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
+| Authorizer Adaptor Entrypoint                           | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
+| Timelock Authorizer, governance contract                | [`20221202-timelock-authorizer`](./tasks/20221202-timelock-authorizer)                               |
+| L2 Gauge Checkpointer                                   | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                           |
+| VeBoost V2                                              | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
+| Linear Pools for Aave aTokens with built-in rebalancing | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/20221207-aave-rebalanced-linear-pool-v3)         |
 
 ## Scripts
 
@@ -143,10 +147,12 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Preminted BPT Meta Stable Pools                         | [`20211208-stable-phantom-pool`](./tasks/deprecated/20211208-stable-phantom-pool)                   |
 | Linear Pools for ERC4626 Tokens                         | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                   |
 | Batch Relayer V2                                        | [`20220318-batch-relayer-v2`](./tasks/deprecated/20220318-batch-relayer-v2)                         |
-| Fee Distributor for veBAL holders                       | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
 | Mainnet Staking Gauges                                  | [`20220325-mainnet-gauge-factory`](./tasks/deprecated/20220325-mainnet-gauge-factory)               |
 | Arbitrum Root Gauges, for veBAL voting                  | [`20220413-arbitrum-root-gauge-factory`](./tasks/deprecated/20220413-arbitrum-root-gauge-factory)   |
 | Polygon Root Gauges, for veBAL voting                   | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)     |
+| Fee Distributor for veBAL holders                       | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
 | Optimism Root Gauges, for veBAL voting                  | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)   |
 | Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/deprecated/20220720-batch-relayer-v3)                         |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/deprecated/20220817-aave-rebalanced-linear-pool)   |
+| Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/deprecated/20220906-composable-stable-pool)             |
+| Managed Pool                                            | [`20221021-managed-pool`](./tasks/deprecated/20221021-managed-pool)                                 |

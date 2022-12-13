@@ -6,6 +6,6 @@ Deployment of the `SingleRecipientGaugeFactory`, for liquidity gauges which forw
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Kovan testnet addresses](./output/kovan.json)
-- [`SingleRecipientGauge` ABI](./abi/SingleRecipientGauge.json)
-- [`SingleRecipientGaugeFactory` ABI](./abi/SingleRecipientGaugeFactory.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`SingleRecipientGauge` artifact](./artifact/SingleRecipientGauge.json)
+- [`SingleRecipientGaugeFactory` artifact](./artifact/SingleRecipientGaugeFactory.json)

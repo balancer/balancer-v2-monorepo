@@ -5,6 +5,7 @@ Deployment of the `VotingEscrow`, which allows users to stake 80/20 BAL/WETH BPT
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`VotingEscrow` ABI](./abi/VotingEscrow.json)
-- [`GaugeController` ABI](./abi/GaugeController.json)
-- [`BalancerMinter` ABI](./abi/BalancerMinter.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`VotingEscrow` artifact](./artifact/VotingEscrow.json)
+- [`GaugeController` artifact](./artifact/GaugeController.json)
+- [`BalancerMinter` artifact](./artifact/BalancerMinter.json)

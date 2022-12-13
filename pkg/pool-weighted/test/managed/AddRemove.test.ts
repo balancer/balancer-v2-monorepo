@@ -255,6 +255,22 @@ describe('ManagedPoolSettings - add/remove token', () => {
             itAddsATokenWithNoErrors();
           });
 
+          context('with join / exits enabled', () => {
+            sharedBeforeEach(async () => {
+              await pool.setJoinExitEnabled(owner, true);
+            });
+
+            itAddsATokenWithNoErrors();
+          });
+
+          context('with join / exits disabled', () => {
+            sharedBeforeEach(async () => {
+              await pool.setJoinExitEnabled(owner, false);
+            });
+
+            itAddsATokenWithNoErrors();
+          });
+
           function itAddsATokenWithNoErrors() {
             it('adds a new token to the end of the array of tokens in the pool', async () => {
               const { tokens: beforeAddTokens } = await pool.getTokens();
@@ -552,6 +568,22 @@ describe('ManagedPoolSettings - add/remove token', () => {
           context('with swaps disabled', () => {
             sharedBeforeEach('disable swaps', async () => {
               await pool.setSwapEnabled(owner, false);
+            });
+
+            itRemovesATokenWithNoErrors();
+          });
+
+          context('with join / exits enabled', () => {
+            sharedBeforeEach(async () => {
+              await pool.setJoinExitEnabled(owner, true);
+            });
+
+            itRemovesATokenWithNoErrors();
+          });
+
+          context('with join / exits disabled', () => {
+            sharedBeforeEach(async () => {
+              await pool.setJoinExitEnabled(owner, false);
             });
 
             itRemovesATokenWithNoErrors();

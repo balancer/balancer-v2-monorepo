@@ -4,10 +4,11 @@ Deployment of the `PoolRecoveryHelper`, which provides a permissionless way to m
 
 ## Useful Files
 
-- [Ethereum addresses](./output/mainnet.json)
-- [Polygon addresses](./output/polygon.json)
-- [Arbitrum addresses](./output/arbitrum.json)
-- [Optimism addresses](./output/optimism.json)
-- [Binance addresses](./output/bsc.json)
-- [Gnosis addresses](./output/gnosis.json)
-- [`PoolRecoveryHelper` ABI](./abi/PoolRecoveryHelper.json)
+- [Ethereum mainnet addresses](./output/mainnet.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [BSC mainnet addresses](./output/bsc.json)
+- [Gnosis mainnet addresses](./output/gnosis.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`PoolRecoveryHelper` artifact](./artifact/PoolRecoveryHelper.json)

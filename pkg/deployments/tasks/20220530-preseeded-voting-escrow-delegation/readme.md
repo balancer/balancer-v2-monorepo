@@ -7,4 +7,5 @@ See [the Tribe DAO proposal](https://forum.balancer.fi/t/tribe-dao-boost-delegat
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`PreseededVotingEscrowDelegation` ABI](./abi/PreseededVotingEscrowDelegation.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`PreseededVotingEscrowDelegation` artifact](./artifact/PreseededVotingEscrowDelegation.json)

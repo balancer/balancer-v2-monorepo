@@ -5,4 +5,5 @@ Deployment of the `BalancerTokenAdmin`, for enforcing a specified BAL emission r
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`BalancerTokenAdmin` ABI](./abi/BalancerTokenAdmin.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`BalancerTokenAdmin` artifact](./artifact/BalancerTokenAdmin.json)

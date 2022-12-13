@@ -5,5 +5,5 @@ Deployment of the `GaugeAdder`, a helper contract which helps prevent some forms
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Kovan testnet addresses](./output/kovan.json)
-- [`GaugeAdder` ABI](./abi/GaugeAdder.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`GaugeAdder` artifact](./artifact/GaugeAdder.json)

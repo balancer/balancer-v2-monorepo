@@ -21,6 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 
 import "./WeightedMath.sol";
 
@@ -322,7 +323,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 bptAmountOut = userData.allTokensInForExactBptOut();
         // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
 
-        uint256[] memory amountsIn = WeightedMath._calcAllTokensInGivenExactBptOut(balances, bptAmountOut, totalSupply);
+        uint256[] memory amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
 
         return (bptAmountOut, amountsIn);
     }
@@ -426,7 +427,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
+        uint256[] memory amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
         return (bptAmountIn, amountsOut);
     }
 
@@ -462,6 +463,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         bytes memory userData
     ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
     }
 }

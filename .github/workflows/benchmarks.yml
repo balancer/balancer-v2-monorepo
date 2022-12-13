@@ -52,17 +52,6 @@ jobs:
       - name: Benchmark Join/Exit
         run: yarn workspace @balancer-labs/v2-benchmarks measure-join-exit
 
-  merkle-claim:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-      - name: Benchmark Merkle Claim
-        run: yarn workspace @balancer-labs/v2-benchmarks measure-merkle-claim
-
   relayer:
     runs-on: ubuntu-latest
     steps:
