@@ -479,5 +479,28 @@
         "disable()": "0x0ebf042d38f8e1bb630c3010c686232d7334f90360a82eb23623fd01fbe8e656"
       }
     }
+  },
+  "20221207-aave-rebalanced-linear-pool-v3": {
+    "AaveLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x4ba05fdf5cffc5c7a72f197b00eff227bfe7a29a27c24cdcaaa1dfee7b514a65",
+        "disable()": "0x5fd274813b31ce95c712e49fe755d0b075329e0579e5f04cd7126ed1470d4354",
+        "registerProtocolId(uint256,string)": "0x37a89b4d8143fceff55b6582039f2a1e6cfed15dbcf485d5c56bbc1c6dcba101"
+      }
+    },
+    "AaveLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xa612B6AeD2E7ca1A3a4f23FbcA9128461bBB7718",
+      "actionIds": {
+        "disableRecoveryMode()": "0x071c183e211c5696039e7d8f8432a12922c93c59a210fae756a3f03196b01e4b",
+        "enableRecoveryMode()": "0x9254542b345e99990640c1b9525771201fcd60edbe6ff1b6b4179bd86dcd5fbc",
+        "initialize()": "0xc46f6bb869dc3e73108ae5ff1202a70bcc84c97b6e489fd59e66ad8413cfe6a9",
+        "pause()": "0x36c26ad17c689895b3978b52a379d7e9c1dc125551458cb016a1ff29e5e53ef5",
+        "setSwapFeePercentage(uint256)": "0x73ecffaa7802224e9379a7afd6438b2d70a66adbc286e955db7929c017e130cc",
+        "setTargets(uint256,uint256)": "0x30e1f3886b07a3348ef1218d96b9d28f8182dc86760aee7a4a97a9c0ff134f92",
+        "unpause()": "0xa5af706283095db0b03341555fda661eec48458aea6d68c691fb79ac3a32d1a6"
+      }
+    }
   }
 }
