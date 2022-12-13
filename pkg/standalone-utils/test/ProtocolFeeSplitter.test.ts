@@ -7,14 +7,16 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
-import { bn } from '../../../pvt/helpers/src/numbers';
+import { fp, fpMul, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 
 describe('ProtocolFeeSplitter', function () {
+  const defaultRevenueShare = fp(0.1); // 10%
+  const poolRevenueShare = fp(0.5); // 50%
+
   let vault: Vault;
 
   let protocolFeeSplitter: Contract;
@@ -70,7 +72,8 @@ describe('ProtocolFeeSplitter', function () {
     });
 
     const setRevenueShareRole = await actionId(protocolFeeSplitter, 'setRevenueSharePercentage');
-    await vault.grantPermissionsGlobally([setRevenueShareRole], admin);
+    const clearRevenueShareRole = await actionId(protocolFeeSplitter, 'clearRevenueSharePercentage');
+    await vault.grantPermissionsGlobally([setRevenueShareRole, clearRevenueShareRole], admin);
 
     const setDefaultRevenueSharePercentageRole = await actionId(
       protocolFeeSplitter,
@@ -120,54 +123,75 @@ describe('ProtocolFeeSplitter', function () {
 
   describe('setDefaultRevenueSharePercentage', async () => {
     it('sets default fee', async () => {
-      const newFee = bn(10e16); // 10%
-      await protocolFeeSplitter.connect(admin).setDefaultRevenueSharePercentage(newFee);
+      await protocolFeeSplitter.connect(admin).setDefaultRevenueSharePercentage(defaultRevenueShare);
 
-      expect(await protocolFeeSplitter.getDefaultRevenueSharePercentage()).to.be.eq(newFee);
+      expect(await protocolFeeSplitter.getDefaultRevenueSharePercentage()).to.be.eq(defaultRevenueShare);
     });
 
     it('emits a DefaultRevenueSharePercentageChanged event', async () => {
-      const newFee = bn(10e16); // 10%
-      const receipt = await (await protocolFeeSplitter.connect(admin).setDefaultRevenueSharePercentage(newFee)).wait();
-      expectEvent.inReceipt(receipt, 'DefaultRevenueSharePercentageChanged', { revenueSharePercentage: newFee });
+      const receipt = await (
+        await protocolFeeSplitter.connect(admin).setDefaultRevenueSharePercentage(defaultRevenueShare)
+      ).wait();
+      expectEvent.inReceipt(receipt, 'DefaultRevenueSharePercentageChanged', {
+        revenueSharePercentage: defaultRevenueShare,
+      });
     });
 
     it('reverts if caller is not authorized', async () => {
-      const newFee = bn(10e16); // 10%
       await expect(
-        protocolFeeSplitter.connect(liquidityProvider).setDefaultRevenueSharePercentage(newFee)
+        protocolFeeSplitter.connect(liquidityProvider).setDefaultRevenueSharePercentage(defaultRevenueShare)
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
 
-  describe('setRevenueSharePercentage', async () => {
-    it('overrides revenue share percentage for a pool', async () => {
-      const newFee = bn(50e16); // 50%
+  describe('setRevenueSharingFeePercentage', async () => {
+    sharedBeforeEach('set default fee', async () => {
+      await protocolFeeSplitter.connect(admin).setDefaultRevenueSharePercentage(defaultRevenueShare);
 
-      await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, newFee);
+      expect(await protocolFeeSplitter.getDefaultRevenueSharePercentage()).to.be.eq(defaultRevenueShare);
+    });
+
+    it('uses the default value when not set', async () => {
+      const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
+
+      expect(poolSettings.overrideSet).to.be.false;
+    });
+
+    it('overrides revenue sharing percentage for a pool', async () => {
+      await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, poolRevenueShare);
 
       const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
-      expect(poolSettings.revenueSharePercentageOverride).to.be.eq(newFee);
+      expect(poolSettings.revenueSharePercentageOverride).to.be.eq(poolRevenueShare);
+      expect(poolSettings.overrideSet).to.be.true;
     });
 
     it('emits a PoolRevenueShareChanged event', async () => {
-      const newFee = bn(50e16); // 50%
-      const receipt = await (await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, newFee)).wait();
-      expectEvent.inReceipt(receipt, 'PoolRevenueShareChanged', { poolId, revenueSharePercentage: newFee });
+      const receipt = await (
+        await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, poolRevenueShare)
+      ).wait();
+      expectEvent.inReceipt(receipt, 'PoolRevenueShareChanged', { poolId, revenueSharePercentage: poolRevenueShare });
+    });
+
+    it('allows a revenue sharing percentage of zero', async () => {
+      await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, FP_ZERO);
+
+      const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
+      expect(poolSettings.revenueSharePercentageOverride).to.be.eq(FP_ZERO);
+      expect(poolSettings.overrideSet).to.be.true;
     });
 
     it('reverts with invalid input', async () => {
-      const newFee = bn(50e16).add(1);
-      await expect(protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, newFee)).to.be.revertedWith(
+      const invalidFee = fp(0.5).add(1);
+
+      await expect(protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, invalidFee)).to.be.revertedWith(
         'SPLITTER_FEE_PERCENTAGE_TOO_HIGH'
       );
     });
 
     it('reverts if caller is not authorized', async () => {
-      const newFee = bn(10e16); // 10%
-      await expect(protocolFeeSplitter.connect(other).setRevenueSharePercentage(poolId, newFee)).to.be.revertedWith(
-        'SENDER_NOT_ALLOWED'
-      );
+      await expect(
+        protocolFeeSplitter.connect(other).setRevenueSharePercentage(poolId, poolRevenueShare)
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
 
@@ -193,72 +217,108 @@ describe('ProtocolFeeSplitter', function () {
     });
   });
 
-  context('when the fee collector holds BPT', async () => {
+  describe('when the fee collector holds BPT', () => {
     let bptBalanceOfLiquidityProvider: BigNumber;
 
-    sharedBeforeEach('transfers BPT to fees collector', async () => {
+    sharedBeforeEach('transfer BPT to fees collector', async () => {
       // transfer BPT tokens to feesCollector
       bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
       await pool.instance
         .connect(liquidityProvider)
         .transfer((await vault.getFeesCollector()).address, bptBalanceOfLiquidityProvider);
+
+      await protocolFeeSplitter.connect(admin).setDefaultRevenueSharePercentage(defaultRevenueShare);
     });
 
-    describe('collect fees', async () => {
-      it('distributes collected BPT fees to treasury (beneficiary is not set for a pool)', async () => {
-        await protocolFeeSplitter.collectFees(poolId);
+    async function itShouldDistributeRevenueCorrectly(
+      ownerExpectedBalance: BigNumber,
+      treasuryExpectedBalance: BigNumber
+    ) {
+      await protocolFeeSplitter.collectFees(poolId);
 
-        const treasuryBalance = await pool.balanceOf(treasury.address);
-        expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
+      const ownerBalance = await pool.balanceOf(owner.address);
+      const treasuryBalance = await pool.balanceOf(treasury.address);
+
+      expectEqualWithError(ownerBalance, ownerExpectedBalance);
+      expectEqualWithError(treasuryBalance, treasuryExpectedBalance);
+    }
+
+    context('without a beneficiary', () => {
+      it('sends all fees to the treasury', async () => {
+        const ownerExpectedBalance = FP_ZERO;
+        const treasuryExpectedBalance = bptBalanceOfLiquidityProvider;
+
+        await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
       });
     });
 
-    context('fee percentage defined', async () => {
-      sharedBeforeEach('sets pool beneficiary & fee percentage', async () => {
+    describe('with a beneficiary', () => {
+      sharedBeforeEach('set pool beneficiary', async () => {
         await protocolFeeSplitter.connect(owner).setPoolBeneficiary(poolId, owner.address);
-        await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, fp(0.1));
       });
 
-      describe('get amounts', async () => {
-        it('returns correct amounts for beneficiary and treasury', async () => {
-          const amounts = await protocolFeeSplitter.getAmounts(poolId);
-
-          // 10% of bptBalanceOfLiquidityProvider should go to owner
-          const ownerExpectedBalance = bptBalanceOfLiquidityProvider.mul(fp(0.1)).div(FP_ONE);
-          // The rest goes to the treasury
+      context('with no revenue share override', () => {
+        it('should collect the default pool revenue share', async () => {
+          const ownerExpectedBalance = fpMul(bptBalanceOfLiquidityProvider, defaultRevenueShare);
           const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
 
-          expectEqualWithError(amounts.beneficiaryAmount, ownerExpectedBalance);
-          expectEqualWithError(amounts.daoAmount, treasuryExpectedBalance);
+          await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
         });
       });
 
-      it('distributes collected BPT fees to pool beneficiary and treasury', async () => {
-        await protocolFeeSplitter.collectFees(poolId);
+      context('with a non-zero revenue share override', () => {
+        sharedBeforeEach('set the revenue sharing percentage', async () => {
+          await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, poolRevenueShare);
+        });
 
-        // 10% of bptBalanceOfLiquidityProvider should go to owner
-        const ownerExpectedBalance = bptBalanceOfLiquidityProvider.mul(fp(0.1)).div(FP_ONE);
-        // The rest goes to the treasury
-        const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
+        it('should collect the pool revenue share', async () => {
+          // Should use the override value for the owner share
+          const ownerExpectedBalance = fpMul(bptBalanceOfLiquidityProvider, poolRevenueShare);
+          const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
 
-        const ownerBalance = await pool.balanceOf(owner.address);
-        const treasuryBalance = await pool.balanceOf(treasury.address);
+          await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
+        });
 
-        expectEqualWithError(ownerBalance, ownerExpectedBalance);
-        expectEqualWithError(treasuryBalance, treasuryExpectedBalance);
+        describe('disable revenue sharing', () => {
+          it('emits a PoolRevenueShareCleared event', async () => {
+            const receipt = await (await protocolFeeSplitter.connect(admin).clearRevenueSharePercentage(poolId)).wait();
+
+            expectEvent.inReceipt(receipt, 'PoolRevenueShareCleared', { poolId });
+          });
+
+          it('reverts if caller is not authorized', async () => {
+            await expect(protocolFeeSplitter.connect(other).clearRevenueSharePercentage(poolId)).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
+          });
+
+          context('when revenue sharing disabled', () => {
+            sharedBeforeEach('disable revenue sharing', async () => {
+              await protocolFeeSplitter.connect(admin).clearRevenueSharePercentage(poolId);
+            });
+
+            it('should now resume collecting the default revenue share', async () => {
+              const ownerExpectedBalance = fpMul(bptBalanceOfLiquidityProvider, defaultRevenueShare);
+              const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
+
+              await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
+            });
+          });
+        });
       });
-    });
 
-    describe('collect fees', async () => {
-      it('distributes collected BPT fees to owner and treasury (fee percentage not defined)', async () => {
-        await protocolFeeSplitter.collectFees(poolId);
+      context('with a zero revenue share override', () => {
+        sharedBeforeEach('set the revenue sharing percentage to zero', async () => {
+          await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, FP_ZERO);
+        });
 
-        const ownerBalance = await pool.balanceOf(owner.address);
-        const treasuryBalance = await pool.balanceOf(treasury.address);
+        it('should send all funds to the treasury', async () => {
+          // Should send everything to the treasury
+          const ownerExpectedBalance = FP_ZERO;
+          const treasuryExpectedBalance = bptBalanceOfLiquidityProvider;
 
-        // pool owner should get 0, and treasury everything if fee is not defined
-        expectEqualWithError(ownerBalance, 0);
-        expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
+          await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
+        });
       });
     });
   });
