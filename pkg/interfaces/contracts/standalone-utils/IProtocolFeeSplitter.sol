@@ -133,9 +133,4 @@ interface IProtocolFeeSplitter {
      * @notice Returns the `ProtocolFeesWithdrawer`, used to withdraw funds from the `ProtocolFeesCollector`.
      */
     function getProtocolFeesWithdrawer() external view returns (IProtocolFeesWithdrawer);
-
-    /**
-     * @notice Returns the address of the Balancer Vault.
-     */
-    function getVault() external view returns (IVault);
 }

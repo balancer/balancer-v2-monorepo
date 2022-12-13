@@ -17,7 +17,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeeSplitter.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeesWithdrawer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IProtocolFeesCollector.sol";
 
@@ -35,7 +35,7 @@ interface Pool {
  * governance to prevent certain tokens (on a denyList) from being withdrawn. `collectFees` would fail if the BPT
  * token were on this denyList.
  */
-contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
+contract ProtocolFeeSplitter is IProtocolFeeSplitter, SingletonAuthentication {
     using FixedPoint for uint256;
 
     // All fee percentages are 18-decimal fixed point numbers.
@@ -43,9 +43,6 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     uint256 private constant _MAX_REVENUE_SHARE_PERCENTAGE = 50e16; // 50%
 
     IProtocolFeesWithdrawer private immutable _protocolFeesWithdrawer;
-
-    // Balancer vault
-    IVault private immutable _vault;
 
     // The recipient of the DAO portion of the revenue share; e.g., the Balancer DAO treasury account.
     address private _daoFundsRecipient;
@@ -65,13 +62,10 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     mapping(bytes32 => RevenueShareSettings) private _poolSettings;
 
     constructor(IProtocolFeesWithdrawer protocolFeesWithdrawer, address daoFundsRecipient)
-        // The ProtocolFeeSplitter is a singleton, so it simply uses its own address to disambiguate action
-        // identifiers.
-        Authentication(bytes32(uint256(address(this))))
+        SingletonAuthentication(protocolFeesWithdrawer.getProtocolFeesCollector().vault())
     {
         _protocolFeesWithdrawer = protocolFeesWithdrawer;
         _daoFundsRecipient = daoFundsRecipient;
-        _vault = protocolFeesWithdrawer.getProtocolFeesCollector().vault();
     }
 
     // Fund recipients
@@ -90,7 +84,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
     /// @inheritdoc IProtocolFeeSplitter
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external override {
-        (address pool, ) = _vault.getPool(poolId);
+        (address pool, ) = getVault().getPool(poolId);
         _require(msg.sender == Pool(pool).getOwner(), Errors.SENDER_NOT_ALLOWED);
 
         _poolSettings[poolId].beneficiary = newBeneficiary;
@@ -155,7 +149,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
     /// @inheritdoc IProtocolFeeSplitter
     function getAmounts(bytes32 poolId) external view override returns (uint256 beneficiaryAmount, uint256 daoAmount) {
-        (address pool, ) = _vault.getPool(poolId);
+        (address pool, ) = getVault().getPool(poolId);
         IERC20 bpt = IERC20(pool);
 
         return _getAmounts(bpt, poolId);
@@ -163,7 +157,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
     /// @inheritdoc IProtocolFeeSplitter
     function collectFees(bytes32 poolId) external override returns (uint256 beneficiaryAmount, uint256 daoAmount) {
-        (address pool, ) = _vault.getPool(poolId);
+        (address pool, ) = getVault().getPool(poolId);
         IERC20 bpt = IERC20(pool);
         address beneficiary = _poolSettings[poolId].beneficiary;
 
@@ -182,20 +176,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         return _protocolFeesWithdrawer;
     }
 
-    /// @inheritdoc IProtocolFeeSplitter
-    function getVault() external view override returns (IVault) {
-        return _vault;
-    }
-
     // Internal functions
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return _getAuthorizer().canPerform(actionId, account, address(this));
-    }
-
-    function _getAuthorizer() internal view returns (IAuthorizer) {
-        return _protocolFeesWithdrawer.getProtocolFeesCollector().getAuthorizer();
-    }
 
     function _withdrawBpt(
         IERC20 bpt,
