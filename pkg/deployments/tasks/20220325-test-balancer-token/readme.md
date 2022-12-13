@@ -4,5 +4,5 @@ Deployment of the `TestBalancerToken`, for replicating the BAL token's access co
 
 ## Useful Files
 
-- [Kovan testnet addresses](./output/kovan.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`TestBalancerToken` artifact](./artifact/TestBalancerToken.json)
