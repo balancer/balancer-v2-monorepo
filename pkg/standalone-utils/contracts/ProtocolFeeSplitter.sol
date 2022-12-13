@@ -270,7 +270,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, SingletonAuthentication {
         }
 
         // Is this pool from a factory with an overridden default? If so, use it.
-        (address poolAddress, ) = _vault.getPool(poolId);
+        (address poolAddress, ) = getVault().getPool(poolId);
 
         for (uint256 i = 0; i < _revenueShareFactoryOverrides.length(); i++) {
             (IERC20 factoryAddress, uint256 factoryDefaultRevenueSharePercentage) = _revenueShareFactoryOverrides
