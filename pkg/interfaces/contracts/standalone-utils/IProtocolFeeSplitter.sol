@@ -35,6 +35,7 @@ interface IProtocolFeeSplitter {
     );
 
     event PoolRevenueShareChanged(bytes32 indexed poolId, uint256 revenueSharePercentage);
+    event PoolRevenueShareCleared(bytes32 indexed poolId);
     event PoolBeneficiaryChanged(bytes32 indexed poolId, address newBeneficiary);
     event DefaultRevenueSharePercentageChanged(uint256 revenueSharePercentage);
     event DAOFundsRecipientChanged(address newDaoFundsRecipient);
@@ -72,7 +73,11 @@ interface IProtocolFeeSplitter {
     function getRevenueShareSettings(bytes32 poolId)
         external
         view
-        returns (uint256 revenueSharePercentageOverride, address beneficiary);
+        returns (
+            uint256 revenueSharePercentageOverride,
+            address beneficiary,
+            bool overrideSet
+        );
 
     /**
      * @dev Returns the default revenue share percentage a pool will receive, unless overridden by a call
@@ -96,6 +101,13 @@ interface IProtocolFeeSplitter {
      * @param revenueSharePercentage - the new revenue share percentage.
      */
     function setRevenueSharePercentage(bytes32 poolId, uint256 revenueSharePercentage) external;
+
+    /**
+     * @notice Allows an authorized user to change the revenueShare for a given pool.
+     * @dev This is a permissioned function.
+     * @param poolId - the poolId of the pool where the revenue share will change.
+     */
+    function clearRevenueSharePercentage(bytes32 poolId) external;
 
     // Permissionless fee collection functions
 

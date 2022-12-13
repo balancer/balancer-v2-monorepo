@@ -54,10 +54,11 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     uint256 private _defaultRevenueSharePercentage;
 
     // Packed to use 1 storage slot
-    // 1e18 (100% - maximum fee value) can fit in uint96
+    // 1e18 (100% - maximum fee value) can fit in uint88
     struct RevenueShareSettings {
-        uint96 revenueSharePercentageOverride;
+        uint88 revenueSharePercentageOverride;
         address beneficiary;
+        bool overrideSet;
     }
 
     // poolId => PoolSettings
@@ -104,11 +105,15 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         external
         view
         override
-        returns (uint256 revenueSharePercentageOverride, address beneficiary)
+        returns (
+            uint256 revenueSharePercentageOverride,
+            address beneficiary,
+            bool overrideSet
+        )
     {
         RevenueShareSettings memory settings = _poolSettings[poolId];
 
-        return (settings.revenueSharePercentageOverride, settings.beneficiary);
+        return (settings.revenueSharePercentageOverride, settings.beneficiary, settings.overrideSet);
     }
 
     /// @inheritdoc IProtocolFeeSplitter
@@ -130,9 +135,20 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     /// @inheritdoc IProtocolFeeSplitter
     function setRevenueSharePercentage(bytes32 poolId, uint256 revenueSharePercentage) external override authenticate {
         _require(revenueSharePercentage <= _MAX_REVENUE_SHARE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH);
-        _poolSettings[poolId].revenueSharePercentageOverride = uint96(revenueSharePercentage);
+        _poolSettings[poolId].revenueSharePercentageOverride = uint88(revenueSharePercentage);
+        _poolSettings[poolId].overrideSet = true;
 
         emit PoolRevenueShareChanged(poolId, revenueSharePercentage);
+    }
+
+    /**
+     * @notice Ignore any previously set revenue sharing percentage, and begin using the default.
+     * @param poolId - the poolId of the pool to begin using the default revenue share percentage.
+     */
+    function clearRevenueSharePercentage(bytes32 poolId) external override authenticate {
+        _poolSettings[poolId].overrideSet = false;
+
+        emit PoolRevenueShareCleared(poolId);
     }
 
     // Permissionless fee collection functions
@@ -228,13 +244,8 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     }
 
     function _getPoolBeneficiaryFeePercentage(bytes32 poolId) private view returns (uint256) {
-        uint256 poolFeeOverride = _poolSettings[poolId].revenueSharePercentageOverride;
+        RevenueShareSettings memory settings = _poolSettings[poolId];
 
-        if (poolFeeOverride == 0) {
-            // The 'zero' override is a sentinel value that stands for the default share percentage.
-            return _defaultRevenueSharePercentage;
-        } else {
-            return poolFeeOverride;
-        }
+        return settings.overrideSet ? settings.revenueSharePercentageOverride : _defaultRevenueSharePercentage;
     }
 }
