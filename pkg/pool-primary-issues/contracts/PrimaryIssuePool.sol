@@ -219,10 +219,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         require (postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
         emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
-        if (tokenOutAmt > 0) {
-            _currency.safeTransfer(address(getProtocolFeesCollector()), Math.mul(tokenOutAmt, _swapFee));
-        }
-        return Math.sub(tokenOutAmt, Math.mul(tokenOutAmt, _swapFee));        
+        // if (tokenOutAmt > 0) {
+        //     _currency.safeTransfer(address(getProtocolFeesCollector()), tokenOutAmt.mulDown(_swapFee));
+        // }
+        // return Math.sub(tokenOutAmt, tokenOutAmt.mulDown(_swapFee));
+        return tokenOutAmt;        
     }
 
     function _swapCurrencyIn(
@@ -241,9 +242,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
         emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
-        if (tokenOutAmt > 0) {
-            _currency.safeTransfer(address(getProtocolFeesCollector()), Math.mul(request.amount, _swapFee));
-        }
+        // if (tokenOutAmt > 0) {
+        //     _currency.safeTransfer(address(getProtocolFeesCollector()), request.amount.mulDown(_swapFee));
+        // }
         return tokenOutAmt;
     }
 
@@ -278,10 +279,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt, true);
         emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt);
-        if (tokenInAmt > 0) {
-            _currency.safeTransfer(address(getProtocolFeesCollector()), Math.mul(tokenInAmt, _swapFee));
-        }
-        Math.sub(tokenInAmt, Math.mul(tokenInAmt, _swapFee));
+        // if (tokenInAmt > 0) {
+        //     _currency.safeTransfer(address(getProtocolFeesCollector()), tokenInAmt.mulDown(_swapFee));
+        // }
+        // return Math.sub(tokenInAmt, tokenInAmt.mulDown(_swapFee));
+        return tokenInAmt;
     }
 
     function _swapCurrencyOut(
@@ -300,9 +302,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt, false);
         emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt);
-        if (tokenInAmt > 0) {
-            _currency.safeTransfer(address(getProtocolFeesCollector()), Math.mul(request.amount, _swapFee));
-        }
+        // if (tokenInAmt > 0) {
+        //     _currency.safeTransfer(address(getProtocolFeesCollector()), request.amount.mulDown(_swapFee));
+        // }
         return tokenInAmt;
     }
 
