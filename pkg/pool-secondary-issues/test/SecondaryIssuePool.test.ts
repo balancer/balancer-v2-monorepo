@@ -168,7 +168,7 @@ describe('SecondaryPool', function () {
 
       secondary_pool = await deployPool({ securityToken, currencyToken }, true);
 
-      await setBalances(pool, { securityBalance: fp(5), currencyBalance: fp(5), bptBalance: fp(0) });
+      await setBalances(pool, { securityBalance: fp(500), currencyBalance: fp(500), bptBalance: fp(0) });
       
       const poolId = await pool.getPoolId();
       currentBalances = (await pool.vault.getPoolTokens(poolId)).balances;
@@ -200,7 +200,7 @@ describe('SecondaryPool', function () {
     const eventEncodedData =  ethers.utils.defaultAbiCoder.decode(eventType,eventLogData);
     const counterPartyTx = {
       in: eventEncodedData.tokenInCounterparty == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  eventEncodedData.tokenInCounterparty == "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  eventEncodedData.tokenInCounterparty != "security" ? pool.securityIndex :  pool.currencyIndex,
       amount: 0,
       from: eventEncodedData.counterParty == lp.address ? lp : trader,
       balances: currentBalances,
@@ -208,7 +208,7 @@ describe('SecondaryPool', function () {
     };
     const partyDataTx = {
       in: eventEncodedData.tokenInParty == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  eventEncodedData.tokenInParty == "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  eventEncodedData.tokenInParty != "security" ? pool.securityIndex :  pool.currencyIndex,
       amount: 0,
       from: eventEncodedData.party == lp.address ? lp : trader,
       balances: currentBalances,
@@ -268,7 +268,7 @@ describe('SecondaryPool', function () {
 
     it('Market order: Sell Order@CMP > Buy Limit Order', async () => {
       const currencyTraded = mulDown(sell_qty,buy_price);
-      const securityTraded = divDown(currencyTraded, buy_price);
+      const securityTraded = divDown(buy_qty, buy_price);
       const sell_order = await pool.swapGivenIn({
         in: pool.securityIndex,
         out: pool.currencyIndex,
@@ -298,7 +298,7 @@ describe('SecondaryPool', function () {
 
     it('Market order: Sell Order@CMP > Buy Stop Order', async () => {
       const currencyTraded = mulDown(sell_qty,buy_price);
-      const securityTraded = divDown(currencyTraded, buy_price);
+      const securityTraded = divDown(buy_qty, buy_price);
       const sell_order = await pool.swapGivenIn({
         in: pool.securityIndex,
         out: pool.currencyIndex,
@@ -309,7 +309,7 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const buy_order = await pool.swapGivenOut({
+      const buy_order = await pool.swapGivenIn({
         in: pool.currencyIndex,
         out: pool.securityIndex,
         amount: buy_qty,
@@ -631,10 +631,10 @@ describe('SecondaryPool', function () {
     let sell_price: BigNumber;
 
     sharedBeforeEach('initialize values ', async () => {
-      sell_qty = fp(1); //qty
-      buy_qty = fp(1); //qty
-      buy_price = fp(5); // Buy price
-      sell_price = fp(3);
+      sell_qty = fp(20); //qty
+      buy_qty = fp(300); //qty
+      buy_price = fp(20); // Buy price
+      sell_price = fp(10);
     });
 
     it('Buy SWAP IN Currency Order > Sell SWAP IN Security Order', async () => {
@@ -740,7 +740,7 @@ describe('SecondaryPool', function () {
     it('Buy SWAP Out Security Order > Sell SWAP IN Security Order', async () => {
       sell_qty = fp(20);
       buy_qty = fp(50);
-      const securityTraded = sell_qty;
+      const securityTraded = buy_qty;
       const currencyTraded = mulDown(sell_qty, buy_price);
   
       const buy_order = await pool.swapGivenOut({
@@ -772,10 +772,8 @@ describe('SecondaryPool', function () {
     });
   
     it('Buy SWAP Out Security Order > Sell SWAP Out Security Order', async () => {
-      sell_qty = fp(1);
-      buy_qty = fp(1);
-      buy_price = fp(5);
-      sell_price = fp(3);
+      sell_qty = fp(200);
+      buy_qty = fp(5);
       const currencyTraded = mulDown(buy_qty, buy_price);
       const securityTraded = divDown(currencyTraded,buy_price);
   
@@ -958,10 +956,10 @@ describe('SecondaryPool', function () {
 
 
     sharedBeforeEach('initialize values ', async () => {
-      sell_qty = fp(10); //qty
-      buy_qty = fp(25); //qty
+      sell_qty = fp(20); //qty
+      buy_qty = fp(500); //qty
       buy_price = fp(25); // Buying price
-      sell_price = fp(12); // Selling price
+      sell_price = fp(20); // Selling price
       editedAmount = fp(12);
       editedPrice = fp(18);
     });
@@ -985,8 +983,8 @@ describe('SecondaryPool', function () {
 
       const edit_order = await ob.editOrder({
         ref: _ref[0].toString(),
-        price: editedPrice, //Changed price from 12[selling price] --> 18[buying price]
-        amount: editedAmount, //Changed Qty from 10[sell amount] --> 12[buy amount]
+        price: sell_qty, //Changed price from 20[selling price] --> 20[buying price]
+        amount: sell_price, //Changed Qty from 10[sell amount] --> 20[buy amount]
         from: lp
       });
 

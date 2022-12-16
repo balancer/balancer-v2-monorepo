@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-secondary/SecondaryPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-
+import "hardhat/console.sol";
 contract SecondaryIssuePool is BasePool, IGeneralPool {
     using SecondaryPoolUserData for bytes;
     using StringUtils for *;
@@ -153,22 +153,24 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                     if (request.tokenIn == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
                         emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                         ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, string(request.userData).stringToUint());
-                        ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
-                        uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
+                        // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
+                        string memory token = request.tokenIn == IERC20(_security) ? "security" : "currency";
+                        uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked(token)) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                         emit TradeReport(
                             tradeToReport.security,
                             keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.party : tradeToReport.counterparty,
                             keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.party : tradeToReport.counterparty,
-                            Math.div(keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount, amount, false),
+                            0,
+                            // Math.div(keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount, amount, false),
                             tradeToReport.price,
                             tradeToReport.currency,
                             amount,
                             "Pending",
                             tradeToReport.dt
                         );
-                        if(request.tokenIn==IERC20(_currency)){
-                            IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), Math.mul(amount, _swapFee));
-                        }
+                        // if(request.tokenIn==IERC20(_currency)){
+                        //     IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), Math.mul(amount, _swapFee));
+                        // }
                         return _downscaleDown(amount, scalingFactors[indexOut]);
                     }
                 }
@@ -176,22 +178,24 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                     if (request.tokenOut == IERC20(_security) || request.tokenOut == IERC20(_currency)) {
                         emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                         ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, string(request.userData).stringToUint());
-                        ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
-                        uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
+                        // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
+                        string memory token = request.tokenIn == IERC20(_security) ? "security" : "currency";
+                        uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked(token)) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                         emit TradeReport(
                             tradeToReport.security,
                             keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.party : tradeToReport.counterparty,
                             keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.party : tradeToReport.counterparty,
-                            Math.div(keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount, amount, false),
+                            0,
+                            // Math.div(keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount, amount, false),
                             tradeToReport.price,
                             tradeToReport.currency,
                             amount,
                             "Pending",
                             tradeToReport.dt
                         );
-                        if(request.tokenOut==IERC20(_security)){
-                            IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), Math.mul(amount, _swapFee));
-                        }
+                        // if(request.tokenOut==IERC20(_security)){
+                        //     IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), Math.mul(amount, _swapFee));
+                        // }
                         return _downscaleDown(amount, scalingFactors[indexIn]);
                     }
                 }
