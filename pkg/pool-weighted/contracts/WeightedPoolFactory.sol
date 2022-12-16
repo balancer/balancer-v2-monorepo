@@ -47,13 +47,11 @@ contract WeightedPoolFactory is BasePoolFactory {
      * @dev Deploys a new `WeightedPool`.
      */
     function create(
-        string memory name,
-        string memory symbol,
+        BaseCreationParams memory baseCreationParams,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         IRateProvider[] memory rateProviders,
-        uint256 swapFeePercentage,
-        address owner
+        uint256 swapFeePercentage
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -62,11 +60,11 @@ contract WeightedPoolFactory is BasePoolFactory {
                 abi.encode(
                     IBasePool.BasePoolParams({
                         vault: getVault(),
-                        name: name,
-                        symbol: symbol,
+                        name: baseCreationParams.name,
+                        symbol: baseCreationParams.symbol,
                         pauseWindowDuration: pauseWindowDuration,
                         bufferPeriodDuration: bufferPeriodDuration,
-                        owner: owner,
+                        owner: baseCreationParams.owner,
                         version: getPoolVersion()
                     }),
                     WeightedPool.NewPoolParams({

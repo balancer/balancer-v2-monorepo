@@ -37,13 +37,6 @@ import "../ExternalWeightedMath.sol";
  * to deploy the pool, passing in that contract address as the owner.
  */
 contract ManagedPoolFactory is BasePoolFactory {
-    struct ManagedPoolCreationParams {
-        string name;
-        string symbol;
-        address owner;
-        address[] assetManagers;
-    }
-
     IExternalWeightedMath private immutable _weightedMath;
     string private _poolVersion;
 
@@ -76,8 +69,9 @@ contract ManagedPoolFactory is BasePoolFactory {
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
     function create(
-        ManagedPoolCreationParams memory creationParams,
-        ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams
+        BaseCreationParams memory creationParams,
+        ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams,
+        address[] memory assetManagers
     ) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -96,7 +90,7 @@ contract ManagedPoolFactory is BasePoolFactory {
                     ManagedPool.ManagedPoolParams({
                         protocolFeeProvider: getProtocolFeePercentagesProvider(),
                         weightedMath: getWeightedMath(),
-                        assetManagers: creationParams.assetManagers
+                        assetManagers: assetManagers
                     }),
                     settingsParams
                 )

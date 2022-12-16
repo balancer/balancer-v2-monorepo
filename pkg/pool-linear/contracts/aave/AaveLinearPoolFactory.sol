@@ -110,13 +110,11 @@ contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Reen
      * @dev Deploys a new `AaveLinearPool` with a given protocolId.
      */
     function create(
-        string memory name,
-        string memory symbol,
+        BaseCreationParams memory baseCreationParams,
         IERC20 mainToken,
         IERC20 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
-        address owner,
         uint256 protocolId
     ) external nonReentrant returns (AaveLinearPool) {
         // We are going to deploy both an AaveLinearPool and an AaveLinearPoolRebalancer set as its Asset Manager, but
@@ -138,11 +136,11 @@ contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Reen
 
         IBasePool.BasePoolParams memory basePoolParams = IBasePool.BasePoolParams({
             vault: getVault(),
-            name: name,
-            symbol: symbol,
+            name: baseCreationParams.name,
+            symbol: baseCreationParams.symbol,
             pauseWindowDuration: pauseWindowDuration,
             bufferPeriodDuration: bufferPeriodDuration,
-            owner: owner,
+            owner: baseCreationParams.owner,
             version: getPoolVersion()
         });
 

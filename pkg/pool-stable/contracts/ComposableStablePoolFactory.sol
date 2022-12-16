@@ -49,15 +49,13 @@ contract ComposableStablePoolFactory is BasePoolFactory {
      * @dev Deploys a new `ComposableStablePool`.
      */
     function create(
-        string memory name,
-        string memory symbol,
+        BaseCreationParams memory baseCreationParams,
         IERC20[] memory tokens,
         uint256 amplificationParameter,
         IRateProvider[] memory rateProviders,
         uint256[] memory tokenRateCacheDurations,
         bool[] memory exemptFromYieldProtocolFeeFlags,
-        uint256 swapFeePercentage,
-        address owner
+        uint256 swapFeePercentage
     ) external returns (ComposableStablePool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -67,11 +65,11 @@ contract ComposableStablePoolFactory is BasePoolFactory {
                     abi.encode(
                         IBasePool.BasePoolParams({
                             vault: getVault(),
-                            name: name,
-                            symbol: symbol,
+                            name: baseCreationParams.name,
+                            symbol: baseCreationParams.symbol,
                             pauseWindowDuration: pauseWindowDuration,
                             bufferPeriodDuration: bufferPeriodDuration,
-                            owner: owner,
+                            owner: baseCreationParams.owner,
                             version: getPoolVersion()
                         }),
                         ComposableStablePool.NewPoolParams({

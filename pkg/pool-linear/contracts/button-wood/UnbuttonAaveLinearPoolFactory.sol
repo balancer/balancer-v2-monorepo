@@ -47,13 +47,11 @@ contract UnbuttonAaveLinearPoolFactory is BasePoolFactory {
      * @dev Deploys a new `UnbuttonAaveLinearPool`.
      */
     function create(
-        string memory name,
-        string memory symbol,
+        BaseCreationParams memory baseCreationParams,
         IUnbuttonToken mainToken,
         IUnbuttonToken wrappedToken,
         uint256 upperTarget,
-        uint256 swapFeePercentage,
-        address owner
+        uint256 swapFeePercentage
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -62,11 +60,11 @@ contract UnbuttonAaveLinearPoolFactory is BasePoolFactory {
                 abi.encode(
                     IBasePool.BasePoolParams({
                         vault: getVault(),
-                        name: name,
-                        symbol: symbol,
+                        name: baseCreationParams.name,
+                        symbol: baseCreationParams.symbol,
                         pauseWindowDuration: pauseWindowDuration,
                         bufferPeriodDuration: bufferPeriodDuration,
-                        owner: owner,
+                        owner: baseCreationParams.owner,
                         version: getPoolVersion()
                     }),
                     mainToken,

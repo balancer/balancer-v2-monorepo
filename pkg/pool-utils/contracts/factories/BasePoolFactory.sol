@@ -45,6 +45,12 @@ abstract contract BasePoolFactory is
     FactoryWidePauseWindow,
     Version
 {
+    struct BaseCreationParams {
+        string name;
+        string symbol;
+        address owner;
+    }
+
     IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
 
     mapping(address => bool) private _isPoolFromFactory;

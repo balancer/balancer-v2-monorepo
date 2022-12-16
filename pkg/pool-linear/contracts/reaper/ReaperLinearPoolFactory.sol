@@ -79,13 +79,11 @@ contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Re
      * @dev Deploys a new `ReaperLinearPool`.
      */
     function create(
-        string memory name,
-        string memory symbol,
+        BaseCreationParams memory baseCreationParams,
         IERC20 mainToken,
         IERC20 wrappedToken,
         uint256 upperTarget,
-        uint256 swapFeePercentage,
-        address owner
+        uint256 swapFeePercentage
     ) external nonReentrant returns (LinearPool) {
         // We are going to deploy both an ReaperLinearPool and an ReaperLinearPoolRebalancer set as its Asset Manager,
         // but this creates a circular dependency problem: the Pool must know the Asset Manager's address in order to
@@ -106,11 +104,11 @@ contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Re
 
         IBasePool.BasePoolParams memory basePoolParams = IBasePool.BasePoolParams({
             vault: getVault(),
-            name: name,
-            symbol: symbol,
+            name: baseCreationParams.name,
+            symbol: baseCreationParams.symbol,
             pauseWindowDuration: pauseWindowDuration,
             bufferPeriodDuration: bufferPeriodDuration,
-            owner: owner,
+            owner: baseCreationParams.owner,
             version: getPoolVersion()
         });
 

@@ -47,12 +47,10 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory {
      * @dev Deploys a new `LiquidityBootstrappingPool`.
      */
     function create(
-        string memory name,
-        string memory symbol,
+        BaseCreationParams memory baseCreationParams,
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFeePercentage,
-        address owner,
         bool swapEnabledOnStart
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
@@ -62,11 +60,11 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory {
                 abi.encode(
                     IBasePool.BasePoolParams({
                         vault: getVault(),
-                        name: name,
-                        symbol: symbol,
+                        name: baseCreationParams.name,
+                        symbol: baseCreationParams.symbol,
                         pauseWindowDuration: pauseWindowDuration,
                         bufferPeriodDuration: bufferPeriodDuration,
-                        owner: owner,
+                        owner: baseCreationParams.owner,
                         version: getPoolVersion()
                     }),
                     tokens,
