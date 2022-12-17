@@ -113,6 +113,18 @@
           "internalType": "uint256",
           "name": "secondaryOffer",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "currency",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "orderBook",
+          "type": "address"
         }
       ],
       "name": "Offer",
