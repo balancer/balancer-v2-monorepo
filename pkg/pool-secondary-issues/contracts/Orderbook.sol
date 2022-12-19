@@ -7,6 +7,7 @@ pragma experimental ABIEncoderV2;
 
 import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
+import "./interfaces/ISecondaryIssuePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -57,19 +58,33 @@ contract Orderbook is IOrder, ITrade, Ownable{
     uint256 private _bestUnfilledBid;
     uint256 private _bestUnfilledOffer;
 
-    address private immutable _security;
-    address private immutable _currency;
+    address private _security;
+    address private _currency;
     address payable private _balancerManager;
+    bytes32 private _poolId;
 
     event CallSwap( bool swapKindParty, string tokenInParty, address party, 
                     bool swapKindCounterparty, string tokenInCounterparty, address counterParty, uint256 swapId); 
 
     event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
 
-    constructor(address balancerManager, address security, address currency){        
+    constructor(address balancerManager, address security, address currency, address pool){        
         _balancerManager = payable(balancerManager);
         _security = security;
         _currency = currency;
+        _poolId = ISecondaryIssuePool(pool).getPoolId();  
+    }
+
+    function getPoolId() external override view returns(bytes32){
+        return _poolId;
+    }
+
+    function getSecurity() external override view returns (address) {
+        return _security;
+    }
+
+    function getCurrency() external override view returns (address) {
+        return _currency;
     }
 
     function newOrder(

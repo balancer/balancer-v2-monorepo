@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 
 interface ISecondaryIssuePool {
 
-    function getPoolId() external returns(bytes32);
+    function getPoolId() external view returns(bytes32);
 
     function initialize() external;
 
