@@ -72,7 +72,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         _balancerManager = payable(balancerManager);
         _security = security;
         _currency = currency;
-        _poolId = ISecondaryIssuePool(pool).getPoolId();  
+        _poolId = ISecondaryIssuePool(pool).getSecondaryPoolId();  
     }
 
     function getPoolId() external override view returns(bytes32){

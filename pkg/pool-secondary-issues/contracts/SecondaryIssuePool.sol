@@ -133,6 +133,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         return _MAX_TOKEN_BALANCE;
     }
 
+    function getSecondaryPoolId() external view returns(bytes32){
+        return getPoolId();
+    }
+
     function onSwap(
         SwapRequest memory request,
         uint256[] memory balances,
@@ -150,11 +154,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         (_bestUnfilledBid, _bestUnfilledOffer) = _orderbook.getBestTrade();
 
         if(request.userData.length!=0){
-            if(request.amount==0){
+            uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
+            if(tradeType_length==0){
                 if(request.kind == IVault.SwapKind.GIVEN_IN){
                     if (request.tokenIn == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
                         emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                        ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, string(request.userData).stringToUint());
+                        ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                         // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
                         string memory tokenName = request.tokenIn == IERC20(_security) ? "security" : "currency";
                         uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked(tokenName)) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
@@ -169,16 +174,16 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                             "Pending",
                             tradeToReport.dt
                         );
-                        // if(request.tokenIn==IERC20(_currency)){
-                        //     IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
-                        // }
+                        if(request.tokenIn==IERC20(_currency)){
+                             IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
+                        }
                         return _downscaleDown(amount, scalingFactors[indexOut]);
                     }
                 }
                 else if(request.kind == IVault.SwapKind.GIVEN_OUT) {
                     if (request.tokenOut == IERC20(_security) || request.tokenOut == IERC20(_currency)) {
                         emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                        ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, string(request.userData).stringToUint());
+                        ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                         // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
                         string memory tokenName = request.tokenIn == IERC20(_security) ? "security" : "currency";
                         uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked(tokenName)) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
@@ -193,15 +198,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                             "Pending",
                             tradeToReport.dt
                         );
-                        // if(request.tokenOut==IERC20(_security)){
-                        //     IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
-                        // }
+                        if(request.tokenOut==IERC20(_security)){
+                            IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
+                        }
                         return _downscaleDown(amount, scalingFactors[indexIn]);
                     }
                 }
             }
-            else{
-                uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
+            else{                
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
                 if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
                     params = IOrder.Params({
