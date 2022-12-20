@@ -201,18 +201,18 @@ describe('SecondaryPool', function () {
     const counterPartyTx = {
       in: eventEncodedData.tokenInCounterparty == "security" ? pool.securityIndex :  pool.currencyIndex,
       out:  eventEncodedData.tokenInCounterparty != "security" ? pool.securityIndex :  pool.currencyIndex,
-      amount: 0,
+      amount: eventEncodedData.swapId,
       from: eventEncodedData.counterParty == lp.address ? lp : trader,
       balances: currentBalances,
-      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(eventEncodedData.swapId.toString())), 
+      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('0'+eventEncodedData.swapId.toString())), 
     };
     const partyDataTx = {
       in: eventEncodedData.tokenInParty == "security" ? pool.securityIndex :  pool.currencyIndex,
       out:  eventEncodedData.tokenInParty != "security" ? pool.securityIndex :  pool.currencyIndex,
-      amount: 0,
+      amount: eventEncodedData.swapId,
       from: eventEncodedData.party == lp.address ? lp : trader,
       balances: currentBalances,
-      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(eventEncodedData.swapId.toString())),
+      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('0'+eventEncodedData.swapId.toString())),
     };
 
     const counterPartyAmount = eventEncodedData.swapKindCounterparty ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
@@ -224,7 +224,6 @@ describe('SecondaryPool', function () {
     const partyTradedAmount = partyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
     const orderName2 = partyOrder == "Sell" ? "Security Traded" : "Currency Traded";
     // console.log(orderName2,partyTradedAmount);
-
     expect(counterPartyAmount[0].toString()).to.be.equals(counterTradedAmount); 
     expect(partyAmount[0].toString()).to.be.equals(partyTradedAmount); 
   } 

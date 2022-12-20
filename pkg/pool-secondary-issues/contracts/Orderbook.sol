@@ -61,7 +61,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
     address private _security;
     address private _currency;
     address payable private _balancerManager;
-    bytes32 private _poolId;
+    address private _pool;
 
     event CallSwap( bool swapKindParty, string tokenInParty, address party, 
                     bool swapKindCounterparty, string tokenInCounterparty, address counterParty, uint256 swapId); 
@@ -72,10 +72,11 @@ contract Orderbook is IOrder, ITrade, Ownable{
         _balancerManager = payable(balancerManager);
         _security = security;
         _currency = currency;
-        _poolId = ISecondaryIssuePool(pool).getSecondaryPoolId();  
+        _pool = pool; 
     }
 
     function getPoolId() external override view returns(bytes32){
+        bytes32 _poolId = ISecondaryIssuePool(_pool).getPoolId();
         return _poolId;
     }
 

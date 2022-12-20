@@ -111,7 +111,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         _swapFee = tradeFeePercentage;
 
         _balancerManager = payable(owner);
-
         _orderbook = new Orderbook(_balancerManager, _security, _currency, address(this));
 
         emit Offer(_security, _MAX_TOKEN_BALANCE, _currency, address(_orderbook));
@@ -131,10 +130,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
 
     function getSecurityOffered() external view returns (uint256) {
         return _MAX_TOKEN_BALANCE;
-    }
-
-    function getSecondaryPoolId() external view returns(bytes32){
-        return getPoolId();
     }
 
     function onSwap(
@@ -174,9 +169,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                             "Pending",
                             tradeToReport.dt
                         );
-                        if(request.tokenIn==IERC20(_currency)){
-                             IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
-                        }
+                        // if(request.tokenIn==IERC20(_currency)){
+                        //     IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
+                        // }
                         return _downscaleDown(amount, scalingFactors[indexOut]);
                     }
                 }
@@ -198,9 +193,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                             "Pending",
                             tradeToReport.dt
                         );
-                        if(request.tokenOut==IERC20(_security)){
-                            IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
-                        }
+                        // if(request.tokenOut==IERC20(_security)){
+                        //     IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
+                        // }
                         return _downscaleDown(amount, scalingFactors[indexIn]);
                     }
                 }
