@@ -133,6 +133,7 @@ export default {
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
     let {
       tokens,
+      assetManagers,
       rateProviders,
       tokenRateCacheDurations,
       exemptFromYieldProtocolFeeFlags,
@@ -152,9 +153,11 @@ export default {
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!exemptFromYieldProtocolFeeFlags) exemptFromYieldProtocolFeeFlags = Array(tokens.length).fill(false);
     if (!version) version = 'test';
+    if (!assetManagers) assetManagers = Array(tokens.length+1).fill('0x0000000000000000000000000000000000000000');
 
     return {
       tokens,
+      assetManagers,
       rateProviders,
       tokenRateCacheDurations,
       exemptFromYieldProtocolFeeFlags,

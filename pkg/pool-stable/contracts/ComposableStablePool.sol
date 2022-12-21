@@ -76,6 +76,7 @@ contract ComposableStablePool is
         string name;
         string symbol;
         IERC20[] tokens;
+        address[] assetManagers;
         IRateProvider[] rateProviders;
         uint256[] tokenRateCacheDurations;
         bool[] exemptFromYieldProtocolFeeFlags;
@@ -94,7 +95,7 @@ contract ComposableStablePool is
             params.name,
             params.symbol,
             _insertSorted(params.tokens, IERC20(this)),
-            new address[](params.tokens.length + 1),
+            params.assetManagers,
             params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,

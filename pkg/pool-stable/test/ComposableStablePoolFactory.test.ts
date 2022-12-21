@@ -67,10 +67,12 @@ describe('ComposableStablePoolFactory', function () {
   });
 
   async function createPool(): Promise<Contract> {
+    let assetManagers: string[] = Array(tokens.length+1).fill('0x0000000000000000000000000000000000000000');
     const receipt = await factory.create(
       NAME,
       SYMBOL,
       tokens.addresses,
+      assetManagers,
       AMP,
       rateProviders,
       Array(tokens.length).fill(PRICE_RATE_CACHE_DURATION),

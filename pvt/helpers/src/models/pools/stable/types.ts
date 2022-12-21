@@ -122,6 +122,7 @@ export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
 
 export type RawStablePoolDeployment = {
   tokens?: TokenList;
+  assetManagers?: string[];
   swapFeePercentage?: BigNumberish;
   amplificationParameter?: BigNumberish;
   rateProviders?: Account[];
@@ -139,6 +140,7 @@ export type RawStablePoolDeployment = {
 
 export type StablePoolDeployment = {
   tokens: TokenList;
+  assetManagers: string[];
   swapFeePercentage: BigNumberish;
   amplificationParameter: BigNumberish;
   rateProviders: Account[];

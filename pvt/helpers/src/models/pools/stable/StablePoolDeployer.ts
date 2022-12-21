@@ -28,6 +28,7 @@ export default {
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
     const {
       tokens,
+      assetManagers,
       rateProviders,
       tokenRateCacheDurations,
       exemptFromYieldProtocolFeeFlags,
@@ -49,6 +50,7 @@ export default {
           name: NAME,
           symbol: SYMBOL,
           tokens: tokens.addresses,
+          assetManagers: assetManagers,
           rateProviders: TypesConverter.toAddresses(rateProviders),
           tokenRateCacheDurations,
           exemptFromYieldProtocolFeeFlags,
