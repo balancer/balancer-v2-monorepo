@@ -24,8 +24,8 @@ describe('SecondaryPool', function () {
         owner: SignerWithAddress,
         other: SignerWithAddress;
   
-  const maxCurrencyOffered = fp(100);
-  const maxSecurityOffered = fp(100);
+  const maxCurrencyOffered = fp(5);
+  const maxSecurityOffered = fp(5);
   const TOTAL_TOKENS = 3;
   const SCALING_FACTOR = fp(1);
   const _DEFAULT_MINIMUM_BPT = 1e6;
@@ -168,7 +168,7 @@ describe('SecondaryPool', function () {
 
       secondary_pool = await deployPool({ securityToken, currencyToken }, true);
 
-      await setBalances(pool, { securityBalance: fp(500), currencyBalance: fp(500), bptBalance: MAX_UINT112 });
+      await setBalances(pool, { securityBalance: fp(500), currencyBalance: fp(500), bptBalance: fp(0) });
       
       const poolId = await pool.getPoolId();
       currentBalances = (await pool.vault.getPoolTokens(poolId)).balances;
@@ -200,19 +200,19 @@ describe('SecondaryPool', function () {
     const eventEncodedData =  ethers.utils.defaultAbiCoder.decode(eventType,eventLogData);
     const counterPartyTx = {
       in: eventEncodedData.tokenInCounterparty == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  eventEncodedData.tokenInCounterparty == "security" ? pool.securityIndex :  pool.currencyIndex,
-      amount: 0,
+      out:  eventEncodedData.tokenInCounterparty != "security" ? pool.securityIndex :  pool.currencyIndex,
+      amount: eventEncodedData.swapId,
       from: eventEncodedData.counterParty == lp.address ? lp : trader,
       balances: currentBalances,
-      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(eventEncodedData.swapId.toString())), 
+      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('0'+eventEncodedData.swapId.toString())), 
     };
     const partyDataTx = {
       in: eventEncodedData.tokenInParty == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  eventEncodedData.tokenInParty == "security" ? pool.securityIndex :  pool.currencyIndex,
-      amount: 0,
+      out:  eventEncodedData.tokenInParty != "security" ? pool.securityIndex :  pool.currencyIndex,
+      amount: eventEncodedData.swapId,
       from: eventEncodedData.party == lp.address ? lp : trader,
       balances: currentBalances,
-      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(eventEncodedData.swapId.toString())),
+      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('0'+eventEncodedData.swapId.toString())),
     };
 
     const counterPartyAmount = eventEncodedData.swapKindCounterparty ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
@@ -224,7 +224,6 @@ describe('SecondaryPool', function () {
     const partyTradedAmount = partyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
     const orderName2 = partyOrder == "Sell" ? "Security Traded" : "Currency Traded";
     // console.log(orderName2,partyTradedAmount);
-
     expect(counterPartyAmount[0].toString()).to.be.equals(counterTradedAmount); 
     expect(partyAmount[0].toString()).to.be.equals(partyTradedAmount); 
   } 
@@ -268,7 +267,7 @@ describe('SecondaryPool', function () {
 
     it('Market order: Sell Order@CMP > Buy Limit Order', async () => {
       const currencyTraded = mulDown(sell_qty,buy_price);
-      const securityTraded = divDown(currencyTraded, buy_price);
+      const securityTraded = divDown(buy_qty, buy_price);
       const sell_order = await pool.swapGivenIn({
         in: pool.securityIndex,
         out: pool.currencyIndex,
@@ -290,7 +289,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
       }
@@ -298,7 +297,7 @@ describe('SecondaryPool', function () {
 
     it('Market order: Sell Order@CMP > Buy Stop Order', async () => {
       const currencyTraded = mulDown(sell_qty,buy_price);
-      const securityTraded = divDown(currencyTraded, buy_price);
+      const securityTraded = divDown(buy_qty, buy_price);
       const sell_order = await pool.swapGivenIn({
         in: pool.securityIndex,
         out: pool.currencyIndex,
@@ -309,7 +308,7 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const buy_order = await pool.swapGivenOut({
+      const buy_order = await pool.swapGivenIn({
         in: pool.currencyIndex,
         out: pool.securityIndex,
         amount: buy_qty,
@@ -320,7 +319,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
       }
@@ -379,7 +378,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -412,7 +411,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -446,7 +445,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -480,7 +479,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -514,7 +513,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -548,7 +547,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -582,7 +581,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -616,7 +615,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -637,7 +636,7 @@ describe('SecondaryPool', function () {
       sell_price = fp(10);
     });
 
-    it('Buy [Limit] SWAP IN Currency Order > Sell [Limit] SWAP IN Security Order [Consecutive Limit Order]', async () => {
+    it('Buy SWAP IN Currency Order > Sell SWAP IN Security Order', async () => {
       const securityTraded = divDown(buy_qty, buy_price);
       const currencyTraded = mulDown(securityTraded,buy_price);
 
@@ -662,7 +661,7 @@ describe('SecondaryPool', function () {
       });
 
       if (sell_order[1]) {
-        callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -696,7 +695,7 @@ describe('SecondaryPool', function () {
       });
 
       if (sell_order[1]) {
-        callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -730,7 +729,7 @@ describe('SecondaryPool', function () {
       });
 
       if (sell_order[1]) {
-        callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -740,7 +739,7 @@ describe('SecondaryPool', function () {
     it('Buy SWAP Out Security Order > Sell SWAP IN Security Order', async () => {
       sell_qty = fp(20);
       buy_qty = fp(50);
-      const securityTraded = sell_qty;
+      const securityTraded = buy_qty;
       const currencyTraded = mulDown(sell_qty, buy_price);
   
       const buy_order = await pool.swapGivenOut({
@@ -764,7 +763,7 @@ describe('SecondaryPool', function () {
       });
   
       if (sell_order[1]) {
-          callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+          await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
       else{
           console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -798,7 +797,7 @@ describe('SecondaryPool', function () {
       });
   
       if (sell_order[1]) {
-        callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -832,7 +831,7 @@ describe('SecondaryPool', function () {
       });
   
       if (sell_order[1]) {
-        callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -866,7 +865,7 @@ describe('SecondaryPool', function () {
       });
   
       if (sell_order[1]) {
-        callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -900,7 +899,7 @@ describe('SecondaryPool', function () {
       });
   
       if (sell_order[1]) {
-        callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
@@ -956,10 +955,10 @@ describe('SecondaryPool', function () {
 
 
     sharedBeforeEach('initialize values ', async () => {
-      sell_qty = fp(10); //qty
-      buy_qty = fp(25); //qty
+      sell_qty = fp(20); //qty
+      buy_qty = fp(500); //qty
       buy_price = fp(25); // Buying price
-      sell_price = fp(12); // Selling price
+      sell_price = fp(20); // Selling price
       editedAmount = fp(12);
       editedPrice = fp(18);
     });
@@ -983,8 +982,8 @@ describe('SecondaryPool', function () {
 
       const edit_order = await ob.editOrder({
         ref: _ref[0].toString(),
-        price: editedPrice, //Changed price from 12[selling price] --> 18[buying price]
-        amount: editedAmount, //Changed Qty from 10[sell amount] --> 12[buy amount]
+        price: sell_qty, //Changed price from 20[selling price] --> 20[buying price]
+        amount: sell_price, //Changed Qty from 10[sell amount] --> 20[buy amount]
         from: lp
       });
 
@@ -999,7 +998,7 @@ describe('SecondaryPool', function () {
       });
 
       if (buy_order[1]) {
-        callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }
       else{
         console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");

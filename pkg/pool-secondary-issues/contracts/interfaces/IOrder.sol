@@ -34,6 +34,12 @@ interface IOrder {
         uint256 price;
     }
 
+    function getPoolId() external view returns(bytes32);
+
+    function getSecurity() external view returns (address);
+
+    function getCurrency() external view returns (address);
+
     function getOrderRef() external view returns(bytes32[] memory);
 
     function cancelOrder(bytes32 ref) external;
@@ -47,4 +53,5 @@ interface IOrder {
     function tradeSettled(bytes32 partyRef, bytes32 counterpartyRef) external;
 
     function revertTrade(bytes32 _orderRef, uint256 _qty, IOrder.Order _order) external;
+    
 }
