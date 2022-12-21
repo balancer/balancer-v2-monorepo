@@ -466,7 +466,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
         }
     }
 
-    function getTrade(address _party, uint256 _timestamp) public view onlyOwner returns(ITrade.trade memory){
+    function getTrade(address _party, uint256 _timestamp) public view returns(ITrade.trade memory){
+        require(msg.sender==owner() || msg.sender==_party, "Unauthorized access to trades");
         return tradeRefs[_party][_timestamp];
     }
 
