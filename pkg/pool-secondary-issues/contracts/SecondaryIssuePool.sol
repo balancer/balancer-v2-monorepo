@@ -172,6 +172,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                         // if(request.tokenIn==IERC20(_currency)){
                         //     IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
                         // }
+                        _orderbook.removeTrade(request.from, request.amount);
                         return _downscaleDown(amount, scalingFactors[indexOut]);
                     }
                 }
@@ -196,6 +197,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                         // if(request.tokenOut==IERC20(_security)){
                         //     IERC20(_currency).safeTransfer(address(getProtocolFeesCollector()), amount.mulDown(_swapFee));
                         // }
+                        _orderbook.removeTrade(request.from, request.amount);
                         return _downscaleDown(amount, scalingFactors[indexIn]);
                     }
                 }

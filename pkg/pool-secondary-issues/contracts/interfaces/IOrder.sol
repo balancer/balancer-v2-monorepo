@@ -53,4 +53,5 @@ interface IOrder {
     function tradeSettled(bytes32 partyRef, bytes32 counterpartyRef) external;
 
     function revertTrade(bytes32 _orderRef, uint256 _qty, IOrder.Order _order) external;
+    
 }

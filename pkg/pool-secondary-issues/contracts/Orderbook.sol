@@ -54,6 +54,9 @@ contract Orderbook is IOrder, ITrade, Ownable{
     //order references from party to order timestamp
     mapping(address => mapping(uint256 => ITrade.trade)) private tradeRefs;
 
+    //mapping parties to trade time stamps
+    mapping(address => uint256[]) private trades;
+
     //order matching related    
     uint256 private _bestUnfilledBid;
     uint256 private _bestUnfilledOffer;
@@ -367,6 +370,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                                 orders[_bestBid].party, 
                                 _bidIndex
                             );
+                trades[orders[_ref].party].push(orders[_ref].dt);
+                trades[orders[_bestBid].party].push(orders[_ref].dt);
             }
             else if(_trade==IOrder.OrderType.Market){ 
                 checkLimitOrders(_ref, _trade);
@@ -451,6 +456,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                                 orders[_bestOffer].party, 
                                 _bidIndex
                             );                
+                trades[orders[_ref].party].push(orders[_ref].dt);
+                trades[orders[_bestOffer].party].push(orders[_ref].dt);
             }
             else if(_trade==IOrder.OrderType.Market){
                 checkLimitOrders(_ref, _trade);
@@ -461,6 +468,17 @@ contract Orderbook is IOrder, ITrade, Ownable{
 
     function getTrade(address _party, uint256 _timestamp) public view onlyOwner returns(ITrade.trade memory){
         return tradeRefs[_party][_timestamp];
+    }
+
+    function getTrades() public view returns(uint256[] memory){
+        return trades[msg.sender];
+    }
+
+    function removeTrade(address _party, uint256 _timestamp) public onlyOwner {
+        for(uint256 i=0; i<trades[_party].length; i++){
+            if(trades[_party][i]==_timestamp)
+                delete trades[_party][i];
+        }
     }
 
     function getBestTrade( ) public view onlyOwner returns(uint256, uint256){
