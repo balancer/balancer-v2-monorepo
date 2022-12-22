@@ -550,7 +550,6 @@ describe('PrimaryPool', function () {
       });
     });
 
-
     it('checks minimum price', async () => {
       expect(await pool.getminimumPrice()).to.equal(minimumPrice);
     });

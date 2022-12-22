@@ -245,6 +245,7 @@ export default class PrimaryPool extends BasePool{
   async swap(params: GeneralSwap): Promise<BigNumber> {
     const tx = await this.vault.generalSwap(params);
     const receipt = await (await tx).wait();
+    console.log("GAS USED", receipt.gasUsed.toString());
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
     return amount;
   }
