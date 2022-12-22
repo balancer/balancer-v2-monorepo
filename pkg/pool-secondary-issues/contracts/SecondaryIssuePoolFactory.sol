@@ -21,12 +21,12 @@ contract SecondaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     }
 
     function create(
-        string calldata _name,
-        string calldata _symbol,
-        address _security,
-        address _currency,
-        uint256 _maxAmountsIn,
-        uint256 _tradeFeePercentage
+        string calldata name,
+        string calldata symbol,
+        address security,
+        address currency,
+        uint256 maxAmountsIn,
+        uint256 tradeFeePercentage
     ) external returns (address) {
         
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
@@ -35,12 +35,12 @@ contract SecondaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
             _create(
                 abi.encode(  
                     getVault(),
-                    _name,
-                    _symbol,
-                    _security,
-                    _currency,
-                    _maxAmountsIn,
-                    _tradeFeePercentage,
+                    name,
+                    symbol,
+                    security,
+                    currency,
+                    maxAmountsIn,
+                    tradeFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     msg.sender

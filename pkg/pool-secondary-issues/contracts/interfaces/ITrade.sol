@@ -8,12 +8,6 @@ import "./IOrder.sol";
 
 interface ITrade {
 
-    /*enum DataType{ Bid, Offer, Trade, OpeningPrice }
-
-    enum ExecutionStatus { Fill, PartialFill }
-
-    enum SettlementType { STP, DP }*/
-
     struct trade{
         bytes32 partyRef;
         bool partySwapIn;

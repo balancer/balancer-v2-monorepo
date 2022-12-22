@@ -7,10 +7,6 @@ pragma experimental ABIEncoderV2;
 
 interface IPrimaryIssuePool {
 
-    function getPoolId() external returns(bytes32);
-
-    function initialize() external;
-
     function getSecurity() external view returns (address);
 
     function getCurrency() external view returns (address);
@@ -22,8 +18,6 @@ interface IPrimaryIssuePool {
     function getSecurityOffered() external view returns(uint256);
 
     function getIssueCutoffTime() external view returns(uint256);
-
-    function exit() external;
 
 }
 

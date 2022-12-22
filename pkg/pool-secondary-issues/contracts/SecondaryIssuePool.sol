@@ -29,21 +29,21 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
 
     Orderbook public _orderbook;
     
-    address private _security;
-    address private _currency;
+    address private immutable _security;
+    address private immutable _currency;
 
     uint256 private constant _TOTAL_TOKENS = 3; //Security token, Currency token (ie, paired token), Balancer pool token
 
     uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
 
     uint256 private _MAX_TOKEN_BALANCE;
-    uint256 private _swapFee;
+    uint256 private immutable _swapFee;
 
     uint256 private immutable _bptIndex;
     uint256 private immutable _securityIndex;
     uint256 private immutable _currencyIndex;
 
-    address payable private _balancerManager;
+    address payable immutable private _balancerManager;
     
     //order matching related    
     uint256 private _bestUnfilledBid;
@@ -111,13 +111,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         _swapFee = tradeFeePercentage;
 
         _balancerManager = payable(owner);
-        _orderbook = new Orderbook(_balancerManager, _security, _currency, address(this));
 
-        emit Offer(_security, _MAX_TOKEN_BALANCE, _currency, address(_orderbook));
-    }
+        _orderbook = new Orderbook(payable(owner), security, currency, address(this));
 
-    function getOrderbook() public view returns (Orderbook) {
-        return _orderbook;
+        emit Offer(security, maxSecurityOffered, currency, address(_orderbook));
     }
 
     function getSecurity() external view returns (address) {
@@ -151,47 +148,31 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         if(request.userData.length!=0){
             uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
             if(tradeType_length==0){
+                emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
+                ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
+                // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
+                bytes32 tradedInToken = keccak256(abi.encodePacked(tradeToReport.partyTokenIn));
+                bytes32 tokenName = keccak256(abi.encodePacked(request.tokenIn == IERC20(_security) ? "security" : "currency"));
+                uint256 amount = tradedInToken==tokenName ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
+                emit TradeReport(
+                    tradeToReport.security,
+                    tradedInToken==keccak256(abi.encodePacked("security")) ? tradeToReport.party : tradeToReport.counterparty,
+                    tradedInToken==keccak256(abi.encodePacked("currency")) ? tradeToReport.party : tradeToReport.counterparty,
+                    tradedInToken==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount.divDown(amount) : tradeToReport.counterpartyInAmount.divDown(amount),
+                    tradeToReport.price,
+                    tradeToReport.currency,
+                    amount,
+                    "Pending",
+                    tradeToReport.dt
+                );
+                _orderbook.removeTrade(request.from, request.amount);
                 if(request.kind == IVault.SwapKind.GIVEN_IN){
                     if (request.tokenIn == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
-                        emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                        ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
-                        // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
-                        string memory tokenName = request.tokenIn == IERC20(_security) ? "security" : "currency";
-                        uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked(tokenName)) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
-                        emit TradeReport(
-                            tradeToReport.security,
-                            keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.party : tradeToReport.counterparty,
-                            keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.party : tradeToReport.counterparty,
-                            keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount.divDown(amount) : tradeToReport.counterpartyInAmount.divDown(amount),
-                            tradeToReport.price,
-                            tradeToReport.currency,
-                            amount,
-                            "Pending",
-                            tradeToReport.dt
-                        );
-                        _orderbook.removeTrade(request.from, request.amount);
                         return _downscaleDown(amount, scalingFactors[indexOut]);
                     }
                 }
                 else if(request.kind == IVault.SwapKind.GIVEN_OUT) {
                     if (request.tokenOut == IERC20(_security) || request.tokenOut == IERC20(_currency)) {
-                        emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                        ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
-                        // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
-                        string memory tokenName = request.tokenIn == IERC20(_security) ? "security" : "currency";
-                        uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked(tokenName)) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
-                        emit TradeReport(
-                            tradeToReport.security,
-                            keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.party : tradeToReport.counterparty,
-                            keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.party : tradeToReport.counterparty,
-                            keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount.divDown(amount) : tradeToReport.counterpartyInAmount.divDown(amount),
-                            tradeToReport.price,
-                            tradeToReport.currency,
-                            amount,
-                            "Pending",
-                            tradeToReport.dt
-                        );
-                        _orderbook.removeTrade(request.from, request.amount);
                         return _downscaleDown(amount, scalingFactors[indexIn]);
                     }
                 }
@@ -243,8 +224,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         bytes memory userData
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //on initialization, pool simply premints max BPT supply possible
-        _require(sender == _balancerManager, Errors.INVALID_INITIALIZATION);
-        _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
+        address balancerManager = _balancerManager;
+        _require(sender == balancerManager, Errors.INVALID_INITIALIZATION);
+        _require(recipient == payable(balancerManager), Errors.INVALID_INITIALIZATION);
 
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
         uint256[] memory amountsIn = userData.joinKind();
@@ -281,11 +263,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
             //usually exit pool reverts
             _revert(Errors.UNHANDLED_BY_SECONDARY_POOL);
         } else {
-            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
+            (bptAmountIn, amountsOut) = _exit(balances, userData);
         }
     }
 
-    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
+    function _exit(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
@@ -321,10 +303,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](_TOTAL_TOKENS);
-        scalingFactors[_securityIndex] = FixedPoint.ONE;
-        scalingFactors[_currencyIndex] = FixedPoint.ONE;
-        scalingFactors[_bptIndex] = FixedPoint.ONE;
+        uint256 numTokens = _getMaxTokens();
+        uint256[] memory scalingFactors = new uint256[](numTokens);
+        for(uint256 i = 0; i < numTokens; i++) {
+            scalingFactors[i] = FixedPoint.ONE;
+        }
         return scalingFactors;
     }
+
 }

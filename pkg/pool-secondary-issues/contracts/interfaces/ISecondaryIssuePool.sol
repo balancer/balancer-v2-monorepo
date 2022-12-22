@@ -8,15 +8,11 @@ interface ISecondaryIssuePool {
 
     function getPoolId() external view returns(bytes32);
     
-    function initialize() external;
-
     function getSecurity() external view returns (address);
 
     function getCurrency() external view returns (address);
 
     function getSecurityOffered() external view returns(uint256);
-
-    function exit() external;
 
     function getOrderRef() external view returns(bytes32[] memory);
 
