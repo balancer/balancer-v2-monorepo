@@ -301,6 +301,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         securityTraded = orders[_bestBid].qty; // amount of security brought (tokenOut) is already there 
                     }
                     if(securityTraded >= orders[_ref].qty){
+                        securityTraded = orders[_ref].qty;
                         currencyTraded = orders[_ref].qty.mulDown(_bestBidPrice);
                         orders[_bestBid].qty = orders[_bestBid].tokenIn ==_currency &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_OUT ? 
                                                 Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, currencyTraded);
@@ -325,6 +326,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         currencyTraded = orders[_bestBid].qty; // amount of currency sent in (tokenIn) is already there
                     }
                     if(currencyTraded >= orders[_ref].qty){
+                        currencyTraded = orders[_ref].qty;
                         securityTraded = orders[_ref].qty.divDown(_bestBidPrice);
                         orders[_bestBid].qty = orders[_bestBid].tokenOut ==_security &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_IN ? 
                                                 Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, securityTraded);
@@ -387,6 +389,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         currencyTraded = orders[_bestOffer].qty; // amount of currency to take out (tokenOut) is already there 
                     }
                     if(currencyTraded >= orders[_ref].qty){
+                        currencyTraded = orders[_ref].qty;
                         securityTraded = orders[_ref].qty.divDown(_bestOfferPrice);
                         orders[_bestOffer].qty = orders[_bestOffer].tokenOut ==_currency &&  orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_OUT ? 
                                                 Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, securityTraded);
@@ -411,6 +414,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         securityTraded = orders[_bestOffer].qty; // amount of security sent in (tokenIn) is already there
                     }
                     if(securityTraded >= orders[_ref].qty){
+                        securityTraded = orders[_ref].qty;
                         currencyTraded = orders[_ref].qty.mulDown(_bestOfferPrice);
                         orders[_bestOffer].qty = orders[_bestOffer].tokenIn ==_security && orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_IN ? 
                                                  Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, currencyTraded);
