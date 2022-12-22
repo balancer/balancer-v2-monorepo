@@ -156,9 +156,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                 uint256 amount = tradedInToken==tokenName ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                 emit TradeReport(
                     tradeToReport.security,
-                    tradedInToken==keccak256(abi.encodePacked("security")) ? tradeToReport.party : tradeToReport.counterparty,
-                    tradedInToken==keccak256(abi.encodePacked("currency")) ? tradeToReport.party : tradeToReport.counterparty,
-                    tradedInToken==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount.divDown(amount) : tradeToReport.counterpartyInAmount.divDown(amount),
+                    tradedInToken=="security" ? tradeToReport.party : tradeToReport.counterparty,
+                    tradedInToken=="currency" ? tradeToReport.party : tradeToReport.counterparty,
+                    tradedInToken=="currency" ? tradeToReport.partyInAmount.divDown(amount) : tradeToReport.counterpartyInAmount.divDown(amount),
                     tradeToReport.price,
                     tradeToReport.currency,
                     amount,
