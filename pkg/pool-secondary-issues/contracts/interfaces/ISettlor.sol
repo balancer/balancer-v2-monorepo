@@ -9,31 +9,6 @@ import "./IOrder.sol";
 
 interface ISettlor {
 
-    //enum SettlementStatus { Confirm, Reject, Pending }
-
-    /*enum FeeType {  Regulatory, 
-                    Tax,
-                    Commission,
-                    ExchangeFees,
-                    Stamp,
-                    Levy,
-                    Other,
-                    Markup,
-                    ConsumptionTax,
-                    Transaction, 
-                    Conversion,
-                    Agent,
-                    TransferFee,
-                    SecurityLending,
-                    TradeReporting, 
-                    TaxPrincipalAmount,
-                    TaxAccruedInterest,
-                    NewIssuanceFee,
-                    ServiceFee,
-                    VAT,
-                    GST
-                    }*/
-    
     struct settlement{  address transferor;
                         address transferee;
                         address security;

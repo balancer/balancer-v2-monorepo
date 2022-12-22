@@ -132,7 +132,7 @@ export default class SecondaryPool extends BasePool{
   }
 
   async orderbook(): Promise<Orderbook>{
-    const ob = await deployedAt('pool-secondary-issues/Orderbook', this.instance.getOrderbook());
+    const ob = await deployedAt('pool-secondary-issues/Orderbook', this.instance._orderbook());
     const [balancerManager, security, currency] = await Promise.all([
       this.instance.getOwner(),
       this.instance.getSecurity(),
@@ -218,7 +218,7 @@ export default class SecondaryPool extends BasePool{
   async swap(params: GeneralSwap, eventEncoded: string): Promise<any> {
     const tx = await this.vault.generalSwap(params);
     const receipt = await (await tx).wait();
-    const orderbookAddress =  await this.instance.getOrderbook();
+    const orderbookAddress =  await this.instance._orderbook();
     // extracting eventEncoded from transaction log reciept
     const SecondaryPoolEvents = receipt.logs.filter((e)=> e.address == orderbookAddress);
     const swapEvent = eventEncoded ? SecondaryPoolEvents.filter((e) => e.topics[0] == eventEncoded): [];

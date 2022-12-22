@@ -486,7 +486,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         }
     }
 
-    function getBestTrade( ) public view onlyOwner returns(uint256, uint256){
+    function getBestTrade( ) public view returns(uint256, uint256){
         return (_bestUnfilledBid, _bestUnfilledOffer);
     }
 
@@ -494,8 +494,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         bytes32 _orderRef,
         uint256 _qty,
         Order _order
-    ) external override {
-        require(_balancerManager == msg.sender);
+    ) onlyOwner external override {
         require(_order == Order.Buy || _order == Order.Sell);
         orders[_orderRef].qty = orders[_orderRef].qty + _qty;
         orders[_orderRef].status = OrderStatus.Open;
@@ -509,8 +508,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         }
     }
 
-    function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) external override {
-        require(_balancerManager == msg.sender);
+    function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) onlyOwner external override {
         delete _userOrderRefs[orders[partyRef].party][_userOrderIndex[partyRef]];
         delete _userOrderIndex[partyRef];
         delete orders[partyRef];
@@ -526,8 +524,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
     function tradeSettled(
         bytes32 partyRef,
         bytes32 counterpartyRef
-    ) external override {
-        require(_balancerManager == msg.sender);
+    ) onlyOwner external override {
         orders[partyRef].status = OrderStatus.Filled;
         orders[counterpartyRef].status = OrderStatus.Filled;
     }

@@ -40,20 +40,20 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     uint256 private immutable _scalingFactorSecurity;
     uint256 private immutable _scalingFactorCurrency;
 
-    uint256 private _minPrice;
-    uint256 private _maxPrice;
-    uint256 private _swapFee;
+    uint256 private immutable _minPrice;
+    uint256 private immutable _maxPrice;
+    uint256 private immutable _swapFee;
 
-    uint256 private _MAX_TOKEN_BALANCE;
-    uint256 private _cutoffTime;
-    uint256 private _startTime;
+    uint256 private immutable _MAX_TOKEN_BALANCE;
+    uint256 private immutable _cutoffTime;
+    uint256 private immutable _startTime;
     string private _offeringDocs;
 
     uint256 private immutable _securityIndex;
     uint256 private immutable _currencyIndex;
     uint256 private immutable _bptIndex;
 
-    address private _balancerManager;
+    address private immutable _balancerManager;
 
     struct Params {
         uint256 fee;
@@ -62,7 +62,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     }
 
     event OpenIssue(address indexed security, uint256 openingPrice, address currency, uint256 securityOffered, uint256 cutoffTime, string offeringDocs);
-    event Subscription(address indexed security, address assetIn, string assetName, uint256 amount, address investor, uint256 price);
+    event Subscription(address indexed assetIn, address assetOut, string assetOutName, uint256 amount, address investor, uint256 price);
 
     constructor(
         IVault vault,
@@ -122,7 +122,12 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         //set owner
         _balancerManager = owner;     
 
-        emit OpenIssue(factoryPoolParams.security, _maxPrice, factoryPoolParams.currency, _MAX_TOKEN_BALANCE, _cutoffTime, _offeringDocs);
+        emit OpenIssue(factoryPoolParams.security, 
+                        factoryPoolParams.basePrice, 
+                        factoryPoolParams.currency, 
+                        factoryPoolParams.maxAmountsIn, 
+                        factoryPoolParams.cutOffTime, 
+                        factoryPoolParams.offeringDocs);
     }
 
     function getSecurity() external view override returns (IERC20) {
@@ -209,16 +214,21 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         Params memory params
     ) internal returns (uint256) {
         _require(request.tokenOut == _currency, Errors.INVALID_TOKEN);
+        
+        IERC20 security = _security;
+        IERC20 currency = _currency;
+        uint256 securityIndex = _securityIndex;
+        uint256 currencyIndex = _currencyIndex;
 
         // returning currency for current price of security paid in,
         // but only if new price of security do not go out of price band
-        uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], request.amount);
-        uint256 tokenOutAmt = Math.sub(balances[_currencyIndex], balances[_securityIndex].mulDown(balances[_currencyIndex].divDown(postPaidSecurityBalance)));
-        uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], tokenOutAmt);
-        
+        uint256 postPaidSecurityBalance = Math.add(balances[securityIndex], request.amount);
+        uint256 tokenOutAmt = Math.sub(balances[currencyIndex], balances[securityIndex].mulDown(balances[currencyIndex].divDown(postPaidSecurityBalance)));
+        uint256 postPaidCurrencyBalance = Math.sub(balances[currencyIndex], tokenOutAmt);
+        require (balances[currencyIndex] >= tokenOutAmt, "Insufficient currency balance");
         require (postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
-        emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
+        emit Subscription(address(security), address(currency), ERC20(address(security)).name(), request.amount, request.from, tokenOutAmt);
         return tokenOutAmt;        
     }
 
@@ -229,15 +239,20 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     ) internal returns (uint256) {
         _require(request.tokenOut == _security, Errors.INVALID_TOKEN);
 
+        IERC20 security = _security;
+        IERC20 currency = _currency;
+        uint256 securityIndex = _securityIndex;
+        uint256 currencyIndex = _currencyIndex;
+
         // returning security for currency paid in at current price of security,
         // but only if new price of security do not go out of price band
-        uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
-        uint256 tokenOutAmt = Math.sub(balances[_securityIndex], balances[_currencyIndex].mulDown(balances[_securityIndex].divDown(postPaidCurrencyBalance)));
-        uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], tokenOutAmt);
-
+        uint256 postPaidCurrencyBalance = Math.add(balances[currencyIndex], request.amount);
+        uint256 tokenOutAmt = Math.sub(balances[securityIndex], balances[currencyIndex].mulDown(balances[securityIndex].divDown(postPaidCurrencyBalance)));
+        uint256 postPaidSecurityBalance = Math.sub(balances[securityIndex], tokenOutAmt);
+        require (balances[securityIndex] >= tokenOutAmt, "Insufficient security balance");
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
-        emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
+        emit Subscription(address(currency), address(security), ERC20(address(currency)).name(), request.amount, request.from, tokenOutAmt);
         return tokenOutAmt;
     }
 
@@ -264,14 +279,19 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         _require(request.tokenIn == _currency, Errors.INVALID_TOKEN);
         require(request.amount < balances[_securityIndex], "Insufficient balance");
 
+        IERC20 security = _security;
+        IERC20 currency = _currency;
+        uint256 securityIndex = _securityIndex;
+        uint256 currencyIndex = _currencyIndex;
+
         //returning security to be swapped out for paid in currency
-        uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], request.amount);
-        uint256 tokenInAmt = Math.sub(balances[_securityIndex].mulDown(balances[_currencyIndex].divDown(postPaidSecurityBalance)), balances[_currencyIndex]);
-        uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenInAmt);
+        uint256 postPaidSecurityBalance = Math.sub(balances[securityIndex], request.amount);
+        uint256 tokenInAmt = Math.sub(balances[securityIndex].mulDown(balances[currencyIndex].divDown(postPaidSecurityBalance)), balances[currencyIndex]);
+        uint256 postPaidCurrencyBalance = Math.add(balances[currencyIndex], tokenInAmt);
 
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt, true);
-        emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt);
+        emit Subscription(address(currency), address(security), ERC20(address(currency)).name(), request.amount, request.from, tokenInAmt);
         return tokenInAmt;
     }
 
@@ -283,14 +303,19 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         _require(request.tokenIn == _security, Errors.INVALID_TOKEN);
         require(request.amount < balances[_currencyIndex], "Insufficient balance");
 
+        IERC20 security = _security;
+        IERC20 currency = _currency;
+        uint256 securityIndex = _securityIndex;
+        uint256 currencyIndex = _currencyIndex;
+
         //returning currency to be paid in for security paid in
-        uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], request.amount);
-        uint256 tokenInAmt = Math.sub(balances[_currencyIndex].mulDown(balances[_securityIndex].divDown(postPaidCurrencyBalance)), balances[_securityIndex]);
-        uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenInAmt);
+        uint256 postPaidCurrencyBalance = Math.sub(balances[currencyIndex], request.amount);
+        uint256 tokenInAmt = Math.sub(balances[currencyIndex].mulDown(balances[securityIndex].divDown(postPaidCurrencyBalance)), balances[securityIndex]);
+        uint256 postPaidSecurityBalance = Math.add(balances[securityIndex], tokenInAmt);
 
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt, false);
-        emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt);
+        emit Subscription(address(security), address(currency), ERC20(address(security)).name(), request.amount, request.from, tokenInAmt);
         return tokenInAmt;
     }
 
@@ -302,8 +327,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         bytes memory userData
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //the primary issue pool is initialized by the balancer manager contract
-        _require(sender == _balancerManager, Errors.INVALID_INITIALIZATION);
-        _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
+        address balancerManager = _balancerManager;
+        _require(sender == balancerManager, Errors.INVALID_INITIALIZATION);
+        _require(recipient == payable(balancerManager), Errors.INVALID_INITIALIZATION);
 
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
         uint256[] memory amountsIn = userData.joinKind();
@@ -339,11 +365,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //usually exit pool reverts
             _revert(Errors.UNHANDLED_BY_PRIMARY_POOL);
         } else {
-            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
+            (bptAmountIn, amountsOut) = _exit(balances, userData);
         }
     }
 
-    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
+    function _exit(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
@@ -362,10 +388,12 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         return (bptAmountIn, amountsOut);
     }
 
+    //inherited from Basepool
     function _getMaxTokens() internal pure override returns (uint256) {
         return _TOTAL_TOKENS;
     }
 
+    //also inherited from Basepool, why does the Basepool have two getters that return the same thing ? 
     function _getTotalTokens() internal view virtual override returns (uint256) {
         return _TOTAL_TOKENS;
     }
@@ -379,10 +407,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](_TOTAL_TOKENS);
-        scalingFactors[_securityIndex] = FixedPoint.ONE;
-        scalingFactors[_currencyIndex] = FixedPoint.ONE;
-        scalingFactors[_bptIndex] = FixedPoint.ONE;
+        uint256 numTokens = _getMaxTokens();
+        uint256[] memory scalingFactors = new uint256[](numTokens);
+        for(uint256 i = 0; i < numTokens; i++) {
+            scalingFactors[i] = FixedPoint.ONE;
+        }
         return scalingFactors;
     }
 }
