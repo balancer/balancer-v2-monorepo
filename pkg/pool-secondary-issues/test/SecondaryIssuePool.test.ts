@@ -366,21 +366,16 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const buy_order = await pool.swapGivenOut({
-        in: pool.currencyIndex,
-        out: pool.securityIndex,
-        amount: buy_qty,
-        from: trader,
-        balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
-        eventHash: encodedEventSignature
-      });
-
-      if (buy_order[1]) {
-        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+      if(buy_qty > sell_qty){
+        await expect( pool.swapGivenIn({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_qty,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          eventHash: encodedEventSignature
+        })).to.be.revertedWith('Insufficient liquidity')
       }
     });
 
@@ -399,21 +394,16 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const buy_order = await pool.swapGivenIn({
-        in: pool.currencyIndex,
-        out: pool.securityIndex,
-        amount: buy_qty,
-        from: trader,
-        balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
-        eventHash: encodedEventSignature
-      });
-
-      if (buy_order[1]) {
-        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+      if(buy_qty > sell_qty){
+        await expect( pool.swapGivenIn({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_qty,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          eventHash: encodedEventSignature
+        })).to.be.revertedWith('Insufficient liquidity')
       }
     });
 
@@ -423,7 +413,7 @@ describe('SecondaryPool', function () {
       const securityTraded = divDown(sell_qty,sell_price);
       const currencyTraded = mulDown(securityTraded,sell_price);
 
-      const sell_order = await pool.swapGivenOut({
+      const sell_order = await pool.swapGivenOut({ //Buy Currency or Sell Security
         in: pool.securityIndex,
         out: pool.currencyIndex,
         amount: sell_qty,
@@ -433,22 +423,36 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const buy_order = await pool.swapGivenOut({
-        in: pool.currencyIndex,
-        out: pool.securityIndex,
-        amount: buy_qty,
-        from: trader,
-        balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
-        eventHash: encodedEventSignature
-      });
-
-      if (buy_order[1]) {
-        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+      if(buy_qty > securityTraded)
+      {
+        await expect(pool.swapGivenOut({ //Buy Security or Sell Currency
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_qty,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          eventHash: encodedEventSignature
+        })).to.be.revertedWith("Insufficient liquidity");
       }
       else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+        const buy_order = await pool.swapGivenOut({ //Buy Security or Sell Currency
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_qty,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          eventHash: encodedEventSignature
+        });
+        if (buy_order[1]) {
+          await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        }
+        else{
+          console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+        }
       }
+      
     });
 
     it('Sell SWAP In Security Order > Buy SWAP OUT Security Order', async () => {
@@ -605,7 +609,7 @@ describe('SecondaryPool', function () {
       const securityTraded = buy_qty;
       const currencyTraded = mulDown(buy_qty,buy_price);
 
-      const buy_order = await pool.swapGivenOut({
+      const buy_order = await pool.swapGivenOut({ //Buy Security
         in: pool.currencyIndex,
         out: pool.securityIndex,
         amount: buy_qty,
@@ -615,22 +619,37 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const sell_order = await pool.swapGivenIn({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
-        amount: sell_qty,
-        from: trader,
-        balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), 
-        eventHash: encodedEventSignature
-      });
-
-      if (sell_order[1]) {
-        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+      if(sell_qty > securityTraded)
+      {
+        await expect(pool.swapGivenIn({ // Sell Security
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: sell_qty,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), 
+          eventHash: encodedEventSignature
+        })).to.be.revertedWith("Insufficient liquidity");
       }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+      else{ 
+        const sell_order = await pool.swapGivenIn({ // Sell Security
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: sell_qty,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), 
+          eventHash: encodedEventSignature
+        });
+  
+        if (sell_order[1]) {
+          await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+        }
+        else{
+          console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+        }
       }
+      
     });
 
     it('Buy[Limit] SWAP IN Currency Order > Sell [Stop] SWAP IN Security Order', async () => {
@@ -917,22 +936,37 @@ describe('SecondaryPool', function () {
         from: lp
       });
 
-      const buy_order = await pool.swapGivenIn({
-        in: pool.currencyIndex,
-        out: pool.securityIndex,
-        amount: buy_qty,
-        from: trader,
-        balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
-        eventHash: encodedEventSignature
-      });
-
-      if (buy_order[1]) {
-        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+      if(buy_qty > securityTraded)
+      {
+        await expect(pool.swapGivenIn({ 
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_qty,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          eventHash: encodedEventSignature
+        })).to.be.revertedWith("Insufficient liquidity");
       }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+      else {
+        const buy_order = await pool.swapGivenIn({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_qty,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          eventHash: encodedEventSignature
+        });
+  
+        if (buy_order[1]) {
+          await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+        }
+        else{
+          console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+        }
       }
+      
     });
   });
 
@@ -997,21 +1031,35 @@ describe('SecondaryPool', function () {
           balances: currentBalances, 
           data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(sell_data)), 
         });
-  
-        const buy_order = await pool.swapGivenOut({
-          in: pool.currencyIndex,
-          out: pool.securityIndex,
-          amount: fp(buy_qty),
-          from: trader,
-          balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(buy_data)), 
-          eventHash: encodedEventSignature
-        });
-  
-        if (buy_order[1]) {
-          await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
-        }
 
+        if(fp(buy_qty) > securityTraded && OrderType[buy_RandomOrderType] == "Market")
+        {
+          console.log("Tag n Revert");
+          await expect(pool.swapGivenOut({
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
+            amount: fp(buy_qty),
+            from: trader,
+            balances: currentBalances,
+            data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(buy_data)), 
+            eventHash: encodedEventSignature
+          })).to.be.revertedWith("Insufficient liquidity");
+        }
+        else {
+          const buy_order = await pool.swapGivenOut({
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
+            amount: fp(buy_qty),
+            from: trader,
+            balances: currentBalances,
+            data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(buy_data)), 
+            eventHash: encodedEventSignature
+          });
+    
+          if (buy_order[1]) {
+            await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+          }
+        }
       })
     });
     

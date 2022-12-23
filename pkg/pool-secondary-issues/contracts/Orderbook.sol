@@ -196,18 +196,19 @@ contract Orderbook is IOrder, ITrade, Ownable{
 
         for (uint256 i = 0; i < orderType.length; i++) {
             if(orderType[i] == 0) continue;
+            IOrder.order memory _order = orders[orderType[i]];
             if (_trade == IOrder.OrderType.Limit)
             {
-                buyPriceCondition = orders[orderType[i]].price >= orders[_ref].price;
-                sellPriceCondition = orders[orderType[i]].price <= orders[_ref].price;
+                buyPriceCondition = _order.price >= orders[_ref].price;
+                sellPriceCondition = _order.price <= orders[_ref].price;
             }
             else if(_trade == IOrder.OrderType.Stop)
             {
-                buyPriceCondition = orders[orderType[i]].price <= orders[_ref].price;
-                sellPriceCondition = orders[orderType[i]].price >= orders[_ref].price;
+                buyPriceCondition = _order.price <= orders[_ref].price;
+                sellPriceCondition = _order.price >= orders[_ref].price;
             }
-            if ((orders[orderType[i]].order == IOrder.Order.Buy && buyPriceCondition) ||
-                (orders[orderType[i]].order == IOrder.Order.Sell && sellPriceCondition)){
+            if ((_order.order == IOrder.Order.Buy && buyPriceCondition) ||
+                (_order.order == IOrder.Order.Sell && sellPriceCondition)){
                 _marketOrders.push(orderType[i]);
                 ref = orderType[i];
                 reorder(i, _trade);
