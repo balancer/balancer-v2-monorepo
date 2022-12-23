@@ -61,7 +61,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         uint256 executionDate
     );
 
-    event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
+    //event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
 
     event Offer(address indexed security, uint256 secondaryOffer, address currency, address orderBook);    
 
@@ -148,7 +148,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         if(request.userData.length!=0){
             uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
             if(tradeType_length==0){
-                emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
+                //emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                 // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
                 bytes32 tradedInToken = keccak256(abi.encodePacked(tradeToReport.partyTokenIn));
@@ -208,12 +208,16 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         else if (request.kind == IVault.SwapKind.GIVEN_OUT)
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
 
+        uint256 traded;
         if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
-            _orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
+            traded = _orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
-            _orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
+            traded = _orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
         }
+        if(params.trade == IOrder.OrderType.Market)
+            require(traded!=0, "Insufficient liquidity");
+        return traded;
     }
 
     function _onInitializePool(
