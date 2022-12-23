@@ -134,12 +134,12 @@ contract Orderbook is IOrder, ITrade, Ownable{
             orders[ref].status = IOrder.OrderStatus.Open;
             _limitOrderIndex[ref] = _limitOrders.length;
             _limitOrders.push(ref);
-            checkLimitOrders(ref, IOrder.OrderType.Limit);
+            checkLimitStopOrders(ref, IOrder.OrderType.Limit);
         } else if (_params.trade == IOrder.OrderType.Stop) {
             orders[ref].status = IOrder.OrderStatus.Open;
             _stopOrderIndex[ref] = _stopOrders.length;
             _stopOrders.push(ref);
-            checkStopOrders(ref, IOrder.OrderType.Stop);
+            checkLimitStopOrders(ref, IOrder.OrderType.Stop);
         }
     }
 
@@ -157,9 +157,9 @@ contract Orderbook is IOrder, ITrade, Ownable{
         orders[ref].price = _price;
         orders[ref].qty = _qty;
         if (orders[ref].otype == IOrder.OrderType.Limit) {
-            checkLimitOrders(ref, IOrder.OrderType.Limit);
+            checkLimitStopOrders(ref, IOrder.OrderType.Limit);
         } else if (orders[ref].otype == IOrder.OrderType.Stop) {
-            checkStopOrders(ref, IOrder.OrderType.Stop);
+            checkLimitStopOrders(ref, IOrder.OrderType.Stop);
         }        
     }
 
@@ -185,44 +185,41 @@ contract Orderbook is IOrder, ITrade, Ownable{
         delete _userOrderIndex[ref];
     }
 
-    //check if a buy order in the limit order book can execute over the prevailing (low) price passed to the function
-    //check if a sell order in the limit order book can execute under the prevailing (high) price passed to the function
-    function checkLimitOrders(bytes32 _ref, IOrder.OrderType _trade) private {
+    //check if a buy order in the limit/stoploss order book can execute over the prevailing (low: for limit order)/(high: for stoploss order) price passed to the function
+    //check if a sell order in the limit/stoploss order book can execute under the prevailing (high: for limit order)/(low: for stoploss order) price passed to the function
+  
+    function checkLimitStopOrders(bytes32 _ref, IOrder.OrderType _trade) private {
         bytes32 ref;
-        for (uint256 i = 0; i < _limitOrders.length; i++) {
-            if(_limitOrders[i] == 0) continue;
-            if ((orders[_limitOrders[i]].order == IOrder.Order.Buy && orders[_limitOrders[i]].price >= orders[_ref].price) ||
-                (orders[_limitOrders[i]].order == IOrder.Order.Sell && orders[_limitOrders[i]].price <= orders[_ref].price)){
-                _marketOrders.push(_limitOrders[i]);
-                ref = _limitOrders[i];
-                reorder(i, IOrder.OrderType.Limit);
+        bool buyPriceCondition;
+        bool sellPriceCondition;
+        bytes32[] memory orderType = _trade == IOrder.OrderType.Limit ? _limitOrders : _stopOrders;
+
+        for (uint256 i = 0; i < orderType.length; i++) {
+            if(orderType[i] == 0) continue;
+            if (_trade == IOrder.OrderType.Limit)
+            {
+                buyPriceCondition = orders[orderType[i]].price >= orders[_ref].price;
+                sellPriceCondition = orders[orderType[i]].price <= orders[_ref].price;
+            }
+            else if(_trade == IOrder.OrderType.Stop)
+            {
+                buyPriceCondition = orders[orderType[i]].price <= orders[_ref].price;
+                sellPriceCondition = orders[orderType[i]].price >= orders[_ref].price;
+            }
+            if ((orders[orderType[i]].order == IOrder.Order.Buy && buyPriceCondition) ||
+                (orders[orderType[i]].order == IOrder.Order.Sell && sellPriceCondition)){
+                _marketOrders.push(orderType[i]);
+                ref = orderType[i];
+                reorder(i, _trade);
                 if(_trade!=IOrder.OrderType.Market && ref!=_ref){
                 //only if the consecutive order is a limit order, it goes to the market order book
                     _marketOrders.push(_ref);
-                    reorder(_limitOrderIndex[_ref], IOrder.OrderType.Limit);
+                    reorder(
+                        _trade == IOrder.OrderType.Limit ? _limitOrderIndex[_ref] : _stopOrderIndex[_ref],
+                        _trade
+                    );
                 }        
-                matchOrders(ref, IOrder.OrderType.Limit);
-            } 
-        }
-    }
-    
-    //check if a buy order in the stoploss order book can execute under the prevailing (high) price passed to the function
-    //check if a sell order in the stoploss order book can execute over the prevailing (low) price passed to the function
-    function checkStopOrders(bytes32 _ref, IOrder.OrderType _trade) private {
-        bytes32 ref;
-        for (uint256 i = 0; i < _stopOrders.length; i++) {
-            if(_stopOrders[i] == 0) continue;
-            if ((orders[_stopOrders[i]].order == IOrder.Order.Buy && orders[_stopOrders[i]].price <= orders[_ref].price) ||
-                (orders[_stopOrders[i]].order == IOrder.Order.Sell && orders[_stopOrders[i]].price >= orders[_ref].price)){
-                _marketOrders.push(_stopOrders[i]);
-                ref = _stopOrders[i];
-                reorder(i, IOrder.OrderType.Stop);   
-                if(_trade!=IOrder.OrderType.Market && ref!=_ref){
-                    //only if the consecutive order is a stop loss order, it goes to the market order book
-                    _marketOrders.push(_ref);
-                    reorder(_stopOrderIndex[_ref], IOrder.OrderType.Stop);
-                }           
-                matchOrders(ref, IOrder.OrderType.Stop);
+                matchOrders(ref, _trade);
             } 
         }
     }
@@ -416,8 +413,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 return matchOrders(_ref, _trade);
             }
             else{
-                checkLimitOrders(_ref, _trade);
-                checkStopOrders(_ref, _trade);
+                checkLimitStopOrders(_ref, _trade);
+                checkLimitStopOrders(_ref, _trade);
             }
         }
     }
@@ -486,9 +483,9 @@ contract Orderbook is IOrder, ITrade, Ownable{
         if (orders[_orderRef].otype == IOrder.OrderType.Market) {
             matchOrders(_orderRef, IOrder.OrderType.Market);
         } else if (orders[_orderRef].otype == IOrder.OrderType.Limit) {
-            checkLimitOrders(_orderRef, IOrder.OrderType.Limit);
+            checkLimitStopOrders(_orderRef, IOrder.OrderType.Limit);
         } else if (orders[_orderRef].otype == IOrder.OrderType.Stop) {
-            checkStopOrders(_orderRef, IOrder.OrderType.Stop);
+            checkLimitStopOrders(_orderRef, IOrder.OrderType.Stop);
         }
     }
 

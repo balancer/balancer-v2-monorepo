@@ -276,7 +276,7 @@ describe('SecondaryPool', function () {
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Sell 10@Market Price
         eventHash: encodedEventSignature
       });
-
+      console.log("After Sell");
       const buy_order = await pool.swapGivenOut({
         in: pool.currencyIndex,
         out: pool.securityIndex,
@@ -286,7 +286,7 @@ describe('SecondaryPool', function () {
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // LimitOrder Buy 15@210
         eventHash: encodedEventSignature
       });
-
+      console.log("After BUY");
       if (buy_order[1]) {
         await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
       }else{
