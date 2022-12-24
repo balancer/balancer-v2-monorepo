@@ -216,7 +216,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
             traded = _orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
         }
         if(params.trade == IOrder.OrderType.Market)
-            require(traded!=0, "Insufficient liquidity");
+         {
+           require(traded!=0, "Insufficient liquidity");
+           traded = request.amount;
+         }
+         
+
         return traded;
     }
 
