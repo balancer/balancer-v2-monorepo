@@ -194,7 +194,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 _marketOrders.push(_limitOrders[i]);
                 ref = _limitOrders[i];
                 //reorder(i, IOrder.OrderType.Limit);
-                if(_trade!=IOrder.OrderType.Market && ref!=_ref){
+                if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Stop && ref!=_ref){
                 //only if the consecutive order is a limit order, it goes to the market order book
                     _marketOrders.push(_ref);
                     //reorder(_limitOrderIndex[_ref], IOrder.OrderType.Limit);
@@ -215,7 +215,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 _marketOrders.push(_stopOrders[i]);
                 ref = _stopOrders[i];
                 //reorder(i, IOrder.OrderType.Stop);   
-                if(_trade!=IOrder.OrderType.Market && ref!=_ref){
+                if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Limit && ref!=_ref){
                     //only if the consecutive order is a stop loss order, it goes to the market order book
                     _marketOrders.push(_ref);
                     //reorder(_stopOrderIndex[_ref], IOrder.OrderType.Stop);
@@ -263,6 +263,12 @@ contract Orderbook is IOrder, ITrade, Ownable{
         if(_trade==IOrder.OrderType.Market){
             checkLimitOrders(_ref, _trade);
             checkStopOrders(_ref, _trade);
+        }
+        else if(_trade==IOrder.OrderType.Limit){
+            checkStopOrders(_ref, _trade);
+        }
+        else if(_trade==IOrder.OrderType.Stop){
+            checkLimitOrders(_ref, _trade);
         }
         for(uint256 i=0; i<_marketOrders.length; i++){
             if(orders[_ref].order == IOrder.Order.Sell){
@@ -392,10 +398,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 }
             }
         }
-        //if(_trade==IOrder.OrderType.Market){
-            //delete _marketOrders[_marketOrderIndex[_ref]];
-            //delete _marketOrderIndex[_ref];
-        //}
+        delete _marketOrders;
     }
 
     function _matchOrders(bytes32 _ref) private returns(uint256, bytes32, uint256){
