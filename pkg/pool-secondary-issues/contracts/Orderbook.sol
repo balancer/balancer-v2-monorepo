@@ -39,8 +39,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
     //market order book
     bytes32[] private _marketOrders;
 
-    mapping(bytes32 => uint256) private _marketOrderIndex;
-
     //limit order book
     bytes32[] private _limitOrders;
 
@@ -127,7 +125,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
         _userOrderRefs[_request.from].push(ref);
         orders[ref].status = IOrder.OrderStatus.Open;
         if (_params.trade == IOrder.OrderType.Market) {
-            _marketOrderIndex[ref] = _marketOrders.length;
             _marketOrders.push(ref);
             return matchOrders(ref, IOrder.OrderType.Market);
         } else if (_params.trade == IOrder.OrderType.Limit) {
@@ -293,8 +290,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);
+                            reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             return currencyTraded;
                         }    
                         else{
@@ -303,8 +300,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_bestBid].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
-                            reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                             reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);
+                            reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }
                     }
                     else if(orders[_ref].tokenOut==_currency && orders[_ref].swapKind==IVault.SwapKind.GIVEN_OUT){
@@ -321,8 +318,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);
+                            reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             return securityTraded;
                         }    
                         else{
@@ -330,9 +327,9 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                             orders[_bestBid].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
-                            orders[_ref].status = IOrder.OrderStatus.PartlyFilled;                        
+                            orders[_ref].status = IOrder.OrderStatus.PartlyFilled;   
+                            reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);                     
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
-                            reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);
                         }
                     }
                 }
@@ -353,8 +350,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);
+                            reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             return securityTraded;
                         }    
                         else{
@@ -362,9 +359,9 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
-                            orders[_ref].status = IOrder.OrderStatus.PartlyFilled;                        
+                            orders[_ref].status = IOrder.OrderStatus.PartlyFilled;    
+                            reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);                    
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
-                            reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);
                         }                    
                     }
                     else if(orders[_ref].tokenOut==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_OUT){
@@ -381,8 +378,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);
+                            reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             return currencyTraded;
                         }    
                         else{
@@ -391,8 +388,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
-                            reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                             reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);
+                            reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }
                     }                
                 }
@@ -502,10 +499,15 @@ contract Orderbook is IOrder, ITrade, Ownable{
         orders[_orderRef].status = OrderStatus.Open;
         //push to order book
         if (orders[_orderRef].otype == IOrder.OrderType.Market) {
+            _marketOrders.push(_orderRef);
             matchOrders(_orderRef, IOrder.OrderType.Market);
         } else if (orders[_orderRef].otype == IOrder.OrderType.Limit) {
+            _limitOrderIndex[_orderRef] = _limitOrders.length;
+            _limitOrders.push(_orderRef);
             checkLimitOrders(_orderRef, IOrder.OrderType.Limit);
         } else if (orders[_orderRef].otype == IOrder.OrderType.Stop) {
+            _stopOrderIndex[_orderRef] = _stopOrders.length;
+            _stopOrders.push(_orderRef);
             checkStopOrders(_orderRef, IOrder.OrderType.Stop);
         }
     }

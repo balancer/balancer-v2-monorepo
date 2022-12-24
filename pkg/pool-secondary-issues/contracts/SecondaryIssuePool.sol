@@ -145,9 +145,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         IOrder.Params memory params;
         (_bestUnfilledBid, _bestUnfilledOffer) = _orderbook.getBestTrade();
 
+        //bytes32 otype;
+        //uint256 tp;
         if(request.userData.length!=0){
+            //(otype, tp) = abi.decode(request.userData, (bytes32, uint256));
             uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
             if(tradeType_length==0){
+            //if(otype.length==0){
                 //emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                 // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
@@ -165,7 +169,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                     "Pending",
                     tradeToReport.dt
                 );
-                _orderbook.removeTrade(request.from, request.amount);
+                //_orderbook.removeTrade(request.from, request.amount);
                 if(request.kind == IVault.SwapKind.GIVEN_IN){
                     if (request.tokenIn == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
                         return _downscaleDown(amount, scalingFactors[indexOut]);
@@ -177,12 +181,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                     }
                 }
             }
-            else{                
+            else{              
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
                 if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
                     params = IOrder.Params({
                         trade: otype=="Limit" ? IOrder.OrderType.Limit : IOrder.OrderType.Stop,
                         price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
+                        //price: tp
                     });
                 }
             }                  
@@ -208,16 +213,16 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         else if (request.kind == IVault.SwapKind.GIVEN_OUT)
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
 
-        uint256 traded;
+        uint256 tp;
         if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
-            traded = _orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
+            tp = _orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
-            traded = _orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
+            tp = _orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
         }
         if(params.trade == IOrder.OrderType.Market)
-            require(traded!=0, "Insufficient liquidity");
-        return traded;
+            require(tp!=0, "Insufficient liquidity");
+        return tp;
     }
 
     function _onInitializePool(
