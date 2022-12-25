@@ -45,23 +45,17 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
 
     address payable immutable private _balancerManager;
     
-    //order matching related    
-    uint256 private _bestUnfilledBid;
-    uint256 private _bestUnfilledOffer;
-
     event TradeReport(
         address indexed security,
         address party,
         address counterparty,
         uint256 price,
-        uint256 askprice,
         address currency,
         uint256 amount,
-        bytes32 status,
         uint256 executionDate
     );
 
-    //event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
+    event OrderBook(address tokenIn, address tokenOut, uint256 amountOffered, uint256 priceOffered);
 
     event Offer(address indexed security, uint256 secondaryOffer, address currency, address orderBook);    
 
@@ -143,16 +137,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         
         uint256[] memory scalingFactors = _scalingFactors();
         IOrder.Params memory params;
-        (_bestUnfilledBid, _bestUnfilledOffer) = _orderbook.getBestTrade();
 
-        //bytes32 otype;
-        //uint256 tp;
+        bytes32 otype;
+        uint256 tp;
         if(request.userData.length!=0){
-            //(otype, tp) = abi.decode(request.userData, (bytes32, uint256));
-            uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
-            if(tradeType_length==0){
-            //if(otype.length==0){
-                //emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
+            //(otype, tp) = abi.decode(request.userData, (bytes32, uint256)); //uncomment for abicoder.decode
+            tp = string(request.userData).substring(0,1).stringToUint(); //comment for abicoder.decode
+            if(tp==0){ //comment for abicoder.decode
+            //if(otype.length==0){ //uncomment for abicoder.decode                
                 ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                 // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
                 bytes32 tradedInToken = keccak256(abi.encodePacked(tradeToReport.partyTokenIn));
@@ -162,11 +154,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                     tradeToReport.security,
                     tradedInToken=="security" ? tradeToReport.party : tradeToReport.counterparty,
                     tradedInToken=="currency" ? tradeToReport.party : tradeToReport.counterparty,
-                    tradedInToken=="currency" ? tradeToReport.partyInAmount.divDown(amount) : tradeToReport.counterpartyInAmount.divDown(amount),
                     tradeToReport.price,
                     tradeToReport.currency,
                     amount,
-                    "Pending",
                     tradeToReport.dt
                 );
                 //_orderbook.removeTrade(request.from, request.amount);
@@ -182,13 +172,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                 }
             }
             else{              
-                bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
-                if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
+                otype = string(request.userData).substring(1, tp + 1).stringToBytes32(); //comment for abicoder.decode
+                if(otype!="" && tp!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
                     params = IOrder.Params({
                         trade: otype=="Limit" ? IOrder.OrderType.Limit : IOrder.OrderType.Stop,
-                        price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
-                        //price: tp
-                    });
+                        price: string(request.userData).substring(tp, request.userData.length).stringToUint() //comment for abicoder.decode
+                        //price: tp //uncomment for abicoder.decode
+                    });                    
                 }
             }                  
         }else{ //by default, any order without price specified is a market order
@@ -196,14 +186,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                 //it is a buy (bid), so need the best offer by a counter party
                 params = IOrder.Params({
                     trade: IOrder.OrderType.Market,
-                    price: _bestUnfilledOffer
+                    price: 0
                 });
             }
             else {
                 //it is a sell (offer), so need the best bid by a counter party
                 params = IOrder.Params({
                     trade: IOrder.OrderType.Market,
-                    price: _bestUnfilledBid
+                    price: 0
                 });
             }
         }
@@ -213,16 +203,18 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         else if (request.kind == IVault.SwapKind.GIVEN_OUT)
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
 
-        uint256 tp;
+        emit OrderBook(address(request.tokenIn), address(request.tokenOut), request.amount, params.price);
+
         if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
             tp = _orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
             tp = _orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
         }
-        if(params.trade == IOrder.OrderType.Market)
+        if(params.trade == IOrder.OrderType.Market){
             require(tp!=0, "Insufficient liquidity");
-        return tp;
+            return tp;
+        }
     }
 
     function _onInitializePool(

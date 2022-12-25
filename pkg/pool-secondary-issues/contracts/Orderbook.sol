@@ -55,10 +55,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
     //mapping parties to trade time stamps
     mapping(address => uint256[]) private trades;
 
-    //order matching related    
-    uint256 private _bestUnfilledBid;
-    uint256 private _bestUnfilledOffer;
-
     address private _security;
     address private _currency;
     address payable private _balancerManager;
@@ -130,11 +126,11 @@ contract Orderbook is IOrder, ITrade, Ownable{
         } else if (_params.trade == IOrder.OrderType.Limit) {
             _limitOrderIndex[ref] = _limitOrders.length;
             _limitOrders.push(ref);
-            checkLimitOrders(ref, IOrder.OrderType.Limit);
+            matchOrders(ref, IOrder.OrderType.Limit);
         } else if (_params.trade == IOrder.OrderType.Stop) {
             _stopOrderIndex[ref] = _stopOrders.length;
             _stopOrders.push(ref);
-            checkStopOrders(ref, IOrder.OrderType.Stop);
+            matchOrders(ref, IOrder.OrderType.Stop);
         }
     }
 
@@ -182,44 +178,42 @@ contract Orderbook is IOrder, ITrade, Ownable{
 
     //check if a buy order in the limit order book can execute over the prevailing (low) price passed to the function
     //check if a sell order in the limit order book can execute under the prevailing (high) price passed to the function
-    function checkLimitOrders(bytes32 _ref, IOrder.OrderType _trade) private {
-        bytes32 ref;
+    function checkLimitOrders(bytes32 _ref, IOrder.OrderType _trade) private returns (uint256){
+        //bytes32 ref;
+        uint256 volume;
         for (uint256 i = 0; i < _limitOrders.length; i++) {
             if(_limitOrders[i] == 0) continue;
-            if ((orders[_limitOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell && orders[_limitOrders[i]].price >= orders[_ref].price) ||
-                (orders[_limitOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy && orders[_limitOrders[i]].price <= orders[_ref].price)){
+            if ((orders[_limitOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell && orders[_limitOrders[i]].price >= orders[_ref].price || orders[_ref].price==0) ||
+                (orders[_limitOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy && orders[_limitOrders[i]].price <= orders[_ref].price || orders[_ref].price==0)){
                 _marketOrders.push(_limitOrders[i]);
-                ref = _limitOrders[i];
-                //reorder(i, IOrder.OrderType.Limit);
-                if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Stop && ref!=_ref){
+                volume = Math.add(volume, orders[_limitOrders[i]].price.mulDown(orders[_limitOrders[i]].qty));
+                if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Stop && _limitOrders[i]!=_ref){
                 //only if the consecutive order is a limit order, it goes to the market order book
                     _marketOrders.push(_ref);
-                    //reorder(_limitOrderIndex[_ref], IOrder.OrderType.Limit);
-                    matchOrders(ref, IOrder.OrderType.Limit);
-                }        
+                }                      
             } 
         }
+        return volume;  
     }
     
     //check if a buy order in the stoploss order book can execute under the prevailing (high) price passed to the function
     //check if a sell order in the stoploss order book can execute over the prevailing (low) price passed to the function
-    function checkStopOrders(bytes32 _ref, IOrder.OrderType _trade) private {
-        bytes32 ref;
+    function checkStopOrders(bytes32 _ref, IOrder.OrderType _trade) private returns (uint256){
+        //bytes32 ref;
+        uint256 volume;
         for (uint256 i = 0; i < _stopOrders.length; i++) {
             if(_stopOrders[i] == 0) continue;
-            if ((orders[_stopOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell && orders[_stopOrders[i]].price <= orders[_ref].price) ||
-                (orders[_stopOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy && orders[_stopOrders[i]].price >= orders[_ref].price)){
+            if ((orders[_stopOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell && orders[_stopOrders[i]].price <= orders[_ref].price || orders[_ref].price==0) ||
+                (orders[_stopOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy && orders[_stopOrders[i]].price >= orders[_ref].price || orders[_ref].price==0)){
                 _marketOrders.push(_stopOrders[i]);
-                ref = _stopOrders[i];
-                //reorder(i, IOrder.OrderType.Stop);   
-                if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Limit && ref!=_ref){
+                volume = Math.add(volume, orders[_stopOrders[i]].price.mulDown(orders[_stopOrders[i]].qty));
+                if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Limit && _stopOrders[i]!=_ref){
                     //only if the consecutive order is a stop loss order, it goes to the market order book
                     _marketOrders.push(_ref);
-                    //reorder(_stopOrderIndex[_ref], IOrder.OrderType.Stop);
-                    matchOrders(ref, IOrder.OrderType.Stop);
                 }           
             } 
         }
+        return volume;
     }
 
     function reorder(uint256 position, IOrder.OrderType list) private {
@@ -257,17 +251,21 @@ contract Orderbook is IOrder, ITrade, Ownable{
         uint256 _bidIndex = 0;   
         uint256 securityTraded;
         uint256 currencyTraded;
+        uint256 i;
+        //check if enough market volume exist to fulfil market orders, or if market depth is zero
+        i = checkLimitOrders(_ref, _trade);
+        i = Math.add(i, checkStopOrders(_ref, _trade));
         if(_trade==IOrder.OrderType.Market){
-            checkLimitOrders(_ref, _trade);
-            checkStopOrders(_ref, _trade);
+            if(i < orders[_ref].qty)
+                return 0;
         }
-        else if(_trade==IOrder.OrderType.Limit){
-            checkStopOrders(_ref, _trade);
+        else if(_trade==IOrder.OrderType.Limit || _trade==IOrder.OrderType.Stop){
+            if(i==0)
+                return 0;
         }
-        else if(_trade==IOrder.OrderType.Stop){
-            checkLimitOrders(_ref, _trade);
-        }
-        for(uint256 i=0; i<_marketOrders.length; i++){
+        //if market depth exists, then fill order at one or more price points in the order book
+        for(i=0; i<_marketOrders.length; i++){
+        //while(orders[_ref].qty>0 || i>0){ //to do : check if these conditions are correct, especially if i goes down to 0 for limit/stop orders ?
             if(orders[_ref].order == IOrder.Order.Sell){
                 (_bestBidPrice, _bestBid, _bidIndex) = _matchOrders(_ref);
             }
@@ -297,6 +295,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         else{
                             currencyTraded = securityTraded.mulDown(_bestBidPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
+                            //i = Math.sub(i, currencyTraded);
                             orders[_bestBid].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
@@ -325,6 +324,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         else{
                             securityTraded = currencyTraded.divDown(_bestBidPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
+                            //i = Math.sub(i, securityTraded);
                             orders[_bestBid].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;   
@@ -357,6 +357,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         else{
                             securityTraded = currencyTraded.divDown(_bestOfferPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
+                            //i = Math.sub(i, securityTraded);
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;    
@@ -385,6 +386,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         else{
                             currencyTraded = securityTraded.mulDown(_bestOfferPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
+                            //i = Math.sub(i, currencyTraded);
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
@@ -398,7 +400,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         delete _marketOrders;
     }
 
-    function _matchOrders(bytes32 _ref) private returns(uint256, bytes32, uint256){
+    function _matchOrders(bytes32 _ref) private view returns(uint256, bytes32, uint256){
         bytes32 _bestBid;
         uint256 _bestBidPrice = 0;
         bytes32 _bestOffer;
@@ -414,7 +416,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 if (orders[_marketOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price > _bestBidPrice || _bestBidPrice == 0) {
-                            _bestUnfilledBid = _bestBidPrice;
                             _bestBidPrice = orders[_marketOrders[i]].otype == OrderType.Market ? orders[_ref].price : orders[_marketOrders[i]].price; // Case: If CP price = 0, CP price = Party's price 
                             _bestBid = _orderRefs[i];
                             _bidIndex = i;
@@ -425,7 +426,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
                     // orders[_ref].price == 0 condition check for Market Order with 0 Price
                     if (orders[_marketOrders[i]].price <= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
-                            _bestUnfilledOffer = _bestOfferPrice;
                             _bestOfferPrice = orders[_marketOrders[i]].otype == OrderType.Market ? orders[_ref].price : orders[_marketOrders[i]].price; // Case: If CP price = 0, CP price = Party's price 
                             _bestOffer = _orderRefs[i];
                             _bidIndex = i;
@@ -483,10 +483,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
             if(trades[_party][i]==_timestamp)
                 delete trades[_party][i];
         }
-    }
-
-    function getBestTrade( ) public view returns(uint256, uint256){
-        return (_bestUnfilledBid, _bestUnfilledOffer);
     }
 
     function revertTrade(
