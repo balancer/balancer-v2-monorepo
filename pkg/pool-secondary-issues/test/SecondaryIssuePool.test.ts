@@ -222,12 +222,12 @@ describe('SecondaryPool', function () {
     const counterPartyAmount = eventEncodedData.swapKindCounterparty ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
     const counterTradedAmount = counterPartyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
     const orderName = counterPartyOrder == "Sell" ? "Security Traded" : "Currency Traded";
-    console.log(orderName,counterTradedAmount);
+    // console.log(orderName,counterTradedAmount);
     
     const partyAmount = eventEncodedData.swapKindParty ?  await pool.swapGivenIn(partyDataTx) :  await pool.swapGivenOut(partyDataTx);
     const partyTradedAmount = partyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
     const orderName2 = partyOrder == "Sell" ? "Security Traded" : "Currency Traded";
-    console.log(orderName2,partyTradedAmount);
+    // console.log(orderName2,partyTradedAmount);
     expect(counterPartyAmount[0].toString()).to.be.equals(counterTradedAmount); 
     if(partyOrderType != "Market")
       expect(partyAmount[0].toString()).to.be.equals(partyTradedAmount); 
