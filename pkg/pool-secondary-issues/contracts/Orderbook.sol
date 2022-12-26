@@ -14,7 +14,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IPoolSwapStructs.sol";
-
+import "hardhat/console.sol";
 contract Orderbook is IOrder, ITrade, Ownable{
     using FixedPoint for uint256;
 
@@ -187,6 +187,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 (orders[_limitOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy && orders[_limitOrders[i]].price <= orders[_ref].price || orders[_ref].price==0)){
                 _marketOrders.push(_limitOrders[i]);
                 volume = Math.add(volume, orders[_limitOrders[i]].price.mulDown(orders[_limitOrders[i]].qty));
+                console.log("In limit order",volume);
                 if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Stop && _limitOrders[i]!=_ref){
                 //only if the consecutive order is a limit order, it goes to the market order book
                     _marketOrders.push(_ref);
@@ -255,6 +256,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         //check if enough market volume exist to fulfil market orders, or if market depth is zero
         i = checkLimitOrders(_ref, _trade);
         i = Math.add(i, checkStopOrders(_ref, _trade));
+        console.log("Total Vol", i);
         if(_trade==IOrder.OrderType.Market){
             if(i < orders[_ref].qty)
                 return 0;
@@ -271,6 +273,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
             }
             else{
                 (_bestOfferPrice, _bestOffer, _bidIndex) = _matchOrders(_ref);
+                console.log("check in else ",_bestOfferPrice, _bidIndex,orders[_bestOffer].qty);
             }
             if (orders[_ref].order == IOrder.Order.Sell) {               
                 if (_bestBid != "") {
@@ -370,8 +373,10 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             securityTraded = orders[_bestOffer].qty.divDown(_bestOfferPrice); // calculating amount of security that needs to be sent in to take out currency (tokenOut)
                         } else if(orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
                             securityTraded = orders[_bestOffer].qty; // amount of security sent in (tokenIn) is already there
+                            console.log("Hey",securityTraded);
                         }
                         if(securityTraded >= orders[_ref].qty){
+                            console.log(securityTraded,orders[_ref].qty,_bestOfferPrice);
                             securityTraded = orders[_ref].qty;
                             currencyTraded = orders[_ref].qty.mulDown(_bestOfferPrice);
                             orders[_bestOffer].qty = orders[_bestOffer].tokenIn ==_security && orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_IN ? 
