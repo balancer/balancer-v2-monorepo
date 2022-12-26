@@ -22,7 +22,6 @@ interface IOrder {
         Order order;
         OrderStatus status;
         uint256 qty;
-        uint256 dt;
         address party;
         uint256 price;  
         uint256 currencyBalance;  

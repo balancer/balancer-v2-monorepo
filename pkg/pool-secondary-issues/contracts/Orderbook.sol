@@ -14,7 +14,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IPoolSwapStructs.sol";
-import "hardhat/console.sol";
 contract Orderbook is IOrder, ITrade, Ownable{
     using FixedPoint for uint256;
 
@@ -107,7 +106,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
             order: _order,
             status: IOrder.OrderStatus.Open,
             qty: _request.amount,
-            dt: _previousTs,
             party: _request.from,
             price: _params.price,  
             currencyBalance: _balances[_currencyIndex],  
@@ -290,7 +288,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
                     if(orders[_ref].tokenIn==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN && orders[_ref].securityBalance>=orders[_ref].qty){
                         if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                             securityTraded = orders[_bestBid].qty.divDown(_bestBidPrice); // calculating amount of security that can be brought
-                            // console.log("securityTraded",securityTraded,orders[_ref].qty);
                         }else if (orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
                             securityTraded = orders[_bestBid].qty; // amount of security brought (tokenOut) is already there 
                         }
@@ -305,7 +302,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
-                                return calcTradedAverage(_ref, orders[_ref].party);
+                                return calcTradedAverage(_ref, orders[_ref].party, true);
                         }    
                         else{
                             currencyTraded = securityTraded.mulDown(_bestBidPrice);
@@ -334,7 +331,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
-                                return calcTradedAverage(_ref, orders[_ref].party);
+                                return calcTradedAverage(_ref, orders[_ref].party, false);
                         }    
                         else{
                             securityTraded = currencyTraded.divDown(_bestBidPrice);
@@ -367,7 +364,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
-                                return calcTradedAverage(_ref, orders[_ref].party);
+                                return calcTradedAverage(_ref, orders[_ref].party, true);
                         }    
                         else{
                             securityTraded = currencyTraded.divDown(_bestOfferPrice);
@@ -384,7 +381,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             securityTraded = orders[_bestOffer].qty.divDown(_bestOfferPrice); // calculating amount of security that needs to be sent in to take out currency (tokenOut)
                         } else if(orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
                             securityTraded = orders[_bestOffer].qty; // amount of security sent in (tokenIn) is already there
-                            // console.log("Elseif",securityTraded,orders[_ref].qty);
                         }
                         if(securityTraded >= orders[_ref].qty){
                             securityTraded = orders[_ref].qty;
@@ -397,7 +393,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
-                                return calcTradedAverage(_ref, orders[_ref].party);
+                                return calcTradedAverage(_ref, orders[_ref].party, false);   
                         }    
                         else{
                             currencyTraded = securityTraded.mulDown(_bestOfferPrice);
@@ -449,7 +445,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         trades[orders[_cref].party].push(oIndex);
     }
 
-    function calcTradedAverage(bytes32 _ref, address _party) private returns(uint256){
+    function calcTradedAverage(bytes32 _ref, address _party, bool currencyTraded) private returns(uint256){
         uint256 oIndex;
         uint256 volume;
         ITrade.trade memory tradeReport;
@@ -457,12 +453,13 @@ contract Orderbook is IOrder, ITrade, Ownable{
             oIndex = trades[_party][i];
             tradeReport = tradeRefs[_party][oIndex];
             if(tradeReport.partyRef==_ref){
-                volume = Math.add(volume, tradeReport.partyInAmount);
+                uint256 amount = currencyTraded ? tradeReport.counterpartyInAmount : tradeReport.partyInAmount;
+                volume = Math.add(volume, amount);
             }
             delete trades[_party][i];
             delete tradeRefs[_party][oIndex];
         }
-        return volume.divDown(orders[_ref].qty); 
+        return volume; 
     }   
 
     function getTrade(address _party, uint256 _timestamp) public view returns(ITrade.trade memory){
