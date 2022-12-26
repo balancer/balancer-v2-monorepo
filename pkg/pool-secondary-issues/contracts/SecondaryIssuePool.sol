@@ -213,8 +213,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         }
         if(params.trade == IOrder.OrderType.Market){
             require(tp!=0, "Insufficient liquidity");
-            return tp;
         }
+        return tp;
     }
 
     function _onInitializePool(
