@@ -1087,7 +1087,7 @@ describe('SecondaryPool', function () {
       buy_qty = fp(10); //qty
     });
 
-    it('Sell 4 orders & 1 Buy Market Order [Order FullFilled]', async () => {
+    it('Sell 4 orders & 1 Buy Market Order', async () => {
       
       await pool.swapGivenIn({ // Sell Security 1@100
         in: pool.securityIndex,
@@ -1191,7 +1191,7 @@ describe('SecondaryPool', function () {
       })).to.be.revertedWith("Insufficient liquidity");
       
     });
-    it('Sell 4 Buy orders & 1 Sell Market Order]', async () => {
+    it('Sell 4 Buy orders & 1 Sell Market Order', async () => {
       
       await pool.swapGivenOut({ 
         in: pool.currencyIndex,

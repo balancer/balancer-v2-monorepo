@@ -21,9 +21,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
     //counter for block timestamp nonce for creating unique order references
     uint256 private _previousTs = 0;
 
-    uint256 _totalVolume;
-    uint256 _refQty;
-
     //order references
     bytes32[] private _orderRefs;
 
@@ -265,7 +262,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
             if(i==0)
                 return 0;
         }
-        _refQty = orders[_ref].qty;
         //if market depth exists, then fill order at one or more price points in the order book
         for(i=0; i<_marketOrders.length; i++){
             if (
@@ -277,14 +273,14 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 if (orders[_marketOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price || orders[_ref].price == 0) {
                         _bestBidPrice = orders[_marketOrders[i]].price;  
-                        _bestBid = _orderRefs[i];
+                        _bestBid = _marketOrders[i];
                         _bidIndex = i;
                     }
                 } else if (orders[_marketOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy) {
                     // orders[_ref].price == 0 condition check for Market Order with 0 Price
                     if (orders[_marketOrders[i]].price <= orders[_ref].price || orders[_ref].price == 0) {
                         _bestOfferPrice = orders[_marketOrders[i]].price;  
-                        _bestOffer = _orderRefs[i];
+                        _bestOffer = _marketOrders[i];
                         _bidIndex = i;
                     }
                 }
@@ -294,7 +290,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                     if(orders[_ref].tokenIn==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN && orders[_ref].securityBalance>=orders[_ref].qty){
                         if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                             securityTraded = orders[_bestBid].qty.divDown(_bestBidPrice); // calculating amount of security that can be brought
-                            console.log("securityTraded",securityTraded,orders[_ref].qty);
+                            // console.log("securityTraded",securityTraded,orders[_ref].qty);
                         }else if (orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
                             securityTraded = orders[_bestBid].qty; // amount of security brought (tokenOut) is already there 
                         }
@@ -315,8 +311,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             currencyTraded = securityTraded.mulDown(_bestBidPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                             orders[_bestBid].qty = 0;
-                            _totalVolume += currencyTraded;
-                            console.log("_totalVolume",_totalVolume);
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
                             reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
@@ -390,11 +384,11 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             securityTraded = orders[_bestOffer].qty.divDown(_bestOfferPrice); // calculating amount of security that needs to be sent in to take out currency (tokenOut)
                         } else if(orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
                             securityTraded = orders[_bestOffer].qty; // amount of security sent in (tokenIn) is already there
+                            // console.log("Elseif",securityTraded,orders[_ref].qty);
                         }
                         if(securityTraded >= orders[_ref].qty){
                             securityTraded = orders[_ref].qty;
                             currencyTraded = orders[_ref].qty.mulDown(_bestOfferPrice);
-                            _totalVolume += currencyTraded;
                             orders[_bestOffer].qty = orders[_bestOffer].tokenIn ==_security && orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_IN ? 
                                                     Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, currencyTraded);
                             orders[_ref].qty = 0;
@@ -407,7 +401,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         }    
                         else{
                             currencyTraded = securityTraded.mulDown(_bestOfferPrice);
-                            _totalVolume += currencyTraded;
                             orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
@@ -423,7 +416,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
     }
 
     function reportTrade(bytes32 _ref, bytes32 _cref, uint256 _price, uint256 securityTraded, uint256 currencyTraded) private {
-        uint256 oIndex = block.timestamp;
+        _previousTs = _previousTs + 1;
+        uint256 oIndex = _previousTs;
         ITrade.trade memory tradeToReport = ITrade.trade({
             partyRef: _ref,
             partySwapIn: orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
@@ -459,7 +453,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
         uint256 oIndex;
         uint256 volume;
         ITrade.trade memory tradeReport;
-        
         for(uint256 i=0; i<trades[_party].length; i++){
             oIndex = trades[_party][i];
             tradeReport = tradeRefs[_party][oIndex];
