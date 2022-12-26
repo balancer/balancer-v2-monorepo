@@ -271,20 +271,16 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 if (orders[_marketOrders[i]].price == 0 && orders[_ref].price == 0) continue; // Case: If Both CP & Party place Order@CMP
                 if (orders[_marketOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price || orders[_ref].price == 0) {
-                        if (orders[_marketOrders[i]].price > _bestBidPrice || _bestBidPrice == 0) {
-                            _bestBidPrice = orders[_marketOrders[i]].otype == OrderType.Market ? orders[_ref].price : orders[_marketOrders[i]].price; // Case: If CP price = 0, CP price = Party's price 
-                            _bestBid = _orderRefs[i];
-                            _bidIndex = i;
-                        }
+                        _bestBidPrice = orders[_marketOrders[i]].price;  
+                        _bestBid = _orderRefs[i];
+                        _bidIndex = i;
                     }
                 } else if (orders[_marketOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy) {
                     // orders[_ref].price == 0 condition check for Market Order with 0 Price
                     if (orders[_marketOrders[i]].price <= orders[_ref].price || orders[_ref].price == 0) {
-                        if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
-                            _bestOfferPrice = orders[_marketOrders[i]].otype == OrderType.Market ? orders[_ref].price : orders[_marketOrders[i]].price; // Case: If CP price = 0, CP price = Party's price 
-                            _bestOffer = _orderRefs[i];
-                            _bidIndex = i;
-                        }
+                        _bestOfferPrice = orders[_marketOrders[i]].price;  
+                        _bestOffer = _orderRefs[i];
+                        _bidIndex = i;
                     }
                 }
             }
@@ -304,9 +300,10 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
-                            return currencyTraded;
+                            if(orders[_ref].otype == IOrder.OrderType.Market)
+                                return calcTradedAverage(_ref, orders[_ref].party);
                         }    
                         else{
                             currencyTraded = securityTraded.mulDown(_bestBidPrice);
@@ -314,7 +311,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_bestBid].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
-                            reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }
                     }
@@ -332,9 +329,10 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
-                            return securityTraded;
+                            if(orders[_ref].otype == IOrder.OrderType.Market)
+                                return calcTradedAverage(_ref, orders[_ref].party);
                         }    
                         else{
                             securityTraded = currencyTraded.divDown(_bestBidPrice);
@@ -342,7 +340,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_bestBid].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;   
-                            reportTrade(_ref, _bestBid, orders[_ref].dt, _bestBidPrice, securityTraded, currencyTraded);                     
+                            reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);                     
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }
                     }
@@ -364,9 +362,10 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
-                            return securityTraded;
+                            if(orders[_ref].otype == IOrder.OrderType.Market)
+                                return calcTradedAverage(_ref, orders[_ref].party);
                         }    
                         else{
                             securityTraded = currencyTraded.divDown(_bestOfferPrice);
@@ -374,7 +373,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;    
-                            reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);                    
+                            reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);                    
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }                    
                     }
@@ -392,9 +391,10 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_ref].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
-                            return currencyTraded;
+                            if(orders[_ref].otype == IOrder.OrderType.Market)
+                                return calcTradedAverage(_ref, orders[_ref].party);
                         }    
                         else{
                             currencyTraded = securityTraded.mulDown(_bestOfferPrice);
@@ -402,7 +402,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
-                            reportTrade(_ref, _bestOffer, orders[_ref].dt, _bestOfferPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }
                     }                
@@ -412,7 +412,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
         delete _marketOrders;
     }
 
-    function reportTrade(bytes32 _ref, bytes32 _cref, uint256 _oIndex, uint256 _price, uint256 securityTraded, uint256 currencyTraded) private {
+    function reportTrade(bytes32 _ref, bytes32 _cref, uint256 _price, uint256 securityTraded, uint256 currencyTraded) private {
+        uint256 oIndex = block.timestamp;
         ITrade.trade memory tradeToReport = ITrade.trade({
             partyRef: _ref,
             partySwapIn: orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
@@ -428,20 +429,37 @@ contract Orderbook is IOrder, ITrade, Ownable{
             currency: _currency,
             price: _price,
             otype: orders[_ref].otype,
-            dt: block.timestamp
+            dt: oIndex
         });                 
-        tradeRefs[orders[_ref].party][orders[_ref].dt] = tradeToReport;
-        tradeRefs[orders[_cref].party][orders[_ref].dt] = tradeToReport;        
+        tradeRefs[orders[_ref].party][oIndex] = tradeToReport;
+        tradeRefs[orders[_cref].party][oIndex] = tradeToReport;        
         emit CallSwap(  orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
                         orders[_ref].tokenIn==_security ? "security" : "currency",
                         orders[_ref].party, 
                         orders[_cref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
                         orders[_cref].tokenIn==_security ? "security" : "currency",
                         orders[_cref].party, 
-                        _oIndex
+                        oIndex
                     );
-        trades[orders[_ref].party].push(orders[_ref].dt);
-        trades[orders[_cref].party].push(orders[_ref].dt);
+        trades[orders[_ref].party].push(oIndex);
+        trades[orders[_cref].party].push(oIndex);
+    }
+
+    function calcTradedAverage(bytes32 _ref, address _party) private returns(uint256){
+        uint256 oIndex;
+        uint256 volume;
+        ITrade.trade memory tradeReport;
+        
+        for(uint256 i=0; i<trades[_party].length; i++){
+            oIndex = trades[_party][i];
+            tradeReport = tradeRefs[_party][oIndex];
+            if(tradeReport.partyRef==_ref){
+                volume = Math.add(volume, tradeReport.partyInAmount);
+            }
+            delete trades[_party][i];
+            delete tradeRefs[_party][oIndex];
+        }
+        return volume.divDown(orders[_ref].qty); 
     }   
 
     function getTrade(address _party, uint256 _timestamp) public view returns(ITrade.trade memory){
