@@ -12,7 +12,6 @@ import "./interfaces/ISecondaryIssuePool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
-
 import "@balancer-labs/v2-interfaces/contracts/vault/IPoolSwapStructs.sol";
 contract Orderbook is IOrder, ITrade, Ownable{
     using FixedPoint for uint256;
@@ -302,7 +301,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
-                                return calcTradedAverage(_ref, orders[_ref].party, true);
+                                return calcTraded(_ref, orders[_ref].party, true);
                         }    
                         else{
                             currencyTraded = securityTraded.mulDown(_bestBidPrice);
@@ -331,7 +330,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
-                                return calcTradedAverage(_ref, orders[_ref].party, false);
+                                return calcTraded(_ref, orders[_ref].party, false);
                         }    
                         else{
                             securityTraded = currencyTraded.divDown(_bestBidPrice);
@@ -364,7 +363,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
-                                return calcTradedAverage(_ref, orders[_ref].party, true);
+                                return calcTraded(_ref, orders[_ref].party, true);
                         }    
                         else{
                             securityTraded = currencyTraded.divDown(_bestOfferPrice);
@@ -393,7 +392,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
-                                return calcTradedAverage(_ref, orders[_ref].party, false);   
+                                return calcTraded(_ref, orders[_ref].party, false);   
                         }    
                         else{
                             currencyTraded = securityTraded.mulDown(_bestOfferPrice);
@@ -445,7 +444,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         trades[orders[_cref].party].push(oIndex);
     }
 
-    function calcTradedAverage(bytes32 _ref, address _party, bool currencyTraded) private returns(uint256){
+    function calcTraded(bytes32 _ref, address _party, bool currencyTraded) private returns(uint256){
         uint256 oIndex;
         uint256 volume;
         ITrade.trade memory tradeReport;

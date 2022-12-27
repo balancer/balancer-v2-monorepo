@@ -138,13 +138,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         uint256[] memory scalingFactors = _scalingFactors();
         IOrder.Params memory params;
 
-        bytes32 otype;
+        string memory otype;
         uint256 tp;
+
         if(request.userData.length!=0){
-            //(otype, tp) = abi.decode(request.userData, (bytes32, uint256)); //uncomment for abicoder.decode
-            tp = string(request.userData).substring(0,1).stringToUint(); //comment for abicoder.decode
-            if(tp==0){ //comment for abicoder.decode
-            //if(otype.length==0){ //uncomment for abicoder.decode                
+            (otype, tp) = abi.decode(request.userData, (string, uint256)); 
+            if(bytes(otype).length==1){                
                 ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                 // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
                 bytes32 tradedInToken = keccak256(abi.encodePacked(tradeToReport.partyTokenIn));
@@ -172,12 +171,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                 }
             }
             else{              
-                otype = string(request.userData).substring(1, tp + 1).stringToBytes32(); //comment for abicoder.decode
-                if(otype!="" && tp!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
+                if(keccak256(abi.encodePacked(otype)) != keccak256(abi.encodePacked("")) && tp!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
                     params = IOrder.Params({
-                        trade: otype=="Limit" ? IOrder.OrderType.Limit : IOrder.OrderType.Stop,
-                        price: string(request.userData).substring(tp, request.userData.length).stringToUint() //comment for abicoder.decode
-                        //price: tp //uncomment for abicoder.decode
+                        trade: keccak256(abi.encodePacked(otype))==keccak256(abi.encodePacked("Limit")) ? IOrder.OrderType.Limit : IOrder.OrderType.Stop,
+                        price: tp 
                     });                    
                 }
             }                  
