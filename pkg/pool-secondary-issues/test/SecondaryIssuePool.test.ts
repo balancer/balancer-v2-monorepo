@@ -206,8 +206,7 @@ describe('SecondaryPool', function () {
       amount: eventEncodedData.swapId,
       from: eventEncodedData.counterParty == lp.address ? lp : trader,
       balances: currentBalances,
-      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('0'+eventEncodedData.swapId.toString())), 
-      //data: abiCoder.encode(["bytes32", "uint"], ['', eventEncodedData.swapId]),
+      data: abiCoder.encode(["string", "uint"], ['0', eventEncodedData.swapId]),
     };
     const partyDataTx = {
       in: eventEncodedData.tokenInParty == "security" ? pool.securityIndex :  pool.currencyIndex,
@@ -215,8 +214,7 @@ describe('SecondaryPool', function () {
       amount: eventEncodedData.swapId,
       from: eventEncodedData.party == lp.address ? lp : trader,
       balances: currentBalances,
-      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('0'+eventEncodedData.swapId.toString())),
-      //data: abiCoder.encode(["bytes32", "uint"], ['', eventEncodedData.swapId]),
+      data: abiCoder.encode(["string", "uint"], ['0', eventEncodedData.swapId]),
     };
 
     const counterPartyAmount = eventEncodedData.swapKindCounterparty ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
@@ -252,7 +250,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         balances: currentBalances,
         from: lp,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Sell 10@Market Price
+        data: abiCoder.encode([], []), // MarketOrder Sell 10@Market Price
         //data: abiCoder.encode(["string", "uint"], ['', fp(0)]),
         eventHash: encodedEventSignature
       })).to.be.revertedWith("Insufficient liquidity");
@@ -263,7 +261,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         balances: currentBalances,
         from: lp,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy 500@Market Price
+        data: abiCoder.encode([], []), // MarketOrder Buy 500@Market Price
         eventHash: encodedEventSignature
       })).to.be.revertedWith("Insufficient liquidity");
 
@@ -280,7 +278,7 @@ describe('SecondaryPool', function () {
           amount: sell_qty,
           balances: currentBalances,
           from: lp,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Sell 10@Market Price
+          data: abiCoder.encode([], []), // MarketOrder Sell 10@Market Price
           eventHash: encodedEventSignature
         })).to.be.revertedWith("Insufficient liquidity");
         return;
@@ -341,8 +339,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
         eventHash: encodedEventSignature
       });
 
@@ -353,7 +350,7 @@ describe('SecondaryPool', function () {
           amount: buy_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          data: abiCoder.encode([], []), // MarketOrder Buy@market price
           eventHash: encodedEventSignature
         })).to.be.revertedWith('Insufficient liquidity')
       }
@@ -370,7 +367,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
         //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
         eventHash: encodedEventSignature
       });
@@ -382,7 +379,7 @@ describe('SecondaryPool', function () {
           amount: buy_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          data: abiCoder.encode([], []), // MarketOrder Buy@market price
           eventHash: encodedEventSignature
         })).to.be.revertedWith('Insufficient liquidity')
       }
@@ -400,7 +397,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
         //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
         eventHash: encodedEventSignature
       });
@@ -413,7 +410,7 @@ describe('SecondaryPool', function () {
           amount: buy_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          data: abiCoder.encode([], []), // MarketOrder Buy@market price
           eventHash: encodedEventSignature
         })).to.be.revertedWith("Insufficient liquidity");
       }
@@ -424,7 +421,7 @@ describe('SecondaryPool', function () {
           amount: buy_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          data: abiCoder.encode([], []), // MarketOrder Buy@market price
           eventHash: encodedEventSignature
         });
         if (buy_order[1]) {
@@ -449,8 +446,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
         eventHash: encodedEventSignature
       });
 
@@ -460,7 +456,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+        data: abiCoder.encode([], []), // MarketOrder Buy@market price
         eventHash: encodedEventSignature
       });
       expect(buy_order[0].toString()).to.be.equals(currencyTraded.toString()); 
@@ -484,7 +480,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
         //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
         eventHash: encodedEventSignature
       });
@@ -495,7 +491,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+        data: abiCoder.encode([], []), // MarketOrder Buy@market price
         eventHash: encodedEventSignature
       });
       expect(buy_order[0].toString()).to.be.equals(currencyTraded.toString()); 
@@ -519,8 +515,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
         eventHash: encodedEventSignature
       });
 
@@ -530,7 +525,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+        data: abiCoder.encode([], []), // MarketOrder Buy@market price
         eventHash: encodedEventSignature
       });
 
@@ -567,8 +562,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Sell@price12
         eventHash: encodedEventSignature
       });
 
@@ -578,8 +572,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // MarketOrder Buy@market price
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // MarketOrder Buy@market price
         eventHash: encodedEventSignature
       });
 
@@ -603,8 +596,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // Limit Order Buy@price 20
-        //data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
         eventHash: encodedEventSignature
       });
 
@@ -616,7 +608,7 @@ describe('SecondaryPool', function () {
           amount: sell_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), 
+          data: abiCoder.encode([], []), 
           eventHash: encodedEventSignature
         })).to.be.revertedWith("Insufficient liquidity");
       }
@@ -627,7 +619,7 @@ describe('SecondaryPool', function () {
           amount: sell_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), 
+          data: abiCoder.encode([], []), 
           eventHash: encodedEventSignature
         });
   
@@ -653,8 +645,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // Limit Order Buy@price 20
-        //data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
         eventHash: encodedEventSignature
       });
 
@@ -664,8 +655,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + sell_price.toString())), // Limit Sell@price 10
-        //data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Limit Sell@price 10
         eventHash: encodedEventSignature
       });
 
@@ -689,8 +679,7 @@ describe('SecondaryPool', function () {
           amount: buy_qty,
           from: lp,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // Limit Order Buy@price 20
-          //data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]),
+          data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
           eventHash: encodedEventSignature
       });
   
@@ -700,8 +689,7 @@ describe('SecondaryPool', function () {
           amount: sell_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + sell_price.toString())), // Limit Sell@price 10
-          //data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]),
+          data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Limit Sell@price 10
           eventHash: encodedEventSignature
       });
   
@@ -720,17 +708,14 @@ describe('SecondaryPool', function () {
       buy_price = fp(10);
       const currencyTraded = buy_qty;
       const securityTraded = divDown(currencyTraded, sell_price);
-      console.log("securityTraded",securityTraded.toString());
-      console.log("currencyTraded",currencyTraded.toString());
-  
+     
       const sell_order = await pool.swapGivenIn({ //Sell Currency
           in: pool.securityIndex,
           out: pool.currencyIndex,
           amount: sell_qty,
           from: lp,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Buy@price 20
-          //data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]),
+          data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Buy@price 20
           eventHash: encodedEventSignature
       });
   
@@ -740,8 +725,7 @@ describe('SecondaryPool', function () {
           amount: buy_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')),
-          //data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]),
+          data: abiCoder.encode([], []),
           eventHash: encodedEventSignature
       });
 
@@ -757,6 +741,8 @@ describe('SecondaryPool', function () {
     it('Buy SWAP Out Security Order > Sell SWAP Out Security Order', async () => {
       sell_qty = fp(200);
       buy_qty = fp(5);
+      buy_price = fp(20);
+      sell_price = fp(10);
       const currencyTraded = mulDown(buy_qty, buy_price);
       const securityTraded = divDown(currencyTraded,buy_price);
   
@@ -766,8 +752,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // Limit Order Buy@price 20
-        //data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
         eventHash: encodedEventSignature
       });
   
@@ -777,8 +762,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + sell_price.toString())), // Limit Sell@price 10
-        //data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Limit Sell@price 10
         eventHash: encodedEventSignature
       });
   
@@ -793,28 +777,27 @@ describe('SecondaryPool', function () {
     it('Buy SWAP In Currency Order > Sell SWAP Out Currency Order', async () => {
       sell_qty = fp(50);
       buy_qty = fp(100);
+      
       const currencyTraded = sell_qty;
       const securityTraded = divDown(currencyTraded,buy_price);
-  
-      const buy_order = await pool.swapGivenIn({
+
+      const buy_order = await pool.swapGivenIn({ //BUY Curr[Sell Sec]
         in: pool.currencyIndex,
         out: pool.securityIndex,
         amount: buy_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + buy_price.toString())), // Stop Order Buy@price 20
-        //data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]),
+        data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]), // Stop Order Buy@price 20
         eventHash: encodedEventSignature
       });
 
-      const sell_order = await pool.swapGivenOut({
+      const sell_order = await pool.swapGivenOut({ //Sell Currency[Buy Sec]
         in: pool.securityIndex,
         out: pool.currencyIndex,
         amount: sell_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + sell_price.toString())), // Stop Sell@price 10
-        //data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Stop Sell@price 10
         eventHash: encodedEventSignature
       });
   
@@ -831,16 +814,13 @@ describe('SecondaryPool', function () {
       buy_qty = fp(100);
       const currencyTraded = sell_qty;
       const securityTraded = divDown(currencyTraded,buy_price);
-      console.log("currencyTraded",currencyTraded.toString());
-      console.log("securityTraded",securityTraded.toString());
       const buy_order = await pool.swapGivenOut({ //buy security 100
         in: pool.currencyIndex,
         out: pool.securityIndex,
         amount: buy_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + buy_price.toString())), // Limit Order Buy@price 20
-        //data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]),
+        data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]), // Limit Order Buy@price 20
         eventHash: encodedEventSignature
       });
   
@@ -850,13 +830,12 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // Limit Sell@price 10
+        data: abiCoder.encode([], []), // Limit Sell@price 10
         eventHash: encodedEventSignature
       });
   
       expect(sell_order[0].toString()).to.be.equals(securityTraded.toString()); 
       if (sell_order[1]) {
-        console.log("inside call swap");
         await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell","Market");
       }
       else{
@@ -876,8 +855,7 @@ describe('SecondaryPool', function () {
         amount: buy_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + buy_price.toString())), // Limit Order Buy@price 20
-        //data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]),
+        data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]),
         eventHash: encodedEventSignature
       });
   
@@ -887,11 +865,9 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Sell@price 10
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
         eventHash: encodedEventSignature
       });
-      console.log(sell_order[0].toString());
       if (sell_order[1]) {
         await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
       }
@@ -921,8 +897,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop'+ sell_price.toString())), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]),
         eventHash: encodedEventSignature
       });
 
@@ -968,8 +943,7 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
         eventHash: encodedEventSignature
       });
       
@@ -991,7 +965,7 @@ describe('SecondaryPool', function () {
           amount: buy_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          data: abiCoder.encode([], []), // MarketOrder Buy@market price
           eventHash: encodedEventSignature
         })).to.be.revertedWith("Insufficient liquidity");
       }
@@ -1002,7 +976,7 @@ describe('SecondaryPool', function () {
           amount: buy_qty,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+          data: abiCoder.encode([], []), // MarketOrder Buy@market price
           eventHash: encodedEventSignature
         });
   
@@ -1021,18 +995,18 @@ describe('SecondaryPool', function () {
     [...Array(10).keys()].forEach(value => {
       let sell_price = Math.floor((Math.random() * 100) + 1);
       let buy_price = Math.floor((Math.random() * 100) + 1);
-      enum OrderType {"Market" = 1,"5Limit","4Stop"};
+      enum OrderType {"Market" = 1,"Limit","Stop"};
       let sell_RandomOrderType = Math.floor((Math.random() * 3) + 1);
       let buy_RandomOrderType = Math.floor((Math.random() * 3) + 1);
       let sell_qty = Math.floor((Math.random() * 20) + 1);
       let buy_qty = Math.floor((Math.random() * 20) + 1);
       let misc = false;
-      let sell_data = OrderType[sell_RandomOrderType] == "Market" ? "" : OrderType[sell_RandomOrderType].toString() + fp(sell_price).toString();
-      let buy_data = OrderType[buy_RandomOrderType] == "Market" ? "" : OrderType[buy_RandomOrderType].toString() + fp(buy_price).toString();
+      let sell_data = OrderType[sell_RandomOrderType] == "Market" ? abiCoder.encode([],[]) : abiCoder.encode(["string", "uint"], [OrderType[sell_RandomOrderType], fp(sell_price)]);
+      let buy_data = OrderType[buy_RandomOrderType] == "Market" ? abiCoder.encode([],[]) : abiCoder.encode(["string", "uint"], [OrderType[sell_RandomOrderType], fp(buy_price)])
       let securityTraded: BigNumber,currencyTraded: BigNumber;
 
       it(`Sell QTY: ${sell_qty}@Price: ${sell_price} Order: ${OrderType[sell_RandomOrderType]} >>> Buy QTY: ${buy_qty}@Price: ${buy_price} Order: ${OrderType[buy_RandomOrderType]}`, async() => {
-        if(buy_data.length == 0) //Case: Buy at Market Price
+        if(OrderType[buy_RandomOrderType] == "Market") //Case: Buy at Market Price
         {
           if(sell_qty >= buy_qty)
           {
@@ -1046,7 +1020,7 @@ describe('SecondaryPool', function () {
             currencyTraded = mulDown(securityTraded,fp(sell_price));
           }
         }
-        else if (sell_data.length == 0){ //Case: Sell at Market Price
+        else if (OrderType[sell_RandomOrderType] == "Market"){ //Case: Sell at Market Price
           if(sell_qty >= buy_qty)
           {
             securityTraded = fp(buy_qty);
@@ -1079,7 +1053,7 @@ describe('SecondaryPool', function () {
             amount: fp(sell_qty),
             from: lp,
             balances: currentBalances, 
-            data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(sell_data)), 
+            data: sell_data, 
           })).to.be.revertedWith("Insufficient liquidity");
           return;
         }
@@ -1090,7 +1064,7 @@ describe('SecondaryPool', function () {
             amount: fp(sell_qty),
             from: lp,
             balances: currentBalances, 
-            data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(sell_data)), 
+            data: sell_data, 
           });
         }
         
@@ -1102,7 +1076,7 @@ describe('SecondaryPool', function () {
             amount: fp(buy_qty),
             from: trader,
             balances: currentBalances,
-            data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(buy_data)), 
+            data: buy_data, 
             eventHash: encodedEventSignature
           })).to.be.revertedWith("Insufficient liquidity");
         }
@@ -1113,10 +1087,11 @@ describe('SecondaryPool', function () {
             amount: fp(buy_qty),
             from: trader,
             balances: currentBalances,
-            data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(buy_data)), 
+            data: buy_data, 
             eventHash: encodedEventSignature
           });
-          if(buy_data.length == 0)
+
+          if(OrderType[buy_RandomOrderType] == "Market")
           {
             expect(buy_order[0].toString()).to.be.equals(currencyTraded.toString()); 
             if (buy_order[1]) {
@@ -1155,8 +1130,7 @@ describe('SecondaryPool', function () {
         amount: fp(1),
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(100).toString())), 
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(100)]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(100)]),
       });
       await pool.swapGivenIn({ // Sell Security 2@101
         in: pool.securityIndex,
@@ -1164,8 +1138,7 @@ describe('SecondaryPool', function () {
         amount: fp(2),
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(101).toString())), 
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
         eventHash: encodedEventSignature
       });
       await pool.swapGivenIn({ // Sell Security 3@102
@@ -1174,8 +1147,7 @@ describe('SecondaryPool', function () {
         amount: fp(3),
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(102).toString())), 
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(102)]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(102)]),
         eventHash: encodedEventSignature
       });
       await pool.swapGivenIn({ // Sell Security 4@103
@@ -1184,8 +1156,7 @@ describe('SecondaryPool', function () {
         amount: fp(4),
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(103).toString())), // MarketOrder Buy@market price
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(103)]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(103)]),
         eventHash: encodedEventSignature
       });
       await pool.swapGivenIn({ // Sell Security 5@104
@@ -1194,8 +1165,7 @@ describe('SecondaryPool', function () {
         amount: fp(5),
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(104).toString())), // MarketOrder Buy@market price
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(103)]),
+        data: abiCoder.encode(["string", "uint"], ['Stop', fp(104)]),
         eventHash: encodedEventSignature
       });
       const buy_order = await pool.swapGivenOut({ // Buy Security 10@CMP
@@ -1204,7 +1174,7 @@ describe('SecondaryPool', function () {
         amount: fp(10),
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')),
+        data: abiCoder.encode([], []),
         eventHash: encodedEventSignature
       });
       expect(buy_order[0].toString()).to.be.equals(avgCurrencyTraded.toString()); 
@@ -1216,9 +1186,8 @@ describe('SecondaryPool', function () {
         out: pool.currencyIndex,
         amount: fp(1),
         from: trader,
-        balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(100).toString())), 
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(100)]),
+        balances: currentBalances, 
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(100)]),
       });
       await pool.swapGivenIn({ // Sell Security 2@101
         in: pool.securityIndex,
@@ -1226,8 +1195,7 @@ describe('SecondaryPool', function () {
         amount: fp(2),
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(101).toString())), 
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
         eventHash: encodedEventSignature
       });
       await pool.swapGivenIn({ // Sell Security 3@102
@@ -1236,8 +1204,7 @@ describe('SecondaryPool', function () {
         amount: fp(3),
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(102).toString())), 
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(102)]),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(102)]),
         eventHash: encodedEventSignature
       });
       await expect(pool.swapGivenOut({ // Buy Security 10@CMP
@@ -1246,7 +1213,7 @@ describe('SecondaryPool', function () {
         amount: fp(10),
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')),
+        data: abiCoder.encode([], []),
         eventHash: encodedEventSignature
       })).to.be.revertedWith("Insufficient liquidity");
       
@@ -1259,7 +1226,7 @@ describe('SecondaryPool', function () {
         amount: fp(1),
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(100).toString())),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(100)]),
         eventHash: encodedEventSignature
       });
       await pool.swapGivenOut({ 
@@ -1268,7 +1235,7 @@ describe('SecondaryPool', function () {
         amount: fp(2),
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(101).toString())),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
         eventHash: encodedEventSignature
       });
       await pool.swapGivenOut({ 
@@ -1277,7 +1244,7 @@ describe('SecondaryPool', function () {
         amount: fp(3),
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(102).toString())),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(102)]),
         eventHash: encodedEventSignature
       });
       await pool.swapGivenOut({ 
@@ -1286,7 +1253,7 @@ describe('SecondaryPool', function () {
         amount: fp(4),
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(103).toString())),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(103)]),
         eventHash: encodedEventSignature
       });
       await pool.swapGivenOut({ 
@@ -1295,7 +1262,7 @@ describe('SecondaryPool', function () {
         amount: fp(5),
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + fp(104).toString())),
+        data: abiCoder.encode(["string", "uint"], ['Limit', fp(104)]),
         eventHash: encodedEventSignature
       });
       const sell_order = await pool.swapGivenIn({ 
@@ -1304,8 +1271,7 @@ describe('SecondaryPool', function () {
         amount: fp(10),
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), 
-        //data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
+        data: abiCoder.encode([], []), 
         eventHash: encodedEventSignature
       });
 
