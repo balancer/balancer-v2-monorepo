@@ -143,7 +143,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
 
         if(request.userData.length!=0){
             (otype, tp) = abi.decode(request.userData, (string, uint256)); 
-            if(bytes(otype).length==1){                
+            if(bytes(otype).length==0){                
                 ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                 // ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
                 bytes32 tradedInToken = keccak256(abi.encodePacked(tradeToReport.partyTokenIn));
@@ -171,7 +171,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                 }
             }
             else{              
-                if(keccak256(abi.encodePacked(otype)) != keccak256(abi.encodePacked("")) && tp!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
+                if(tp!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
                     params = IOrder.Params({
                         trade: keccak256(abi.encodePacked(otype))==keccak256(abi.encodePacked("Limit")) ? IOrder.OrderType.Limit : IOrder.OrderType.Stop,
                         price: tp 
