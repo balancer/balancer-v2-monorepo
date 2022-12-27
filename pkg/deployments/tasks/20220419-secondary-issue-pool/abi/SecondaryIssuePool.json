@@ -84,25 +84,6 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "bestUnfilledBid",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "bestUnfilledOffer",
-          "type": "uint256"
-        }
-      ],
-      "name": "BestAvailableTrades",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
           "indexed": true,
           "internalType": "address",
           "name": "security",
@@ -128,6 +109,37 @@
         }
       ],
       "name": "Offer",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "tokenIn",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "tokenOut",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amountOffered",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "priceOffered",
+          "type": "uint256"
+        }
+      ],
+      "name": "OrderBook",
       "type": "event"
     },
     {
@@ -198,12 +210,6 @@
         },
         {
           "indexed": false,
-          "internalType": "uint256",
-          "name": "askprice",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
           "internalType": "address",
           "name": "currency",
           "type": "address"
@@ -213,12 +219,6 @@
           "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes32",
-          "name": "status",
-          "type": "bytes32"
         },
         {
           "indexed": false,
@@ -471,19 +471,6 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getOrderbook",
-      "outputs": [
-        {
-          "internalType": "contract Orderbook",
-          "name": "",
-          "type": "address"
         }
       ],
       "stateMutability": "view",

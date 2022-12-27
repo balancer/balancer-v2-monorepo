@@ -38,32 +38,32 @@
       "inputs": [
         {
           "internalType": "string",
-          "name": "_name",
+          "name": "name",
           "type": "string"
         },
         {
           "internalType": "string",
-          "name": "_symbol",
+          "name": "symbol",
           "type": "string"
         },
         {
           "internalType": "address",
-          "name": "_security",
+          "name": "security",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "_currency",
+          "name": "currency",
           "type": "address"
         },
         {
           "internalType": "uint256",
-          "name": "_maxAmountsIn",
+          "name": "maxAmountsIn",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "_tradeFeePercentage",
+          "name": "tradeFeePercentage",
           "type": "uint256"
         }
       ],
@@ -225,4 +225,3 @@
       "type": "function"
     }
 ]
-  
