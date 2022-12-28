@@ -39,8 +39,13 @@ export function calcSecurityOutPerCashIn(fpCashIn: BigNumber, fpSecurityBalance:
   const maxPrice = decimal(params.maxPrice);
 
   const postPaidCurrencyBalance = cashBalance.add(cashIn.toString());
-  const tokensOut = securityBalance.sub(cashBalance.mul(securityBalance.div(postPaidCurrencyBalance)));
-  const postPaidSecurityBalance = securityBalance.sub(tokensOut);
+  let tokensOut = securityBalance.sub(cashBalance.mul(securityBalance.div(postPaidCurrencyBalance)));
+  let postPaidSecurityBalance = securityBalance.sub(tokensOut);
+  if(postPaidSecurityBalance < minPrice)
+  {   
+      tokensOut = securityBalance.sub(minPrice.mul(securityBalance.div(postPaidCurrencyBalance)));
+      postPaidSecurityBalance = securityBalance.sub(tokensOut);
+  }
   const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
 
   if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
@@ -59,11 +64,15 @@ export function calcCashInPerSecurityOut(fpSecurityOut: BigNumber, fpSecurityBal
   const maxPrice = decimal(params.maxPrice);
 
   const postPaidSecurityBalance = securityBalance.sub(securityOut.toString());
-  const tokensIn = (securityBalance.mul(cashBalance.div(postPaidSecurityBalance))).sub(cashBalance);
-  const postPaidCurrencyBalance = cashBalance.add(tokensIn)
+  let tokensIn = (securityBalance.mul(cashBalance.div(postPaidSecurityBalance))).sub(cashBalance);
+  let postPaidCurrencyBalance = cashBalance.add(tokensIn);
+  if(postPaidCurrencyBalance < minPrice)
+  {   
+      tokensIn = (securityBalance.mul(minPrice.div(postPaidSecurityBalance))).sub(cashBalance);
+      postPaidCurrencyBalance = cashBalance.add(tokensIn);
+  }
   const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
- 
-  if( tokensIn.toString() == "Infinity" )
+  if( tokensIn.toString() == "Infinity")
   {
     return decimal(1);
   }
@@ -89,7 +98,7 @@ export function calcSecurityInPerCashOut(fpCashOut: BigNumber, fpSecurityBalance
   const postPaidSecurityBalance = securityBalance.add(tokensIn);
   const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
 
-  if( tokensIn.toString() == "Infinity" )
+  if( tokensIn.toString() == "Infinity" || cashOut > cashBalance )
   {
     return decimal(1);
   }
@@ -99,7 +108,5 @@ export function calcSecurityInPerCashOut(fpCashOut: BigNumber, fpSecurityBalance
   else {
     return decimal(0);
   }
-
-
 }
 
