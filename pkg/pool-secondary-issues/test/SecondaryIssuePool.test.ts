@@ -206,7 +206,7 @@ describe('SecondaryPool', function () {
       amount: eventEncodedData.swapId,
       from: eventEncodedData.counterParty == lp.address ? lp : trader,
       balances: currentBalances,
-      data: abiCoder.encode(["string", "uint"], ['0', eventEncodedData.swapId]),
+      data: abiCoder.encode(["string", "uint"], ['', eventEncodedData.swapId]),
     };
     const partyDataTx = {
       in: eventEncodedData.tokenInParty == "security" ? pool.securityIndex :  pool.currencyIndex,
@@ -214,7 +214,7 @@ describe('SecondaryPool', function () {
       amount: eventEncodedData.swapId,
       from: eventEncodedData.party == lp.address ? lp : trader,
       balances: currentBalances,
-      data: abiCoder.encode(["string", "uint"], ['0', eventEncodedData.swapId]),
+      data: abiCoder.encode(["string", "uint"], ['', eventEncodedData.swapId]),
     };
 
     const counterPartyAmount = eventEncodedData.swapKindCounterparty ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
@@ -251,7 +251,6 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         from: lp,
         data: abiCoder.encode([], []), // MarketOrder Sell 10@Market Price
-        //data: abiCoder.encode(["string", "uint"], ['', fp(0)]),
         eventHash: encodedEventSignature
       })).to.be.revertedWith("Insufficient liquidity");
       
@@ -290,7 +289,6 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         from: trader,
         data : ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // LimitOrder Buy 15@210
-        //data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]),
         eventHash: encodedEventSignature
       });
       console.log("After BUY");
@@ -368,7 +366,6 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
         eventHash: encodedEventSignature
       });
 
@@ -398,7 +395,6 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
         eventHash: encodedEventSignature
       });
 
@@ -481,7 +477,6 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        //data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
         eventHash: encodedEventSignature
       });
 

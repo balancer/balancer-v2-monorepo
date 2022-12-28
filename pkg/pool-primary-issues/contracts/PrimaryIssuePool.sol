@@ -62,7 +62,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     }
 
     event OpenIssue(address indexed security, uint256 openingPrice, address currency, uint256 securityOffered, uint256 cutoffTime, string offeringDocs);
-    event Subscription(address indexed assetIn, address assetOut, string assetOutName, uint256 amount, address investor, uint256 price);
+    event Subscription(address indexed assetIn, address assetOut, uint256 amount, address investor, uint256 price, uint256 executionDate);
 
     constructor(
         IVault vault,
@@ -224,11 +224,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         // but only if new price of security do not go out of price band
         uint256 postPaidSecurityBalance = Math.add(balances[securityIndex], request.amount);
         uint256 tokenOutAmt = Math.sub(balances[currencyIndex], balances[securityIndex].mulDown(balances[currencyIndex].divDown(postPaidSecurityBalance)));
-        uint256 postPaidCurrencyBalance = Math.sub(balances[currencyIndex], tokenOutAmt);
+        
         require (balances[currencyIndex] >= tokenOutAmt, "Insufficient currency balance");
-        require (postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
+        require (tokenOutAmt.divDown(request.amount) >= params.minPrice && tokenOutAmt.divDown(request.amount) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
-        emit Subscription(address(security), address(currency), ERC20(address(security)).name(), request.amount, request.from, tokenOutAmt);
+        emit Subscription(address(security), address(currency), request.amount, request.from, tokenOutAmt, block.timestamp);
         return tokenOutAmt;        
     }
 
@@ -243,16 +243,24 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         IERC20 currency = _currency;
         uint256 securityIndex = _securityIndex;
         uint256 currencyIndex = _currencyIndex;
-
+        uint256 tokenOutAmt;
+        
         // returning security for currency paid in at current price of security,
         // but only if new price of security do not go out of price band
         uint256 postPaidCurrencyBalance = Math.add(balances[currencyIndex], request.amount);
-        uint256 tokenOutAmt = Math.sub(balances[securityIndex], balances[currencyIndex].mulDown(balances[securityIndex].divDown(postPaidCurrencyBalance)));
-        uint256 postPaidSecurityBalance = Math.sub(balances[securityIndex], tokenOutAmt);
+        if(balances[currencyIndex]!=0)
+            tokenOutAmt = Math.sub(balances[securityIndex], balances[currencyIndex].mulDown(balances[securityIndex].divDown(postPaidCurrencyBalance)));
+        else
+            tokenOutAmt = postPaidCurrencyBalance.divDown(params.minPrice);
+        if(request.amount.divDown(tokenOutAmt) < params.minPrice && balances[currencyIndex]!=0)
+        {   
+            tokenOutAmt = postPaidCurrencyBalance.divDown(params.minPrice);
+        }
+        
         require (balances[securityIndex] >= tokenOutAmt, "Insufficient security balance");
-        require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
+        require(request.amount.divDown(tokenOutAmt) >= params.minPrice && request.amount.divDown(tokenOutAmt) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
-        emit Subscription(address(currency), address(security), ERC20(address(currency)).name(), request.amount, request.from, tokenOutAmt);
+        emit Subscription(address(currency), address(security), request.amount, request.from, tokenOutAmt, block.timestamp);
         return tokenOutAmt;
     }
 
@@ -283,15 +291,21 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         IERC20 currency = _currency;
         uint256 securityIndex = _securityIndex;
         uint256 currencyIndex = _currencyIndex;
+        uint256 tokenInAmt;
 
-        //returning security to be swapped out for paid in currency
+        //returning currency to be paid in for paid out security
         uint256 postPaidSecurityBalance = Math.sub(balances[securityIndex], request.amount);
-        uint256 tokenInAmt = Math.sub(balances[securityIndex].mulDown(balances[currencyIndex].divDown(postPaidSecurityBalance)), balances[currencyIndex]);
-        uint256 postPaidCurrencyBalance = Math.add(balances[currencyIndex], tokenInAmt);
-
-        require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
+        if(balances[currencyIndex]!=0)
+            tokenInAmt = Math.sub(balances[securityIndex].mulDown(balances[currencyIndex].divDown(postPaidSecurityBalance)), balances[currencyIndex]);
+        else
+            tokenInAmt = postPaidSecurityBalance.mulDown(params.minPrice);
+        if(tokenInAmt.divDown(request.amount) < params.minPrice && balances[currencyIndex]!=0)
+        {   
+            tokenInAmt = postPaidSecurityBalance.mulDown(params.minPrice);
+        }
+        require(tokenInAmt.divDown(request.amount) >= params.minPrice && tokenInAmt.divDown(request.amount) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt, true);
-        emit Subscription(address(currency), address(security), ERC20(address(currency)).name(), request.amount, request.from, tokenInAmt);
+        emit Subscription(address(currency), address(security), request.amount, request.from, tokenInAmt, block.timestamp);
         return tokenInAmt;
     }
 
@@ -308,14 +322,13 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 securityIndex = _securityIndex;
         uint256 currencyIndex = _currencyIndex;
 
-        //returning currency to be paid in for security paid in
+        //returning security to be paid in for currency paid out
         uint256 postPaidCurrencyBalance = Math.sub(balances[currencyIndex], request.amount);
         uint256 tokenInAmt = Math.sub(balances[currencyIndex].mulDown(balances[securityIndex].divDown(postPaidCurrencyBalance)), balances[securityIndex]);
-        uint256 postPaidSecurityBalance = Math.add(balances[securityIndex], tokenInAmt);
 
-        require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
+        require(request.amount.divDown(tokenInAmt) >= params.minPrice && request.amount.divDown(tokenInAmt) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt, false);
-        emit Subscription(address(security), address(currency), ERC20(address(security)).name(), request.amount, request.from, tokenInAmt);
+        emit Subscription(address(security), address(currency), request.amount, request.from, tokenInAmt, block.timestamp);
         return tokenInAmt;
     }
 
