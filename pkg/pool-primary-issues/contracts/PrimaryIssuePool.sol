@@ -303,7 +303,6 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         {   
             tokenInAmt = postPaidSecurityBalance.mulDown(params.minPrice);
         }
-        
         require(tokenInAmt.divDown(request.amount) >= params.minPrice && tokenInAmt.divDown(request.amount) <= params.maxPrice, "Price out of bound");
         //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt, true);
         emit Subscription(address(currency), address(security), request.amount, request.from, tokenInAmt, block.timestamp);
