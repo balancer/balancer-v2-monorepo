@@ -124,9 +124,9 @@
         },
         {
           "indexed": false,
-          "internalType": "uint256",
-          "name": "maxPrice",
-          "type": "uint256"
+          "internalType": "address",
+          "name": "currency",
+          "type": "address"
         },
         {
           "indexed": false,
@@ -182,20 +182,14 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "security",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
           "name": "assetIn",
           "type": "address"
         },
         {
           "indexed": false,
-          "internalType": "string",
-          "name": "assetName",
-          "type": "string"
+          "internalType": "address",
+          "name": "assetOut",
+          "type": "address"
         },
         {
           "indexed": false,
@@ -213,6 +207,12 @@
           "indexed": false,
           "internalType": "uint256",
           "name": "price",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "executionDate",
           "type": "uint256"
         }
       ],
