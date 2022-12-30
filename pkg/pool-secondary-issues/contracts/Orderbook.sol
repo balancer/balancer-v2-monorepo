@@ -129,7 +129,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
         if (_orders[ref].otype == IOrder.OrderType.Limit) {
             checkLimitOrders(ref, IOrder.OrderType.Limit);
         } else if (_orders[ref].otype == IOrder.OrderType.Stop) {
-            checkStopOrders(ref, IOrder.OrderType.Stop);
+            bytes32[] memory a;
+            checkStopOrders(ref, IOrder.OrderType.Stop, 0, a);
         }        
     }
 
@@ -175,24 +176,37 @@ contract Orderbook is IOrder, ITrade, Ownable{
     
     //check if a buy order in the stoploss order book can execute under the prevailing (high) price passed to the function
     //check if a sell order in the stoploss order book can execute over the prevailing (low) price passed to the function
-    function checkStopOrders(bytes32 _ref, IOrder.OrderType _trade) private view returns (uint256, bytes32[] memory){
+    function checkStopOrders(bytes32 _ref, IOrder.OrderType _trade, uint256 _volume, bytes32[] memory _marketOrders) private view returns (uint256, bytes32[] memory){
         uint256 volume;
-        bytes32[] memory _marketOrders = new bytes32[](_orderbook["Stop"].length);
-        uint256 index;
-        for (uint256 i = 0; i < _orderbook["Stop"].length; i++) {
+        bytes32[] memory marketOrders;
+        uint256 i;
+        uint256 index = _marketOrders.length;
+        if(_volume>0){
+            volume = volume + _volume;
+        }
+        if(index>0){
+            marketOrders = new bytes32[](Math.add(_orderbook["Limit"].length, _orderbook["Stop"].length));
+            for(i=0; i<_marketOrders.length; i++){
+                marketOrders[i] = _marketOrders[i];
+            }
+        } 
+        else{
+            marketOrders = new bytes32[](_orderbook["Stop"].length);   
+        }
+        for (i = 0; i < _orderbook["Stop"].length; i++) {
             if(_orderbook["Stop"][i] == 0) continue;
             if ((_orders[_orderbook["Stop"][i]].order == IOrder.Order.Buy && _orders[_ref].order == IOrder.Order.Sell && (_orders[_orderbook["Stop"][i]].price <= _orders[_ref].price || _orders[_ref].price==0)) ||
                 (_orders[_orderbook["Stop"][i]].order == IOrder.Order.Sell && _orders[_ref].order == IOrder.Order.Buy && (_orders[_orderbook["Stop"][i]].price >= _orders[_ref].price || _orders[_ref].price==0))){
-                _marketOrders[index] = _orderbook["Stop"][i];
+                marketOrders[index] = _orderbook["Stop"][i];
                 volume = Math.add(volume, _orders[_orderbook["Stop"][i]].price.mulDown(_orders[_orderbook["Stop"][i]].qty));
                 if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Limit && _orderbook["Stop"][i]!=_ref){
                     //only if the consecutive order is a stop loss order, it goes to the market order book
-                    _marketOrders[index+1] = _ref;
+                    marketOrders[index+1] = _ref;
                 }   
                 index++;        
             } 
         }
-        return (volume, _marketOrders);
+        return (volume, marketOrders);
     }
 
     function reorder(uint256 position, IOrder.OrderType list) private {
@@ -227,7 +241,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
 
         //check if enough market volume exist to fulfil market orders, or if market depth is zero
         (i, _marketOrders) = checkLimitOrders(_order.ref, _trade);
-        // i = Math.add(i, checkStopOrders(_order.ref, _trade));
+        (i, _marketOrders) = checkStopOrders(_order.ref, _trade, i, _marketOrders);
         if(_trade==IOrder.OrderType.Market){
             if(i < _order.qty)
                 return 0;
@@ -384,7 +398,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 }
             }
         }
-        //delete _marketOrders;
+        delete _marketOrders;
     }
 
     function reportTrade(bytes32 _ref, bytes32 _cref, uint256 _price, uint256 securityTraded, uint256 currencyTraded) private {
@@ -462,9 +476,10 @@ contract Orderbook is IOrder, ITrade, Ownable{
             _orderbook["Limit"].push(_orderRef);
             checkLimitOrders(_orderRef, IOrder.OrderType.Limit);
         } else if (_orders[_orderRef].otype == IOrder.OrderType.Stop) {
+            bytes32[] memory a;
             _orderIndex[_orderRef] = _orderbook["Stop"].length;
             _orderbook["Stop"].push(_orderRef);
-            checkStopOrders(_orderRef, IOrder.OrderType.Stop);
+            checkStopOrders(_orderRef, IOrder.OrderType.Stop, 0, a);
         }
     }
 

@@ -13,12 +13,5 @@ interface ISecondaryIssuePool {
     function getCurrency() external view returns (address);
 
     function getSecurityOffered() external view returns(uint256);
-
-    function getOrderRef() external view returns(bytes32[] memory);
-
-    function editOrder( bytes32 ref, uint256 _price, uint256 _qty) external;
-
-    function cancelOrder(bytes32 ref) external;
-
 }
 
