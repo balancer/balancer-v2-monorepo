@@ -8,7 +8,6 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
 import "./interfaces/ISettlor.sol";
-import "./utilities/StringUtils.sol";
 import "./Orderbook.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
@@ -23,7 +22,6 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 
 contract SecondaryIssuePool is BasePool, IGeneralPool {
     using SecondaryPoolUserData for bytes;
-    using StringUtils for *;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 

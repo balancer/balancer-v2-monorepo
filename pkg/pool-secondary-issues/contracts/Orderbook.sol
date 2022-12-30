@@ -13,6 +13,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IPoolSwapStructs.sol";
+
 contract Orderbook is IOrder, ITrade, Ownable{
     using FixedPoint for uint256;
 
@@ -20,22 +21,22 @@ contract Orderbook is IOrder, ITrade, Ownable{
     uint256 private _previousTs = 0;
 
     //order references
-    bytes32[] private _orderRefs;
+    //bytes32[] private _orderRefs;
 
     //mapping order reference to order
     mapping(bytes32 => IOrder.order) private orders;
 
     //mapping order reference to position
-    mapping(bytes32 => uint256) private _orderIndex;
+    //mapping(bytes32 => uint256) private _orderIndex;
 
     //mapping users to order references
-    mapping(address => bytes32[]) private _userOrderRefs;
+    //mapping(address => bytes32[]) private _userOrderRefs;
 
     //mapping user's order reference to positions
-    mapping(bytes32 => uint256) private _userOrderIndex;
+    //mapping(bytes32 => uint256) private _userOrderIndex;
 
     //market order book
-    bytes32[] private _marketOrders;
+    //bytes32[] private _marketOrders;
 
     //limit order book
     bytes32[] private _limitOrders;
@@ -112,13 +113,13 @@ contract Orderbook is IOrder, ITrade, Ownable{
         });
         orders[ref] = nOrder;
         //fill up indexes
-        _orderIndex[ref] = _orderRefs.length;
-        _orderRefs.push(ref);
-        _userOrderIndex[ref] = _userOrderRefs[_request.from].length;
-        _userOrderRefs[_request.from].push(ref);
+        //_orderIndex[ref] = _orderRefs.length;
+        //_orderRefs.push(ref);
+        //_userOrderIndex[ref] = _userOrderRefs[_request.from].length;
+        //_userOrderRefs[_request.from].push(ref);
         orders[ref].status = IOrder.OrderStatus.Open;
         if (_params.trade == IOrder.OrderType.Market) {
-            _marketOrders.push(ref);
+            //_marketOrders.push(ref);
             return matchOrders(ref, IOrder.OrderType.Market);
         } else if (_params.trade == IOrder.OrderType.Limit) {
             _limitOrderIndex[ref] = _limitOrders.length;
@@ -131,9 +132,9 @@ contract Orderbook is IOrder, ITrade, Ownable{
         }
     }
 
-    function getOrderRef() external view override returns (bytes32[] memory) {
-        return _userOrderRefs[msg.sender];
-    }
+    //function getOrderRef() external view override returns (bytes32[] memory) {
+        //return _userOrderRefs[msg.sender];
+    //}
 
     function editOrder(
         bytes32 ref,
@@ -167,59 +168,65 @@ contract Orderbook is IOrder, ITrade, Ownable{
         }
         delete _stopOrderIndex[ref];
         delete orders[ref];
-        delete _orderRefs[_orderIndex[ref]];
-        delete _orderIndex[ref];
-        delete _userOrderRefs[msg.sender][_userOrderIndex[ref]];
-        delete _userOrderIndex[ref];
+        //delete _orderRefs[_orderIndex[ref]];
+        //delete _orderIndex[ref];
+        //delete _userOrderRefs[msg.sender][_userOrderIndex[ref]];
+        //delete _userOrderIndex[ref];
     }
 
     //check if a buy order in the limit order book can execute over the prevailing (low) price passed to the function
     //check if a sell order in the limit order book can execute under the prevailing (high) price passed to the function
-    function checkLimitOrders(bytes32 _ref, IOrder.OrderType _trade) private returns (uint256){
+    function checkLimitOrders(bytes32 _ref, IOrder.OrderType _trade) private view returns (uint256, bytes32[] memory){
         uint256 volume;
+        bytes32[] memory _marketOrders = new bytes32[](_limitOrders.length);
+        uint256 index;
         for (uint256 i = 0; i < _limitOrders.length; i++) {
             if(_limitOrders[i] == 0) continue;
             if ((orders[_limitOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell && (orders[_limitOrders[i]].price >= orders[_ref].price || orders[_ref].price==0)) ||
                 (orders[_limitOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy && (orders[_limitOrders[i]].price <= orders[_ref].price || orders[_ref].price==0))){
-                _marketOrders.push(_limitOrders[i]);
+                _marketOrders[index] = _limitOrders[i];
                 volume = Math.add(volume, orders[_limitOrders[i]].price.mulDown(orders[_limitOrders[i]].qty));
                 if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Stop && _limitOrders[i]!=_ref){
                 //only if the consecutive order is a limit order, it goes to the market order book
-                    _marketOrders.push(_ref);
-                }                      
+                    _marketOrders[index+1] = _ref;
+                }  
+                index++;                    
             } 
         }
-        return volume;  
+        return (volume, _marketOrders);  
     }
     
     //check if a buy order in the stoploss order book can execute under the prevailing (high) price passed to the function
     //check if a sell order in the stoploss order book can execute over the prevailing (low) price passed to the function
-    function checkStopOrders(bytes32 _ref, IOrder.OrderType _trade) private returns (uint256){
+    function checkStopOrders(bytes32 _ref, IOrder.OrderType _trade) private view returns (uint256, bytes32[] memory){
         uint256 volume;
+        bytes32[] memory _marketOrders = new bytes32[](_stopOrders.length);
+        uint256 index;
         for (uint256 i = 0; i < _stopOrders.length; i++) {
             if(_stopOrders[i] == 0) continue;
             if ((orders[_stopOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell && (orders[_stopOrders[i]].price <= orders[_ref].price || orders[_ref].price==0)) ||
                 (orders[_stopOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy && (orders[_stopOrders[i]].price >= orders[_ref].price || orders[_ref].price==0))){
-                _marketOrders.push(_stopOrders[i]);
+                _marketOrders[index] = _stopOrders[i];
                 volume = Math.add(volume, orders[_stopOrders[i]].price.mulDown(orders[_stopOrders[i]].qty));
                 if(_trade!=IOrder.OrderType.Market && _trade!=IOrder.OrderType.Limit && _stopOrders[i]!=_ref){
                     //only if the consecutive order is a stop loss order, it goes to the market order book
-                    _marketOrders.push(_ref);
-                }           
+                    _marketOrders[index+1] = _ref;
+                }   
+                index++;        
             } 
         }
-        return volume;
+        return (volume, _marketOrders);
     }
 
     function reorder(uint256 position, IOrder.OrderType list) private {
-        if (list == IOrder.OrderType.Market) {
+        /*if (list == IOrder.OrderType.Market) {
             for (uint256 i = position; i < _marketOrders.length; i++) {
                 if (i == _marketOrders.length - 1){ 
                     delete _marketOrders[position];
                 }
                 else _marketOrders[position] = _marketOrders[position + 1];
             }
-        } else if (list == IOrder.OrderType.Limit) {
+        } else*/ if (list == IOrder.OrderType.Limit) {
             for (uint256 i = position; i < _limitOrders.length; i++) {
                 if (i == _limitOrders.length - 1) {
                     delete _limitOrders[position];
@@ -240,17 +247,17 @@ contract Orderbook is IOrder, ITrade, Ownable{
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, IOrder.OrderType _trade) private returns (uint256){
         bytes32 _bestBid;
-        uint256 _bestBidPrice = 0;
+        uint256 _bestPrice = 0;
         bytes32 _bestOffer;
-        uint256 _bestOfferPrice = 0;
+        bytes32[] memory _marketOrders = new bytes32[](Math.add(_limitOrders.length, _stopOrders.length));
         uint256 _bidIndex = 0;   
         uint256 securityTraded;
         uint256 currencyTraded;
         uint256 i;
-       
+
         //check if enough market volume exist to fulfil market orders, or if market depth is zero
-        i = checkLimitOrders(_ref, _trade);
-        i = Math.add(i, checkStopOrders(_ref, _trade));
+        (i, _marketOrders) = checkLimitOrders(_ref, _trade);
+        //i = Math.add(i, checkStopOrders(_ref, _trade));
         if(_trade==IOrder.OrderType.Market){
             if(i < orders[_ref].qty)
                 return 0;
@@ -269,14 +276,14 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 if (orders[_marketOrders[i]].price == 0 && orders[_ref].price == 0) continue; // Case: If Both CP & Party place Order@CMP
                 if (orders[_marketOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price || orders[_ref].price == 0) {
-                        _bestBidPrice = orders[_marketOrders[i]].price;  
+                        _bestPrice = orders[_marketOrders[i]].price;  
                         _bestBid = _marketOrders[i];
                         _bidIndex = i;
                     }
                 } else if (orders[_marketOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy) {
                     // orders[_ref].price == 0 condition check for Market Order with 0 Price
                     if (orders[_marketOrders[i]].price <= orders[_ref].price || orders[_ref].price == 0) {
-                        _bestOfferPrice = orders[_marketOrders[i]].price;  
+                        _bestPrice = orders[_marketOrders[i]].price;  
                         _bestOffer = _marketOrders[i];
                         _bidIndex = i;
                     }
@@ -286,59 +293,59 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 if (_bestBid != "") {
                     if(orders[_ref].tokenIn==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN && orders[_ref].securityBalance>=orders[_ref].qty){
                         if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
-                            securityTraded = orders[_bestBid].qty.divDown(_bestBidPrice); // calculating amount of security that can be brought
+                            securityTraded = orders[_bestBid].qty.divDown(_bestPrice); // calculating amount of security that can be brought
                         }else if (orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
                             securityTraded = orders[_bestBid].qty; // amount of security brought (tokenOut) is already there 
                         }
                         if(securityTraded >= orders[_ref].qty){
                             securityTraded = orders[_ref].qty;
-                            currencyTraded = orders[_ref].qty.mulDown(_bestBidPrice);
+                            currencyTraded = orders[_ref].qty.mulDown(_bestPrice);
                             orders[_bestBid].qty = orders[_bestBid].tokenIn ==_currency &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_OUT ? 
                                                     Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, currencyTraded);
                             orders[_ref].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestBid, _bestPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
                                 return calcTraded(_ref, orders[_ref].party, true);
                         }    
                         else{
-                            currencyTraded = securityTraded.mulDown(_bestBidPrice);
+                            currencyTraded = securityTraded.mulDown(_bestPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                             orders[_bestBid].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
-                            reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestBid, _bestPrice, securityTraded, currencyTraded);
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }
                     }
                     else if(orders[_ref].tokenOut==_currency && orders[_ref].swapKind==IVault.SwapKind.GIVEN_OUT){
                         if(orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
-                            currencyTraded = orders[_bestBid].qty.mulDown(_bestBidPrice); // calculating amount of currency that needs to be sent in to buy security (tokenOut)
+                            currencyTraded = orders[_bestBid].qty.mulDown(_bestPrice); // calculating amount of currency that needs to be sent in to buy security (tokenOut)
                         }else if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                             currencyTraded = orders[_bestBid].qty; // amount of currency sent in (tokenIn) is already there
                         }
                         if(currencyTraded >= orders[_ref].qty){
                             currencyTraded = orders[_ref].qty;
-                            securityTraded = orders[_ref].qty.divDown(_bestBidPrice);
+                            securityTraded = orders[_ref].qty.divDown(_bestPrice);
                             orders[_bestBid].qty = orders[_bestBid].tokenOut ==_security &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_IN ? 
                                                     Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, securityTraded);
                             orders[_ref].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestBid, _bestPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
                                 return calcTraded(_ref, orders[_ref].party, false);
                         }    
                         else{
-                            securityTraded = currencyTraded.divDown(_bestBidPrice);
+                            securityTraded = currencyTraded.divDown(_bestPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                             orders[_bestBid].qty = 0;
                             orders[_bestBid].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;   
-                            reportTrade(_ref, _bestBid, _bestBidPrice, securityTraded, currencyTraded);                     
+                            reportTrade(_ref, _bestBid, _bestPrice, securityTraded, currencyTraded);                     
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }
                     }
@@ -348,66 +355,66 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 if (_bestOffer != "") {
                     if(orders[_ref].tokenIn==_currency && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN && orders[_ref].currencyBalance>=orders[_ref].qty){
                         if(orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
-                            currencyTraded = orders[_bestOffer].qty.mulDown(_bestOfferPrice); // calculating amount of currency that can taken out    
+                            currencyTraded = orders[_bestOffer].qty.mulDown(_bestPrice); // calculating amount of currency that can taken out    
                         } else if (orders[_bestOffer].tokenOut==_currency && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_OUT){
                             currencyTraded = orders[_bestOffer].qty; // amount of currency to take out (tokenOut) is already there 
                         }
                         if(currencyTraded >= orders[_ref].qty){
                             currencyTraded = orders[_ref].qty;
-                            securityTraded = orders[_ref].qty.divDown(_bestOfferPrice);
+                            securityTraded = orders[_ref].qty.divDown(_bestPrice);
                             orders[_bestOffer].qty = orders[_bestOffer].tokenOut ==_currency &&  orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_OUT ? 
                                                     Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, securityTraded);
                             orders[_ref].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestOffer, _bestPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
                                 return calcTraded(_ref, orders[_ref].party, true);
                         }    
                         else{
-                            securityTraded = currencyTraded.divDown(_bestOfferPrice);
+                            securityTraded = currencyTraded.divDown(_bestPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;    
-                            reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);                    
+                            reportTrade(_ref, _bestOffer, _bestPrice, securityTraded, currencyTraded);                    
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }                    
                     }
                     else if(orders[_ref].tokenOut==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_OUT){
                         if(orders[_bestOffer].tokenOut==_currency && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_OUT){
-                            securityTraded = orders[_bestOffer].qty.divDown(_bestOfferPrice); // calculating amount of security that needs to be sent in to take out currency (tokenOut)
+                            securityTraded = orders[_bestOffer].qty.divDown(_bestPrice); // calculating amount of security that needs to be sent in to take out currency (tokenOut)
                         } else if(orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
                             securityTraded = orders[_bestOffer].qty; // amount of security sent in (tokenIn) is already there
                         }
                         if(securityTraded >= orders[_ref].qty){
                             securityTraded = orders[_ref].qty;
-                            currencyTraded = orders[_ref].qty.mulDown(_bestOfferPrice);
+                            currencyTraded = orders[_ref].qty.mulDown(_bestPrice);
                             orders[_bestOffer].qty = orders[_bestOffer].tokenIn ==_security && orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_IN ? 
                                                     Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, currencyTraded);
                             orders[_ref].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.PartlyFilled;
                             orders[_ref].status = IOrder.OrderStatus.Filled;  
-                            reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestOffer, _bestPrice, securityTraded, currencyTraded);
                             reorder(0, _trade); //order ref is removed from market order list as its qty becomes zero
                             if(orders[_ref].otype == IOrder.OrderType.Market)
                                 return calcTraded(_ref, orders[_ref].party, false);   
                         }    
                         else{
-                            currencyTraded = securityTraded.mulDown(_bestOfferPrice);
+                            currencyTraded = securityTraded.mulDown(_bestPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                             orders[_bestOffer].qty = 0;
                             orders[_bestOffer].status = IOrder.OrderStatus.Filled;
                             orders[_ref].status = IOrder.OrderStatus.PartlyFilled;
-                            reportTrade(_ref, _bestOffer, _bestOfferPrice, securityTraded, currencyTraded);
+                            reportTrade(_ref, _bestOffer, _bestPrice, securityTraded, currencyTraded);
                             reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                         }
                     }                
                 }
             }
         }
-        delete _marketOrders;
+        //delete _marketOrders;
     }
 
     function reportTrade(bytes32 _ref, bytes32 _cref, uint256 _price, uint256 securityTraded, uint256 currencyTraded) private {
@@ -487,7 +494,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         orders[_orderRef].status = OrderStatus.Open;
         //push to order book
         if (orders[_orderRef].otype == IOrder.OrderType.Market) {
-            _marketOrders.push(_orderRef);
+            //_marketOrders.push(_orderRef);
             matchOrders(_orderRef, IOrder.OrderType.Market);
         } else if (orders[_orderRef].otype == IOrder.OrderType.Limit) {
             _limitOrderIndex[_orderRef] = _limitOrders.length;
@@ -501,16 +508,16 @@ contract Orderbook is IOrder, ITrade, Ownable{
     }
 
     function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) onlyOwner external override {
-        delete _userOrderRefs[orders[partyRef].party][_userOrderIndex[partyRef]];
-        delete _userOrderIndex[partyRef];
+        //delete _userOrderRefs[orders[partyRef].party][_userOrderIndex[partyRef]];
+        //delete _userOrderIndex[partyRef];
         delete orders[partyRef];
-        delete _orderRefs[_orderIndex[partyRef]];
-        delete _orderIndex[partyRef];
-        delete _userOrderRefs[orders[counterpartyRef].party][_userOrderIndex[counterpartyRef]];
-        delete _userOrderIndex[counterpartyRef];
+        //delete _orderRefs[_orderIndex[partyRef]];
+        //delete _orderIndex[partyRef];
+        //delete _userOrderRefs[orders[counterpartyRef].party][_userOrderIndex[counterpartyRef]];
+        //delete _userOrderIndex[counterpartyRef];
         delete orders[counterpartyRef];
-        delete _orderRefs[_orderIndex[counterpartyRef]];
-        delete _orderIndex[counterpartyRef];
+        //delete _orderRefs[_orderIndex[counterpartyRef]];
+        //delete _orderIndex[counterpartyRef];
     }
 
     function tradeSettled(

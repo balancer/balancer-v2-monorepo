@@ -39,7 +39,7 @@ interface IOrder {
 
     function getCurrency() external view returns (address);
 
-    function getOrderRef() external view returns(bytes32[] memory);
+    //function getOrderRef() external view returns(bytes32[] memory);
 
     function cancelOrder(bytes32 ref) external;
 
