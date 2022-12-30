@@ -2,6 +2,7 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { BigNumberish } from '../../../../numbers';
+import { Address } from 'cluster';
 
 export type EditOrder = {
   ref?: string;
@@ -17,4 +18,9 @@ export type CancelOrder = {
 
 export type OrderRef = {
   from?: SignerWithAddress;
+};
+
+export type TradeFetch = {
+  from?: SignerWithAddress;
+  tradeId: BigNumberish;
 };

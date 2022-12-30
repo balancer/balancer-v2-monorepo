@@ -26,15 +26,7 @@ interface ISettlor {
                         bytes32 counterpartyRef;
                     }
     
-    function issueSecondary(address security, address currency, uint256 amount, bytes32 id, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external;
-
     function requestSettlement(ITrade.trade memory tradeToReport, IOrder orderbook) external;
-
-    function getSettlementRequests(bytes32 dpid) external view returns(bytes32[] memory);
-
-    function getSettlementRequest(bytes32 ref) external view returns(settlement memory);
-
-    function setSettlementStatus(bytes32 ref, bytes32 status) external;
 
     function getTrade(bytes32 ref) external view returns(uint256 b, uint256 a);
 
