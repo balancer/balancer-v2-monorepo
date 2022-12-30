@@ -30,10 +30,6 @@ describe('SecondaryPool', function () {
   const _DEFAULT_MINIMUM_BPT = 1e6;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
-  const eventName = "CallSwap(bool,string,address,bool,string,address,uint256)";
-  const eventType = ["bool swapKindParty", "string tokenInParty", "address party", "bool swapKindCounterparty", "string tokenInCounterparty", "address counterParty", "uint256 swapId"];
-  const encodedEventSignature = keccak256(toUtf8Bytes(eventName));
-
   const abiCoder = new ethers.utils.AbiCoder();
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
@@ -164,6 +160,7 @@ describe('SecondaryPool', function () {
     let currentBalances: BigNumber[];
     let params: {};
     let secondary_pool: any;
+    let ob: any;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
 
@@ -173,7 +170,7 @@ describe('SecondaryPool', function () {
       
       const poolId = await pool.getPoolId();
       currentBalances = (await pool.vault.getPoolTokens(poolId)).balances;
-
+      ob = await pool.orderbook(); 
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
       };
@@ -197,38 +194,40 @@ describe('SecondaryPool', function () {
       await pool.vault.updateBalances(poolId, updateBalances);
     };
    
-  const callSwapEvent = async(eventLogData: Bytes, securityTraded: BigNumber, currencyTraded: BigNumber, counterPartyOrder: string, partyOrder: string, partyOrderType?: string) => {
-    const eventEncodedData =  ethers.utils.defaultAbiCoder.decode(eventType,eventLogData);
-    // console.log(eventEncodedData);
-    const counterPartyTx = {
-      in: eventEncodedData.tokenInCounterparty == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  eventEncodedData.tokenInCounterparty != "security" ? pool.securityIndex :  pool.currencyIndex,
-      amount: eventEncodedData.swapId,
-      from: eventEncodedData.counterParty == lp.address ? lp : trader,
+  const callSwapEvent = async(cpTradesInfo: any, pTradesInfo: any, securityTraded: BigNumber, currencyTraded: BigNumber, counterPartyOrder: string, partyOrder: string, partyOrderType?: string) => {
+     // for Counter Party
+     const counterPartyTx = {
+      in: cpTradesInfo.counterpartyTokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  cpTradesInfo.partyTokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
+      amount: cpTradesInfo.dt,
+      from: cpTradesInfo.counterparty == lp.address ? lp : trader,
       balances: currentBalances,
-      data: abiCoder.encode(["string", "uint"], ['', eventEncodedData.swapId]),
+      data: abiCoder.encode(["string", "uint"], ['', cpTradesInfo.dt]),
     };
+    // for Party  
     const partyDataTx = {
-      in: eventEncodedData.tokenInParty == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  eventEncodedData.tokenInParty != "security" ? pool.securityIndex :  pool.currencyIndex,
-      amount: eventEncodedData.swapId,
-      from: eventEncodedData.party == lp.address ? lp : trader,
+      in: pTradesInfo.partyTokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  pTradesInfo.counterpartyTokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
+      amount: pTradesInfo.dt,
+      from: pTradesInfo.party == lp.address ? lp : trader,
       balances: currentBalances,
-      data: abiCoder.encode(["string", "uint"], ['', eventEncodedData.swapId]),
+      data: abiCoder.encode(["string", "uint"], ['', pTradesInfo.dt]),
     };
 
-    const counterPartyAmount = eventEncodedData.swapKindCounterparty ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
+    const counterPartyAmount = cpTradesInfo.counterpartySwapIn ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
     const counterTradedAmount = counterPartyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
     const orderName = counterPartyOrder == "Sell" ? "Security Traded" : "Currency Traded";
     // console.log(orderName,counterTradedAmount);
-    
-    const partyAmount = eventEncodedData.swapKindParty ?  await pool.swapGivenIn(partyDataTx) :  await pool.swapGivenOut(partyDataTx);
-    const partyTradedAmount = partyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
-    const orderName2 = partyOrder == "Sell" ? "Security Traded" : "Currency Traded";
-    // console.log(orderName2,partyTradedAmount);
     expect(counterPartyAmount[0].toString()).to.be.equals(counterTradedAmount); 
+
     if(partyOrderType != "Market")
+    {
+      const partyAmount = pTradesInfo.partyTokenIn ?  await pool.swapGivenIn(partyDataTx) :  await pool.swapGivenOut(partyDataTx);
+      const partyTradedAmount = partyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
+      const orderName2 = partyOrder == "Sell" ? "Security Traded" : "Currency Traded";
+      // console.log(orderName2,partyTradedAmount);
       expect(partyAmount[0].toString()).to.be.equals(partyTradedAmount); 
+    }     
   } 
   
   context('Placing Market order', () => {
@@ -251,7 +250,7 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         from: lp,
         data: abiCoder.encode([], []), // MarketOrder Sell 10@Market Price
-        eventHash: encodedEventSignature
+         
       })).to.be.revertedWith("Insufficient liquidity");
       
       await expect(pool.swapGivenIn({
@@ -261,7 +260,7 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         from: lp,
         data: abiCoder.encode([], []), // MarketOrder Buy 500@Market Price
-        eventHash: encodedEventSignature
+         
       })).to.be.revertedWith("Insufficient liquidity");
 
     });
@@ -278,7 +277,7 @@ describe('SecondaryPool', function () {
           balances: currentBalances,
           from: lp,
           data: abiCoder.encode([], []), // MarketOrder Sell 10@Market Price
-          eventHash: encodedEventSignature
+           
         })).to.be.revertedWith("Insufficient liquidity");
         return;
       }
@@ -289,14 +288,17 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         from: trader,
         data : ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // LimitOrder Buy 15@210
-        eventHash: encodedEventSignature
+         
       });
-      console.log("After BUY");
-      if (buy_order[1]) {
-        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
-      }else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy");
+
     });
 
     context('when pool paused', () => {
@@ -338,7 +340,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        eventHash: encodedEventSignature
+         
       });
 
       if(buy_qty > sell_qty){
@@ -349,7 +351,7 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode([], []), // MarketOrder Buy@market price
-          eventHash: encodedEventSignature
+           
         })).to.be.revertedWith('Insufficient liquidity')
       }
     });
@@ -366,7 +368,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        eventHash: encodedEventSignature
+         
       });
 
       if(buy_qty > sell_qty){
@@ -377,7 +379,7 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode([], []), // MarketOrder Buy@market price
-          eventHash: encodedEventSignature
+           
         })).to.be.revertedWith('Insufficient liquidity')
       }
     });
@@ -395,7 +397,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        eventHash: encodedEventSignature
+         
       });
 
       if(buy_qty > securityTraded)
@@ -407,7 +409,7 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode([], []), // MarketOrder Buy@market price
-          eventHash: encodedEventSignature
+           
         })).to.be.revertedWith("Insufficient liquidity");
       }
       else{
@@ -418,14 +420,16 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode([], []), // MarketOrder Buy@market price
-          eventHash: encodedEventSignature
+           
         });
-        if (buy_order[1]) {
-          await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
-        }
-        else{
-          console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-        }
+        const counterPartyTrades = await ob.getTrades({from: lp});
+        const partyTrades = await ob.getTrades({from: trader});
+
+        const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+        const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+    
+        await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy");
+      
       }
       
     });
@@ -443,7 +447,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        eventHash: encodedEventSignature
+         
       });
 
       const buy_order = await pool.swapGivenOut({
@@ -453,15 +457,18 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode([], []), // MarketOrder Buy@market price
-        eventHash: encodedEventSignature
+         
       });
       expect(buy_order[0].toString()).to.be.equals(currencyTraded.toString()); 
-      if (buy_order[1]) {
-        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy","Market");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+  
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy","Market");
+     
     });
 
     it('Sell SWAP Out Currency Order > Buy SWAP OUT Security Order2', async () => {
@@ -477,7 +484,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        eventHash: encodedEventSignature
+         
       });
 
       const buy_order = await pool.swapGivenOut({
@@ -487,15 +494,17 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode([], []), // MarketOrder Buy@market price
-        eventHash: encodedEventSignature
+         
       });
       expect(buy_order[0].toString()).to.be.equals(currencyTraded.toString()); 
-      if (buy_order[1]) {
-        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy","Market");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy","Market");
+
     });
 
     it('Sell[Limit] SWAP In Security Order > Buy [Market] SWAP OUT Security Order', async () => {
@@ -511,7 +520,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        eventHash: encodedEventSignature
+         
       });
 
       const buy_order = await pool.swapGivenOut({
@@ -521,16 +530,18 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode([], []), // MarketOrder Buy@market price
-        eventHash: encodedEventSignature
+         
       });
 
       expect(buy_order[0].toString()).to.be.equals(currencyTraded.toString()); 
-      if (buy_order[1]) {
-        await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy","Market");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy","Market");
+
     });
   });
 
@@ -558,7 +569,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Sell@price12
-        eventHash: encodedEventSignature
+         
       });
 
       const sell_order = await pool.swapGivenIn({
@@ -568,15 +579,17 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // MarketOrder Buy@market price
-        eventHash: encodedEventSignature
+         
       });
 
-      if (sell_order[1]) {
-        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell");
+    
     });
 
     it('Buy[Limit] SWAP Out Security Order > Sell [Market] SWAP IN Security Order', async () => {
@@ -592,7 +605,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
-        eventHash: encodedEventSignature
+         
       });
 
       if(sell_qty > securityTraded)
@@ -604,7 +617,7 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode([], []), 
-          eventHash: encodedEventSignature
+           
         })).to.be.revertedWith("Insufficient liquidity");
       }
       else{ 
@@ -615,15 +628,18 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode([], []), 
-          eventHash: encodedEventSignature
+           
         });
   
-        if (sell_order[1]) {
-          await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
-        }
-        else{
-          console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-        }
+    
+        const counterPartyTrades = await ob.getTrades({from: lp});
+        const partyTrades = await ob.getTrades({from: trader});
+
+        const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+        const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+    
+        await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell");
+
       }
       
     });
@@ -641,7 +657,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
-        eventHash: encodedEventSignature
+         
       });
 
       const sell_order = await pool.swapGivenIn({
@@ -651,15 +667,17 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Limit Sell@price 10
-        eventHash: encodedEventSignature
+         
       });
 
-      if (sell_order[1]) {
-        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell");
+ 
     });
 
     it('Buy SWAP Out Security Order > Sell SWAP IN Security Order', async () => {
@@ -675,7 +693,7 @@ describe('SecondaryPool', function () {
           from: lp,
           balances: currentBalances,
           data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
-          eventHash: encodedEventSignature
+           
       });
   
       const sell_order = await pool.swapGivenIn({
@@ -685,15 +703,17 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Limit Sell@price 10
-          eventHash: encodedEventSignature
+           
       });
   
-      if (sell_order[1]) {
-          await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
-      }
-      else{
-          console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell");
+ 
     });
 
     it('Sell SWAP In Currency Order > Buy SWAP In Currency Order', async () => {
@@ -711,7 +731,7 @@ describe('SecondaryPool', function () {
           from: lp,
           balances: currentBalances,
           data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Buy@price 20
-          eventHash: encodedEventSignature
+           
       });
   
       const buy_order = await pool.swapGivenIn({ //Buy Security
@@ -721,16 +741,18 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode([], []),
-          eventHash: encodedEventSignature
+           
       });
 
       expect(buy_order[0].toString()).to.be.equals(securityTraded.toString()); 
-      if (buy_order[1]) {
-          await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy","Market");
-      }
-      else{
-          console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy", "Market");
+
     });
   
     it('Buy SWAP Out Security Order > Sell SWAP Out Security Order', async () => {
@@ -748,7 +770,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
-        eventHash: encodedEventSignature
+         
       });
   
       const sell_order = await pool.swapGivenOut({
@@ -758,15 +780,17 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Limit Sell@price 10
-        eventHash: encodedEventSignature
+         
       });
   
-      if (sell_order[1]) {
-        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell");
+
     });
 
     it('Buy SWAP In Currency Order > Sell SWAP Out Currency Order', async () => {
@@ -783,7 +807,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]), // Stop Order Buy@price 20
-        eventHash: encodedEventSignature
+         
       });
 
       const sell_order = await pool.swapGivenOut({ //Sell Currency[Buy Sec]
@@ -793,14 +817,17 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Stop Sell@price 10
-        eventHash: encodedEventSignature
+         
       });
   
-      if (sell_order[1]) {
-        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+      if(counterPartyTrades.length && partyTrades.length)
+      {
+        const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+        const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+    
+        await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell");
       }
     });
   
@@ -816,7 +843,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]), // Limit Order Buy@price 20
-        eventHash: encodedEventSignature
+         
       });
   
       const sell_order = await pool.swapGivenOut({ //buy currency [Sell Sec] 200
@@ -825,17 +852,19 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         from: trader,
         balances: currentBalances,
-        data: abiCoder.encode([], []), // Limit Sell@price 10
-        eventHash: encodedEventSignature
+        data: abiCoder.encode([], []), // Market
+         
       });
-  
+      console.log(sell_order[0].toString());
       expect(sell_order[0].toString()).to.be.equals(securityTraded.toString()); 
-      if (sell_order[1]) {
-        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell","Market");
-      }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+  
+      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell","Market");
+   
     });
   
     it('Buy SWAP IN Currency Order > Sell SWAP Out Security Order', async () => {
@@ -851,7 +880,6 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', buy_price]),
-        eventHash: encodedEventSignature
       });
   
       const sell_order = await pool.swapGivenOut({
@@ -861,14 +889,18 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]),
-        eventHash: encodedEventSignature
       });
-      if (sell_order[1]) {
-        await callSwapEvent(sell_order[1],securityTraded,currencyTraded,"Buy","Sell");
+
+      const counterPartyTrades = await ob.getTrades({from: lp});
+      const partyTrades = await ob.getTrades({from: trader});
+
+      if(counterPartyTrades.length && partyTrades.length)
+      {
+        const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+        const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+        await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell");
       }
-      else{
-        console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-      }
+      
     });
 
   });
@@ -893,7 +925,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]),
-        eventHash: encodedEventSignature
+         
       });
 
       const ob = await pool.orderbook(); 
@@ -939,7 +971,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', sell_price]), // Limit Order Sell@price12
-        eventHash: encodedEventSignature
+         
       });
       
       const ob = await pool.orderbook();
@@ -961,28 +993,28 @@ describe('SecondaryPool', function () {
           from: trader,
           balances: currentBalances,
           data: abiCoder.encode([], []), // MarketOrder Buy@market price
-          eventHash: encodedEventSignature
+           
         })).to.be.revertedWith("Insufficient liquidity");
       }
       else {
-        const buy_order = await pool.swapGivenIn({
-          in: pool.currencyIndex,
-          out: pool.securityIndex,
-          amount: buy_qty,
-          from: trader,
-          balances: currentBalances,
-          data: abiCoder.encode([], []), // MarketOrder Buy@market price
-          eventHash: encodedEventSignature
-        });
+          const buy_order = await pool.swapGivenIn({
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
+            amount: buy_qty,
+            from: trader,
+            balances: currentBalances,
+            data: abiCoder.encode([], []), // MarketOrder Buy@market price
+             
+          });
   
-        if (buy_order[1]) {
-          await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
-        }
-        else{
-          console.log("TEST CASE: Solidity Error, can't fire CallSwap Event");
-        }
-      }
+          const counterPartyTrades = await ob.getTrades({from: lp});
+          const partyTrades = await ob.getTrades({from: trader});
+
+          const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+          const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
       
+          await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy");
+        }
     });
   });
 
@@ -1072,7 +1104,7 @@ describe('SecondaryPool', function () {
             from: trader,
             balances: currentBalances,
             data: buy_data, 
-            eventHash: encodedEventSignature
+             
           })).to.be.revertedWith("Insufficient liquidity");
         }
         else {
@@ -1083,19 +1115,29 @@ describe('SecondaryPool', function () {
             from: trader,
             balances: currentBalances,
             data: buy_data, 
-            eventHash: encodedEventSignature
+             
           });
 
           if(OrderType[buy_RandomOrderType] == "Market")
           {
             expect(buy_order[0].toString()).to.be.equals(currencyTraded.toString()); 
-            if (buy_order[1]) {
-              await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy", "Market");
-            }
+            const counterPartyTrades = await ob.getTrades({from: lp});
+            const partyTrades = await ob.getTrades({from: trader});
+
+            const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+            const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+        
+            await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy","Market");
           }
           else{
             if (buy_order[1]) {
-              await callSwapEvent(buy_order[1],securityTraded,currencyTraded,"Sell","Buy");
+                const counterPartyTrades = await ob.getTrades({from: lp});
+                const partyTrades = await ob.getTrades({from: trader});
+
+                const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
+                const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
+            
+                await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Sell","Buy");
             }
           }
           
@@ -1134,7 +1176,7 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
-        eventHash: encodedEventSignature
+         
       });
       await pool.swapGivenIn({ // Sell Security 3@102
         in: pool.securityIndex,
@@ -1143,7 +1185,7 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(102)]),
-        eventHash: encodedEventSignature
+         
       });
       await pool.swapGivenIn({ // Sell Security 4@103
         in: pool.securityIndex,
@@ -1152,7 +1194,7 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(103)]),
-        eventHash: encodedEventSignature
+         
       });
       await pool.swapGivenIn({ // Sell Security 5@104
         in: pool.securityIndex,
@@ -1161,7 +1203,7 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', fp(104)]),
-        eventHash: encodedEventSignature
+         
       });
       const buy_order = await pool.swapGivenOut({ // Buy Security 10@CMP
         in: pool.currencyIndex,
@@ -1170,7 +1212,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode([], []),
-        eventHash: encodedEventSignature
+         
       });
       expect(buy_order[0].toString()).to.be.equals(avgCurrencyTraded.toString()); 
     });
@@ -1191,7 +1233,7 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
-        eventHash: encodedEventSignature
+         
       });
       await pool.swapGivenIn({ // Sell Security 3@102
         in: pool.securityIndex,
@@ -1200,7 +1242,7 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(102)]),
-        eventHash: encodedEventSignature
+         
       });
       await expect(pool.swapGivenOut({ // Buy Security 10@CMP
         in: pool.currencyIndex,
@@ -1209,7 +1251,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode([], []),
-        eventHash: encodedEventSignature
+         
       })).to.be.revertedWith("Insufficient liquidity");
       
     });
@@ -1222,7 +1264,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(100)]),
-        eventHash: encodedEventSignature
+         
       });
       await pool.swapGivenOut({ 
         in: pool.currencyIndex,
@@ -1231,7 +1273,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(101)]),
-        eventHash: encodedEventSignature
+         
       });
       await pool.swapGivenOut({ 
         in: pool.currencyIndex,
@@ -1240,7 +1282,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(102)]),
-        eventHash: encodedEventSignature
+         
       });
       await pool.swapGivenOut({ 
         in: pool.currencyIndex,
@@ -1249,7 +1291,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(103)]),
-        eventHash: encodedEventSignature
+         
       });
       await pool.swapGivenOut({ 
         in: pool.currencyIndex,
@@ -1258,7 +1300,7 @@ describe('SecondaryPool', function () {
         from: lp,
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', fp(104)]),
-        eventHash: encodedEventSignature
+         
       });
       const sell_order = await pool.swapGivenIn({ 
         in: pool.securityIndex,
@@ -1267,7 +1309,7 @@ describe('SecondaryPool', function () {
         from: trader,
         balances: currentBalances,
         data: abiCoder.encode([], []), 
-        eventHash: encodedEventSignature
+         
       });
 
       expect(sell_order[0].toString()).to.be.equal(avgCurrencyTraded.toString());

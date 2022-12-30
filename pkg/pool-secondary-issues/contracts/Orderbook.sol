@@ -59,9 +59,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
     address payable private _balancerManager;
     address private _pool;
 
-    event CallSwap( bool swapKindParty, string tokenInParty, address party, 
-                    bool swapKindCounterparty, string tokenInCounterparty, address counterParty, uint256 swapId); 
-
     constructor(address balancerManager, address security, address currency, address pool){        
         _balancerManager = payable(balancerManager);
         _security = security;
@@ -132,9 +129,9 @@ contract Orderbook is IOrder, ITrade, Ownable{
         }
     }
 
-    //function getOrderRef() external view override returns (bytes32[] memory) {
-        //return _userOrderRefs[msg.sender];
-    //}
+    // function getOrderRef() external view override returns (bytes32[] memory) {
+    //     return _userOrderRefs[msg.sender];
+    // }
 
     function editOrder(
         bytes32 ref,
@@ -310,7 +307,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             if(orders[_ref].otype == IOrder.OrderType.Market)
                                 return calcTraded(_ref, orders[_ref].party, true);
                         }    
-                        else{
+                        else if(securityTraded!=0){
                             currencyTraded = securityTraded.mulDown(_bestPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                             orders[_bestBid].qty = 0;
@@ -339,7 +336,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             if(orders[_ref].otype == IOrder.OrderType.Market)
                                 return calcTraded(_ref, orders[_ref].party, false);
                         }    
-                        else{
+                        else if(currencyTraded!=0){
                             securityTraded = currencyTraded.divDown(_bestPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                             orders[_bestBid].qty = 0;
@@ -372,7 +369,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             if(orders[_ref].otype == IOrder.OrderType.Market)
                                 return calcTraded(_ref, orders[_ref].party, true);
                         }    
-                        else{
+                        else if(currencyTraded!=0){
                             securityTraded = currencyTraded.divDown(_bestPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                             orders[_bestOffer].qty = 0;
@@ -401,7 +398,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             if(orders[_ref].otype == IOrder.OrderType.Market)
                                 return calcTraded(_ref, orders[_ref].party, false);   
                         }    
-                        else{
+                        else if(securityTraded!=0){
                             currencyTraded = securityTraded.mulDown(_bestPrice);
                             orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                             orders[_bestOffer].qty = 0;
@@ -439,15 +436,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         });                 
         tradeRefs[orders[_ref].party][oIndex] = tradeToReport;
         tradeRefs[orders[_cref].party][oIndex] = tradeToReport;        
-        emit CallSwap(  orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
-                        orders[_ref].tokenIn==_security ? "security" : "currency",
-                        orders[_ref].party, 
-                        orders[_cref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
-                        orders[_cref].tokenIn==_security ? "security" : "currency",
-                        orders[_cref].party, 
-                        oIndex
-                    );
-        trades[orders[_ref].party].push(oIndex);
+        trades[orders[_ref].party].push(oIndex);    
         trades[orders[_cref].party].push(oIndex);
     }
 
