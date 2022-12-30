@@ -855,7 +855,7 @@ describe('SecondaryPool', function () {
         data: abiCoder.encode([], []), // Market
          
       });
-      console.log(sell_order[0].toString());
+
       expect(sell_order[0].toString()).to.be.equals(securityTraded.toString()); 
       const counterPartyTrades = await ob.getTrades({from: lp});
       const partyTrades = await ob.getTrades({from: trader});
@@ -1314,6 +1314,29 @@ describe('SecondaryPool', function () {
 
       expect(sell_order[0].toString()).to.be.equal(avgCurrencyTraded.toString());
       
+    });
+    it('===== Gerg\'s Test =====', async () => {
+      const numTrades = 25;
+      const amount = 0.1;
+      for (var i = 0; i < numTrades; i++) {
+        await pool.swapGivenIn({ // Sell Security 0.1@100
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: fp(amount),
+          from: trader,
+          balances: currentBalances,
+          data: abiCoder.encode(["string", "uint"], ['Limit', fp(100 + i/100)]),
+        });
+      }
+      console.log("--- Market order ---")
+      const buy_order = await pool.swapGivenOut({ // Buy Security 10@CMP
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: fp(amount * numTrades * 0.99),
+        from: lp,
+        balances: currentBalances,
+        data: abiCoder.encode([], [])
+      });
     });
   })
 
