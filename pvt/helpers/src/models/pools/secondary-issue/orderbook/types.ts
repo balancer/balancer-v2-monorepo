@@ -24,3 +24,8 @@ export type TradeFetch = {
   from?: SignerWithAddress;
   tradeId: BigNumberish;
 };
+
+export type OrderBookRef = {
+  from?: SignerWithAddress;
+  ref?: string;
+};

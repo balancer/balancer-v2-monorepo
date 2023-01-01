@@ -195,21 +195,25 @@ describe('SecondaryPool', function () {
     };
    
   const callSwapEvent = async(cpTradesInfo: any, pTradesInfo: any, securityTraded: BigNumber, currencyTraded: BigNumber, counterPartyOrder: string, partyOrder: string, partyOrderType?: string) => {
-     // for Counter Party
+    //extract details of order
+    const counterPartyOrderDetails = await ob.getOrder({from: lp, ref:cpTradesInfo.counterpartyRef});
+    const partyOrderDetails = await ob.getOrder({from: trader, ref:pTradesInfo.partyRef});
+    
+    // for Counter Party
      const counterPartyTx = {
-      in: cpTradesInfo.counterpartyTokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  cpTradesInfo.partyTokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
+      in: counterPartyOrderDetails.tokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  partyOrderDetails.tokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
       amount: cpTradesInfo.dt,
-      from: cpTradesInfo.counterparty == lp.address ? lp : trader,
+      from: counterPartyOrderDetails.party == lp.address ? lp : trader,
       balances: currentBalances,
       data: abiCoder.encode(["string", "uint"], ['', cpTradesInfo.dt]),
     };
     // for Party  
     const partyDataTx = {
-      in: pTradesInfo.partyTokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  pTradesInfo.counterpartyTokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
+      in: partyOrderDetails.tokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  counterPartyOrderDetails.tokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
       amount: pTradesInfo.dt,
-      from: pTradesInfo.party == lp.address ? lp : trader,
+      from: partyOrderDetails.party == lp.address ? lp : trader,
       balances: currentBalances,
       data: abiCoder.encode(["string", "uint"], ['', pTradesInfo.dt]),
     };
@@ -222,7 +226,7 @@ describe('SecondaryPool', function () {
 
     if(partyOrderType != "Market")
     {
-      const partyAmount = pTradesInfo.partyTokenIn ?  await pool.swapGivenIn(partyDataTx) :  await pool.swapGivenOut(partyDataTx);
+      const partyAmount = partyOrderDetails.tokenIn ?  await pool.swapGivenIn(partyDataTx) :  await pool.swapGivenOut(partyDataTx);
       const partyTradedAmount = partyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
       const orderName2 = partyOrder == "Sell" ? "Security Traded" : "Currency Traded";
       // console.log(orderName2,partyTradedAmount);
@@ -855,7 +859,7 @@ describe('SecondaryPool', function () {
         data: abiCoder.encode([], []), // Market
          
       });
-      console.log(sell_order[0].toString());
+      //console.log(sell_order[0].toString());
       expect(sell_order[0].toString()).to.be.equals(securityTraded.toString()); 
       const counterPartyTrades = await ob.getTrades({from: lp});
       const partyTrades = await ob.getTrades({from: trader});

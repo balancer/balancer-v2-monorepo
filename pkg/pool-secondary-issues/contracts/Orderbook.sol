@@ -23,13 +23,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
     //mapping order reference to order
     mapping(bytes32 => IOrder.order) private _orders;
 
-    //mapping users to order references
-    mapping(address => bytes32[]) private _userOrderRefs;
-
-    //mapping user's order reference to positions
-    mapping(bytes32 => uint256) private _userOrderIndex;
-
-    //order book
+    //mapping order type to order references
     mapping(bytes32 => bytes32[]) private _orderbook;
 
     mapping(bytes32 => uint256) private _orderIndex;
@@ -68,10 +62,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
     function newOrder(
         IPoolSwapStructs.SwapRequest memory _request,
         IOrder.Params memory _params,
-        IOrder.Order _order,
-        uint256[] memory _balances,
-        uint256 _currencyIndex,
-        uint256 _securityIndex
+        IOrder.Order _order
     ) public onlyOwner returns (uint256){
         require(_params.trade == IOrder.OrderType.Market || _params.trade == IOrder.OrderType.Limit || _params.trade == IOrder.OrderType.Stop);
         require(_order == IOrder.Order.Buy || _order == IOrder.Order.Sell);
@@ -91,14 +82,9 @@ contract Orderbook is IOrder, ITrade, Ownable{
             qty: _request.amount,
             party: _request.from,
             price: _params.price,  
-            currencyBalance: _balances[_currencyIndex],  
-            securityBalance: _balances[_securityIndex],
             ref: ref
         });
         _orders[ref] = nOrder;
-        //fill up indexes
-        _userOrderIndex[ref] = _userOrderRefs[_request.from].length;
-        _userOrderRefs[_request.from].push(ref);
         if (_params.trade == IOrder.OrderType.Market) {
             return matchOrders(nOrder, IOrder.OrderType.Market);
         } else if (_params.trade == IOrder.OrderType.Limit) {
@@ -113,7 +99,21 @@ contract Orderbook is IOrder, ITrade, Ownable{
     }
 
     function getOrderRef() external view override returns (bytes32[] memory) {
-        return _userOrderRefs[msg.sender];
+        bytes32[] memory refs = new bytes32[](Math.add(_orderbook["Limit"].length, _orderbook["Stop"].length));
+        uint256 i;
+        for(uint256 j=0; j<_orderbook["Limit"].length; j++){
+            if(_orders[_orderbook["Limit"][j]].party==msg.sender){
+                refs[i] = _orderbook["Limit"][j];
+                i++;
+            }
+        }
+        for(uint256 j=0; j<_orderbook["Stop"].length; j++){
+            if(_orders[_orderbook["Stop"][j]].party==msg.sender){
+                refs[i] = _orderbook["Stop"][j];
+                i++;
+            }
+        }
+        return refs;
     }
 
     function editOrder(
@@ -148,8 +148,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
         }
         delete _orderIndex[ref];
         delete _orders[ref];
-        delete _userOrderRefs[msg.sender][_userOrderIndex[ref]];
-        delete _userOrderIndex[ref];
     }
 
     //check if a buy order in the limit order book can execute over the prevailing (low) price passed to the function
@@ -158,7 +156,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         uint256 volume;
         bytes32[] memory _marketOrders = new bytes32[](_orderbook["Limit"].length);
         uint256 index;
-        for (uint256 i = 0; i < _orderbook["Limit"].length; i++) {
+        for (uint256 i = 0; i < _orderbook["Limit"].length; i++){
             if(_orderbook["Limit"][i] == 0) continue;
             if ((_orders[_orderbook["Limit"][i]].order == IOrder.Order.Buy && _orders[_ref].order == IOrder.Order.Sell && (_orders[_orderbook["Limit"][i]].price >= _orders[_ref].price || _orders[_ref].price==0)) ||
                 (_orders[_orderbook["Limit"][i]].order == IOrder.Order.Sell && _orders[_ref].order == IOrder.Order.Buy && (_orders[_orderbook["Limit"][i]].price <= _orders[_ref].price || _orders[_ref].price==0))){
@@ -232,12 +230,12 @@ contract Orderbook is IOrder, ITrade, Ownable{
     function matchOrders(IOrder.order memory _order, IOrder.OrderType _trade) private returns (uint256){
         bytes32 bestBid;
         uint256 bestPrice = 0;
-        bytes32 bestOffer;
-        bytes32[] memory _marketOrders = new bytes32[](Math.add(_orderbook["Limit"].length, _orderbook["Stop"].length));
+        bytes32 bestOffer;        
         uint256 bidIndex = 0;   
         uint256 securityTraded;
         uint256 currencyTraded;
         uint256 i;
+        bytes32[] memory _marketOrders = new bytes32[](Math.add(_orderbook["Limit"].length, _orderbook["Stop"].length));
 
         //check if enough market volume exist to fulfil market orders, or if market depth is zero
         (i, _marketOrders) = checkLimitOrders(_order.ref, _trade);
@@ -275,7 +273,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
             }
             if (_order.order == IOrder.Order.Sell) {             
                 if (bestBid != "") {
-                    if(_order.tokenIn==_security && _order.swapKind==IVault.SwapKind.GIVEN_IN && _order.securityBalance>=_order.qty){
+                    if(_order.tokenIn==_security && _order.swapKind==IVault.SwapKind.GIVEN_IN){
                         if(_orders[bestBid].tokenIn==_currency && _orders[bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                             securityTraded = _orders[bestBid].qty.divDown(bestPrice); // calculating amount of security that can be brought
                         }else if (_orders[bestBid].tokenOut==_security && _orders[bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
@@ -337,7 +335,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
             } 
             else if (_order.order == IOrder.Order.Buy){            
                 if (bestOffer != "") {
-                    if(_order.tokenIn==_currency && _order.swapKind==IVault.SwapKind.GIVEN_IN && _order.currencyBalance>=_order.qty){
+                    if(_order.tokenIn==_currency && _order.swapKind==IVault.SwapKind.GIVEN_IN){
                         if(_orders[bestOffer].tokenIn==_security && _orders[bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
                             currencyTraded = _orders[bestOffer].qty.mulDown(bestPrice); // calculating amount of currency that can taken out    
                         } else if (_orders[bestOffer].tokenOut==_currency && _orders[bestOffer].swapKind==IVault.SwapKind.GIVEN_OUT){
@@ -406,19 +404,10 @@ contract Orderbook is IOrder, ITrade, Ownable{
         uint256 oIndex = _previousTs;
         ITrade.trade memory tradeToReport = ITrade.trade({
             partyRef: _ref,
-            partySwapIn: _orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
-            partyTokenIn: _orders[_ref].tokenIn==_security ? "security" : "currency",
             partyInAmount: _orders[_ref].tokenIn==_security ? securityTraded : currencyTraded,
-            party: _orders[_ref].party,
-            counterpartyRef: _cref, 
-            counterpartySwapIn: _orders[_cref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
-            counterpartyTokenIn: _orders[_cref].tokenIn==_security ? "security" : "currency",
+            counterpartyRef: _cref,
             counterpartyInAmount: _orders[_cref].tokenIn==_security ? securityTraded : currencyTraded,
-            counterparty: _orders[_cref].party, 
-            security: _security,
-            currency: _currency,
             price: _price,
-            otype: _orders[_ref].otype,
             dt: oIndex
         });                 
         _tradeRefs[_orders[_ref].party][oIndex] = tradeToReport;
@@ -444,6 +433,11 @@ contract Orderbook is IOrder, ITrade, Ownable{
         return volume; 
     }   
 
+    function getOrder(bytes32 _ref) public view returns(IOrder.order memory){
+        //require(msg.sender==owner() || msg.sender==_orders[_ref].party, "Unauthorized access to orders");
+        return _orders[_ref];
+    }
+
     function getTrade(address _party, uint256 _timestamp) public view returns(ITrade.trade memory){
         require(msg.sender==owner() || msg.sender==_party, "Unauthorized access to trades");
         return _tradeRefs[_party][_timestamp];
@@ -463,15 +457,14 @@ contract Orderbook is IOrder, ITrade, Ownable{
     function revertTrade(
         bytes32 _orderRef,
         uint256 _qty,
-        Order _order
+        Order _order,
+        uint256 executionDate
     ) onlyOwner external override {
         require(_order == Order.Buy || _order == Order.Sell);
         _orders[_orderRef].qty = _orders[_orderRef].qty + _qty;
         _orders[_orderRef].status = OrderStatus.Open;
         //push to order book
-        if (_orders[_orderRef].otype == IOrder.OrderType.Market) {
-            //matchOrders(_orderRef, IOrder.OrderType.Market);
-        } else if (_orders[_orderRef].otype == IOrder.OrderType.Limit) {
+        if (_orders[_orderRef].otype == IOrder.OrderType.Limit) {
             _orderIndex[_orderRef] = _orderbook["Limit"].length;
             _orderbook["Limit"].push(_orderRef);
             checkLimitOrders(_orderRef, IOrder.OrderType.Limit);
@@ -481,23 +474,28 @@ contract Orderbook is IOrder, ITrade, Ownable{
             _orderbook["Stop"].push(_orderRef);
             checkStopOrders(_orderRef, IOrder.OrderType.Stop, 0, a);
         }
+        //reverse trade
+        uint256 oIndex = executionDate + 1;
+        ITrade.trade memory tradeToRevert = _tradeRefs[_orders[_orderRef].party][executionDate];
+        bytes32 _ref = tradeToRevert.partyRef==_orderRef ? tradeToRevert.counterpartyRef : _orderRef;
+        bytes32 _cref = tradeToRevert.counterpartyRef==_orderRef ? _orderRef : tradeToRevert.counterpartyRef;
+        ITrade.trade memory tradeToReport = ITrade.trade({
+            partyRef: _ref,
+            partyInAmount: tradeToRevert.partyRef==_orderRef ? tradeToRevert.counterpartyInAmount : tradeToRevert.partyInAmount,
+            counterpartyRef: _cref,
+            counterpartyInAmount: tradeToRevert.counterpartyRef==_orderRef ? tradeToRevert.partyInAmount : tradeToRevert.counterpartyInAmount,
+            price: tradeToRevert.price,
+            dt: oIndex
+        });                 
+        _tradeRefs[_orders[_orderRef].party][oIndex] = tradeToReport;
+        _trades[_orders[_orderRef].party].push(oIndex);
     }
 
-    function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) onlyOwner external override {
-        delete _userOrderRefs[_orders[partyRef].party][_userOrderIndex[partyRef]];
-        delete _userOrderIndex[partyRef];
+    function orderFilled(bytes32 partyRef, bytes32 counterpartyRef, uint256 executionDate) onlyOwner external override {
         delete _orders[partyRef];
-        delete _userOrderRefs[_orders[counterpartyRef].party][_userOrderIndex[counterpartyRef]];
-        delete _userOrderIndex[counterpartyRef];
         delete _orders[counterpartyRef];
-    }
-
-    function tradeSettled(
-        bytes32 partyRef,
-        bytes32 counterpartyRef
-    ) onlyOwner external override {
-        _orders[partyRef].status = OrderStatus.Filled;
-        _orders[counterpartyRef].status = OrderStatus.Filled;
+        delete _tradeRefs[_orders[partyRef].party][executionDate];
+        delete _tradeRefs[_orders[counterpartyRef].party][executionDate];
     }
 
 }

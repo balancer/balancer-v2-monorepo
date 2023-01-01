@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-import { EditOrder, CancelOrder, OrderRef, TradeFetch } from './types';
+import { EditOrder, CancelOrder, OrderRef, TradeFetch, OrderBookRef } from './types';
 
 export default class Orderbook {
 
@@ -45,6 +45,12 @@ export default class Orderbook {
         const sender = params.from || this.balancerManager;
         const orderbook = sender ? this.instance.connect(sender) : this.instance;
         return orderbook.getTrades();
+    }
+
+    async getOrder(params: OrderBookRef): Promise<BigNumberish[]> {
+        const sender = params.from || this.balancerManager;
+        const orderbook = sender ? this.instance.connect(sender) : this.instance;
+        return orderbook.getOrder(params.ref);
     }
 
     async getTrade(params: TradeFetch): Promise<any> {
