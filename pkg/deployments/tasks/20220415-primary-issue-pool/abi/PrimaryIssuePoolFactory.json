@@ -90,7 +90,7 @@
             }
           ],
           "internalType": "struct IPrimaryIssuePoolFactory.FactoryPoolParams",
-          "name": "_factoryPoolParams",
+          "name": "factoryPoolParams",
           "type": "tuple"
         }
       ],
@@ -252,3 +252,4 @@
       "type": "function"
     }
 ]
+  
