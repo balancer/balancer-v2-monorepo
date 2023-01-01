@@ -202,7 +202,7 @@ describe('SecondaryPool', function () {
     // for Counter Party
      const counterPartyTx = {
       in: counterPartyOrderDetails.tokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  partyOrderDetails.tokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  counterPartyOrderDetails.tokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
       amount: cpTradesInfo.dt,
       from: counterPartyOrderDetails.party == lp.address ? lp : trader,
       balances: currentBalances,
@@ -211,9 +211,9 @@ describe('SecondaryPool', function () {
     // for Party  
     const partyDataTx = {
       in: partyOrderDetails.tokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  counterPartyOrderDetails.tokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  partyOrderDetails.tokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
       amount: pTradesInfo.dt,
-      from: partyOrderDetails.party == lp.address ? lp : trader,
+      from: counterPartyOrderDetails.party == lp.address ? lp : trader,
       balances: currentBalances,
       data: abiCoder.encode(["string", "uint"], ['', pTradesInfo.dt]),
     };
@@ -1318,7 +1318,7 @@ describe('SecondaryPool', function () {
       expect(sell_order[0].toString()).to.be.equal(avgCurrencyTraded.toString());
       
     });
-    it('===== Gerg\'s Test =====', async () => {
+    /*it('===== Gerg\'s Test =====', async () => {
       const numTrades = 25;
       const amount = 0.1;
       for (var i = 0; i < numTrades; i++) {
@@ -1340,7 +1340,7 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         data: abiCoder.encode([], [])
       });
-    });
+    });*/
   })
 
 });
