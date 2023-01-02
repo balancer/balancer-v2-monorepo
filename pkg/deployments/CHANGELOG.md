@@ -6,6 +6,14 @@
 
 - Deployed `L2GaugeCheckpointer` to Mainnet.
 - Deployed `VeBoostV2` to Mainnet.
+- Deployed `NoProtocolFeeLiquidityBootstrappingPoolFactory` to Gnosis.
+- Deployed `ERC4626LinearPoolFactory` to Gnosis.
+- Deployed `UnbuttonAaveLinearPoolFactory` to Gnosis.
+- Deployed `StablePoolFactory` to Gnosis.
+- Deployed `WeightedPoolFactory` to Gnosis.
+- Deployed `ComposableStablePoolFactory` to Gnosis.
+- Deployed `PoolRecoveryHelper` to Gnosis.
+- Deployed `AaveLinearPoolFactory` to Gnosis.
 
 ### Breaking Changes
 
