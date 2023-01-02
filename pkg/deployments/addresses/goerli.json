@@ -278,5 +278,45 @@
   "0xacAaC3e6D6Df918Bf3c809DFC7d42de0e4a72d4C": {
     "task": "20221124-authorizer-adaptor-entrypoint",
     "name": "AuthorizerAdaptorEntrypoint"
+  },
+  "0x85a80afee867aDf27B50BdB7b76DA70f1E853062": {
+    "task": "20221122-composable-stable-pool-v2",
+    "name": "ComposableStablePoolFactory"
+  },
+  "0x373b347bc87998b151A5E9B6bB6ca692b766648a": {
+    "task": "20221122-composable-stable-pool-v2",
+    "name": "MockComposableStablePool"
+  },
+  "0xee47ef369CDa5a65639D7794b70a4d247826DdF3": {
+    "task": "20221202-timelock-authorizer",
+    "name": "TimelockAuthorizerMigrator"
+  },
+  "0x5D21A65b6Ec0687f471891257F1DA25ab8be6153": {
+    "task": "20221202-timelock-authorizer",
+    "name": "TimelockAuthorizer"
+  },
+  "0xf23b4DB826DbA14c0e857029dfF076b1c0264843": {
+    "task": "20221205-l2-gauge-checkpointer",
+    "name": "L2GaugeCheckpointer"
+  },
+  "0xd13AFc362F619b840C8f4AaC1D957cE219eF37Ca": {
+    "task": "20221205-veboost-v2",
+    "name": "VeBoostV2"
+  },
+  "0x70Bbd023481788e443472e123AB963e5EBF58D06": {
+    "task": "20221207-aave-rebalanced-linear-pool-v3",
+    "name": "AaveLinearPoolFactory"
+  },
+  "0xBF6d7e9a6db814D2856c9e2f83442f60f9D40738": {
+    "task": "20221207-aave-rebalanced-linear-pool-v3",
+    "name": "MockAaveLendingPool"
+  },
+  "0xAAda0aF3FA5C819145dA760bab8F180DaeeA8514": {
+    "task": "20221207-aave-rebalanced-linear-pool-v3",
+    "name": "MockStaticAToken"
+  },
+  "0xf93F6382913d1dE6Bdf683A94be8349751af8d59": {
+    "task": "20221207-aave-rebalanced-linear-pool-v3",
+    "name": "MockAaveLinearPool"
   }
 }
