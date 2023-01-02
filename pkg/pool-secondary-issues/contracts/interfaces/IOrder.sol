@@ -24,8 +24,6 @@ interface IOrder {
         uint256 qty;
         address party;
         uint256 price;  
-        uint256 currencyBalance;  
-        uint256 securityBalance;  
         bytes32 ref;  
     }
 
@@ -48,10 +46,8 @@ interface IOrder {
                         uint256 _price,
                         uint256 _qty) external;    
 
-    function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) external;
+    function orderFilled(bytes32 partyRef, bytes32 counterpartyRef, uint256 executionDate) external;
 
-    function tradeSettled(bytes32 partyRef, bytes32 counterpartyRef) external;
-
-    function revertTrade(bytes32 _orderRef, uint256 _qty, IOrder.Order _order) external;
+    function revertTrade(bytes32 _orderRef, uint256 _qty, IOrder.Order _order, uint256 executionDate) external;
     
 }

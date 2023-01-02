@@ -10,19 +10,11 @@ interface ITrade {
 
     struct trade{
         bytes32 partyRef;
-        bool partySwapIn;
-        string partyTokenIn;
         uint256 partyInAmount;
-        address party;
-        bytes32 counterpartyRef; 
-        bool counterpartySwapIn;
-        string counterpartyTokenIn;
+        address partyAddress;
+        bytes32 counterpartyRef;
         uint256 counterpartyInAmount;
-        address counterparty; 
-        address security;
-        address currency;
         uint256 price;
-        IOrder.OrderType otype;
         uint256 dt;
     }
 

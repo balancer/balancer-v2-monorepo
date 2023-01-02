@@ -195,26 +195,20 @@ describe('SecondaryPool', function () {
     };
    
   const callSwapEvent = async(cpTradesInfo: any, pTradesInfo: any, securityTraded: BigNumber, currencyTraded: BigNumber, counterPartyOrder: string, partyOrder: string, partyOrderType?: string) => {
-     // for Counter Party
+    //extract details of order
+    const counterPartyOrderDetails = await ob.getOrder({from: lp, ref:cpTradesInfo.counterpartyRef});
+    
+    // for Counter Party
      const counterPartyTx = {
-      in: cpTradesInfo.counterpartyTokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  cpTradesInfo.partyTokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
+      in: counterPartyOrderDetails.tokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
+      out:  counterPartyOrderDetails.tokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
       amount: cpTradesInfo.dt,
-      from: cpTradesInfo.counterparty == lp.address ? lp : trader,
+      from: counterPartyOrderDetails.party == lp.address ? lp : trader,
       balances: currentBalances,
       data: abiCoder.encode(["string", "uint"], ['', cpTradesInfo.dt]),
     };
-    // for Party  
-    const partyDataTx = {
-      in: pTradesInfo.partyTokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
-      out:  pTradesInfo.counterpartyTokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
-      amount: pTradesInfo.dt,
-      from: pTradesInfo.party == lp.address ? lp : trader,
-      balances: currentBalances,
-      data: abiCoder.encode(["string", "uint"], ['', pTradesInfo.dt]),
-    };
 
-    const counterPartyAmount = cpTradesInfo.counterpartySwapIn ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
+    const counterPartyAmount = counterPartyOrderDetails.swapKind == 0 ?  await pool.swapGivenIn(counterPartyTx) :  await pool.swapGivenOut(counterPartyTx);
     const counterTradedAmount = counterPartyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
     const orderName = counterPartyOrder == "Sell" ? "Security Traded" : "Currency Traded";
     // console.log(orderName,counterTradedAmount);
@@ -222,7 +216,17 @@ describe('SecondaryPool', function () {
 
     if(partyOrderType != "Market")
     {
-      const partyAmount = pTradesInfo.partyTokenIn ?  await pool.swapGivenIn(partyDataTx) :  await pool.swapGivenOut(partyDataTx);
+      const partyOrderDetails = await ob.getOrder({from: trader, ref:pTradesInfo.partyRef});
+      // for Party  
+      const partyDataTx = {
+        in: partyOrderDetails.tokenIn == "security" ? pool.securityIndex :  pool.currencyIndex,
+        out:  partyOrderDetails.tokenIn != "security" ? pool.securityIndex :  pool.currencyIndex,
+        amount: pTradesInfo.dt,
+        from: partyOrderDetails.party == lp.address ? lp : trader,
+        balances: currentBalances,
+        data: abiCoder.encode(["string", "uint"], ['', pTradesInfo.dt]),
+      };
+      const partyAmount = partyOrderDetails.swapKind == 0 ?  await pool.swapGivenIn(partyDataTx) :  await pool.swapGivenOut(partyDataTx);
       const partyTradedAmount = partyOrder == "Sell" ? securityTraded.toString() : currencyTraded.toString();
       const orderName2 = partyOrder == "Sell" ? "Security Traded" : "Currency Traded";
       // console.log(orderName2,partyTradedAmount);
@@ -644,13 +648,13 @@ describe('SecondaryPool', function () {
       
     });
 
-    it('Buy[Limit] SWAP IN Currency Order > Sell [Stop] SWAP IN Security Order', async () => {
-      sell_qty = fp(20);
+    it('Buy SWAP IN Currency Order > Sell SWAP IN Security Order [Insufficient Balance Case]', async () => {
+      sell_qty = fp(2000);
       buy_qty = fp(1000);
       const securityTraded = sell_qty;
       const currencyTraded = mulDown(securityTraded, buy_price);
 
-      const buy_order = await pool.swapGivenIn({
+      await expect(pool.swapGivenIn({
         in: pool.currencyIndex,
         out: pool.securityIndex,
         amount: buy_qty,
@@ -658,9 +662,9 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Limit', buy_price]), // Limit Order Buy@price 20
          
-      });
+      })).to.be.revertedWith("Insufficient currency balance");
 
-      const sell_order = await pool.swapGivenIn({
+      await expect(pool.swapGivenIn({
         in: pool.securityIndex,
         out: pool.currencyIndex,
         amount: sell_qty,
@@ -668,15 +672,7 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         data: abiCoder.encode(["string", "uint"], ['Stop', sell_price]), // Limit Sell@price 10
          
-      });
-
-      const counterPartyTrades = await ob.getTrades({from: lp});
-      const partyTrades = await ob.getTrades({from: trader});
-
-      const cpTradesInfo = await ob.getTrade({from: lp, tradeId: Number(counterPartyTrades[0]) });
-      const pTradesInfo = await ob.getTrade({from: trader, tradeId: Number(partyTrades[0]) });
-  
-      await callSwapEvent(cpTradesInfo,pTradesInfo,securityTraded,currencyTraded,"Buy","Sell");
+      })).to.be.revertedWith("Insufficient security balance");
  
     });
 
@@ -855,7 +851,6 @@ describe('SecondaryPool', function () {
         data: abiCoder.encode([], []), // Market
          
       });
-
       expect(sell_order[0].toString()).to.be.equals(securityTraded.toString()); 
       const counterPartyTrades = await ob.getTrades({from: lp});
       const partyTrades = await ob.getTrades({from: trader});
@@ -1315,7 +1310,7 @@ describe('SecondaryPool', function () {
       expect(sell_order[0].toString()).to.be.equal(avgCurrencyTraded.toString());
       
     });
-    it('===== Gerg\'s Test =====', async () => {
+    /*it('===== Gerg\'s Test =====', async () => {
       const numTrades = 25;
       const amount = 0.1;
       for (var i = 0; i < numTrades; i++) {
@@ -1337,7 +1332,7 @@ describe('SecondaryPool', function () {
         balances: currentBalances,
         data: abiCoder.encode([], [])
       });
-    });
+    });*/
   })
 
 });

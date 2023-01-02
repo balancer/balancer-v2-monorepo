@@ -132,6 +132,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                 request.tokenOut == IERC20(_security) ||
                 request.tokenIn == IERC20(_currency) ||
                 request.tokenIn == IERC20(_security), "Invalid swapped tokens");
+
+        if(request.tokenIn==IERC20(_currency) && request.kind==IVault.SwapKind.GIVEN_IN)
+            require(balances[_currencyIndex]>=request.amount, "Insufficient currency balance");
+        else if(request.tokenIn==IERC20(_security) && request.kind==IVault.SwapKind.GIVEN_IN)
+            require(balances[_securityIndex]>=request.amount, "Insufficient security balance");
         
         uint256[] memory scalingFactors = _scalingFactors();
         IOrder.Params memory params;
@@ -144,19 +149,20 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
             if(bytes(otype).length==0){                
                 ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                 //ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
-                bytes32 tradedInToken = keccak256(abi.encodePacked(tradeToReport.partyTokenIn));
-                bytes32 tokenName = keccak256(abi.encodePacked(request.tokenIn == IERC20(_security) ? "security" : "currency"));
-                uint256 amount = tradedInToken==tokenName ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
+                bytes32 tradedInToken = _orderbook.getOrder(tradeToReport.partyAddress == request.from 
+                                            ? tradeToReport.partyRef : tradeToReport.counterpartyRef)
+                                            .tokenIn==_security? bytes32("security") : bytes32("currency");
+                uint256 amount = tradeToReport.partyAddress == request.from ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                 emit TradeReport(
-                    tradeToReport.security,
-                    tradedInToken=="security" ? tradeToReport.party : tradeToReport.counterparty,
-                    tradedInToken=="currency" ? tradeToReport.party : tradeToReport.counterparty,
+                    _security,
+                    tradedInToken==bytes32("security") ? _orderbook.getOrder(tradeToReport.partyRef).party : _orderbook.getOrder(tradeToReport.counterpartyRef).party,
+                    tradedInToken==bytes32("currency") ? _orderbook.getOrder(tradeToReport.partyRef).party : _orderbook.getOrder(tradeToReport.counterpartyRef).party,
                     tradeToReport.price,
-                    tradeToReport.currency,
+                    _currency,
                     amount,
                     tradeToReport.dt
                 );
-                //_orderbook.removeTrade(request.from, request.amount);
+                _orderbook.removeTrade(request.from, request.amount);
                 if(request.kind == IVault.SwapKind.GIVEN_IN){
                     if (request.tokenIn == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
                         return _downscaleDown(amount, scalingFactors[indexOut]);
@@ -196,15 +202,16 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         if (request.kind == IVault.SwapKind.GIVEN_IN) 
             request.amount = _upscale(request.amount, scalingFactors[indexIn]);
         else if (request.kind == IVault.SwapKind.GIVEN_OUT)
-            request.amount = _upscale(request.amount, scalingFactors[indexOut]);
+            request.amount = _upscale(request.amount, scalingFactors[indexOut]);        
 
-        emit OrderBook(address(request.tokenIn), address(request.tokenOut), request.amount, params.price);
+        if(params.trade != IOrder.OrderType.Stop)
+            emit OrderBook(address(request.tokenIn), address(request.tokenOut), request.amount, params.price);
 
         if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
-            tp = _orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
+            tp = _orderbook.newOrder(request, params, IOrder.Order.Sell);
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
-            tp = _orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
+            tp = _orderbook.newOrder(request, params, IOrder.Order.Buy);
         }
         if(params.trade == IOrder.OrderType.Market){
             require(tp!=0, "Insufficient liquidity");
