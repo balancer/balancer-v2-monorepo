@@ -405,6 +405,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         ITrade.trade memory tradeToReport = ITrade.trade({
             partyRef: _ref,
             partyInAmount: _orders[_ref].tokenIn==_security ? securityTraded : currencyTraded,
+            partyAddress:  _orders[_ref].party,
             counterpartyRef: _cref,
             counterpartyInAmount: _orders[_cref].tokenIn==_security ? securityTraded : currencyTraded,
             price: _price,
@@ -433,17 +434,17 @@ contract Orderbook is IOrder, ITrade, Ownable{
         return volume; 
     }   
 
-    function getOrder(bytes32 _ref) public view returns(IOrder.order memory){
-        //require(msg.sender==owner() || msg.sender==_orders[_ref].party, "Unauthorized access to orders");
+    function getOrder(bytes32 _ref) external view returns(IOrder.order memory){
+        require(msg.sender==owner() || msg.sender==_orders[_ref].party, "Unauthorized access to orders");
         return _orders[_ref];
     }
 
-    function getTrade(address _party, uint256 _timestamp) public view returns(ITrade.trade memory){
+    function getTrade(address _party, uint256 _timestamp) external view returns(ITrade.trade memory){
         require(msg.sender==owner() || msg.sender==_party, "Unauthorized access to trades");
         return _tradeRefs[_party][_timestamp];
     }
 
-    function getTrades() public view returns(uint256[] memory){
+    function getTrades() external view returns(uint256[] memory){
         return _trades[msg.sender];
     }
 
@@ -482,6 +483,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
         ITrade.trade memory tradeToReport = ITrade.trade({
             partyRef: _ref,
             partyInAmount: tradeToRevert.partyRef==_orderRef ? tradeToRevert.counterpartyInAmount : tradeToRevert.partyInAmount,
+            partyAddress: _orders[_ref].party,
             counterpartyRef: _cref,
             counterpartyInAmount: tradeToRevert.counterpartyRef==_orderRef ? tradeToRevert.partyInAmount : tradeToRevert.counterpartyInAmount,
             price: tradeToRevert.price,

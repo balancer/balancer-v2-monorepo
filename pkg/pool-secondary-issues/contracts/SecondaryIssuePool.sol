@@ -149,8 +149,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
             if(bytes(otype).length==0){                
                 ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, request.amount);
                 //ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
-                bytes32 tradedInToken = _orderbook.getOrder(tradeToReport.partyRef).tokenIn==_security? bytes32("security") : bytes32("currency");
-                uint256 amount = tradedInToken==(request.tokenIn == IERC20(_security) ? bytes32("security") : bytes32("currency")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
+                bytes32 tradedInToken = _orderbook.getOrder(tradeToReport.partyAddress == request.from 
+                                            ? tradeToReport.partyRef : tradeToReport.counterpartyRef)
+                                            .tokenIn==_security? bytes32("security") : bytes32("currency");
+                uint256 amount = tradeToReport.partyAddress == request.from ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                 emit TradeReport(
                     _security,
                     tradedInToken==bytes32("security") ? _orderbook.getOrder(tradeToReport.partyRef).party : _orderbook.getOrder(tradeToReport.counterpartyRef).party,
