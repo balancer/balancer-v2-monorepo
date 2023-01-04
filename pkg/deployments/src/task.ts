@@ -289,12 +289,12 @@ export default class Task {
     const output = this._parseRawOutput(rawOutput);
 
     if (this.mode === TaskMode.CHECK) {
-      // `save` is only called by `deploy` (which only happens in LIVE mode), or manually for contracts that are
-      // deployed by other contracts (e.g. Batch Relayer Entrypoints). Therefore, by testing for CHECK mode we can
+      // `save` is only called by `deploy` (which only happens in LIVE and TEST modes), or manually for contracts that
+      // are deployed by other contracts (e.g. Batch Relayer Entrypoints). Therefore, by testing for CHECK mode we can
       // identify this second type of contracts, and check them by comparing the saved address to the address that the
       // task would attempt to save.
       this._checkManuallySavedArtifacts(output);
-    } else if (this.mode == TaskMode.LIVE) {
+    } else if (this.mode === TaskMode.LIVE || this.mode === TaskMode.TEST) {
       this._save(output);
     }
   }
