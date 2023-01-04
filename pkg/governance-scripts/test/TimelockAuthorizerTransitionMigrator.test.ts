@@ -98,6 +98,11 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
           expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
         }
       });
+
+      it('reverts when trying to migrate more than once', async () => {
+        await expect(transitionMigrator.migratePermissions()).to.not.be.reverted;
+        await expect(transitionMigrator.migratePermissions()).to.be.revertedWith('ALREADY_MIGRATED');
+      });
     });
   });
 });

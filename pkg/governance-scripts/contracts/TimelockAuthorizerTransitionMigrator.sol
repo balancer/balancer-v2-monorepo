@@ -31,6 +31,7 @@ contract TimelockAuthorizerTransitionMigrator {
     }
 
     RoleData[] private _rolesData;
+    bool private _migrationDone;
 
     /**
      * @dev Reverts if rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
@@ -53,8 +54,12 @@ contract TimelockAuthorizerTransitionMigrator {
 
     /**
      * @notice Migrates permissions stored at contract creation time.
+     * @dev Migration can only be performed once; calling this function will revert after the first call.
      */
     function migratePermissions() external {
+        require(_migrationDone == false, "ALREADY_MIGRATED");
+        _migrationDone = true;
+
         RoleData[] memory rolesData = _rolesData;
 
         for (uint256 i = 0; i < rolesData.length; i++) {
