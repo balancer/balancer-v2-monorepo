@@ -62,6 +62,8 @@ interface IProtocolFeeSplitter {
      */
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external;
 
+    // Revenue share settings
+
     /**
      * @dev Returns the current protocol fee split configuration for a given pool.
      * @param poolId - the poolId of a pool with accrued protocol fees.
