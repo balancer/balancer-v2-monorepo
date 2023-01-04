@@ -30,49 +30,36 @@ contract TimelockAuthorizerTransitionMigrator {
         address target;
     }
 
-    RoleData[] internal rolesData;
+    RoleData[] private _rolesData;
 
     /**
-     * @dev Reverts if _rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
+     * @dev Reverts if rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
      */
     constructor(
-        IBasicAuthorizer _oldAuthorizer,
+        IBasicAuthorizer oldAuthorizer,
         TimelockAuthorizer _timelockAuthorizer,
-        RoleData[] memory _rolesData
+        RoleData[] memory rolesData
     ) {
         timelockAuthorizer = _timelockAuthorizer;
 
-        for (uint256 i = 0; i < _rolesData.length; i++) {
-            RoleData memory roleData = _rolesData[i];
+        for (uint256 i = 0; i < rolesData.length; i++) {
+            RoleData memory roleData = rolesData[i];
             // We require that any permissions being copied from the old Authorizer must exist on the old Authorizer.
             // This simplifies verification of the permissions being added to the new TimelockAuthorizer.
-            require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
-            rolesData.push(roleData);
+            require(oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
+            _rolesData.push(roleData);
         }
     }
 
     /**
      * @notice Migrates permissions stored at contract creation time.
-     * @dev Permissions can only be granted by TimelockAuthorizer's root.
      */
     function migratePermissions() external {
-        require(timelockAuthorizer.getRoot() == msg.sender, "UNAUTHORIZED_CALLER");
+        RoleData[] memory rolesData = _rolesData;
 
-        RoleData[] memory _rolesData = rolesData;
-        address timelockAuthorizerAddress = address(timelockAuthorizer);
-
-        for (uint256 i = 0; i < _rolesData.length; i++) {
-            RoleData memory roleData = _rolesData[i];
-
-            bytes memory grantPermissionsCall = abi.encode(
-                timelockAuthorizer.grantPermissions.selector,
-                _arr(roleData.role),
-                roleData.grantee,
-                _arr(roleData.target)
-            );
-            // `grantPermissions` will only work when the caller is the root. Then, we use `delegateCall` so that
-            // `msg.sender` is root in `grantPermissions`.
-            timelockAuthorizerAddress.functionDelegateCall(grantPermissionsCall);
+        for (uint256 i = 0; i < rolesData.length; i++) {
+            RoleData memory roleData = rolesData[i];
+            timelockAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
         }
     }
 
