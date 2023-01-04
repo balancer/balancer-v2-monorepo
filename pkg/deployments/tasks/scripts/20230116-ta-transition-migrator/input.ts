@@ -21,25 +21,26 @@ export type TimelockAuthorizerTransitionMigratorDeployment = {
 };
 
 const OldAuthorizer = new Task('20210418-authorizer', TaskMode.READ_ONLY);
-const oldAuthorizerAddress = OldAuthorizer.output({ network: 'mainnet' }).Authorizer;
 const NewAuthorizer = new Task('20221202-timelock-authorizer', TaskMode.READ_ONLY);
-
-const roles = getTransitionRoles(oldAuthorizerAddress, TRANSITION_START_BLOCK, TRANSITION_END_BLOCK);
 
 export default {
   mainnet: {
-    OldAuthorizer: oldAuthorizerAddress,
+    OldAuthorizer: OldAuthorizer.output({ network: 'mainnet' }).Authorizer,
     NewAuthorizer: NewAuthorizer.output({ network: 'mainnet' }).TimelockAuthorizer,
-    Roles: roles,
+    Roles: getTransitionRoles('mainnet', TRANSITION_START_BLOCK, TRANSITION_END_BLOCK),
   },
 };
 
-async function getTransitionRoles(
-  oldAuthorizerAddress: string,
-  fromBlock: number,
-  toBlock: number
-): Promise<RoleData[]> {
+/**
+ * Gets permissions granted to the old authorizer between two given blocks.
+ * @param network Target chain name.
+ * @param fromBlock Starting block; permissions granted before it will be filtered out.
+ * @param toBlock End block; permissions granted after it will be filtered out.
+ * @returns Promise of array with role data containing granted permissions.
+ */
+async function getTransitionRoles(network: string, fromBlock: number, toBlock: number): Promise<RoleData[]> {
   const OldAuthorizerTask = new Task('20210418-authorizer', TaskMode.READ_ONLY);
+  const oldAuthorizerAddress = OldAuthorizerTask.output({ network }).Authorizer;
   const oldAuthorizer: Contract = await OldAuthorizerTask.instanceAt('Authorizer', oldAuthorizerAddress);
 
   const eventFilter = oldAuthorizer.filters.RoleGranted();
