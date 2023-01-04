@@ -285,7 +285,35 @@ export default class Task {
     return this._read(taskOutputFile);
   }
 
-  save(output: RawOutput): void {
+  save(rawOutput: RawOutput): void {
+    const output = this._parseRawOutput(rawOutput);
+
+    if (this.mode === TaskMode.CHECK) {
+      // `save` is only called by `deploy` (which only happens in LIVE and TEST modes), or manually for contracts that
+      // are deployed by other contracts (e.g. Batch Relayer Entrypoints). Therefore, by testing for CHECK mode we can
+      // identify this second type of contracts, and check them by comparing the saved address to the address that the
+      // task would attempt to save.
+      this._checkManuallySavedArtifacts(output);
+    } else if (this.mode === TaskMode.LIVE || this.mode === TaskMode.TEST) {
+      this._save(output);
+    }
+  }
+
+  private _checkManuallySavedArtifacts(output: Output) {
+    for (const name of Object.keys(output)) {
+      const expectedAddress = this.output()[name];
+      const actualAddress = output[name];
+      if (actualAddress === expectedAddress) {
+        logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
+      } else {
+        throw Error(
+          `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' (${actualAddress}) does not match the expected address (${expectedAddress})`
+        );
+      }
+    }
+  }
+
+  private _save(output: Output) {
     const taskOutputDir = this._dirAt(this.dir(), 'output', false);
     if (!fs.existsSync(taskOutputDir)) fs.mkdirSync(taskOutputDir);
 
@@ -293,7 +321,7 @@ export default class Task {
     const taskOutputFile = this._fileAt(taskOutputDir, outputFile, false);
     const previousOutput = this._read(taskOutputFile);
 
-    const finalOutput = { ...previousOutput, ...this._parseRawOutput(output) };
+    const finalOutput = { ...previousOutput, ...output };
     this._write(taskOutputFile, finalOutput);
   }
 
