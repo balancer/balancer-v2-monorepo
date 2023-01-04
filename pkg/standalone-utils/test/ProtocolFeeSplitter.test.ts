@@ -195,8 +195,8 @@ describe('ProtocolFeeSplitter', function () {
     });
   });
 
-  describe('setPoolBeneficiary', async () => {
-    it('reverts if caller is not the pool owner', async () => {
+  describe('setPoolBeneficiary (by owner)', async () => {
+    it('reverts if caller is not the pool owner (and not authorized by governance)', async () => {
       await expect(
         protocolFeeSplitter.connect(liquidityProvider).setPoolBeneficiary(poolId, liquidityProvider.address)
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
@@ -217,28 +217,26 @@ describe('ProtocolFeeSplitter', function () {
     });
   });
 
-  describe('setPoolBeneficiaryOverride', async () => {
+  describe('setPoolBeneficiary (governance override)', async () => {
     sharedBeforeEach('set permissions', async () => {
-      const setBeneficiaryOverrideRole = await actionId(protocolFeeSplitter, 'setPoolBeneficiaryOverride');
-      await vault.grantPermissionsGlobally([setBeneficiaryOverrideRole], admin);
+      const setBeneficiaryRole = await actionId(protocolFeeSplitter, 'setPoolBeneficiary');
+      await vault.grantPermissionsGlobally([setBeneficiaryRole], other);
     });
 
     it('reverts if caller is not authorized', async () => {
-      await expect(
-        protocolFeeSplitter.connect(owner).setPoolBeneficiaryOverride(poolId, owner.address)
-      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      await expect(protocolFeeSplitter.connect(admin).setPoolBeneficiary(poolId, admin.address)).to.be.revertedWith(
+        'SENDER_NOT_ALLOWED'
+      );
     });
 
     it('sets pool beneficiary', async () => {
-      await protocolFeeSplitter.connect(admin).setPoolBeneficiaryOverride(poolId, other.address);
+      await protocolFeeSplitter.connect(other).setPoolBeneficiary(poolId, other.address);
       const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
       expect(poolSettings.beneficiary).to.be.eq(other.address);
     });
 
     it('emits a PoolBeneficiaryChanged event', async () => {
-      const receipt = await (
-        await protocolFeeSplitter.connect(admin).setPoolBeneficiaryOverride(poolId, other.address)
-      ).wait();
+      const receipt = await (await protocolFeeSplitter.connect(other).setPoolBeneficiary(poolId, other.address)).wait();
       expectEvent.inReceipt(receipt, 'PoolBeneficiaryChanged', {
         poolId,
         newBeneficiary: other.address,

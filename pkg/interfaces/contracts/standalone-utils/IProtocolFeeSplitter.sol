@@ -62,15 +62,6 @@ interface IProtocolFeeSplitter {
      */
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external;
 
-    /*
-     * @notice Allows governance to change the pool beneficiary settings
-     * @dev This is designed for cases where the pool owner is a contract, or otherwise cannot easily
-     * set the beneficiary.
-     * @param poolId - the poolId of the pool where we want to change fee beneficiary
-     * @param newBeneficiary - beneficiary address
-     */
-    function setPoolBeneficiaryOverride(bytes32 poolId, address newBeneficiary) external;
-
     /**
      * @dev Returns the current protocol fee split configuration for a given pool.
      * @param poolId - the poolId of a pool with accrued protocol fees.
