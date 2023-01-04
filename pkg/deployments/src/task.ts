@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path, { extname, parse } from 'path';
+import path, { extname } from 'path';
 import { BuildInfo, CompilerOutputContract } from 'hardhat/types';
 import { Contract } from 'ethers';
 import { getContractAddress } from '@ethersproject/address';
