@@ -336,6 +336,24 @@ describe('ProtocolFeeSplitter', function () {
         });
       });
 
+      it('emits an event with collected fees', async () => {
+        const tx = await protocolFeeSplitter.collectFees(poolId);
+        const receipt = await tx.wait();
+
+        // 10% of bptBalanceOfLiquidityProvider should go to owner
+        const ownerExpectedBalance = fpMul(bptBalanceOfLiquidityProvider, defaultRevenueShare);
+        // The rest goes to the treasury
+        const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
+
+        expectEvent.inReceipt(receipt, 'FeesCollected', {
+          poolId,
+          beneficiary: owner.address,
+          poolEarned: ownerExpectedBalance,
+          daoFundsRecipient: treasury.address,
+          daoEarned: treasuryExpectedBalance,
+        });
+      });
+
       context('with a zero revenue share override', () => {
         sharedBeforeEach('set the revenue sharing percentage to zero', async () => {
           await protocolFeeSplitter.connect(admin).setRevenueSharePercentage(poolId, FP_ZERO);
