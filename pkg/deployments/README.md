@@ -123,6 +123,7 @@ These are deployments for script-like contracts (often called 'coordinators') wh
 | Tribe BAL Minter Coordinator                        | [`20220606-tribe-bal-minter-coordinator`](./tasks/scripts/20220606-tribe-bal-minter-coordinator)           |
 | Coordination of the double entrypoint issue fix     | [`20220610-snx-recovery-coordinator`](./tasks/scripts/20220610-snx-recovery-coordinator)                   |
 | Coordination of the Gauge Adder migration           | [`20220721-gauge-adder-migration-coordinator`](./tasks/scripts/20220721-gauge-adder-migration-coordinator) |
+| Timelock authorizer transition permission migration | [`20230116-ta-transition-migrator`](./tasks/scripts/20230116-ta-transition-migrator)                       |
 
 ## Deprecated Deployments
 
