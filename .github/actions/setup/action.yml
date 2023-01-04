@@ -11,7 +11,9 @@ runs:
       uses: actions/cache@v2
       id: cache
       with:
-        path: '**/node_modules'
+        path: |
+          **/node_modules
+          ~/.cache/hardhat-nodejs
         key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
     - name: Install
       run: yarn --immutable
