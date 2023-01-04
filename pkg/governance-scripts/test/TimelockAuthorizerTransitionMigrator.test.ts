@@ -60,7 +60,7 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
     transitionMigrator = await deploy('TimelockAuthorizerTransitionMigrator', { args });
   });
 
-  context('constructor', () => {
+  describe('constructor', () => {
     context('when attempting to migrate a role which does not exist on previous Authorizer', () => {
       let tempAuthorizer: Contract;
 
@@ -73,7 +73,9 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
         await expect(deploy('TimelockAuthorizerTransitionMigrator', { args })).to.be.revertedWith('UNEXPECTED_ROLE');
       });
     });
+  });
 
+  describe('migrate permissions', () => {
     context('when the migrator is not a granter', () => {
       it('reverts', async () => {
         await expect(transitionMigrator.migratePermissions()).to.be.revertedWith('SENDER_NOT_ALLOWED');
@@ -103,6 +105,19 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
         await expect(transitionMigrator.migratePermissions()).to.not.be.reverted;
         await expect(transitionMigrator.migratePermissions()).to.be.revertedWith('ALREADY_MIGRATED');
       });
+    });
+  });
+
+  describe('roles data getter', () => {
+    it('returns stored role data', async () => {
+      for (let i = 0; i < rolesData.length; ++i) {
+        const roleData = await transitionMigrator.rolesData(i);
+        expect({ grantee: roleData.grantee, role: roleData.role, target: roleData.target }).to.be.deep.eq(rolesData[i]);
+      }
+    });
+
+    it('does not hold any extra role data', async () => {
+      await expect(transitionMigrator.rolesData(rolesData.length)).to.be.reverted;
     });
   });
 });

@@ -19,10 +19,14 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IBasicAuthorizer.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-vault/contracts/authorizer/TimelockAuthorizer.sol";
 
+/**
+ * @notice Migrates permissions granted after `TimelockAuthorizer` deployment from the old authorizer.
+ */
 contract TimelockAuthorizerTransitionMigrator {
     using Address for address;
 
     TimelockAuthorizer public immutable timelockAuthorizer;
+    RoleData[] public rolesData;
 
     struct RoleData {
         address grantee;
@@ -30,7 +34,6 @@ contract TimelockAuthorizerTransitionMigrator {
         address target;
     }
 
-    RoleData[] private _rolesData;
     bool private _migrationDone;
 
     /**
@@ -39,30 +42,33 @@ contract TimelockAuthorizerTransitionMigrator {
     constructor(
         IBasicAuthorizer oldAuthorizer,
         TimelockAuthorizer _timelockAuthorizer,
-        RoleData[] memory rolesData
+        RoleData[] memory _rolesData
     ) {
         timelockAuthorizer = _timelockAuthorizer;
 
-        for (uint256 i = 0; i < rolesData.length; i++) {
-            RoleData memory roleData = rolesData[i];
+        for (uint256 i = 0; i < _rolesData.length; i++) {
+            RoleData memory roleData = _rolesData[i];
             // We require that any permissions being copied from the old Authorizer must exist on the old Authorizer.
             // This simplifies verification of the permissions being added to the new TimelockAuthorizer.
             require(oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
-            _rolesData.push(roleData);
+            rolesData.push(roleData);
         }
     }
 
     /**
      * @notice Migrates permissions stored at contract creation time.
      * @dev Migration can only be performed once; calling this function will revert after the first call.
+     * The contract needs to be a general granter for the call to succeed, otherwise it will revert when attempting
+     * to call `grantPermissions` in `TimelockAuthorizer`.
+     * Anyone can trigger the migration, but only TimelockAuthorizer's root can make this contract a granter.
      */
     function migratePermissions() external {
         require(_migrationDone == false, "ALREADY_MIGRATED");
         _migrationDone = true;
 
-        RoleData[] memory rolesData = _rolesData;
+        uint256 rolesDataLength = rolesData.length;
 
-        for (uint256 i = 0; i < rolesData.length; i++) {
+        for (uint256 i = 0; i < rolesDataLength; ++i) {
             RoleData memory roleData = rolesData[i];
             timelockAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
         }
