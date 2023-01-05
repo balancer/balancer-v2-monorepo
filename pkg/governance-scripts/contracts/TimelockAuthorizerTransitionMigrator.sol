@@ -25,6 +25,9 @@ import "@balancer-labs/v2-vault/contracts/authorizer/TimelockAuthorizer.sol";
 contract TimelockAuthorizerTransitionMigrator {
     using Address for address;
 
+    event PermissionSkipped(bytes32 indexed role, address indexed grantee, address indexed target);
+
+    IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable timelockAuthorizer;
     RoleData[] public rolesData;
 
@@ -40,17 +43,18 @@ contract TimelockAuthorizerTransitionMigrator {
      * @dev Reverts if rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
      */
     constructor(
-        IBasicAuthorizer oldAuthorizer,
+        IBasicAuthorizer _oldAuthorizer,
         TimelockAuthorizer _timelockAuthorizer,
         RoleData[] memory _rolesData
     ) {
+        oldAuthorizer = _oldAuthorizer;
         timelockAuthorizer = _timelockAuthorizer;
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
             RoleData memory roleData = _rolesData[i];
             // We require that any permissions being copied from the old Authorizer must exist on the old Authorizer.
             // This simplifies verification of the permissions being added to the new TimelockAuthorizer.
-            require(oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
+            require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
             rolesData.push(roleData);
         }
     }
@@ -61,6 +65,8 @@ contract TimelockAuthorizerTransitionMigrator {
      * The contract needs to be a general granter for the call to succeed, otherwise it will revert when attempting
      * to call `grantPermissions` in `TimelockAuthorizer`.
      * Anyone can trigger the migration, but only TimelockAuthorizer's root can make this contract a granter.
+     * If a permission was revoked between contract creation time and this function call, it shall not be granted. The
+     * function will not revert in that case; it'll just emit a `PermissionSkipped` event.
      */
     function migratePermissions() external {
         require(_migrationDone == false, "ALREADY_MIGRATED");
@@ -70,7 +76,15 @@ contract TimelockAuthorizerTransitionMigrator {
 
         for (uint256 i = 0; i < rolesDataLength; ++i) {
             RoleData memory roleData = rolesData[i];
-            timelockAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
+            // Before granting permissions, we check with the old authorizer again in case any permissions were
+            // revoked since the contract creation time.
+            // The timelock authorizer will emit an event for each permission granted, so we just log the ones we are
+            // skipping (if any).
+            if (oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target)) {
+                timelockAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
+            } else {
+                emit PermissionSkipped(roleData.role, roleData.grantee, roleData.target);
+            }
         }
     }
 

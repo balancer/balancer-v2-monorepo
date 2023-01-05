@@ -6,15 +6,16 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('TimelockAuthorizerTransitionMigrator', () => {
-  let root: SignerWithAddress;
+  let root: SignerWithAddress, oldRoot: SignerWithAddress;
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
   let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, transitionMigrator: Contract;
   let adaptorEntrypoint: Contract;
 
   before('set up signers', async () => {
-    [, user1, user2, user3, root] = await ethers.getSigners();
+    [, user1, user2, user3, oldRoot, root] = await ethers.getSigners();
   });
 
   interface RoleData {
@@ -29,7 +30,7 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
 
   sharedBeforeEach('set up vault', async () => {
-    oldAuthorizer = await deploy('v2-vault/MockBasicAuthorizer');
+    oldAuthorizer = await deploy('v2-vault/MockBasicAuthorizer', { from: oldRoot });
     vault = await deploy('v2-vault/Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
 
     const authorizerAdaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
@@ -48,7 +49,9 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
   });
 
   sharedBeforeEach('grant roles on old Authorizer', async () => {
-    await oldAuthorizer.grantRolesToMany([ROLE_1, ROLE_2, ROLE_3], [user1.address, user2.address, user3.address]);
+    await oldAuthorizer
+      .connect(oldRoot)
+      .grantRolesToMany([ROLE_1, ROLE_2, ROLE_3], [user1.address, user2.address, user3.address]);
   });
 
   sharedBeforeEach('deploy new authorizer', async () => {
@@ -104,6 +107,31 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
       it('reverts when trying to migrate more than once', async () => {
         await expect(transitionMigrator.migratePermissions()).to.not.be.reverted;
         await expect(transitionMigrator.migratePermissions()).to.be.revertedWith('ALREADY_MIGRATED');
+      });
+
+      context('when a permission is revoked after contract creation time', () => {
+        let roleRevokedData: RoleData;
+
+        sharedBeforeEach('revoke one permission', async () => {
+          roleRevokedData = rolesData[1];
+          await oldAuthorizer.connect(oldRoot).revokeRole(roleRevokedData.role, roleRevokedData.grantee);
+        });
+
+        it('migrates all non-revoked permissions', async () => {
+          await transitionMigrator.migratePermissions();
+          for (const roleData of rolesData) {
+            if (roleData === roleRevokedData) {
+              expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.false;
+            } else {
+              expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
+            }
+          }
+        });
+
+        it('emits an event for the revoked role', async () => {
+          const tx = await transitionMigrator.migratePermissions();
+          expectEvent.inReceipt(await tx.wait(), 'PermissionSkipped', { ...roleRevokedData });
+        });
       });
     });
   });
