@@ -37,7 +37,7 @@ contract TimelockAuthorizerTransitionMigrator {
         address target;
     }
 
-    bool private _migrationDone;
+    bool private _migrationCompleted;
 
     /**
      * @dev Reverts if rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
@@ -70,8 +70,8 @@ contract TimelockAuthorizerTransitionMigrator {
      * `migrationPermissions`, emit a `PermissionSkipped` event instead.
      */
     function migratePermissions() external {
-        require(_migrationDone == false, "ALREADY_MIGRATED");
-        _migrationDone = true;
+        require(!_migrationCompleted, "ALREADY_MIGRATED");
+        _migrationCompleted = true;
 
         uint256 rolesDataLength = rolesData.length;
 
