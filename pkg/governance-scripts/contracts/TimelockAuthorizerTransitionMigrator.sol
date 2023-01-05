@@ -65,8 +65,9 @@ contract TimelockAuthorizerTransitionMigrator {
      * The contract needs to be a general granter for the call to succeed, otherwise it will revert when attempting
      * to call `grantPermissions` on `TimelockAuthorizer`.
      * Anyone can trigger the migration, but only TimelockAuthorizer's root can make this contract a granter.
-     * If a permission was revoked between contract creation time and this function call, it shall not be granted. The
-     * function will not revert in that case; it'll just emit a `PermissionSkipped` event.
+     * We check each permission stored at deployment time once more against the old authorizer, and only
+     * migrate those that remain in effect. If a permission was revoked in the time between deployment and calling
+     * `migrationPermissions`, emit a `PermissionSkipped` event instead.
      */
     function migratePermissions() external {
         require(_migrationDone == false, "ALREADY_MIGRATED");
