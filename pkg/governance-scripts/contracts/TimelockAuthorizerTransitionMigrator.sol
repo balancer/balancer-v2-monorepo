@@ -63,7 +63,7 @@ contract TimelockAuthorizerTransitionMigrator {
      * @notice Migrates permissions stored at contract creation time.
      * @dev Migration can only be performed once; calling this function will revert after the first call.
      * The contract needs to be a general granter for the call to succeed, otherwise it will revert when attempting
-     * to call `grantPermissions` in `TimelockAuthorizer`.
+     * to call `grantPermissions` on `TimelockAuthorizer`.
      * Anyone can trigger the migration, but only TimelockAuthorizer's root can make this contract a granter.
      * If a permission was revoked between contract creation time and this function call, it shall not be granted. The
      * function will not revert in that case; it'll just emit a `PermissionSkipped` event.
