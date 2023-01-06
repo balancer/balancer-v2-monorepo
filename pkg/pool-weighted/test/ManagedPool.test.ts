@@ -21,6 +21,7 @@ import {
   JoinResult,
   RawManagedPoolDeployment,
   SwapResult,
+  ManagedPoolType,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
@@ -74,7 +75,7 @@ describe('ManagedPool', function () {
       weights: poolWeights,
       owner: owner.address,
       aumFeeId: ProtocolFee.AUM,
-      mockContractName: 'MockManagedPool',
+      poolType: ManagedPoolType.MockManagedPool,
       poolVersion,
       ...overrides,
     };

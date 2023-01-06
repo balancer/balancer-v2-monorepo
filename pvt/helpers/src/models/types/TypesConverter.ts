@@ -18,6 +18,7 @@ import {
   LiquidityBootstrappingPoolDeployment,
   RawManagedPoolDeployment,
   ManagedPoolDeployment,
+  ManagedPoolType,
 } from '../pools/weighted/types';
 import {
   RawTokenApproval,
@@ -132,6 +133,7 @@ export default {
       managementAumFeePercentage,
       factoryVersion,
       poolVersion,
+      poolType,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
@@ -142,6 +144,7 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!pauseWindowDuration) pauseWindowDuration = DEFAULT_PAUSE_WINDOW_DURATION;
     if (!bufferPeriodDuration) bufferPeriodDuration = DEFAULT_BUFFER_PERIOD_DURATION;
+    if (!poolType) poolType = ManagedPoolType.ManagedPool;
     if (swapEnabledOnStart == undefined) swapEnabledOnStart = true;
     if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
@@ -161,7 +164,7 @@ export default {
       managementAumFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      mockContractName: params.mockContractName,
+      poolType: params.poolType,
       factoryVersion,
       poolVersion,
       owner: params.owner,

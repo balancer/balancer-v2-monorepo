@@ -8,6 +8,12 @@ import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
 import Vault from '../../vault/Vault';
 
+export enum ManagedPoolType {
+  ManagedPool = "ManagedPool",
+  MockManagedPool = "MockManagedPool",
+  MockManagedPoolSettings = "MockManagedPoolSettings",
+}
+
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
@@ -79,7 +85,7 @@ export type RawManagedPoolDeployment = {
   from?: SignerWithAddress;
   vault?: Vault;
   fromFactory?: boolean;
-  mockContractName?: string;
+  poolType?: ManagedPoolType;
   factoryVersion?: string;
   poolVersion?: string;
 };
@@ -101,7 +107,7 @@ export type ManagedPoolDeployment = {
   owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
-  mockContractName?: string;
+  poolType?: ManagedPoolType;
 };
 
 export type SwapWeightedPool = {

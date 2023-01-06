@@ -27,7 +27,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import ManagedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/ManagedPool';
-import { CircuitBreakerState } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { CircuitBreakerState, ManagedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
@@ -83,7 +83,7 @@ describe('ManagedPoolSettings', function () {
     const fullParams = {
       ...params,
       swapFeePercentage: INITIAL_SWAP_FEE,
-      mockContractName: 'MockManagedPoolSettings',
+      poolType: ManagedPoolType.MockManagedPoolSettings,
     };
     return ManagedPool.create(fullParams);
   }
@@ -177,6 +177,7 @@ describe('ManagedPoolSettings', function () {
                 tokens: allTokens.subset(2),
                 vault,
                 aumFeeId,
+                poolType: ManagedPoolType.MockManagedPoolSettings,
               });
             });
 

@@ -11,6 +11,7 @@ import {
   ManagedPoolRights,
   GradualSwapFeeUpdateParams,
   CircuitBreakerState,
+  ManagedPoolType,
 } from './types';
 import Vault from '../../vault/Vault';
 import { deploy, deployedAt } from '../../../contract';
@@ -118,11 +119,11 @@ export default class ManagedPool extends WeightedPool {
       owner,
       pauseWindowDuration,
       bufferPeriodDuration,
-      mockContractName,
+      poolType,
       from,
     } = params;
 
-    if (mockContractName == 'MockManagedPoolSettings') {
+    if (poolType == ManagedPoolType.MockManagedPoolSettings) {
       return deploy('v2-pool-weighted/MockManagedPoolSettings', {
         args: [
           {
@@ -148,7 +149,7 @@ export default class ManagedPool extends WeightedPool {
       });
     }
 
-    return deploy(mockContractName ?? 'v2-pool-weighted/ManagedPool', {
+    return deploy('v2-pool-weighted/' + poolType, {
       args: [
         {
           name: NAME,

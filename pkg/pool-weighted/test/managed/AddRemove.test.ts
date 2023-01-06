@@ -16,6 +16,7 @@ import { random, range } from 'lodash';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+import { ManagedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 describe('ManagedPoolSettings - add/remove token', () => {
   let vault: Vault;
@@ -70,6 +71,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
       swapEnabledOnStart: true,
       vault,
       managementAumFeePercentage: fp(0.1), // Non-zero so that some protocol AUM fees are charged
+      poolType: ManagedPoolType.MockManagedPool,
     });
 
     return { pool, poolTokens };
