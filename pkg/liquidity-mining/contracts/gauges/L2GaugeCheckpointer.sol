@@ -60,6 +60,8 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
 
         for (uint256 i = 0; i < gauges.length; i++) {
             IStakelessGauge gauge = gauges[i];
+            // Gauges must come from a valid factory to be added to the gauge controller, so gauges that don't pass
+            // the valid factory check will be rejected by the controller.
             require(_gaugeController.gauge_exists(address(gauge)), "Gauge was not added to the GaugeController");
             require(!gauge.is_killed(), "Gauge was killed");
             require(gaugesForType.add(address(gauge)), "Gauge already added to the checkpointer");
