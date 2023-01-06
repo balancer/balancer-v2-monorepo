@@ -123,7 +123,7 @@ export default class ManagedPool extends WeightedPool {
       from,
     } = params;
 
-    if (poolType == ManagedPoolType.MockManagedPoolSettings) {
+    if (poolType == ManagedPoolType.MOCK_MANAGED_POOL_SETTINGS) {
       return deploy('v2-pool-weighted/MockManagedPoolSettings', {
         args: [
           {

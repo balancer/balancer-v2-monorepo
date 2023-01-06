@@ -83,7 +83,7 @@ describe('ManagedPoolSettings', function () {
     const fullParams = {
       ...params,
       swapFeePercentage: INITIAL_SWAP_FEE,
-      poolType: ManagedPoolType.MockManagedPoolSettings,
+      poolType: ManagedPoolType.MOCK_MANAGED_POOL_SETTINGS,
     };
     return ManagedPool.create(fullParams);
   }
@@ -177,7 +177,7 @@ describe('ManagedPoolSettings', function () {
                 tokens: allTokens.subset(2),
                 vault,
                 aumFeeId,
-                poolType: ManagedPoolType.MockManagedPoolSettings,
+                poolType: ManagedPoolType.MOCK_MANAGED_POOL_SETTINGS,
               });
             });
 
