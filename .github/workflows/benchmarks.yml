@@ -16,6 +16,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Benchmark Deployment
         run: yarn workspace @balancer-labs/v2-benchmarks measure-deployment
 
@@ -27,6 +29,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Benchmark Single Pair
         run: yarn workspace @balancer-labs/v2-benchmarks measure-single-pair
 
@@ -38,6 +42,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Benchmark Multihop
         run: yarn workspace @balancer-labs/v2-benchmarks measure-multihop
 
@@ -49,6 +55,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Benchmark Join/Exit
         run: yarn workspace @balancer-labs/v2-benchmarks measure-join-exit
 
@@ -60,6 +68,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Benchmark Balancer Relayer - multicall
         run: yarn workspace @balancer-labs/v2-benchmarks measure-relayer
 

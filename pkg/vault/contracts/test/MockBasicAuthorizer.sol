@@ -73,7 +73,17 @@ contract MockBasicAuthorizer is IBasicAuthorizer {
         _grantRole(role, account);
     }
 
+    function revokeRole(bytes32 role, address account) public virtual {
+        _require(hasRole(_roles[role].adminRole, msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
+
+        _revokeRole(role, account);
+    }
+
     function _grantRole(bytes32 role, address account) private {
         _roles[role].members.add(account);
+    }
+
+    function _revokeRole(bytes32 role, address account) private {
+        _roles[role].members.remove(account);
     }
 }
