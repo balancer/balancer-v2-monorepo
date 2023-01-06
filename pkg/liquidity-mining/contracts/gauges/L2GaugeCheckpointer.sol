@@ -140,6 +140,27 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
+    function checkpointGaugesOfTypeAboveRelativeWeight(IGaugeAdder.GaugeType gaugeType, uint256 minRelativeWeight)
+        external
+        payable
+        override
+        withSupportedGaugeType(gaugeType)
+        nonReentrant
+    {
+        // solhint-disable-next-line not-rely-on-time
+        uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
+
+        _checkpointGauges(gaugeType, minRelativeWeight, currentPeriod);
+
+        // Send back any leftover ETH to the caller.
+        // Most gauge types don't need to send value, and this step can be skipped in those cases.
+        uint256 remainingBalance = address(this).balance;
+        if (remainingBalance > 0) {
+            Address.sendValue(msg.sender, remainingBalance);
+        }
+    }
+
+    /// @inheritdoc IL2GaugeCheckpointer
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);

@@ -86,6 +86,16 @@ interface IL2GaugeCheckpointer {
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable;
 
     /**
+     * @dev Performs a checkpoint for all added gauges of a given type above the given relative weight threshold.
+     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * @param gaugeType - Type of the gauge.
+     * @param minRelativeWeight - Threshold to filter out gauges below it.
+     */
+    function checkpointGaugesOfTypeAboveRelativeWeight(IGaugeAdder.GaugeType gaugeType, uint256 minRelativeWeight)
+        external
+        payable;
+
+    /**
      * @dev Returns the ETH cost to checkpoint all gauges for a given minimum relative weight.
      * A lower minimum relative weight might return higher costs, since more gauges could potentially be included
      * in the checkpoint.
