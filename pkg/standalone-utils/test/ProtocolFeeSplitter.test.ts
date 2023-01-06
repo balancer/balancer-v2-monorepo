@@ -195,29 +195,61 @@ describe('ProtocolFeeSplitter', function () {
     });
   });
 
-  describe('setPoolBeneficiary', async () => {
-    it('reverts if caller is not the pool owner', async () => {
-      await expect(
-        protocolFeeSplitter.connect(liquidityProvider).setPoolBeneficiary(poolId, liquidityProvider.address)
-      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
-    });
+  describe('setPoolBeneficiary', () => {
+    let caller: SignerWithAddress;
 
-    it('sets pool beneficiary', async () => {
-      await protocolFeeSplitter.connect(owner).setPoolBeneficiary(poolId, other.address);
-      const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
-      expect(poolSettings.beneficiary).to.be.eq(other.address);
-    });
-
-    it('emits a PoolBeneficiaryChanged event', async () => {
-      const receipt = await (await protocolFeeSplitter.connect(owner).setPoolBeneficiary(poolId, other.address)).wait();
-      expectEvent.inReceipt(receipt, 'PoolBeneficiaryChanged', {
-        poolId,
-        newBeneficiary: other.address,
+    function itReverts(): void {
+      it('it reverts', async () => {
+        await expect(
+          protocolFeeSplitter.connect(caller).setPoolBeneficiary(poolId, liquidityProvider.address)
+        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
+    }
+
+    function itSetsThePoolsBeneficiary(): void {
+      it('sets pool beneficiary', async () => {
+        await protocolFeeSplitter.connect(caller).setPoolBeneficiary(poolId, other.address);
+        const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
+        expect(poolSettings.beneficiary).to.be.eq(other.address);
+      });
+
+      it('emits a PoolBeneficiaryChanged event', async () => {
+        const tx = await protocolFeeSplitter.connect(caller).setPoolBeneficiary(poolId, other.address);
+        expectEvent.inReceipt(await tx.wait(), 'PoolBeneficiaryChanged', {
+          poolId,
+          newBeneficiary: other.address,
+        });
+      });
+    }
+
+    describe('called by pool owner', () => {
+      sharedBeforeEach(async () => {
+        caller = owner;
+      });
+
+      itSetsThePoolsBeneficiary();
+    });
+
+    describe('called by governance-authorized address', () => {
+      sharedBeforeEach('set permissions', async () => {
+        caller = other;
+        const setBeneficiaryRole = await actionId(protocolFeeSplitter, 'setPoolBeneficiary');
+        await vault.grantPermissionsGlobally([setBeneficiaryRole], other);
+      });
+
+      itSetsThePoolsBeneficiary();
+    });
+
+    describe('called by other', () => {
+      sharedBeforeEach(async () => {
+        caller = other;
+      });
+
+      itReverts();
     });
   });
 
-  describe('when the fee collector holds BPT', () => {
+  context('when the fee collector holds BPT', async () => {
     let bptBalanceOfLiquidityProvider: BigNumber;
 
     sharedBeforeEach('transfer BPT to fees collector', async () => {
@@ -304,6 +336,24 @@ describe('ProtocolFeeSplitter', function () {
               await itShouldDistributeRevenueCorrectly(ownerExpectedBalance, treasuryExpectedBalance);
             });
           });
+        });
+      });
+
+      it('emits an event with collected fees', async () => {
+        const tx = await protocolFeeSplitter.collectFees(poolId);
+        const receipt = await tx.wait();
+
+        // 10% of bptBalanceOfLiquidityProvider should go to owner
+        const ownerExpectedBalance = fpMul(bptBalanceOfLiquidityProvider, defaultRevenueShare);
+        // The rest goes to the treasury
+        const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.sub(ownerExpectedBalance);
+
+        expectEvent.inReceipt(receipt, 'FeesCollected', {
+          poolId,
+          beneficiary: owner.address,
+          poolEarned: ownerExpectedBalance,
+          daoFundsRecipient: treasury.address,
+          daoEarned: treasuryExpectedBalance,
         });
       });
 

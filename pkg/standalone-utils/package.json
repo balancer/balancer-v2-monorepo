@@ -50,7 +50,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.2",
-    "hardhat": "^2.12.2",
+    "hardhat": "^2.12.5",
     "hardhat-ignore-warnings": "^0.2.4",
     "lodash": "^4.17.21",
     "mocha": "^10.1.0",
