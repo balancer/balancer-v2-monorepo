@@ -71,7 +71,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
       swapEnabledOnStart: true,
       vault,
       managementAumFeePercentage: fp(0.1), // Non-zero so that some protocol AUM fees are charged
-      poolType: ManagedPoolType.MockManagedPool,
+      poolType: ManagedPoolType.MOCK_MANAGED_POOL,
     });
 
     return { pool, poolTokens };

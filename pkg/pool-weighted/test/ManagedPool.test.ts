@@ -75,7 +75,7 @@ describe('ManagedPool', function () {
       weights: poolWeights,
       owner: owner.address,
       aumFeeId: ProtocolFee.AUM,
-      poolType: ManagedPoolType.MockManagedPool,
+      poolType: ManagedPoolType.MOCK_MANAGED_POOL,
       poolVersion,
       ...overrides,
     };

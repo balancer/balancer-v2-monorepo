@@ -9,9 +9,9 @@ import { Account, NAry } from '../../types/types';
 import Vault from '../../vault/Vault';
 
 export enum ManagedPoolType {
-  ManagedPool = 'ManagedPool',
-  MockManagedPool = 'MockManagedPool',
-  MockManagedPoolSettings = 'MockManagedPoolSettings',
+  MANAGED_POOL = 'ManagedPool',
+  MOCK_MANAGED_POOL = 'MockManagedPool',
+  MOCK_MANAGED_POOL_SETTINGS = 'MockManagedPoolSettings',
 }
 
 export type RawWeightedPoolDeployment = {

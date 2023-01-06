@@ -144,7 +144,7 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!pauseWindowDuration) pauseWindowDuration = DEFAULT_PAUSE_WINDOW_DURATION;
     if (!bufferPeriodDuration) bufferPeriodDuration = DEFAULT_BUFFER_PERIOD_DURATION;
-    if (!poolType) poolType = ManagedPoolType.ManagedPool;
+    if (!poolType) poolType = ManagedPoolType.MANAGED_POOL;
     if (swapEnabledOnStart == undefined) swapEnabledOnStart = true;
     if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
