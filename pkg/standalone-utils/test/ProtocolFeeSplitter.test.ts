@@ -301,52 +301,57 @@ describe('ProtocolFeeSplitter', function () {
     });
   });
 
-  describe('setPoolBeneficiary (by owner)', async () => {
-    it('reverts if caller is not the pool owner (and not authorized by governance)', async () => {
-      await expect(
-        protocolFeeSplitter.connect(liquidityProvider).setPoolBeneficiary(poolId, liquidityProvider.address)
-      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
-    });
+  describe('setPoolBeneficiary', () => {
+    let caller: SignerWithAddress;
 
-    it('sets pool beneficiary', async () => {
-      await protocolFeeSplitter.connect(owner).setPoolBeneficiary(poolId, other.address);
-      const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
-      expect(poolSettings.beneficiary).to.be.eq(other.address);
-    });
-
-    it('emits a PoolBeneficiaryChanged event', async () => {
-      const receipt = await (await protocolFeeSplitter.connect(owner).setPoolBeneficiary(poolId, other.address)).wait();
-      expectEvent.inReceipt(receipt, 'PoolBeneficiaryChanged', {
-        poolId,
-        newBeneficiary: other.address,
+    function itReverts(): void {
+      it('it reverts', async () => {
+        await expect(
+          protocolFeeSplitter.connect(caller).setPoolBeneficiary(poolId, liquidityProvider.address)
+        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
-    });
-  });
+    }
 
-  describe('setPoolBeneficiary (governance override)', async () => {
-    sharedBeforeEach('set permissions', async () => {
-      const setBeneficiaryRole = await actionId(protocolFeeSplitter, 'setPoolBeneficiary');
-      await vault.grantPermissionsGlobally([setBeneficiaryRole], other);
-    });
-
-    it('reverts if caller is not authorized', async () => {
-      await expect(protocolFeeSplitter.connect(admin).setPoolBeneficiary(poolId, admin.address)).to.be.revertedWith(
-        'SENDER_NOT_ALLOWED'
-      );
-    });
-
-    it('sets pool beneficiary', async () => {
-      await protocolFeeSplitter.connect(other).setPoolBeneficiary(poolId, other.address);
-      const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
-      expect(poolSettings.beneficiary).to.be.eq(other.address);
-    });
-
-    it('emits a PoolBeneficiaryChanged event', async () => {
-      const receipt = await (await protocolFeeSplitter.connect(other).setPoolBeneficiary(poolId, other.address)).wait();
-      expectEvent.inReceipt(receipt, 'PoolBeneficiaryChanged', {
-        poolId,
-        newBeneficiary: other.address,
+    function itSetsThePoolsBeneficiary(): void {
+      it('sets pool beneficiary', async () => {
+        await protocolFeeSplitter.connect(caller).setPoolBeneficiary(poolId, other.address);
+        const poolSettings = await protocolFeeSplitter.getRevenueShareSettings(poolId);
+        expect(poolSettings.beneficiary).to.be.eq(other.address);
       });
+
+      it('emits a PoolBeneficiaryChanged event', async () => {
+        const tx = await protocolFeeSplitter.connect(caller).setPoolBeneficiary(poolId, other.address);
+        expectEvent.inReceipt(await tx.wait(), 'PoolBeneficiaryChanged', {
+          poolId,
+          newBeneficiary: other.address,
+        });
+      });
+    }
+
+    describe('called by pool owner', () => {
+      sharedBeforeEach(async () => {
+        caller = owner;
+      });
+
+      itSetsThePoolsBeneficiary();
+    });
+
+    describe('called by governance-authorized address', () => {
+      sharedBeforeEach('set permissions', async () => {
+        caller = other;
+        const setBeneficiaryRole = await actionId(protocolFeeSplitter, 'setPoolBeneficiary');
+        await vault.grantPermissionsGlobally([setBeneficiaryRole], other);
+      });
+
+      itSetsThePoolsBeneficiary();
+    });
+
+    describe('called by other', () => {
+      sharedBeforeEach(async () => {
+        caller = other;
+      });
+
+      itReverts();
     });
   });
 
