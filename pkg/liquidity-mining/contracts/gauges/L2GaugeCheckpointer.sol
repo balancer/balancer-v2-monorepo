@@ -50,9 +50,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         _;
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#addGauges`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
@@ -74,9 +72,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         }
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#removeGauges`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
@@ -95,9 +91,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         }
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#hasGauge`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function hasGauge(IGaugeAdder.GaugeType gaugeType, IStakelessGauge gauge)
         external
         view
@@ -108,9 +102,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return _gauges[gaugeType].contains(address(gauge));
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#getTotalGauges`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function getTotalGauges(IGaugeAdder.GaugeType gaugeType)
         external
         view
@@ -121,9 +113,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return _gauges[gaugeType].length();
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#getGaugeAt`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index)
         external
         view
@@ -134,10 +124,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return IStakelessGauge(_gauges[gaugeType].at(index));
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#checkpointGaugesAboveRelativeWeight`.
-     * Unspent ETH is sent back to sender.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override nonReentrant {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
@@ -152,9 +139,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         Address.sendValue(msg.sender, address(this).balance);
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#getTotalBridgeCost`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
@@ -176,9 +161,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return totalCost;
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#isSupportedGaugeType`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function isSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) external pure override returns (bool) {
         return _isSupportedGaugeType(gaugeType);
     }
