@@ -85,7 +85,11 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, SingletonAuthentication {
     /// @inheritdoc IProtocolFeeSplitter
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external override {
         (address pool, ) = getVault().getPool(poolId);
-        _require(msg.sender == Pool(pool).getOwner(), Errors.SENDER_NOT_ALLOWED);
+        _require(
+            msg.sender == Pool(pool).getOwner() ||
+                _canPerform(getActionId(this.setPoolBeneficiary.selector), msg.sender),
+            Errors.SENDER_NOT_ALLOWED
+        );
 
         _poolSettings[poolId].beneficiary = newBeneficiary;
 
