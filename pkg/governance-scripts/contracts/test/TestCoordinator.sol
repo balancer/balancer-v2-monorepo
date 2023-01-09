@@ -21,7 +21,7 @@ contract TestCoordinator is BaseCoordinator {
     event StagePerformed(uint256 stageNumber);
     event AfterLastStageHookExecuted();
 
-    constructor(IAuthorizerAdaptor authorizerAdaptor) BaseCoordinator(authorizerAdaptor) {
+    constructor(IAuthorizerAdaptorEntrypoint adaptorEntrypoint) BaseCoordinator(adaptorEntrypoint) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
