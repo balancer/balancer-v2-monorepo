@@ -37,11 +37,9 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     mapping(IGaugeAdder.GaugeType => EnumerableSet.AddressSet) private _gauges;
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IGaugeController private immutable _gaugeController;
-    IGaugeAdder private immutable _gaugeAdder;
 
-    constructor(IGaugeAdder gaugeAdder, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) {
-        _gaugeAdder = gaugeAdder;
-        _gaugeController = gaugeAdder.getGaugeController();
+    constructor(IGaugeController gaugeController, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) {
+        _gaugeController = gaugeController;
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
     }
 
@@ -62,10 +60,8 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
 
         for (uint256 i = 0; i < gauges.length; i++) {
             IStakelessGauge gauge = gauges[i];
-            require(
-                _gaugeAdder.isGaugeFromValidFactory(address(gauge), gaugeType),
-                "Gauge does not come from a valid factory"
-            );
+            // Gauges must come from a valid factory to be added to the gauge controller, so gauges that don't pass
+            // the valid factory check will be rejected by the controller.
             require(_gaugeController.gauge_exists(address(gauge)), "Gauge was not added to the GaugeController");
             require(!gauge.is_killed(), "Gauge was killed");
             require(gaugesForType.add(address(gauge)), "Gauge already added to the checkpointer");
