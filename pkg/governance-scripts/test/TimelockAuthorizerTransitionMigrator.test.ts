@@ -24,10 +24,12 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
     target: string;
   }
 
-  let rolesData: RoleData[];
+  let existingRolesData: RoleData[], newRolesData: RoleData[], allRoles: RoleData[];
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
+  const ROLE_4 = '0x0000000000000000000000000000000000000000000000000000000000000004';
+  const ROLE_5 = '0x0000000000000000000000000000000000000000000000000000000000000005';
 
   sharedBeforeEach('set up vault', async () => {
     oldAuthorizer = await deploy('v2-vault/MockBasicAuthorizer', { from: oldRoot });
@@ -41,11 +43,18 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
 
   sharedBeforeEach('set up permissions', async () => {
     const target = await deploy('v2-vault/MockAuthenticatedContract', { args: [vault.address] });
-    rolesData = [
+    existingRolesData = [
       { grantee: user1.address, role: ROLE_1, target: target.address },
       { grantee: user2.address, role: ROLE_2, target: target.address },
       { grantee: user3.address, role: ROLE_3, target: ZERO_ADDRESS },
     ];
+
+    newRolesData = [
+      { grantee: user3.address, role: ROLE_4, target: target.address },
+      { grantee: user1.address, role: ROLE_5, target: ZERO_ADDRESS },
+    ];
+
+    allRoles = [...existingRolesData, ...newRolesData];
   });
 
   sharedBeforeEach('grant roles on old Authorizer', async () => {
@@ -59,7 +68,7 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
   });
 
   sharedBeforeEach('deploy migrator', async () => {
-    const args = [oldAuthorizer.address, newAuthorizer.address, rolesData];
+    const args = [oldAuthorizer.address, newAuthorizer.address, existingRolesData, newRolesData];
     transitionMigrator = await deploy('TimelockAuthorizerTransitionMigrator', { args });
   });
 
@@ -72,7 +81,7 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
       });
 
       it('reverts', async () => {
-        const args = [tempAuthorizer.address, newAuthorizer.address, rolesData];
+        const args = [tempAuthorizer.address, newAuthorizer.address, existingRolesData, newRolesData];
         await expect(deploy('TimelockAuthorizerTransitionMigrator', { args })).to.be.revertedWith('UNEXPECTED_ROLE');
       });
     });
@@ -99,7 +108,7 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
 
       it('migrates all roles properly', async () => {
         await transitionMigrator.migratePermissions();
-        for (const roleData of rolesData) {
+        for (const roleData of allRoles) {
           expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
         }
       });
@@ -109,17 +118,17 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
         await expect(transitionMigrator.migratePermissions()).to.be.revertedWith('ALREADY_MIGRATED');
       });
 
-      context('when a permission is revoked after contract creation time', () => {
+      context('when an existing permission is revoked after contract creation time', () => {
         let roleRevokedData: RoleData;
 
         sharedBeforeEach('revoke one permission', async () => {
-          roleRevokedData = rolesData[1];
+          roleRevokedData = existingRolesData[1];
           await oldAuthorizer.connect(oldRoot).revokeRole(roleRevokedData.role, roleRevokedData.grantee);
         });
 
         it('migrates all non-revoked permissions', async () => {
           await transitionMigrator.migratePermissions();
-          for (const roleData of rolesData) {
+          for (const roleData of allRoles) {
             if (roleData === roleRevokedData) {
               expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.false;
             } else {
@@ -137,15 +146,30 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
   });
 
   describe('roles data getter', () => {
-    it('returns stored role data', async () => {
-      for (let i = 0; i < rolesData.length; ++i) {
-        const roleData = await transitionMigrator.rolesData(i);
-        expect({ grantee: roleData.grantee, role: roleData.role, target: roleData.target }).to.be.deep.eq(rolesData[i]);
+    it('returns stored existing roles data', async () => {
+      for (let i = 0; i < existingRolesData.length; ++i) {
+        const roleData = await transitionMigrator.existingRolesData(i);
+        expect({ grantee: roleData.grantee, role: roleData.role, target: roleData.target }).to.be.deep.eq(
+          existingRolesData[i]
+        );
       }
     });
 
-    it('does not hold any extra role data', async () => {
-      await expect(transitionMigrator.rolesData(rolesData.length)).to.be.reverted;
+    it('returns stored new roles data', async () => {
+      for (let i = 0; i < newRolesData.length; ++i) {
+        const roleData = await transitionMigrator.newRolesData(i);
+        expect({ grantee: roleData.grantee, role: roleData.role, target: roleData.target }).to.be.deep.eq(
+          newRolesData[i]
+        );
+      }
+    });
+
+    it('does not hold any extra existing role data', async () => {
+      await expect(transitionMigrator.existingRolesData(existingRolesData.length)).to.be.reverted;
+    });
+
+    it('does not hold any extra new role data', async () => {
+      await expect(transitionMigrator.newRolesData(newRolesData.length)).to.be.reverted;
     });
   });
 });

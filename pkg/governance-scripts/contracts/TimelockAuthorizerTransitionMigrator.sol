@@ -29,7 +29,8 @@ contract TimelockAuthorizerTransitionMigrator {
 
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable timelockAuthorizer;
-    RoleData[] public rolesData;
+    RoleData[] public existingRolesData;
+    RoleData[] public newRolesData;
 
     struct RoleData {
         address grantee;
@@ -40,22 +41,29 @@ contract TimelockAuthorizerTransitionMigrator {
     bool private _migrationCompleted;
 
     /**
-     * @dev Reverts if rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
+     * @dev Reverts if existingRolesData contains a role for an account which doesn't hold the same role on the old
+     * Authorizer.
+     * New roles to be granted are not checked.
      */
     constructor(
         IBasicAuthorizer _oldAuthorizer,
         TimelockAuthorizer _timelockAuthorizer,
-        RoleData[] memory _rolesData
+        RoleData[] memory _existingRolesData,
+        RoleData[] memory _newRolesData
     ) {
         oldAuthorizer = _oldAuthorizer;
         timelockAuthorizer = _timelockAuthorizer;
 
-        for (uint256 i = 0; i < _rolesData.length; i++) {
-            RoleData memory roleData = _rolesData[i];
+        for (uint256 i = 0; i < _existingRolesData.length; i++) {
+            RoleData memory roleData = _existingRolesData[i];
             // We require that any permissions being copied from the old Authorizer must exist on the old Authorizer.
             // This simplifies verification of the permissions being added to the new TimelockAuthorizer.
             require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
-            rolesData.push(roleData);
+            existingRolesData.push(roleData);
+        }
+
+        for (uint256 i = 0; i < _newRolesData.length; i++) {
+            newRolesData.push(_newRolesData[i]);
         }
     }
 
@@ -65,18 +73,19 @@ contract TimelockAuthorizerTransitionMigrator {
      * The contract needs to be a general granter for the call to succeed, otherwise it will revert when attempting
      * to call `grantPermissions` on `TimelockAuthorizer`.
      * Anyone can trigger the migration, but only TimelockAuthorizer's root can make this contract a granter.
-     * We check each permission stored at deployment time once more against the old authorizer, and only
-     * migrate those that remain in effect. If a permission was revoked in the time between deployment and calling
-     * `migrationPermissions`, emit a `PermissionSkipped` event instead.
+     * For existing permissions, we check each permission stored at deployment time once more against the old
+     * authorizer, and only migrate those that remain in effect. If a permission was revoked in the time between
+     * deployment and calling `migratePermissions`, emit a `PermissionSkipped` event instead.
+     * New permissions are granted inconditionally.
      */
     function migratePermissions() external {
         require(!_migrationCompleted, "ALREADY_MIGRATED");
         _migrationCompleted = true;
 
-        uint256 rolesDataLength = rolesData.length;
+        uint256 exisitngRolesDataLength = existingRolesData.length;
 
-        for (uint256 i = 0; i < rolesDataLength; ++i) {
-            RoleData memory roleData = rolesData[i];
+        for (uint256 i = 0; i < exisitngRolesDataLength; ++i) {
+            RoleData memory roleData = existingRolesData[i];
             // Before granting permissions, we check with the old authorizer again in case any permissions were
             // revoked since the contract creation time.
             // The timelock authorizer will emit an event for each permission granted, so we just log the ones we are
@@ -86,6 +95,13 @@ contract TimelockAuthorizerTransitionMigrator {
             } else {
                 emit PermissionSkipped(roleData.role, roleData.grantee, roleData.target);
             }
+        }
+
+        uint256 newRolesDataLength = newRolesData.length;
+
+        for (uint256 i = 0; i < newRolesDataLength; ++i) {
+            RoleData memory roleData = newRolesData[i];
+            timelockAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
         }
     }
 
