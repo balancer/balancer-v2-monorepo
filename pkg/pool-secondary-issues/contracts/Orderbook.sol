@@ -161,6 +161,13 @@ contract Orderbook is Heap, IOrder, ITrade, Ownable{
         uint256 i;
         bytes32[] memory _marketOrders = new bytes32[](_orderbook.length);
 
+        // Add counter variable
+        uint256 counter = 0;
+        // Set maximum number of orders that can be processed in a single call
+        uint256 maxOrders = 10;
+
+
+
         //check if enough market volume exist to fulfil market orders, or if market depth is zero
         (i, _marketOrders) = checkLimitOrders(_order.ref, _trade);
         if(_trade==IOrder.OrderType.Market){
@@ -173,6 +180,14 @@ contract Orderbook is Heap, IOrder, ITrade, Ownable{
         }
         //if market depth exists, then fill order at one or more price points in the order book
         for(i=0; i<_marketOrders.length; i++){
+
+            while (marketOrders.size() > 0 && bestPrice == 0) {
+
+                // Check if the counter has reached the maximum number of orders that can be processed in a single call
+
+                if (counter >= maxOrders) {
+                    break;
+                }
             if (
                 _marketOrders[i] != _order.ref && //orders can not be matched with themselves
                 _orders[_marketOrders[i]].party != _order.party && //orders posted by a party can not be matched by a counter offer by the same party
@@ -193,6 +208,8 @@ contract Orderbook is Heap, IOrder, ITrade, Ownable{
                         bidIndex = i;
                     }
                 }
+            }
+                counter++;
             }
             if (_order.order == IOrder.Order.Sell) {             
                 if (bestBid != "") {
