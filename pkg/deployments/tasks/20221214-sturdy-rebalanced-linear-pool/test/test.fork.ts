@@ -1,6 +1,7 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
+import { setCode } from '@nomicfoundation/hardhat-network-helpers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { describeForkTest } from '../../../src/forkTests';
@@ -8,6 +9,7 @@ import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigners, impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
@@ -20,6 +22,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15924497, function () {
 
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
   const waUSDC = '0xD7BC0dcb0B6ee14BDB204172ABA01458Abe91aC3';
+  const USDC_LENDING_POOL = '0xA422CA380bd70EeF876292839222159E41AAEe17';
 
   const USDC_SCALING = bn(1e12); // USDC has 6 decimals, so its scaling factor is 1e12
 
@@ -266,5 +269,35 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15924497, function () {
   describe('rebalance repeatedly', () => {
     itRebalancesThePool(LinearPoolState.BALANCED);
     itRebalancesThePool(LinearPoolState.BALANCED);
+  });
+
+  describe('rebalancer query protection', async () => {
+    it('reverts with a malicious lending pool', async () => {
+      const { cash } = await vault.getPoolTokenInfo(poolId, USDC);
+      const scaledCash = cash.mul(USDC_SCALING);
+      const { lowerTarget } = await pool.getTargets();
+
+      const exitAmount = scaledCash.sub(lowerTarget.div(3)).div(USDC_SCALING);
+
+      await vault.connect(holder).swap(
+        {
+          kind: SwapKind.GivenOut,
+          poolId,
+          assetIn: pool.address,
+          assetOut: USDC,
+          amount: exitAmount,
+          userData: '0x',
+        },
+        { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
+        MAX_UINT256,
+        MAX_UINT256
+      );
+
+      await setCode(USDC_LENDING_POOL, getArtifact('v2-pool-linear/MockAaveLendingPool').deployedBytecode);
+      const mockLendingPool = await deployedAt('v2-pool-linear/MockAaveLendingPool', USDC_LENDING_POOL);
+
+      await mockLendingPool.setRevertType(2); // Type 2 is malicious swap query revert
+      await expect(rebalancer.rebalance(other.address)).to.be.revertedWith('BAL#357'); // MALICIOUS_QUERY_REVERT
+    });
   });
 });
