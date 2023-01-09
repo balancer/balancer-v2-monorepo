@@ -61,7 +61,6 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
 
     function _firstStage() private {
         _grantPermissionsOverBridgeParameters();
-        _setupOptimismGaugeType();
         _setupNewGaugeAdder();
         _deprecateOldGaugeAdder();
     }
@@ -89,23 +88,6 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
             ),
             gaugeCheckpointingMultisig
         );
-    }
-
-    function _setupOptimismGaugeType() private {
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
-
-        bytes32 addGaugeTypeRole = authorizerAdaptor.getActionId(IGaugeController.add_type.selector);
-        authorizer.grantRole(addGaugeTypeRole, address(this));
-
-        // Create "Optimism" gauge type on GaugeController.
-        // All types on the Gauge controller have equal type weights of 1e18.
-        uint256 typeWeight = 1e18;
-        authorizerAdaptor.performAction(
-            address(gaugeController),
-            abi.encodeWithSelector(IGaugeController.add_type.selector, "Optimism", typeWeight)
-        );
-
-        authorizer.renounceRole(addGaugeTypeRole, address(this));
     }
 
     function _setupNewGaugeAdder() private {
