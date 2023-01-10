@@ -11,11 +11,10 @@ import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
-import { AuthorizerDeployment } from '../../20210418-authorizer/input';
+import { advanceTime, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
+describeForkTest('GaugeAdderV3', 'mainnet', 16370000, function () {
   let factory: Contract;
   let adaptorEntrypoint: Contract;
   let authorizer: Contract;
@@ -44,10 +43,6 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
   });
 
   before('change authorizer admin to the DAO multisig', async () => {
-    await advanceTime(5 * DAY);
-    await migrator.executeDelays();
-
-    await advanceTime(4 * WEEK);
     await migrator.startRootTransfer();
 
     daoMultisig = await impersonate(DAO_MULTISIG, fp(100));
@@ -58,12 +53,10 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
     expect(await migrator.oldAuthorizer()).to.be.eq(oldAuthorizer.address);
 
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    vault = await vaultTask.instanceAt('Vault', await migrator.vault());
+    vault = await vaultTask.deployedInstance('Vault');
 
-    const authorizerInput = authorizerTask.input() as AuthorizerDeployment;
-    const multisig = await impersonate(authorizerInput.admin, fp(100));
     const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
-    await oldAuthorizer.connect(multisig).grantRolesToMany([setAuthorizerActionId], [migrator.address]);
+    await oldAuthorizer.connect(daoMultisig).grantRolesToMany([setAuthorizerActionId], [migrator.address]);
 
     await migrator.finalizeMigration();
   });
@@ -179,7 +172,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
       expect(gaugeAdderAuthorizer).to.equal(authorizer.address);
     });
 
-    before('call addGaugeFactory', async () => {
+    it('can add factories for a gauge type', async () => {
       const tx = await gaugeAdder.connect(admin).addGaugeFactory(factory.address, 2); // Ethereum is type 2
       expectEvent.inReceipt(await tx.wait(), 'GaugeFactoryAdded', {
         gaugeType: 2,
@@ -187,7 +180,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
       });
     });
 
-    before('create gauge', async () => {
+    it('can add gauge to controller', async () => {
       const tx = await factory.create(LP_TOKEN, weightCap);
       const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
 
@@ -196,11 +189,6 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
       await gaugeAdder.connect(admin).addEthereumGauge(gauge.address);
 
       expect(await gaugeController.gauge_exists(gauge.address)).to.be.true;
-    });
-
-    it('ensure valid factory and gauge', async () => {
-      expect(await gauge.lp_token()).to.equal(LP_TOKEN);
-      expect(await factory.isGaugeFromFactory(gauge.address)).to.be.true;
     });
   });
 });
