@@ -1,6 +1,7 @@
-# 2022-12-05 - L2 Gauge Checkpointer
+# 2023-01-23 - L2 Gauge Checkpointer V2
 
 Deployment of the `L2GaugeCheckpointer` contract. It automates the process of performing checkpoints to stakeless root gauges.
+This version is compatible with the `AuthorizerAdaptorEntrypoint`.
 
 ## Useful Files
 

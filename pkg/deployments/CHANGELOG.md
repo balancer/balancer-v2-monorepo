@@ -4,7 +4,8 @@
 
 ### New Deployments
 
-- Deployed `L2GaugeCheckpointer` to Mainnet.
+- Deployed `L2GaugeCheckpointerV2` to Mainnet.
+  - Deprecated `L2GaugeCheckpointer`.
 - Deployed `VeBoostV2` to Mainnet.
 - Deployed `NoProtocolFeeLiquidityBootstrappingPoolFactory` to Gnosis.
 - Deployed `ERC4626LinearPoolFactory` to Gnosis.
