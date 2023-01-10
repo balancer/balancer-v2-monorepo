@@ -60,7 +60,6 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     }
 
     function _firstStage() private {
-        _grantPermissionsOverBridgeParameters();
         _setupNewGaugeAdder();
         _deprecateOldGaugeAdder();
     }
@@ -72,23 +71,6 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     }
 
     // Internal functions
-
-    function _grantPermissionsOverBridgeParameters() private {
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
-
-        authorizer.grantRole(
-            IAuthentication(address(arbitrumRootGaugeFactory)).getActionId(
-                IArbitrumFeeProvider.setArbitrumFees.selector
-            ),
-            gaugeCheckpointingMultisig
-        );
-        authorizer.grantRole(
-            IAuthentication(address(optimismRootGaugeFactory)).getActionId(
-                IOptimismGasLimitProvider.setOptimismGasLimit.selector
-            ),
-            gaugeCheckpointingMultisig
-        );
-    }
 
     function _setupNewGaugeAdder() private {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
