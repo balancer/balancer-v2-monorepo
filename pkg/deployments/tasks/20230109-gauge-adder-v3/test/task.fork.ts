@@ -11,11 +11,11 @@ import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
+import { advanceTime, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
+describeForkTest('GaugeAdderV3', 'mainnet', 16370000, function () {
   let factory: Contract;
   let adaptorEntrypoint: Contract;
   let authorizer: Contract;
@@ -44,10 +44,6 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
   });
 
   before('change authorizer admin to the DAO multisig', async () => {
-    await advanceTime(5 * DAY);
-    await migrator.executeDelays();
-
-    await advanceTime(4 * WEEK);
     await migrator.startRootTransfer();
 
     daoMultisig = await impersonate(DAO_MULTISIG, fp(100));
