@@ -5,6 +5,6 @@ import { L2GaugeCheckpointerDeployment } from './input';
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as L2GaugeCheckpointerDeployment;
 
-  const args = [input.GaugeAdder];
+  const args = [input.GaugeController, input.AuthorizerAdaptorEntrypoint];
   await task.deployAndVerify('L2GaugeCheckpointer', args, from, force);
 };

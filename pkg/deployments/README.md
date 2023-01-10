@@ -106,10 +106,10 @@ Returns an object with all contracts from a deployment and their addresses.
 | Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 | Authorizer Adaptor Entrypoint                           | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
 | Timelock Authorizer, governance contract                | [`20221202-timelock-authorizer`](./tasks/20221202-timelock-authorizer)                               |
-| L2 Gauge Checkpointer                                   | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                           |
 | VeBoost V2                                              | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/20221207-aave-rebalanced-linear-pool-v3)         |
 | Gauge Registrant V3, supporting the Adaptor entrypoint  | [`20230109-gauge-adder-v3`](./tasks/20230109-gauge-adder-v3)                                         |
+| L2 Gauge Checkpointer V2                                | [`20230123-l2-gauge-checkpointer-v2`](./tasks/20230123-l2-gauge-checkpointer-v2)                     |
 
 ## Scripts
 
@@ -157,3 +157,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/deprecated/20220817-aave-rebalanced-linear-pool)   |
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/deprecated/20220906-composable-stable-pool)             |
 | Managed Pool                                            | [`20221021-managed-pool`](./tasks/deprecated/20221021-managed-pool)                                 |
+| L2 Gauge Checkpointer                                   | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                          |
