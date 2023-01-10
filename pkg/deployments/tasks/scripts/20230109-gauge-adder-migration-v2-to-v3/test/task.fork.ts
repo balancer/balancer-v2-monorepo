@@ -11,7 +11,7 @@ import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16092163, function () {
+describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16378450, function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
@@ -20,8 +20,6 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16092163, function
   let oldGaugeAdder: Contract;
   let newGaugeAdder: Contract;
 
-  let ethereumRootGaugeFactory: Contract;
-  let polygonRootGaugeFactory: Contract;
   let arbitrumRootGaugeFactory: Contract;
   let optimismRootGaugeFactory: Contract;
 
@@ -30,7 +28,6 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16092163, function
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
-    console.log(`start`);
     task = new Task('20230109-gauge-adder-migration-v2-to-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     coordinator = await task.deployedInstance('GaugeAdderMigrationCoordinator');
@@ -41,7 +38,6 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16092163, function
     vault = await vaultTask.deployedInstance('Vault');
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
-    console.log(`vault and authorizer`);
     const authorizerAdaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizerAdaptor = await authorizerAdaptorTask.deployedInstance('AuthorizerAdaptor');
 
@@ -53,21 +49,6 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16092163, function
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
-
-    console.log(`finished gauge tasks`);
-    const ethereumRootGaugeFactoryTask = new Task(
-      '20220822-mainnet-gauge-factory-v2',
-      TaskMode.READ_ONLY,
-      getForkedNetwork(hre)
-    );
-    ethereumRootGaugeFactory = await ethereumRootGaugeFactoryTask.deployedInstance('LiquidityGaugeFactory');
-
-    const polygonRootGaugeFactoryTask = new Task(
-      '20220823-polygon-root-gauge-factory-v2',
-      TaskMode.READ_ONLY,
-      getForkedNetwork(hre)
-    );
-    polygonRootGaugeFactory = await polygonRootGaugeFactoryTask.deployedInstance('PolygonRootGaugeFactory');
 
     const arbitrumRootGaugeFactoryTask = new Task(
       '20220823-arbitrum-root-gauge-factory-v2',
