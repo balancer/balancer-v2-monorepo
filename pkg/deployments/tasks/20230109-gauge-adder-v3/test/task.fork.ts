@@ -172,7 +172,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16370000, function () {
       expect(gaugeAdderAuthorizer).to.equal(authorizer.address);
     });
 
-    before('call addGaugeFactory', async () => {
+    it('can add factories for a gauge type', async () => {
       const tx = await gaugeAdder.connect(admin).addGaugeFactory(factory.address, 2); // Ethereum is type 2
       expectEvent.inReceipt(await tx.wait(), 'GaugeFactoryAdded', {
         gaugeType: 2,
@@ -180,7 +180,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16370000, function () {
       });
     });
 
-    before('create gauge', async () => {
+    it('can add gauge to controller', async () => {
       const tx = await factory.create(LP_TOKEN, weightCap);
       const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
 
