@@ -26,6 +26,8 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
 
     IGaugeController public immutable gaugeController;
 
+    ILiquidityGaugeFactory public immutable ethereumGaugeFactory;
+    ILiquidityGaugeFactory public immutable polygonRootGaugeFactory;
     ILiquidityGaugeFactory public immutable arbitrumRootGaugeFactory;
     ILiquidityGaugeFactory public immutable optimismRootGaugeFactory;
 
@@ -36,6 +38,8 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         IAuthorizerAdaptor authorizerAdaptor,
         IGaugeAdder _newGaugeAdder,
         IGaugeAdder _oldGaugeAdder,
+        ILiquidityGaugeFactory _ethereumGaugeFactory,
+        ILiquidityGaugeFactory _polygonRootGaugeFactory,
         ILiquidityGaugeFactory _arbitrumRootGaugeFactory,
         ILiquidityGaugeFactory _optimismRootGaugeFactory,
         address _liquidityMiningCommitteeMultisig,
@@ -43,6 +47,8 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     ) BaseCoordinator(authorizerAdaptor) {
         newGaugeAdder = _newGaugeAdder;
         oldGaugeAdder = _oldGaugeAdder;
+        ethereumGaugeFactory = _ethereumGaugeFactory;
+        polygonRootGaugeFactory = _polygonRootGaugeFactory;
         arbitrumRootGaugeFactory = _arbitrumRootGaugeFactory;
         optimismRootGaugeFactory = _optimismRootGaugeFactory;
         liquidityMiningCommitteeMultisig = _liquidityMiningCommitteeMultisig;
@@ -73,31 +79,19 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     function _setupNewGaugeAdder() private {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
 
-        // Migrate factories from old GaugeAdder.
+        // Set up factories on new gauge adder.
+        // We don't pull these from the old gauge adder as this uses uncapped gauges,
+        // whereas we want to add capped gauges to the new adder.
         {
             bytes32 addFactoryRole = IAuthentication(address(newGaugeAdder)).getActionId(
                 IGaugeAdder.addGaugeFactory.selector
             );
             authorizer.grantRole(addFactoryRole, address(this));
 
-            // Copy across gauge factories from previous GaugeAdder.
-            // Only one factory exists for each gauge type so this is sufficient.
-            newGaugeAdder.addGaugeFactory(
-                ILiquidityGaugeFactory(oldGaugeAdder.getFactoryForGaugeType(IGaugeAdder.GaugeType.Ethereum, 0)),
-                IGaugeAdder.GaugeType.Ethereum
-            );
-            newGaugeAdder.addGaugeFactory(
-                ILiquidityGaugeFactory(oldGaugeAdder.getFactoryForGaugeType(IGaugeAdder.GaugeType.Polygon, 0)),
-                IGaugeAdder.GaugeType.Polygon
-            );
-            newGaugeAdder.addGaugeFactory(
-                ILiquidityGaugeFactory(oldGaugeAdder.getFactoryForGaugeType(IGaugeAdder.GaugeType.Arbitrum, 0)),
-                IGaugeAdder.GaugeType.Arbitrum
-            );
-            newGaugeAdder.addGaugeFactory(
-                ILiquidityGaugeFactory(oldGaugeAdder.getFactoryForGaugeType(IGaugeAdder.GaugeType.Optimism, 0)),
-                IGaugeAdder.GaugeType.Optimism
-            );
+            newGaugeAdder.addGaugeFactory(ethereumGaugeFactory, IGaugeAdder.GaugeType.Ethereum);
+            newGaugeAdder.addGaugeFactory(polygonRootGaugeFactory, IGaugeAdder.GaugeType.Polygon);
+            newGaugeAdder.addGaugeFactory(arbitrumRootGaugeFactory, IGaugeAdder.GaugeType.Arbitrum);
+            newGaugeAdder.addGaugeFactory(optimismRootGaugeFactory, IGaugeAdder.GaugeType.Optimism);
 
             authorizer.renounceRole(addFactoryRole, address(this));
         }
