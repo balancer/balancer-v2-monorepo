@@ -7,6 +7,8 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
   const args = [
     input.AuthorizerAdaptorEntrypoint,
+    input.NewGaugeAdder,
+    input.OldGaugeAdder,
     input.ArbitrumRootGaugeFactory,
     input.OptimismRootGaugeFactory,
     input.LiquidityMiningMultisig,
