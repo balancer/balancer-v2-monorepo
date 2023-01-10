@@ -54,7 +54,12 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         liquidityMiningCommitteeMultisig = _liquidityMiningCommitteeMultisig;
         gaugeCheckpointingMultisig = _gaugeCheckpointingMultisig;
 
-        gaugeController = _newGaugeAdder.getGaugeController();
+        IGaugeController gaugeControllerAddress = _newGaugeAdder.getGaugeController();
+        require(
+            gaugeControllerAddress == _oldGaugeAdder.getGaugeController(),
+            "Gauge controller doesn't match on adders"
+        );
+        gaugeController = gaugeControllerAddress;
     }
 
     // Coordinator Setup
