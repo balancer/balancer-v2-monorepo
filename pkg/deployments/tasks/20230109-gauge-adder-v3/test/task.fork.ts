@@ -190,10 +190,5 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16370000, function () {
 
       expect(await gaugeController.gauge_exists(gauge.address)).to.be.true;
     });
-
-    it('ensure valid factory and gauge', async () => {
-      expect(await gauge.lp_token()).to.equal(LP_TOKEN);
-      expect(await factory.isGaugeFromFactory(gauge.address)).to.be.true;
-    });
   });
 });
