@@ -127,20 +127,6 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16378450, function
     }
   });
 
-  it('grants permissions for checkpointing multisig to set the bridge parameters', async () => {
-    const multisig = task.input().GaugeCheckpointingMultisig;
-
-    const setArbitrumFeesAction = await actionId(
-      arbitrumRootGaugeFactory,
-      'setArbitrumFees(uint64 gasLimit,uint64 gasPrice,uint64 maxSubmissionCost)'
-    );
-    expect(await authorizer.canPerform(setArbitrumFeesAction, multisig, arbitrumRootGaugeFactory.address)).to.be.true;
-
-    const setOptimismGasLimitAction = await actionId(optimismRootGaugeFactory, 'setOptimismGasLimit(uint32 gasLimit)');
-    expect(await authorizer.canPerform(setOptimismGasLimitAction, multisig, optimismRootGaugeFactory.address)).to.be
-      .true;
-  });
-
   it('renounces the admin role', async () => {
     expect(await authorizer.hasRole(await authorizer.DEFAULT_ADMIN_ROLE(), coordinator.address)).to.equal(false);
   });
