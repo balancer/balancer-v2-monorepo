@@ -171,8 +171,8 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
                 continue;
             }
 
-            // Cost per gauge is always the same, but getting the cost every time makes the code simpler,
-            // and this function is only to be used off-chain.
+            // Cost per gauge might not be the same if gauges come from different factories, so we add each
+            // gauge's bridge cost individually.
             totalCost += ArbitrumRootGauge(gauge).getTotalBridgeCost();
         }
         return totalCost;
@@ -195,20 +195,19 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         uint256 minRelativeWeight,
         uint256 currentPeriod
     ) private {
-        uint256 totalTypeGauges = _gauges[gaugeType].length();
+        EnumerableSet.AddressSet storage typeGauges = _gauges[gaugeType];
+
+        uint256 totalTypeGauges = typeGauges.length();
         if (totalTypeGauges == 0) {
             // Return early if there's no work to be done.
             return;
         }
 
-        EnumerableSet.AddressSet storage typeGauges = _gauges[gaugeType];
-
-        // We can do this cast safely because we check that the gauge was created from the ArbitrumRootGaugeFactory
-        // when we added it to the address set. At this point, we have at least one gauge so unchecked_at(0) is valid.
-        // Moreover, the cost per gauge is always the same, so we don't need to call the getter for the cost every time.
-        uint256 costPerCheckpoint = gaugeType == IGaugeAdder.GaugeType.Arbitrum
-            ? ArbitrumRootGauge(typeGauges.unchecked_at(0)).getTotalBridgeCost()
-            : 0;
+        // Arbitrum gauges need to send ETH when performing the checkpoint to pay for bridge costs. Furthermore,
+        // if gauges come from different factories, the cost per gauge might not be the same for all gauges.
+        function(address) internal performCheckpoint = gaugeType == IGaugeAdder.GaugeType.Arbitrum
+            ? _checkpointArbitrumGauge
+            : _checkpointCostlessBridgeGauge;
 
         for (uint256 i = 0; i < totalTypeGauges; ++i) {
             address gauge = typeGauges.unchecked_at(i);
@@ -216,12 +215,26 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
             if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
                 continue;
             }
-
-            _authorizerAdaptorEntrypoint.performAction{ value: costPerCheckpoint }(
-                gauge,
-                abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
-            );
+            performCheckpoint(gauge);
         }
+    }
+
+    /**
+     * @dev Performs checkpoint for Arbitrum gauge, forwarding ETH to pay bridge costs.
+     */
+    function _checkpointArbitrumGauge(address gauge) private {
+        uint256 checkpointCost = ArbitrumRootGauge(gauge).getTotalBridgeCost();
+        _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
+            gauge,
+            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
+        );
+    }
+
+    /**
+     * @dev Performs checkpoint for non-Arbitrum gauge; does not forward any ETH.
+     */
+    function _checkpointCostlessBridgeGauge(address gauge) private {
+        _authorizerAdaptorEntrypoint.performAction(gauge, abi.encodeWithSelector(IStakelessGauge.checkpoint.selector));
     }
 
     /**
