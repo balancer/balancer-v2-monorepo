@@ -137,6 +137,6 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
 
         // `liquidityMiningCommitteeMultisig` retains the permissions to call functions on `oldGaugeAdder`.
         // This is acceptable as any interactions with `oldGaugeAdder` will fail as it can no longer interact
-        // with the `GaugeController`. Eventually these roles will be omitted in the Authorizer migration and disappear.
+        // with the `GaugeController`.
     }
 }
