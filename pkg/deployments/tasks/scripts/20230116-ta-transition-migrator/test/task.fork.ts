@@ -9,7 +9,8 @@ import Task, { TaskMode } from '../../../../src/task';
 import { impersonate } from '../../../../src/signers';
 import { getForkedNetwork } from '../../../../src/test';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { RoleData, TRANSITION_END_BLOCK, TimelockAuthorizerTransitionMigratorDeployment } from '../input';
+import { TRANSITION_END_BLOCK, TimelockAuthorizerTransitionMigratorDeployment } from '../input';
+import { RoleData } from '../input/types';
 
 describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_END_BLOCK, function () {
   let input: TimelockAuthorizerTransitionMigratorDeployment;
@@ -25,7 +26,7 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
     migrator = await task.deployedInstance('TimelockAuthorizerTransitionMigrator');
 
     input = task.input() as TimelockAuthorizerTransitionMigratorDeployment;
-    roles = await input.Roles;
+    roles = input.Roles;
   });
 
   before('load old authorizer and impersonate multisig', async () => {
