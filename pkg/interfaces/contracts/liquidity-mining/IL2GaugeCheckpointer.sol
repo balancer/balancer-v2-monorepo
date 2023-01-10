@@ -76,7 +76,7 @@ interface IL2GaugeCheckpointer {
      * @param gaugeType - Type of the gauge.
      * @param index - Index of the added gauge.
      */
-    function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index) external view returns (IStakelessGauge);
+    function getGaugeAtIndex(IGaugeAdder.GaugeType gaugeType, uint256 index) external view returns (IStakelessGauge);
 
     /**
      * @dev Performs a checkpoint for all added gauges above the given relative weight threshold.

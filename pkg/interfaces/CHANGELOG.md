@@ -1,8 +1,14 @@
 # Changelog
 
+## Unreleased
+
 ### New Features
 
 - Added `checkpointGaugesOfTypeAboveRelativeWeight` to `IL2GaugeCheckpointer`.
+
+### Breaking changes
+
+- `IL2GaugeCheckpointer`: `getGaugeAt` renamed to `getGaugeAtIndex`.
 
 ## 0.2.0 (2022-12-01)
 
