@@ -110,7 +110,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index)
+    function getGaugeAtIndex(IGaugeAdder.GaugeType gaugeType, uint256 index)
         external
         view
         override
