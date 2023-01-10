@@ -11,7 +11,6 @@ import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
-import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { advanceTime, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
@@ -54,12 +53,10 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16370000, function () {
     expect(await migrator.oldAuthorizer()).to.be.eq(oldAuthorizer.address);
 
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    vault = await vaultTask.instanceAt('Vault', await migrator.vault());
+    vault = await vaultTask.deployedInstance('Vault');
 
-    const authorizerInput = authorizerTask.input() as AuthorizerDeployment;
-    const multisig = await impersonate(authorizerInput.admin, fp(100));
     const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
-    await oldAuthorizer.connect(multisig).grantRolesToMany([setAuthorizerActionId], [migrator.address]);
+    await oldAuthorizer.connect(daoMultisig).grantRolesToMany([setAuthorizerActionId], [migrator.address]);
 
     await migrator.finalizeMigration();
   });
