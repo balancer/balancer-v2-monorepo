@@ -54,4 +54,8 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
       expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
     }
   });
+
+  it('reverts after migrating the first time', async () => {
+    await expect(migrator.migratePermissions()).to.be.revertedWith('ALREADY_MIGRATED');
+  });
 });
