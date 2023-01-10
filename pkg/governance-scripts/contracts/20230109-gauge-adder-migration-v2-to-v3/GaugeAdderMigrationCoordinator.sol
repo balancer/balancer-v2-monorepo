@@ -25,7 +25,6 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     IGaugeAdder public immutable oldGaugeAdder;
 
     IGaugeController public immutable gaugeController;
-    IAuthorizerAdaptor public immutable authorizerAdaptor;
 
     ILiquidityGaugeFactory public immutable arbitrumRootGaugeFactory;
     ILiquidityGaugeFactory public immutable optimismRootGaugeFactory;
@@ -34,14 +33,14 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     address public immutable gaugeCheckpointingMultisig;
 
     constructor(
-        IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
+        IAuthorizerAdaptor authorizerAdaptor,
         IGaugeAdder _newGaugeAdder,
         IGaugeAdder _oldGaugeAdder,
         ILiquidityGaugeFactory _arbitrumRootGaugeFactory,
         ILiquidityGaugeFactory _optimismRootGaugeFactory,
         address _liquidityMiningCommitteeMultisig,
         address _gaugeCheckpointingMultisig
-    ) BaseCoordinator(authorizerAdaptorEntrypoint) {
+    ) BaseCoordinator(authorizerAdaptor) {
         newGaugeAdder = _newGaugeAdder;
         oldGaugeAdder = _oldGaugeAdder;
         arbitrumRootGaugeFactory = _arbitrumRootGaugeFactory;
@@ -50,7 +49,6 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         gaugeCheckpointingMultisig = _gaugeCheckpointingMultisig;
 
         gaugeController = _newGaugeAdder.getGaugeController();
-        authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
     }
 
     // Coordinator Setup
@@ -127,7 +125,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         }
 
         // Grant the new GaugeAdder powers to add gauges to the GaugeController.
-        bytes32 addGaugeRole = authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector);
+        bytes32 addGaugeRole = getAuthorizerAdaptor().getActionId(IGaugeController.add_gauge.selector);
         authorizer.grantRole(addGaugeRole, address(newGaugeAdder));
     }
 
@@ -135,7 +133,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
 
         // Revoke the powers to add gauges to the GaugeController from the old GaugeAdder.
-        bytes32 addGaugeRole = authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector);
+        bytes32 addGaugeRole = getAuthorizerAdaptor().getActionId(IGaugeController.add_gauge.selector);
         authorizer.revokeRole(addGaugeRole, address(oldGaugeAdder));
 
         // `liquidityMiningCommitteeMultisig` retains the permissions to call functions on `oldGaugeAdder`.
