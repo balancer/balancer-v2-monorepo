@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
@@ -37,17 +37,17 @@ interface ICurrentAuthorizer is IAuthorizer {
 }
 
 abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
-    IAuthorizerAdaptorEntrypoint private immutable _adaptorEntrypoint;
+    IAuthorizerAdaptor private immutable _authorizerAdaptor;
 
     function()[] private _coordinatorStages;
     uint256[] private _stageActivationTime;
 
-    constructor(IAuthorizerAdaptorEntrypoint adaptorEntrypoint) SingletonAuthentication(adaptorEntrypoint.getVault()) {
-        _adaptorEntrypoint = adaptorEntrypoint;
+    constructor(IAuthorizerAdaptor authorizerAdaptor) SingletonAuthentication(authorizerAdaptor.getVault()) {
+        _authorizerAdaptor = authorizerAdaptor;
     }
 
-    function getAuthorizerAdaptorEntrypoint() public view returns (IAuthorizerAdaptor) {
-        return _adaptorEntrypoint;
+    function getAuthorizerAdaptor() public view returns (IAuthorizerAdaptor) {
+        return _authorizerAdaptor;
     }
 
     function isComplete() public view returns (bool) {
