@@ -24,6 +24,7 @@ const DAO_MULTISIG = '0x10a19e7ee7d7f8a52822f6817de8ea18204f2e4f';
 const createRoleData = (grantee: string, target: string, actionIds: string[]): RoleData[] =>
   actionIds.map((actionId) => ({ role: actionId, grantee: grantee.toLowerCase(), target: target.toLowerCase() }));
 
+// Hard-coded roles taken from https://forum.balancer.fi/t/bip-131-pool-factory-permission-granting/4144.
 export const roles: RoleData[] = flatten([
   createRoleData(BALLERS_MULTISIG_GAUNTLET, DAO_MULTISIG, [
     ComposableStablePoolV2.actionId('ComposableStablePool', 'setSwapFeePercentage(uint256)'),
@@ -32,7 +33,9 @@ export const roles: RoleData[] = flatten([
     StablePool.actionId('StablePool', 'setSwapFeePercentage(uint256)'),
     StablePool.actionId('StablePool', 'startAmplificationParameterUpdate(uint256,uint256)'),
     StablePool.actionId('StablePool', 'stopAmplificationParameterUpdate()'),
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - setSwapFeePercentage(uint256)
     '0x0693774dcda5e82a5b5f4255fe8bc7aa5f7ce39cd6b4f9986b116fc4af317450',
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - setTargets(uint256,uint256)
     '0x881bd2702150eafb9524fe01e983df0fb0e99eca758c1b3959e46a084cc1618b',
   ]),
 
@@ -46,6 +49,7 @@ export const roles: RoleData[] = flatten([
     ComposableStablePoolV2.actionId('ComposableStablePoolFactory', 'disable()'),
     PoolRecoveryHelper.actionId('PoolRecoveryHelper', 'addPoolFactory(address)'),
     PoolRecoveryHelper.actionId('PoolRecoveryHelper', 'removePoolFactory(address)'),
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPoolFactory - disable()
     '0x3924d0d790727bf2925421c7e316cfbe3d8b69f26b36b9d7d1c97e32bdeb4947',
   ]),
 
@@ -65,7 +69,9 @@ export const roles: RoleData[] = flatten([
     ComposableStablePoolV2.actionId('ComposableStablePoolFactory', 'disable()'),
     AaveRebalancedLinearPoolV3.actionId('AaveLinearPool', 'enableRecoveryMode()'),
     AaveRebalancedLinearPoolV3.actionId('AaveLinearPoolFactory', 'disable()'),
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - pause()
     '0x1f16abe3860c7a3426659e50f0217af96ac40aa554d8ddaebcb7c399118eeb1b',
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - unpause()
     '0xcdd7ab46c8258e8c091144b92a3a1061315e0da3aef7773d859de4ee421fd920',
   ]),
 
