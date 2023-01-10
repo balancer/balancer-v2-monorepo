@@ -102,7 +102,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         }
 
         // Grant permissions for adding new Gauges.
-        // Permissions for Gnosis and ZKSync are not granted.
+        // Permissions for Gnosis and ZKSync are not granted as their factories are not deployed.
         {
             bytes32 addEthereumGaugeRole = IAuthentication(address(newGaugeAdder)).getActionId(
                 IGaugeAdder.addEthereumGauge.selector
