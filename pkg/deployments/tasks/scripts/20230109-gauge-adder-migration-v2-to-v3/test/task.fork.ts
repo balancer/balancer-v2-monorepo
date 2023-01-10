@@ -20,9 +20,6 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16378450, function
   let oldGaugeAdder: Contract;
   let newGaugeAdder: Contract;
 
-  let arbitrumRootGaugeFactory: Contract;
-  let optimismRootGaugeFactory: Contract;
-
   let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
@@ -49,20 +46,6 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16378450, function
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
-
-    const arbitrumRootGaugeFactoryTask = new Task(
-      '20220823-arbitrum-root-gauge-factory-v2',
-      TaskMode.READ_ONLY,
-      getForkedNetwork(hre)
-    );
-    arbitrumRootGaugeFactory = await arbitrumRootGaugeFactoryTask.deployedInstance('ArbitrumRootGaugeFactory');
-
-    const optimismRootGaugeFactoryTask = new Task(
-      '20220823-optimism-root-gauge-factory-v2',
-      TaskMode.READ_ONLY,
-      getForkedNetwork(hre)
-    );
-    optimismRootGaugeFactory = await optimismRootGaugeFactoryTask.deployedInstance('OptimismRootGaugeFactory');
   });
 
   before('grant permissions', async () => {
