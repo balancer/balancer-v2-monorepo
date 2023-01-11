@@ -9,7 +9,7 @@
 
 ## Code checklist:
 
-- [ ] The diff is legible and has no extraneous changes
+- [ ] The diff is legible and has no extraneous changes <!-- There shouldn't be any changes to contract code nor scripts in this PR -->
 - [ ] The base branch is either `master`, or there's a description of how to merge
 
 ## Issue Resolution
