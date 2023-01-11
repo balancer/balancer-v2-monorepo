@@ -28,7 +28,7 @@ To create a new task, these are the recommended steps:
 - Add an entry in the README file with the new task
 - Write appropiate `input.ts` and `index.ts` files, which specify deployment arguments and steps respectively 
 - Populate `build-info` directory with compiled contracts data (see [Generating build info](#generating-build-info) section)
-- Generate artifacts with ABI and bytecode from build info files (see [Generating ABI and bytecode files](#generating-abi-and-bytecode-files) section)
+- Generate artifacts with ABI and bytecode from build info files (see [Generating ABI and bytecode files](#generating-artifact-files-with-abi-and-bytecode) section)
 
 
 Inputs and task instructions are plain TypeScript files that call appropriate functions - there's no DSL. The recommended way to write them is to copy the structure from the `input.ts` and `index.ts` files from a similar task, and then edit those as needed.
