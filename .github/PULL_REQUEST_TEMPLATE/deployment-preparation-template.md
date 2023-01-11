@@ -20,7 +20,7 @@
 
 ## Code checklist:
 
-- [ ] The diff is legible and has no extraneous changes <!-- There shouldn't be any changes to contract code in this PR -->
+- [ ] The diff is legible and has no extraneous changes <!-- There shouldn't be any changes to code outside of the deployment task in this PR -->
 - [ ] Complex code has been commented in tests and scripts
 - [ ] Fork test block number and test cases are appropriate for this deployment
 - [ ] The base branch is either `master`, or there's a description of how to merge
