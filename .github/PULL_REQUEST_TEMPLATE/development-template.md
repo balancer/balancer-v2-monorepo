@@ -15,7 +15,7 @@
 
 ## Checklist:
 
-- [ ] The diff is legible and has no extraneous changes
+- [ ] The diff is legible and has no extraneous changes <!-- There shouldn't be any changes to contract code nor scripts in this PR -->
 - [ ] Complex code has been commented, including external interfaces
 - [ ] Tests are included for all code paths
 - [ ] The base branch is either `master`, or there's a description of how to merge
