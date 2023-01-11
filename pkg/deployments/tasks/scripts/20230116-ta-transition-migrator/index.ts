@@ -4,14 +4,15 @@ import { TaskRunOptions } from '../../../src/types';
 import { TRANSITION_END_BLOCK, TRANSITION_START_BLOCK, TimelockAuthorizerTransitionMigratorDeployment } from './input';
 import { RoleData } from './input/types';
 import { isEqual } from 'lodash';
+import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as TimelockAuthorizerTransitionMigratorDeployment;
 
   const onChainRoles = await getTransitionRoles('mainnet', TRANSITION_START_BLOCK, TRANSITION_END_BLOCK);
 
-  const onchainInputMatch = onChainRoles.every((cRole) => input.Roles.find((iRole) => isEqual(cRole, iRole)));
-  const inputOnchainMatch = input.Roles.every((iRole) => onChainRoles.find((cRole) => isEqual(iRole, cRole)));
+  const onchainInputMatch = onChainRoles.every((cRole) => input.Roles.find((iRole) => isRoleEqual(cRole, iRole)));
+  const inputOnchainMatch = input.Roles.every((iRole) => onChainRoles.find((cRole) => isRoleEqual(iRole, cRole)));
   const rolesMatch = onChainRoles.length === input.Roles.length && onchainInputMatch && inputOnchainMatch;
   if (!rolesMatch) {
     throw new Error('Input permissions do not match on-chain roles granted to old authorizer');
@@ -36,9 +37,24 @@ export async function getTransitionRoles(network: string, fromBlock: number, toB
   const eventFilter = oldAuthorizer.filters.RoleGranted();
   const events = await oldAuthorizer.queryFilter(eventFilter, fromBlock, toBlock);
 
+  // Old authorizer doesn't take into account the target, and on-chain permissions use DAO multisig address as a
+  // sentinel value for the target.
   return events.map((e) => ({
     role: e.args?.role,
-    grantee: String(e.args?.account).toLowerCase(),
-    target: String(e.args?.sender).toLowerCase(),
+    grantee: e.args?.account,
+    target: ANY_ADDRESS,
   }));
+}
+
+/**
+ * Compare two `RoleData` objects by role and grantee, dismissing target.
+ * On-chain roles use DAO multisig as a sentinel value since the old authorizer doesn't take the target address into
+ * account. In other words, in the old authorizer all permissions are granted 'everywhere' no matter what the target is.
+ * Therefore, we skip the target when comparing roles.
+ * @param r1 First object to compare.
+ * @param r2 Second object to compare.
+ * @returns True if role and grantee (caps insensitive) are equal, false otherwise.
+ */
+function isRoleEqual(r1: RoleData, r2: RoleData): boolean {
+  return r1.role === r2.role && r1.grantee.toLowerCase() === r2.grantee.toLowerCase();
 }
