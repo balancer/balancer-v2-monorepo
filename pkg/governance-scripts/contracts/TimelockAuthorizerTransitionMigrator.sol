@@ -68,6 +68,7 @@ contract TimelockAuthorizerTransitionMigrator {
      * We check each permission stored at deployment time once more against the old authorizer, and only
      * migrate those that remain in effect. If a permission was revoked in the time between deployment and calling
      * `migrationPermissions`, emit a `PermissionSkipped` event instead.
+     * The contract renounces to its granter permissions after finishing.
      */
     function migratePermissions() external {
         require(!_migrationCompleted, "ALREADY_MIGRATED");
@@ -87,6 +88,13 @@ contract TimelockAuthorizerTransitionMigrator {
                 emit PermissionSkipped(roleData.role, roleData.grantee, roleData.target);
             }
         }
+
+        timelockAuthorizer.manageGranter(
+            timelockAuthorizer.GENERAL_PERMISSION_SPECIFIER(),
+            address(this),
+            timelockAuthorizer.EVERYWHERE(),
+            false
+        );
     }
 
     // Helper functions
