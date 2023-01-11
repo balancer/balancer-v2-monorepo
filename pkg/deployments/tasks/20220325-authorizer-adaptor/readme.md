@@ -13,4 +13,4 @@ The adaptor may then be the admin for these systems and acts as a proxy forwardi
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`AuthorizerAdaptor` artifact](./artifact/AuthorizerAdaptor.json))
+- [`AuthorizerAdaptor` artifact](./artifact/AuthorizerAdaptor.json)

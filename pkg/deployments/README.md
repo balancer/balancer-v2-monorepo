@@ -101,7 +101,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
 | Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
 | Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
-| Linear Pools for Aave aTokens with built-in rebalancing | [`20221115-aave-rebalanced-linear-pool`](./tasks/20221115-aave-rebalanced-linear-pool)               |
 | Composable Stable Pools V2                              | [`20221122-composable-stable-pool-v2`](./tasks/20221122-composable-stable-pool-v2)                   |
 | Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 | Authorizer Adaptor Entrypoint                           | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
@@ -109,6 +108,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | L2 Gauge Checkpointer                                   | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                           |
 | VeBoost V2                                              | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/20221207-aave-rebalanced-linear-pool-v3)         |
+| Gauge Registrant V3, supporting the Adaptor entrypoint  | [`20230109-gauge-adder-v3`](./tasks/20230109-gauge-adder-v3)                                         |
 
 ## Scripts
 
