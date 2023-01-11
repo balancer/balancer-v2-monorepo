@@ -1,6 +1,6 @@
 import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, ContractReceipt, ContractReceipt, ContractReceipt } from 'ethers';
 
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -189,8 +189,6 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
   });
 
   describe('checkpoint', () => {
-    let gaugeDataAboveMinWeight: GaugeData[] = [];
-
     sharedBeforeEach(() => {
       // Gauges that are above a threshold will get another checkpoint attempt when the threshold is lowered.
       // This block takes a snapshot so that gauges can be repeatedly checkpointed without skipping.
@@ -209,39 +207,107 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
     });
 
     function itCheckpointsGaugesAboveRelativeWeight(minRelativeWeight: BigNumber, gaugesAboveThreshold: number) {
-      beforeEach('get non-checkpointed gauges above min weight', async () => {
-        gaugeDataAboveMinWeight = [
-          ...getGaugeDataAboveMinWeight(GaugeType.Polygon, minRelativeWeight),
-          ...getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight),
-          ...getGaugeDataAboveMinWeight(GaugeType.Optimism, minRelativeWeight),
-        ];
+      let performCheckpoint: () => Promise<ContractReceipt>;
+      let gaugeDataAboveMinWeight: GaugeData[] = [];
+      let polygonGaugeDataAboveMinWeight: GaugeData[],
+        arbitrumGaugeDataAboveMinWeight: GaugeData[],
+        optimismGaugeDataAboveMinWeight: GaugeData[];
 
-        expect(gaugeDataAboveMinWeight.length).to.be.eq(gaugesAboveThreshold);
+      sharedBeforeEach(() => {
+        polygonGaugeDataAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Polygon, minRelativeWeight);
+        arbitrumGaugeDataAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight);
+        optimismGaugeDataAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Optimism, minRelativeWeight);
       });
 
-      const checkpointInterface = new ethers.utils.Interface([
-        'function checkpoint()',
-        'event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions)',
-      ]);
+      context('when checkpointing all types', () => {
+        sharedBeforeEach(() => {
+          performCheckpoint = async () => {
+            const tx = await L2GaugeCheckpointer.checkpointGaugesAboveRelativeWeight(minRelativeWeight, {
+              value: await L2GaugeCheckpointer.getTotalBridgeCost(minRelativeWeight),
+            });
+            return await tx.wait();
+          };
+          gaugeDataAboveMinWeight = [
+            ...polygonGaugeDataAboveMinWeight,
+            ...arbitrumGaugeDataAboveMinWeight,
+            ...optimismGaugeDataAboveMinWeight,
+          ];
 
-      it('performs a checkpoint for (non-checkpointed) gauges', async () => {
-        const tx = await L2GaugeCheckpointer.checkpointGaugesAboveRelativeWeight(minRelativeWeight, {
-          value: await L2GaugeCheckpointer.getTotalBridgeCost(minRelativeWeight),
+          expect(gaugeDataAboveMinWeight.length).to.be.eq(gaugesAboveThreshold);
         });
-        const receipt = await tx.wait();
 
-        // Check that the right amount of checkpoints were actually performed for every gauge that required them.
-        gaugeDataAboveMinWeight.forEach((gaugeData) => {
-          expectEvent.inIndirectReceipt(
-            receipt,
-            checkpointInterface,
-            'Checkpoint',
-            {},
-            gaugeData.address,
-            gaugeData.expectedCheckpoints
-          );
-        });
+        itPerformsCheckpoint();
       });
+
+      context('when checkpointing only Polygon gauges', () => {
+        sharedBeforeEach(() => {
+          performCheckpoint = async () => {
+            const tx = await L2GaugeCheckpointer.checkpointGaugesOfTypeAboveRelativeWeight(
+              GaugeType.Polygon,
+              minRelativeWeight
+            );
+            return await tx.wait();
+          };
+          gaugeDataAboveMinWeight = polygonGaugeDataAboveMinWeight;
+        });
+
+        itPerformsCheckpoint();
+      });
+
+      context('when checkpointing only Arbitrum gauges', () => {
+        sharedBeforeEach(() => {
+          performCheckpoint = async () => {
+            const tx = await L2GaugeCheckpointer.checkpointGaugesOfTypeAboveRelativeWeight(
+              GaugeType.Arbitrum,
+              minRelativeWeight,
+              {
+                value: await L2GaugeCheckpointer.getTotalBridgeCost(minRelativeWeight),
+              }
+            );
+            return await tx.wait();
+          };
+          gaugeDataAboveMinWeight = arbitrumGaugeDataAboveMinWeight;
+        });
+
+        itPerformsCheckpoint();
+      });
+
+      context('when checkpointing only Optimism gauges', () => {
+        sharedBeforeEach(() => {
+          performCheckpoint = async () => {
+            const tx = await L2GaugeCheckpointer.checkpointGaugesOfTypeAboveRelativeWeight(
+              GaugeType.Optimism,
+              minRelativeWeight
+            );
+            return await tx.wait();
+          };
+          gaugeDataAboveMinWeight = optimismGaugeDataAboveMinWeight;
+        });
+
+        itPerformsCheckpoint();
+      });
+
+      function itPerformsCheckpoint() {
+        const checkpointInterface = new ethers.utils.Interface([
+          'function checkpoint()',
+          'event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions)',
+        ]);
+
+        it('performs a checkpoint for (non-checkpointed) gauges', async () => {
+          const receipt = await performCheckpoint();
+          // Check that the right amount of checkpoints were actually performed for every gauge that required them.
+          gaugeDataAboveMinWeight.forEach((gaugeData) => {
+            expectEvent.inIndirectReceipt(
+              receipt,
+              checkpointInterface,
+              'Checkpoint',
+              {},
+              gaugeData.address,
+              gaugeData.expectedCheckpoints
+            );
+          });
+        });
+      }
     }
   });
 
