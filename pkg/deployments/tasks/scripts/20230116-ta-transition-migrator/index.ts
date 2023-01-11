@@ -3,13 +3,16 @@ import Task, { TaskMode } from '../../../src/task';
 import { TaskRunOptions } from '../../../src/types';
 import { TRANSITION_END_BLOCK, TRANSITION_START_BLOCK, TimelockAuthorizerTransitionMigratorDeployment } from './input';
 import { RoleData } from './input/types';
-import { isEqual } from 'lodash';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { excludedRoles } from './input/mainnet';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as TimelockAuthorizerTransitionMigratorDeployment;
 
-  const onChainRoles = await getTransitionRoles('mainnet', TRANSITION_START_BLOCK, TRANSITION_END_BLOCK);
+  // Filter excluded roles in inputs file from on-chain roles.
+  const onChainRoles = (await getTransitionRoles('mainnet', TRANSITION_START_BLOCK, TRANSITION_END_BLOCK)).filter(
+    (role) => !excludedRoles.find((excludedRole) => isRoleEqual(excludedRole, role))
+  );
 
   const onchainInputMatch = onChainRoles.every((cRole) => input.Roles.find((iRole) => isRoleEqual(cRole, iRole)));
   const inputOnchainMatch = input.Roles.every((iRole) => onChainRoles.find((cRole) => isRoleEqual(iRole, cRole)));
@@ -18,7 +21,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     throw new Error('Input permissions do not match on-chain roles granted to old authorizer');
   }
 
-  const args = [input.OldAuthorizer, input.NewAuthorizer, onChainRoles];
+  const args = [input.OldAuthorizer, input.NewAuthorizer, input.Roles];
   await task.deployAndVerify('TimelockAuthorizerTransitionMigrator', args, from, force);
 };
 

@@ -35,10 +35,6 @@ const poolRoles: RoleData[] = flatten([
     StablePool.actionId('StablePool', 'setSwapFeePercentage(uint256)'),
     StablePool.actionId('StablePool', 'startAmplificationParameterUpdate(uint256,uint256)'),
     StablePool.actionId('StablePool', 'stopAmplificationParameterUpdate()'),
-    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - setSwapFeePercentage(uint256)
-    '0x0693774dcda5e82a5b5f4255fe8bc7aa5f7ce39cd6b4f9986b116fc4af317450',
-    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - setTargets(uint256,uint256)
-    '0x881bd2702150eafb9524fe01e983df0fb0e99eca758c1b3959e46a084cc1618b',
   ]),
 
   createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [
@@ -51,10 +47,6 @@ const poolRoles: RoleData[] = flatten([
     ComposableStablePoolV2.actionId('ComposableStablePool', 'unpause()'),
     ComposableStablePoolV2.actionId('ComposableStablePool', 'enableRecoveryMode()'),
     AaveRebalancedLinearPoolV3.actionId('AaveLinearPool', 'enableRecoveryMode()'),
-    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - pause()
-    '0x1f16abe3860c7a3426659e50f0217af96ac40aa554d8ddaebcb7c399118eeb1b',
-    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - unpause()
-    '0xcdd7ab46c8258e8c091144b92a3a1061315e0da3aef7773d859de4ee421fd920',
   ]),
 
   createRoleData(PoolRecoveryHelper.output().PoolRecoveryHelper, EVERYWHERE, [
@@ -97,11 +89,6 @@ const factoryRoles: RoleData[] = flatten([
     PoolRecoveryHelper.actionId('PoolRecoveryHelper', 'removePoolFactory(address)'),
   ]),
 
-  // 20221115-aave-rebalanced-linear-pool - AaveLinearPoolFactory - disable()
-  createRoleData(BLABS_OPS_MULTISIG, '0xb5a0a6bceCB2988bb348c2546BbA9c2bD9A04A1e', [
-    '0x3924d0d790727bf2925421c7e316cfbe3d8b69f26b36b9d7d1c97e32bdeb4947',
-  ]),
-
   createRoleData(EMERGENCY_SUBDAO_MULTISIG, AaveRebalancedLinearPool.output().AaveLinearPoolFactory, [
     AaveRebalancedLinearPool.actionId('AaveLinearPoolFactory', 'disable()'),
   ]),
@@ -128,3 +115,25 @@ const factoryRoles: RoleData[] = flatten([
 ]);
 
 export const roles: RoleData[] = flatten([...poolRoles, ...factoryRoles]);
+
+// These are on-chain permissions in the old authorizer that should not be migrated to the new authorizer.
+export const excludedRoles: RoleData[] = flatten([
+  createRoleData(BALLERS_MULTISIG_GAUNTLET, EVERYWHERE, [
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - setSwapFeePercentage(uint256)
+    '0x0693774dcda5e82a5b5f4255fe8bc7aa5f7ce39cd6b4f9986b116fc4af317450',
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - setTargets(uint256,uint256)
+    '0x881bd2702150eafb9524fe01e983df0fb0e99eca758c1b3959e46a084cc1618b',
+  ]),
+
+  createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - pause()
+    '0x1f16abe3860c7a3426659e50f0217af96ac40aa554d8ddaebcb7c399118eeb1b',
+    // 20221115-aave-rebalanced-linear-pool - AaveLinearPool - unpause()
+    '0xcdd7ab46c8258e8c091144b92a3a1061315e0da3aef7773d859de4ee421fd920',
+  ]),
+
+  // 20221115-aave-rebalanced-linear-pool - AaveLinearPoolFactory - disable()
+  createRoleData(BLABS_OPS_MULTISIG, '0xb5a0a6bceCB2988bb348c2546BbA9c2bD9A04A1e', [
+    '0x3924d0d790727bf2925421c7e316cfbe3d8b69f26b36b9d7d1c97e32bdeb4947',
+  ]),
+]);
