@@ -95,6 +95,13 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
             newAuthorizer.EVERYWHERE(),
             true
           );
+        expect(
+          await newAuthorizer.canGrant(
+            newAuthorizer.GENERAL_PERMISSION_SPECIFIER(),
+            transitionMigrator.address,
+            newAuthorizer.EVERYWHERE()
+          )
+        ).to.be.true;
       });
 
       it('migrates all roles properly', async () => {
@@ -107,6 +114,17 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
       it('reverts when trying to migrate more than once', async () => {
         await expect(transitionMigrator.migratePermissions()).to.not.be.reverted;
         await expect(transitionMigrator.migratePermissions()).to.be.revertedWith('ALREADY_MIGRATED');
+      });
+
+      it('renounces its granter permissions after migrating permissions', async () => {
+        await expect(transitionMigrator.migratePermissions()).to.not.be.reverted;
+        expect(
+          await newAuthorizer.canGrant(
+            newAuthorizer.GENERAL_PERMISSION_SPECIFIER(),
+            transitionMigrator.address,
+            newAuthorizer.EVERYWHERE()
+          )
+        ).to.be.false;
       });
 
       context('when a permission is revoked after contract creation time', () => {
