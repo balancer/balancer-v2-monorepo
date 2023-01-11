@@ -6,11 +6,7 @@
 - [ ] TX IDs are properly generated
 - [ ] Action IDs are generated after deployment (if applicable) <!-- This includes contracts deployed by contracts (e.g. mock pools deployed by factories) -->
 - [ ] Contracts are verified in every network <!-- This includes contracts deployed by contracts (e.g. mock pools deployed by factories) -->
-
-## Code checklist:
-
-- [ ] The diff is legible and has no extraneous changes <!-- There shouldn't be any changes to contract code nor scripts in this PR -->
-- [ ] The base branch is either `master`, or there's a description of how to merge
+- [ ] There are no code changes of any kind
 
 ## Issue Resolution
 
