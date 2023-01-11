@@ -26,7 +26,7 @@ As part of our development process, we frequently alter the source code of contr
 To create a new task, these are the recommended steps:
 - Create a new directory named after the task ID in the `tasks` directory
 - Add an entry in the README file with the new task
-- Write appropiate `input.ts` and `index.ts` files, which specify deployment arguments and steps respectively 
+- Write appropriate `input.ts` and `index.ts` files, which specify deployment arguments and steps respectively 
 - Populate `build-info` directory with compiled contracts data (see [Generating build info](#generating-build-info) section)
 - Generate artifacts with ABI and bytecode from build info files (see [Generating ABI and bytecode files](#generating-artifact-files-with-abi-and-bytecode) section)
 
