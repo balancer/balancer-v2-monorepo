@@ -28,7 +28,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
   const DAO_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   // Gauges that are NOT killed for the given test block number.
-  // See tx: 0xd505f3d18eda2684635890b8272ba155edaf003c4988417837b1367aa888afaf
+  // See tx: 0xeb4fe40d2dbc9ca0780439f2817bcc795ef0ea5f26cf5bd67fc8e3bedd601312
   const polygonRootGauges: [address: string, expectedCheckpoints: number][] = [
     ['0x2c967d6611c60274db45e0bb34c64fb5f504ede7', 1],
     ['0x88d07558470484c03d3bb44c3ecc36cafcf43253', 1],
@@ -42,7 +42,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
     ['0x1e0c21296bf29ee2d56e0abbdfbbedf2530a7c9a', 1],
   ];
 
-  // See tx: 0x3dc3431df6a9850905292a9d3be012c48496efb7e06d327c81b82f37d05d47e0
+  // See tx: 0xeb4fe40d2dbc9ca0780439f2817bcc795ef0ea5f26cf5bd67fc8e3bedd601312
   const arbitrumRootGauges: [address: string, expectedCheckpoints: number][] = [
     ['0x359ea8618c405023fc4b98dab1b01f373792a126', 1],
     ['0xf0ea3559cf098455921d74173da83ff2f6979495', 1],
@@ -51,7 +51,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
     ['0x87ae77a8270f223656d9dc40ad51aabfab424b30', 1],
   ];
 
-  // See tx: 0xd505f3d18eda2684635890b8272ba155edaf003c4988417837b1367aa888afaf
+  // See tx: 0xeb4fe40d2dbc9ca0780439f2817bcc795ef0ea5f26cf5bd67fc8e3bedd601312
   const optimismRootGauges: [address: string, expectedCheckpoints: number][] = [
     ['0xfb0265841c49a6b19d70055e596b212b0da3f606', 1],
     ['0x8b815a11d0d9eeee6861d1c5510d6faa2c6e3feb', 1],
@@ -67,7 +67,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
   const gauges = new Map<GaugeType, GaugeData[]>();
 
   before('run task', async () => {
-    task = new Task('20221205-l2-gauge-checkpointer', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20230123-l2-gauge-checkpointer-v2', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     L2GaugeCheckpointer = await task.deployedInstance('L2GaugeCheckpointer');
   });
@@ -77,7 +77,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
     vault = await vaultTask.deployedInstance('Vault');
   });
 
-  before('create timelock authorizer', async () => {
+  before('get timelock authorizer', async () => {
     const timelockTask = new Task('20221202-timelock-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await timelockTask.deployedInstance('TimelockAuthorizer');
     migrator = await timelockTask.deployedInstance('TimelockAuthorizerMigrator');
@@ -107,10 +107,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
 
   before('get gauge relative weights and associate them with their respective address', async () => {
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    const gaugeController = await gaugeControllerTask.instanceAt(
-      'GaugeController',
-      '0xC128468b7Ce63eA702C1f104D55A2566b13D3ABD' // gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
-    );
+    const gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
 
     const getGaugesData = async (gaugeInputs: [string, number][]) => {
       return Promise.all(
@@ -150,9 +147,10 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
 
     await authorizer
       .connect(govMultisig)
-      .grantRole(
-        await adaptorEntrypoint.getActionId(gauge.interface.getSighash('checkpoint')),
-        L2GaugeCheckpointer.address
+      .grantPermissions(
+        [await adaptorEntrypoint.getActionId(gauge.interface.getSighash('checkpoint'))],
+        L2GaugeCheckpointer.address,
+        [await authorizer.EVERYWHERE()]
       );
   });
 
@@ -203,7 +201,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 16341300, function () {
     });
 
     context('when threshold is 0.0001', () => {
-      itCheckpointsGaugesAboveRelativeWeight(fp(0.0001), 12);
+      itCheckpointsGaugesAboveRelativeWeight(fp(0.0001), 15);
     });
 
     context('when threshold is 0', () => {
