@@ -12,7 +12,7 @@ A task is made up of multiple components:
 - an `input.ts` file, containing information on dependencies and deployment parameters (which might differ across networks).
 - an `index.ts` file, with the instructions for the actual deployment.
 - the `artifact` directory, with JSON files extracted from the build information containing contracts' ABI, bytecode, and metadata.
-- the `output` directory, with JSON files containing the deployment addresses of the tasks' contracts for each network.
+- the `output` directory, with JSON files containing the deployment addresses of the tasks' contracts on each network.
 - optional fork tests in the `test` directory.
 
 ### Why `build-info`
