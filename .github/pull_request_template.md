@@ -1,3 +1,8 @@
+<!-- If this is deployment-related, please go the the Preview tab and select the appropriate sub-template. Otherwise, delete everything before #Description -->
+
+* [Deployment preparation template](?expand=1&template=deployment-preparation-template.md)
+* [Deployment template](?expand=1&template=deployment-template.md)
+
 # Description
 
 <!-- Describe the changes introduced in this pull request. -->
