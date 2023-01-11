@@ -46,6 +46,14 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
     await newAuthorizer
       .connect(root)
       .manageGranter(newAuthorizer.GENERAL_PERMISSION_SPECIFIER(), migrator.address, newAuthorizer.EVERYWHERE(), true);
+
+    expect(
+      await newAuthorizer.canGrant(
+        newAuthorizer.GENERAL_PERMISSION_SPECIFIER(),
+        migrator.address,
+        newAuthorizer.EVERYWHERE()
+      )
+    ).to.be.true;
   });
 
   it('migrates all roles properly', async () => {
@@ -57,5 +65,15 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
 
   it('reverts after migrating the first time', async () => {
     await expect(migrator.migratePermissions()).to.be.revertedWith('ALREADY_MIGRATED');
+  });
+
+  it('renounces its granter role after migrating permissions', async () => {
+    expect(
+      await newAuthorizer.canGrant(
+        newAuthorizer.GENERAL_PERMISSION_SPECIFIER(),
+        migrator.address,
+        newAuthorizer.EVERYWHERE()
+      )
+    ).to.be.false;
   });
 });
