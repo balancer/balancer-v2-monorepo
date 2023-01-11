@@ -59,11 +59,26 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16378450, function
     expect(await coordinator.getCurrentStage()).to.equal(1);
   });
 
+  it('gauge adder has the expected factories set up', async () => {
+    const ETHEREUM_GAUGE_TYPE = 2;
+    expect(await newGaugeAdder.getFactoryForGaugeTypeCount(ETHEREUM_GAUGE_TYPE)).to.equal(1);
+    expect(await newGaugeAdder.getFactoryForGaugeType(ETHEREUM_GAUGE_TYPE, 0)).to.equal(
+      task.input().LiquidityGaugeFactory
+    );
 
+    const POLYGON_GAUGE_TYPE = 3;
+    expect(await newGaugeAdder.getFactoryForGaugeTypeCount(POLYGON_GAUGE_TYPE)).to.equal(1);
+    expect(await newGaugeAdder.getFactoryForGaugeType(POLYGON_GAUGE_TYPE, 0)).to.equal(
+      task.input().PolygonRootGaugeFactory
+    );
 
-  it('gauge adder has the Optimism root gauge factory', async () => {
+    const ARBITRUM_GAUGE_TYPE = 4;
+    expect(await newGaugeAdder.getFactoryForGaugeTypeCount(ARBITRUM_GAUGE_TYPE)).to.equal(1);
+    expect(await newGaugeAdder.getFactoryForGaugeType(ARBITRUM_GAUGE_TYPE, 0)).to.equal(
+      task.input().ArbitrumRootGaugeFactory
+    );
+
     const OPTIMISM_GAUGE_TYPE = 5;
-
     expect(await newGaugeAdder.getFactoryForGaugeTypeCount(OPTIMISM_GAUGE_TYPE)).to.equal(1);
     expect(await newGaugeAdder.getFactoryForGaugeType(OPTIMISM_GAUGE_TYPE, 0)).to.equal(
       task.input().OptimismRootGaugeFactory
