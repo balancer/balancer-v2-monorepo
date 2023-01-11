@@ -8,6 +8,7 @@ import { RoleData } from './input/types';
 // End: close to the current block at the time the `TimelockAuthorizerTransitionMigrator` is deployed.
 // It is expected that no roles were granted to the old authorizer after it.
 export const TRANSITION_START_BLOCK = 16085047;
+// TODO(@jubeira): change end block after liquidity mining roles are granted to the old authorizer on-chain.
 export const TRANSITION_END_BLOCK = 16371000;
 
 export type TimelockAuthorizerTransitionMigratorDeployment = {

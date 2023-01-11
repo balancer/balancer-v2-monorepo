@@ -19,9 +19,13 @@ const PoolRecoveryHelper = new Task('20221123-pool-recovery-helper', TaskMode.RE
 
 const ArbitrumRootGaugeFactoryV2 = new Task('20220823-arbitrum-root-gauge-factory-v2', TaskMode.READ_ONLY, 'mainnet');
 
+const GaugeAdderV3 = new Task('20230109-gauge-adder-v3', TaskMode.READ_ONLY, 'mainnet');
+const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, 'mainnet');
+
 const BLABS_OPS_MULTISIG = '0x02f35dA6A02017154367Bc4d47bb6c7D06C7533B';
 const EMERGENCY_SUBDAO_MULTISIG = '0xa29f61256e948f3fb707b4b3b138c5ccb9ef9888';
 const BALLERS_MULTISIG_GAUNTLET = '0xf4a80929163c5179ca042e1b292f5efbbe3d89e6';
+const LM_MULTISIG = '0xc38c5f97b34e175ffd35407fc91a937300e33860';
 
 const createRoleData = (grantee: string, target: string, actionIds: string[]): RoleData[] =>
   actionIds.map((actionId) => ({ role: actionId, grantee: grantee.toLowerCase(), target: target.toLowerCase() }));
@@ -114,7 +118,21 @@ const factoryRoles: RoleData[] = flatten([
   ]),
 ]);
 
-export const roles: RoleData[] = flatten([...poolRoles, ...factoryRoles]);
+const liquidityMiningRoles: RoleData[] = flatten([
+  createRoleData(LM_MULTISIG, GaugeAdderV3.output().GaugeAdder, [
+    GaugeAdderV3.actionId('GaugeAdder', 'addEthereumGauge(address)'),
+    GaugeAdderV3.actionId('GaugeAdder', 'addPolygonGauge(address)'),
+    GaugeAdderV3.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
+    GaugeAdderV3.actionId('GaugeAdder', 'addOptimismGauge(address)'),
+  ]),
+
+  createRoleData(GaugeAdderV3.output().GaugeAdder, GaugeController.output().GaugeController, [
+    GaugeController.actionId('GaugeController', 'add_gauge(address,int128)'),
+  ]),
+]);
+
+// TODO(@jubeira): add liquidity mining roles after they are granted to the old authorizer on-chain.
+export const roles: RoleData[] = flatten([...poolRoles, ...factoryRoles /*, ...liquidityMiningRoles*/]);
 
 // These are on-chain permissions in the old authorizer that should not be migrated to the new authorizer.
 export const excludedRoles: RoleData[] = flatten([
