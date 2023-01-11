@@ -788,5 +788,19 @@
         "unpause()": "0x734b96f255027244606af8384c68f6cb6773f089519277c2dd148bf21954ab90"
       }
     }
+  },
+  "20230109-gauge-adder-v3": {
+    "GaugeAdder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addArbitrumGauge(address)": "0x96ff38090d2ed548492395d6d0149ea5b4421d71c2c3dd10f72f53f9bd45edda",
+        "addEthereumGauge(address)": "0xfcfb808c20096983bc85ee3b5b6aed175602a6a4ce74fa3f8f5187d34e1dba1c",
+        "addGaugeFactory(address,uint8)": "0x219b248d5bf3753cd21b9c0b700dea1fbab4235f8ee8d24cf41d833855fec117",
+        "addGnosisGauge(address)": "0xde0e249fc4cfa4b6153b12a35c645045eebba9e4ffad25ef5b72def766c46e23",
+        "addOptimismGauge(address)": "0x1fce0291bd19b4d377ab0d460c7363482933f3590df476c894f7bc94f8f900b8",
+        "addPolygonGauge(address)": "0xa79af7d75bf50fe3d19ae8537f3df157b608a7a3cff6bda2d970fbba470642ba",
+        "addZKSyncGauge(address)": "0xb4cefe9458423ef44656096dc0d1d04cfecf3df24dea1e05657f4b43bea0296d"
+      }
+    }
   }
 }
