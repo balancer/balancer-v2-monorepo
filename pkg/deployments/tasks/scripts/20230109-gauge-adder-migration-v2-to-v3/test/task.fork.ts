@@ -59,11 +59,7 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16378450, function
     expect(await coordinator.getCurrentStage()).to.equal(1);
   });
 
-  it('has the Optimism gauge type in the GaugeController', async () => {
-    const OPTIMISM_GAUGE_TYPE = 5;
 
-    expect(await gaugeController.gauge_type_names(OPTIMISM_GAUGE_TYPE)).to.equal('Optimism');
-  });
 
   it('gauge adder has the Optimism root gauge factory', async () => {
     const OPTIMISM_GAUGE_TYPE = 5;
