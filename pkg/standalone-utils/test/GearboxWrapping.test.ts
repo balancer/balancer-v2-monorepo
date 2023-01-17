@@ -41,20 +41,20 @@ describe.only('GearboxWrapping', function () {
 
     gearboxVault = await deploy('MockGearboxVault', { args: [DAI.address] });
     dDAI = await deploy('MockGearboxDieselToken', { args: ['dDAI', 'dDAI', 18, gearboxVault.address] });
+    await gearboxVault.setDieselToken(dDAI.address);
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
-    await DAI.mint(senderUser, fp(100));
-    await DAI.approve(vault.address, fp(100), { from: senderUser });
+    await DAI.mint(senderUser.address, fp(100));
+    await DAI.connect(senderUser).approve(vault.address, fp(100));
 
-    await DAI.mint(senderUser, fp(2500));
-    await DAI.approve(dDAI.address, fp(150), { from: senderUser });
-    await dDAI.connect(senderUser).wrap(fp(150));
+    await dDAI.mint(senderUser.address, fp(2500));
+    await dDAI.connect(senderUser).approve(dDAI.address, fp(150));
   });
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, dDAI.address, ZERO_ADDRESS] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions

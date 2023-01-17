@@ -17,19 +17,27 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IGearboxDieselToken.sol";
+import "./MockGearboxDieselToken.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 contract MockGearboxVault is IGearboxVault {
+    using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
     uint256 private immutable _rate = 1e27;
+    address private _dieselTokenAddress;
     address private immutable _underlyingToken;
 
     constructor(
         address underlyingTokenAddress
     ) {
         _underlyingToken = underlyingTokenAddress;
+    }
+
+    function setDieselToken(address dieselTokenAddress) external {
+        _dieselTokenAddress = dieselTokenAddress;
     }
 
     function underlyingToken() external view override returns (address) {
@@ -50,10 +58,18 @@ contract MockGearboxVault is IGearboxVault {
     }
 
     function addLiquidity(
-        uint256,
-        address,
+        uint256 amount,
+        address onBehalfOf,
         uint256
-    ) external pure override {}
+    ) external override {
+        IERC20(_underlyingToken).safeTransferFrom(onBehalfOf, address(this), amount);
+        uint256 wrappedAmount = this.toDiesel(amount);
+        MockGearboxDieselToken(_dieselTokenAddress).mint(onBehalfOf, wrappedAmount);
+    }
 
-    function removeLiquidity(uint256, address) external pure override {}
+    function removeLiquidity(uint256 wrappedAmount, address to) external override {
+        MockGearboxDieselToken(_dieselTokenAddress).burn(msg.sender, wrappedAmount);
+        uint256 mainAmount = this.fromDiesel(wrappedAmount);
+        IERC20(_underlyingToken).safeTransfer(to, mainAmount);
+    }
 }

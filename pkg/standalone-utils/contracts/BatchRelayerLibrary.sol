@@ -20,6 +20,7 @@ import "./relayer/BaseRelayerLibrary.sol";
 import "./relayer/AaveWrapping.sol";
 import "./relayer/ERC4626Wrapping.sol";
 import "./relayer/GaugeActions.sol";
+import "./relayer/GearboxWrapping.sol";
 import "./relayer/LidoWrapping.sol";
 import "./relayer/UnbuttonWrapping.sol";
 import "./relayer/ReaperWrapping.sol";
@@ -36,6 +37,7 @@ contract BatchRelayerLibrary is
     BaseRelayerLibrary,
     ERC4626Wrapping,
     GaugeActions,
+    GearboxWrapping,
     LidoWrapping,
     UnbuttonWrapping,
     ReaperWrapping,

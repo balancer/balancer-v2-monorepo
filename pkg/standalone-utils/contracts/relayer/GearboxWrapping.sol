@@ -56,7 +56,7 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
         gearboxVault.addLiquidity(amount, recipient, 0);
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, 0);
+            _setChainedReferenceValue(outputReference, gearboxVault.toDiesel(amount));
         }
     }
 
@@ -82,7 +82,7 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
         gearboxVault.removeLiquidity(amount, recipient);
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, 0);
+            _setChainedReferenceValue(outputReference, gearboxVault.fromDiesel(amount));
         }
     }
 }
