@@ -6,6 +6,7 @@
 - [ ] TX IDs are properly generated
 - [ ] Action IDs are generated after deployment (if applicable) <!-- This includes contracts deployed by contracts (e.g. mock pools deployed by factories) -->
 - [ ] Contracts are verified in every network <!-- This includes contracts deployed by contracts (e.g. mock pools deployed by factories) -->
+- [ ] Deployments `CHANGELOG` is updated
 - [ ] There are no code changes of any kind
 
 ## Issue Resolution
