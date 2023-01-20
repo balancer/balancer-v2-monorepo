@@ -21,6 +21,7 @@ import "./MockGearboxDieselToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 contract MockGearboxVault is IGearboxVault {
     using SafeERC20 for IERC20;
@@ -62,7 +63,7 @@ contract MockGearboxVault is IGearboxVault {
         address onBehalfOf,
         uint256
     ) external override {
-        IERC20(_underlyingToken).safeTransferFrom(onBehalfOf, address(this), amount);
+        IERC20(_underlyingToken).safeTransferFrom(msg.sender, address(this), amount);
         uint256 wrappedAmount = this.toDiesel(amount);
         MockGearboxDieselToken(_dieselTokenAddress).mint(onBehalfOf, wrappedAmount);
     }
@@ -70,6 +71,6 @@ contract MockGearboxVault is IGearboxVault {
     function removeLiquidity(uint256 wrappedAmount, address to) external override {
         MockGearboxDieselToken(_dieselTokenAddress).burn(msg.sender, wrappedAmount);
         uint256 mainAmount = this.fromDiesel(wrappedAmount);
-        IERC20(_underlyingToken).safeTransfer(to, mainAmount);
+        TestToken(_underlyingToken).mint(to, mainAmount);
     }
 }

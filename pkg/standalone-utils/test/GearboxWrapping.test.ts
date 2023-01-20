@@ -105,22 +105,6 @@ describe.only('GearboxWrapping', function () {
     ]);
   }
 
-  // function encodeStakeETH(recipient: Account, amount: BigNumberish, outputReference?: BigNumberish): string {
-  //   return relayerLibrary.interface.encodeFunctionData('stakeETH', [
-  //     TypesConverter.toAddress(recipient),
-  //     amount,
-  //     outputReference ?? 0,
-  //   ]);
-  // }
-  //
-  // function encodeStakeETHAndWrap(recipient: Account, amount: BigNumberish, outputReference?: BigNumberish): string {
-  //   return relayerLibrary.interface.encodeFunctionData('stakeETHAndWrap', [
-  //     TypesConverter.toAddress(recipient),
-  //     amount,
-  //     outputReference ?? 0,
-  //   ]);
-  // }
-
   describe('primitives', () => {
     const amount = fp(1);
 
@@ -145,7 +129,7 @@ describe.only('GearboxWrapping', function () {
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await DAI.transfer(relayer, amount, { from: senderUser });
+          await DAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
@@ -154,7 +138,7 @@ describe.only('GearboxWrapping', function () {
 
       context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await DAI.transfer(relayer, amount, { from: senderUser });
+          await DAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = senderUser;
         });
@@ -170,20 +154,32 @@ describe.only('GearboxWrapping', function () {
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+          if (!relayerIsSender) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: tokenSender.address,
+                to: relayer.address,
+                value: amount,
+              },
+              DAI
+            );
+          }
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(tokenSender),
-              to: TypesConverter.toAddress(relayerIsSender ? dDAI : relayer),
+              from: relayer.address,
+              to: gearboxVault.address,
               value: amount,
             },
             DAI
           );
+
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: expectedDieselAmount,
             },
@@ -212,20 +208,32 @@ describe.only('GearboxWrapping', function () {
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+          if (!relayerIsSender) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: tokenSender.address,
+                to: relayer.address,
+                value: amount,
+              },
+              DAI
+            );
+          }
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(tokenSender),
-              to: TypesConverter.toAddress(relayerIsSender ? dDAI : relayer),
+              from: relayer.address,
+              to: gearboxVault.address,
               value: amount,
             },
             DAI
           );
+
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: expectedWrappedAmount,
             },
@@ -240,7 +248,7 @@ describe.only('GearboxWrapping', function () {
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          await dDAI.approve(vault.address, fp(10), { from: senderUser });
+          await dDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = relayer;
         });
@@ -249,7 +257,7 @@ describe.only('GearboxWrapping', function () {
 
       context('sender = senderUser, recipient = senderUser', () => {
         beforeEach(async () => {
-          await dDAI.approve(vault.address, fp(10), { from: senderUser });
+          await dDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = senderUser;
         });
@@ -258,7 +266,7 @@ describe.only('GearboxWrapping', function () {
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await dDAI.transfer(relayer, amount, { from: senderUser });
+          await dDAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
@@ -267,7 +275,7 @@ describe.only('GearboxWrapping', function () {
 
       context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await dDAI.transfer(relayer, amount, { from: senderUser });
+          await dDAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = senderUser;
         });
@@ -283,20 +291,32 @@ describe.only('GearboxWrapping', function () {
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+          if (!relayerIsSender) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
+                value: amount,
+              },
+              dDAI
+            );
+          }
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(tokenSender),
-              to: TypesConverter.toAddress(relayerIsSender ? ZERO_ADDRESS : relayer),
+              from: TypesConverter.toAddress(relayer),
+              to: ZERO_ADDRESS,
               value: amount,
             },
             dDAI
           );
+
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayerIsRecipient ? dDAI : relayer),
+              from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: await gearboxVault.fromDiesel(amount),
             },
@@ -323,20 +343,32 @@ describe.only('GearboxWrapping', function () {
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+          if (!relayerIsSender) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
+                value: amount,
+              },
+              dDAI
+            );
+          }
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(tokenSender),
-              to: TypesConverter.toAddress(relayerIsSender ? ZERO_ADDRESS : relayer),
+              from: TypesConverter.toAddress(relayer),
+              to: ZERO_ADDRESS,
               value: amount,
             },
             dDAI
           );
+
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayerIsRecipient ? dDAI : relayer),
+              from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: await gearboxVault.fromDiesel(amount),
             },
@@ -347,8 +379,8 @@ describe.only('GearboxWrapping', function () {
     });
   });
 
-  describe('complex actions', () => {
-    let WETH: Token;
+  describe.only('complex actions', () => {
+    let WETH: Token, DAIToken: Token, dDAIToken: Token;
     let poolTokens: TokenList;
     let poolId: string;
     let pool: StablePool;
@@ -356,7 +388,9 @@ describe.only('GearboxWrapping', function () {
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
-      poolTokens = new TokenList([WETH, dDAI]).sort();
+      DAIToken = await Token.deployedAt(await DAI.address);
+      dDAIToken = await Token.deployedAt(await dDAI.address);
+      poolTokens = new TokenList([WETH, dDAIToken]).sort();
 
       pool = await StablePool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
@@ -368,10 +402,10 @@ describe.only('GearboxWrapping', function () {
       await WETH.mint(admin, fp(200));
       await WETH.approve(vault, MAX_UINT256, { from: admin });
 
-      await DAI.mint(admin, fp(150));
-      await DAI.approve(dDAI, fp(150), { from: admin });
-      await dDAI.connect(admin).wrap(fp(150));
-      await dDAI.approve(vault, MAX_UINT256, { from: admin });
+      await DAIToken.mint(admin, fp(150));
+      await DAIToken.approve(dDAI, fp(150), { from: admin });
+      // await dDAIToken.connect(admin).wrap(fp(150));
+      await dDAIToken.approve(vault, MAX_UINT256, { from: admin });
 
       bptIndex = await pool.getBptIndex();
       const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
@@ -447,7 +481,7 @@ describe.only('GearboxWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await dDAI.balanceOf(relayer)).to.be.eq(0);
+          expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
@@ -462,7 +496,7 @@ describe.only('GearboxWrapping', function () {
                 poolId,
                 kind: SwapKind.GivenIn,
                 tokenIn: WETH,
-                tokenOut: dDAI,
+                tokenOut: dDAIToken,
                 amount,
                 sender: senderUser,
                 recipient: relayer,
@@ -477,15 +511,15 @@ describe.only('GearboxWrapping', function () {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
             tokenIn: WETH.address,
-            tokenOut: dDAI.address,
+            tokenOut: dDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await dDAI.balanceOf(relayer)).to.be.eq(0);
+          expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });
@@ -538,9 +572,9 @@ describe.only('GearboxWrapping', function () {
           receipt = await (
             await relayer.connect(senderUser).multicall([
               encodeWrap(dDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(dDAI, MAX_UINT256),
+              encodeApprove(dDAIToken, MAX_UINT256),
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn: dDAI, tokenOut: WETH, amount: toChainedReference(0) }],
+                swaps: [{ poolId, tokenIn: dDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
                 sender: relayer,
                 recipient: recipientUser,
               }),
@@ -560,7 +594,7 @@ describe.only('GearboxWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await dDAI.balanceOf(relayer)).to.be.eq(0);
+          expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
@@ -572,7 +606,7 @@ describe.only('GearboxWrapping', function () {
           receipt = await (
             await relayer.connect(senderUser).multicall([
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn: WETH, tokenOut: dDAI, amount }],
+                swaps: [{ poolId, tokenIn: WETH, tokenOut: dDAIToken, amount }],
                 sender: senderUser,
                 recipient: relayer,
                 outputReferences: { dDAI: toChainedReference(0) },
@@ -589,12 +623,12 @@ describe.only('GearboxWrapping', function () {
             tokenOut: dDAI.address,
           });
 
-          expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await dDAI.balanceOf(relayer)).to.be.eq(0);
+          expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });
@@ -632,11 +666,11 @@ describe.only('GearboxWrapping', function () {
       sharedBeforeEach('join the pool', async () => {
         const { tokens: allTokens } = await pool.getTokens();
 
-        senderdDAIBalanceBefore = await dDAI.balanceOf(senderUser);
+        senderdDAIBalanceBefore = await dDAIToken.balanceOf(senderUser);
         receipt = await (
           await relayer.connect(senderUser).multicall([
             encodeWrap(dDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(dDAI, MAX_UINT256),
+            encodeApprove(dDAIToken, MAX_UINT256),
             encodeJoin({
               poolId,
               assets: allTokens,
@@ -644,7 +678,7 @@ describe.only('GearboxWrapping', function () {
               recipient: recipientUser,
               maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
               userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-                poolTokens.map((token) => (token === dDAI ? toChainedReference(0) : 0)),
+                poolTokens.map((token) => (token === dDAIToken ? toChainedReference(0) : 0)),
                 0
               ),
             }),
@@ -663,13 +697,13 @@ describe.only('GearboxWrapping', function () {
       });
 
       it('does not take dDAI from the user', async () => {
-        const senderdDAIBalanceAfter = await dDAI.balanceOf(senderUser);
+        const senderdDAIBalanceAfter = await dDAIToken.balanceOf(senderUser);
         expect(senderdDAIBalanceAfter).to.be.eq(senderdDAIBalanceBefore);
       });
 
       it('does not leave dust on the relayer', async () => {
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await dDAI.balanceOf(relayer)).to.be.eq(0);
+        expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
   });
