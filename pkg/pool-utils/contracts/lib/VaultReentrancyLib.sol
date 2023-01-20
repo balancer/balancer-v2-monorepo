@@ -31,13 +31,19 @@ library VaultReentrancyLib {
      */
     function ensureNotInVaultContext(IVault vault) internal {
         IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](1);
-        noop[0] = IVault.UserBalanceOp({
+        /*
+          noop[0] = IVault.UserBalanceOp({
             kind: IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
             asset: IAsset(address(0)),
             amount: 0,
             sender: address(this),
-            recipient: payable(address(this))
-        });
+            recipient: payable(address(0))
+        });*/
+
+        // Direct assignment (vs struct) saves gas, and we can let most arguments default to 0
+        // Only the kind and sender are validated; asset and recipient don't matter when the value is 0
+        noop[0].kind = IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
+        noop[0].sender = address(this);
 
         vault.manageUserBalance(noop);
     }

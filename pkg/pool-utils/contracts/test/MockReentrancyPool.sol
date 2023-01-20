@@ -56,6 +56,8 @@ contract MockReentrancyPool is BaseGeneralPool {
         _totalTokens = tokens.length;
     }
 
+    // Define a public function protected by the library. Works when called externally; reverts if called
+    // during a Vault operation (join/swap/exit).
     function protectedFunction() public {
         VaultReentrancyLib.ensureNotInVaultContext(getVault());
 
@@ -63,6 +65,10 @@ contract MockReentrancyPool is BaseGeneralPool {
     }
   
     // Vault hooks
+
+    // Testing all the hooks is technically overkill: if it works in one Vault context, it works in all.
+    // We mock up an entire pool with all the hooks defined mainly for documentation purposes: in a real pool,
+    // these are all the places you need to protect.
 
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
@@ -133,6 +139,18 @@ contract MockReentrancyPool is BaseGeneralPool {
         return (0, new uint256[](balances.length));
     }
 
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.recoveryModeExit();
+
+        protectedFunction();
+
+        return (bptAmountIn, balances);
+    }
+
     // Stubbed functions
 
     function _getMaxTokens() internal pure override returns (uint256) {
@@ -154,17 +172,5 @@ contract MockReentrancyPool is BaseGeneralPool {
         for (uint256 i = 0; i < numTokens; i++) {
             scalingFactors[i] = FixedPoint.ONE;
         }
-    }
-
-    function _doRecoveryModeExit(
-        uint256[] memory balances,
-        uint256,
-        bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
-        uint256 bptAmountIn = userData.recoveryModeExit();
-
-        protectedFunction();
-
-        return (bptAmountIn, balances);
     }
 }
