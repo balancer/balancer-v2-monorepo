@@ -1,12 +1,14 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { DAY, advanceTime, advanceToTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('TimelockAuthorizerTransitionMigrator', () => {
   let root: SignerWithAddress, oldRoot: SignerWithAddress;
@@ -149,6 +151,107 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
         it('emits an event for the revoked role', async () => {
           const tx = await transitionMigrator.migratePermissions();
           expectEvent.inReceipt(await tx.wait(), 'PermissionSkipped', { ...roleRevokedData });
+        });
+      });
+
+      describe('delayed permissions', () => {
+        const delay = DAY;
+        let grantActionId: string;
+        let delayedRoleData: RoleData;
+
+        async function setDelay(actionId: string, delay: number) {
+          const receipt = await newAuthorizer.connect(root).scheduleDelayChange(actionId, delay, []);
+          const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+          const scheduledExecutionId = event.args.scheduledExecutionId;
+          await advanceToTimestamp((await newAuthorizer.getScheduledExecution(scheduledExecutionId)).executableAt);
+          await newAuthorizer.execute(scheduledExecutionId);
+        }
+
+        sharedBeforeEach('set delay', async () => {
+          const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+          await setDelay(setAuthorizerAction, delay * 2);
+
+          delayedRoleData = rolesData[0];
+          grantActionId = await newAuthorizer.getGrantPermissionActionId(delayedRoleData.role);
+          await setDelay(grantActionId, delay);
+        });
+
+        context('when executing scheduled permissions before migrating', () => {
+          it('reverts', async () => {
+            await expect(transitionMigrator.executeScheduledPermissions()).to.be.revertedWith('MIGRATION_INCOMPLETE');
+          });
+        });
+
+        context('when migrating before executing scheduled permissions', () => {
+          let receipt: ContractReceipt;
+          let scheduledExecutionId: BigNumber;
+
+          sharedBeforeEach('migrate permissions and store scheduled permission ID', async () => {
+            const tx = await transitionMigrator.migratePermissions();
+            receipt = await tx.wait();
+            scheduledExecutionId = await transitionMigrator.scheduledPermissionIds(0);
+          });
+
+          it('migrates all non-delayed permissions', async () => {
+            for (const roleData of rolesData) {
+              if (roleData === delayedRoleData) {
+                expect(await newAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target)).to.be.false;
+              } else {
+                expect(await newAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target)).to.be.true;
+              }
+            }
+          });
+
+          it('stores scheduled permission ID', async () => {
+            expectEvent.inIndirectReceipt(
+              receipt,
+              newAuthorizer.interface,
+              'ExecutionScheduled',
+              {
+                actionId: grantActionId,
+                scheduledExecutionId,
+              },
+              newAuthorizer.address,
+              1
+            );
+
+            await expect(transitionMigrator.scheduledPermissionIds(1)).to.be.reverted;
+          });
+
+          it('can grant a scheduled permission after the delay passes', async () => {
+            await advanceTime(delay);
+
+            const tx = await transitionMigrator.executeScheduledPermissions();
+
+            expectEvent.inIndirectReceipt(await tx.wait(), newAuthorizer.interface, 'ExecutionExecuted', {
+              scheduledExecutionId: await transitionMigrator.scheduledPermissionIds(0),
+            });
+            expect(
+              await newAuthorizer.canPerform(delayedRoleData.role, delayedRoleData.grantee, delayedRoleData.target)
+            ).to.be.true;
+          });
+
+          context('when the delayed permission is canceled before it is executed', () => {
+            sharedBeforeEach(async () => {
+              await newAuthorizer.connect(root).cancel(scheduledExecutionId);
+              await advanceTime(delay);
+            });
+
+            itEmitsScheduledPermissionSkippedEvent();
+          });
+
+          context('when the delay is not due', () => {
+            itEmitsScheduledPermissionSkippedEvent();
+          });
+
+          function itEmitsScheduledPermissionSkippedEvent() {
+            it('emits an event for the skipped scheduled permission', async () => {
+              const tx = await transitionMigrator.executeScheduledPermissions();
+              expectEvent.inReceipt(await tx.wait(), 'ScheduledPermissionSkipped', {
+                permissionId: scheduledExecutionId,
+              });
+            });
+          }
         });
       });
     });

@@ -26,10 +26,12 @@ contract TimelockAuthorizerTransitionMigrator {
     using Address for address;
 
     event PermissionSkipped(bytes32 indexed role, address indexed grantee, address indexed target);
+    event ScheduledPermissionSkipped(uint256 indexed permissionId);
 
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable timelockAuthorizer;
     RoleData[] public rolesData;
+    uint256[] public scheduledPermissionIds;
 
     struct RoleData {
         address grantee;
@@ -75,6 +77,7 @@ contract TimelockAuthorizerTransitionMigrator {
         _migrationCompleted = true;
 
         uint256 rolesDataLength = rolesData.length;
+        address[] memory executors = _arr(address(this));
 
         for (uint256 i = 0; i < rolesDataLength; ++i) {
             RoleData memory roleData = rolesData[i];
@@ -83,7 +86,19 @@ contract TimelockAuthorizerTransitionMigrator {
             // The timelock authorizer will emit an event for each permission granted, so we just log the ones we are
             // skipping (if any).
             if (oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target)) {
-                timelockAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
+                // Check whether the current action has a delay
+                bytes32 roleGrantPermissionActionId = timelockAuthorizer.getGrantPermissionActionId(roleData.role);
+                if (timelockAuthorizer.getActionIdDelay(roleGrantPermissionActionId) == 0) {
+                    timelockAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
+                } else {
+                    uint256 permissionId = timelockAuthorizer.scheduleGrantPermission(
+                        roleData.role,
+                        roleData.grantee,
+                        roleData.target,
+                        executors
+                    );
+                    scheduledPermissionIds.push(permissionId);
+                }
             } else {
                 emit PermissionSkipped(roleData.role, roleData.grantee, roleData.target);
             }
@@ -95,6 +110,26 @@ contract TimelockAuthorizerTransitionMigrator {
             timelockAuthorizer.EVERYWHERE(),
             false
         );
+    }
+
+    /**
+     * @notice Executes permissions scheduled during migration, all at once.
+     * @dev `migratePermissions` must be called successfully first.
+     * Emits `ScheduledPermissionSkipped` event for permission IDs that cannot be executed at the time for any reason
+     * (delay not yet due, action was canceled, or action already executed).
+     */
+    function executeScheduledPermissions() external {
+        require(_migrationCompleted, "MIGRATION_INCOMPLETE");
+
+        uint256 scheduledPermissionsLength = scheduledPermissionIds.length;
+        for (uint256 i = 0; i < scheduledPermissionsLength; ++i) {
+            uint256 scheduledPermissionId = scheduledPermissionIds[i];
+            if (timelockAuthorizer.canExecute(scheduledPermissionId)) {
+                timelockAuthorizer.execute(scheduledPermissionId);
+            } else {
+                emit ScheduledPermissionSkipped(scheduledPermissionId);
+            }
+        }
     }
 
     // Helper functions
