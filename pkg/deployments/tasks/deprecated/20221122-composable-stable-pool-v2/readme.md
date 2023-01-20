@@ -1,5 +1,8 @@
 # 2022-11-22 - Composable Stable Pool V2
 
+> ⚠️ **DEPRECATED: do not use** ⚠️
+>
+
 Redeployment of `ComposableStablePoolFactory`, which allows creating Stable Pools that are suitable to be included in other Pools. This version adds proportional joins and exits, to improve the front-end UX.
 
 ## Useful Files
