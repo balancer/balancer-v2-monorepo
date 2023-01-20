@@ -1,5 +1,8 @@
 # 2022-09-08 - Weighted Pool Factory V2
 
+> ⚠️ **DEPRECATED: do not use** ⚠️
+>
+
 Deployment of the `WeightedPoolFactory`, which allows creating Weighted Pools which include a number of improvements, including:
 
 - Optimized `FixedPoint.powDown` for cheaper swaps in common token weight ratios.

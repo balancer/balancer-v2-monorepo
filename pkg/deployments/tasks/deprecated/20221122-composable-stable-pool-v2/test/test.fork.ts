@@ -3,10 +3,10 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate } from '../../../src/signers';
+import { describeForkTest } from '../../../../src/forkTests';
+import Task, { TaskMode } from '../../../../src/task';
+import { getForkedNetwork } from '../../../../src/test';
+import { getSigner, impersonate } from '../../../../src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
