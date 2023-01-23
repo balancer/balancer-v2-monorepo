@@ -26,7 +26,7 @@ contract TimelockAuthorizerTransitionMigrator {
     using Address for address;
 
     event PermissionSkipped(bytes32 indexed role, address indexed grantee, address indexed target);
-    event ScheduledExecutionSkipped(uint256 indexed permissionId);
+    event ScheduledExecutionSkipped(uint256 indexed scheduledExecutionId);
 
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable timelockAuthorizer;
