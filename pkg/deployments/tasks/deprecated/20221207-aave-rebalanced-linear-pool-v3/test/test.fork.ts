@@ -9,7 +9,7 @@ import { deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
-import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../../src';
 
 describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;

@@ -16,6 +16,11 @@
 - Deployed `AaveLinearPoolFactory` to Gnosis.
 - Deployed `GaugeAdderV3` to Mainnet and Goerli.
 
+### Deprecations
+
+- Deprecated `20221207-aave-rebalanced-linear-pool-v3`.
+- Deprecated `20220425-unbutton-aave-linear-pool`.
+
 ### Breaking Changes
 
 - The `20221115-aave-rebalanced-linear-pool` task was deleted and replaced with `20221207-aave-rebalanced-linear-pool-v3`. The old task had not been used by anyone.
