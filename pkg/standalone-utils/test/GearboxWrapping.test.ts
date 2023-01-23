@@ -379,7 +379,7 @@ describe('GearboxWrapping', function () {
     });
   });
 
-  describe.only('complex actions', () => {
+  describe('complex actions', () => {
     let WETH: Token, DAIToken: Token, dDAIToken: Token;
     let poolTokens: TokenList;
     let poolId: string;
