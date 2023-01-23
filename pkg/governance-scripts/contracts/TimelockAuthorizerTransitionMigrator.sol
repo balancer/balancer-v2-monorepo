@@ -26,12 +26,12 @@ contract TimelockAuthorizerTransitionMigrator {
     using Address for address;
 
     event PermissionSkipped(bytes32 indexed role, address indexed grantee, address indexed target);
-    event ScheduledPermissionSkipped(uint256 indexed permissionId);
+    event ScheduledExecutionSkipped(uint256 indexed permissionId);
 
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable timelockAuthorizer;
     RoleData[] public rolesData;
-    uint256[] public scheduledPermissionIds;
+    uint256[] public scheduledExecutionIds;
 
     struct RoleData {
         address grantee;
@@ -97,7 +97,7 @@ contract TimelockAuthorizerTransitionMigrator {
                         roleData.target,
                         executors
                     );
-                    scheduledPermissionIds.push(permissionId);
+                    scheduledExecutionIds.push(permissionId);
                 }
             } else {
                 emit PermissionSkipped(roleData.role, roleData.grantee, roleData.target);
@@ -115,19 +115,27 @@ contract TimelockAuthorizerTransitionMigrator {
     /**
      * @notice Executes permissions scheduled during migration, all at once.
      * @dev `migratePermissions` must be called successfully first.
-     * Emits `ScheduledPermissionSkipped` event for execution IDs that cannot be executed at this time for any reason
+     * Emits `ScheduledExecutionSkipped` event for execution IDs that cannot be executed at this time for any reason
      * (delay not yet due, action was canceled, or action already executed).
+     *
+     * This function can be called more than once without reverting. The execution IDs may have different delays
+     * associated with them, and this function can execute a subset of the execution IDs if it is called before the
+     * longest delay is due.
+     *
+     * On the other hand, the function can still be called after all scheduled execution IDs are executed, but the
+     * `TimelockAuthorizer` will not execute any of them again. In that case, the function will only emit
+     * `ScheduledExecutionSkipped` events.
      */
-    function executeScheduledPermissions() external {
+    function executeDelays() external {
         require(_migrationCompleted, "MIGRATION_INCOMPLETE");
 
-        uint256 scheduledPermissionsLength = scheduledPermissionIds.length;
-        for (uint256 i = 0; i < scheduledPermissionsLength; ++i) {
-            uint256 scheduledPermissionId = scheduledPermissionIds[i];
-            if (timelockAuthorizer.canExecute(scheduledPermissionId)) {
-                timelockAuthorizer.execute(scheduledPermissionId);
+        uint256 scheduledExecutionIdsLength = scheduledExecutionIds.length;
+        for (uint256 i = 0; i < scheduledExecutionIdsLength; ++i) {
+            uint256 scheduledExecutionId = scheduledExecutionIds[i];
+            if (timelockAuthorizer.canExecute(scheduledExecutionId)) {
+                timelockAuthorizer.execute(scheduledExecutionId);
             } else {
-                emit ScheduledPermissionSkipped(scheduledPermissionId);
+                emit ScheduledExecutionSkipped(scheduledExecutionId);
             }
         }
     }
