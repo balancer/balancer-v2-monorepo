@@ -155,7 +155,8 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
       });
 
       describe('delayed permissions', () => {
-        const delay = DAY;
+        const shortDelay = DAY;
+        const longDelay = DAY * 2;
         const grantActionIds: string[] = new Array<string>();
         const delayedRolesData: RoleData[] = new Array<RoleData>();
 
@@ -168,16 +169,17 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
         }
 
         sharedBeforeEach('set delay', async () => {
+          // `setAuthorizer` delay must be the longest; any value works as long as it is longer than the others.
           const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-          await setDelay(setAuthorizerAction, delay * 3);
+          await setDelay(setAuthorizerAction, longDelay * 3);
 
           delayedRolesData.push(rolesData[0]);
           delayedRolesData.push(rolesData[1]);
 
           grantActionIds.push(await newAuthorizer.getGrantPermissionActionId(delayedRolesData[0].role));
           grantActionIds.push(await newAuthorizer.getGrantPermissionActionId(delayedRolesData[1].role));
-          await setDelay(grantActionIds[0], delay);
-          await setDelay(grantActionIds[1], delay * 2);
+          await setDelay(grantActionIds[0], shortDelay);
+          await setDelay(grantActionIds[1], longDelay);
         });
 
         context('when executing scheduled permissions before migrating', () => {
@@ -236,7 +238,7 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
             let receipt: ContractReceipt;
 
             sharedBeforeEach(async () => {
-              await advanceTime(delay);
+              await advanceTime(shortDelay);
               receipt = await (await transitionMigrator.executeDelays()).wait();
             });
 
@@ -251,10 +253,6 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
             });
 
             it('skips scheduled permissions whose delays are not due', async () => {
-              expectEvent.inReceipt(receipt, 'ScheduledExecutionSkipped', {
-                scheduledExecutionId: scheduledExecutionIds[1],
-              });
-
               const notDueRoleData = delayedRolesData[1];
               expect(await newAuthorizer.canPerform(notDueRoleData.role, notDueRoleData.grantee, notDueRoleData.target))
                 .to.be.false;
@@ -265,7 +263,7 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
             let receipt: ContractReceipt;
 
             sharedBeforeEach(async () => {
-              await advanceTime(delay * 2);
+              await advanceTime(longDelay);
               receipt = await (await transitionMigrator.executeDelays()).wait();
             });
 
@@ -286,29 +284,24 @@ describe('TimelockAuthorizerTransitionMigrator', () => {
             });
           });
 
-          context('when the delayed permission is canceled before it is executed', () => {
+          context('when the delayed permissions are canceled before they are executed', () => {
             sharedBeforeEach(async () => {
               await newAuthorizer.connect(root).cancel(scheduledExecutionIds[0]);
               await newAuthorizer.connect(root).cancel(scheduledExecutionIds[1]);
-              await advanceTime(delay * 3);
+              await advanceTime(longDelay);
             });
 
-            itEmitsScheduledExecutionSkippedEvent();
+            itDoesNotExecuteExecutions();
           });
 
           context('when the delay is not due', () => {
-            itEmitsScheduledExecutionSkippedEvent();
+            itDoesNotExecuteExecutions();
           });
 
-          function itEmitsScheduledExecutionSkippedEvent() {
-            it('emits an event for the skipped scheduled permission', async () => {
+          function itDoesNotExecuteExecutions() {
+            it('does not execute executions', async () => {
               const receipt = await (await transitionMigrator.executeDelays()).wait();
-              expectEvent.inReceipt(receipt, 'ScheduledExecutionSkipped', {
-                scheduledExecutionId: scheduledExecutionIds[0],
-              });
-              expectEvent.inReceipt(receipt, 'ScheduledExecutionSkipped', {
-                scheduledExecutionId: scheduledExecutionIds[1],
-              });
+              expectEvent.notEmitted(receipt, 'ExecutionExecuted');
             });
           }
         });

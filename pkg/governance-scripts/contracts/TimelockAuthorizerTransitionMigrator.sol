@@ -26,7 +26,6 @@ contract TimelockAuthorizerTransitionMigrator {
     using Address for address;
 
     event PermissionSkipped(bytes32 indexed role, address indexed grantee, address indexed target);
-    event ScheduledExecutionSkipped(uint256 indexed scheduledExecutionId);
 
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable timelockAuthorizer;
@@ -115,16 +114,16 @@ contract TimelockAuthorizerTransitionMigrator {
     /**
      * @notice Executes permissions scheduled during migration, all at once.
      * @dev `migratePermissions` must be called successfully first.
-     * Emits `ScheduledExecutionSkipped` event for execution IDs that cannot be executed at this time for any reason
-     * (delay not yet due, action was canceled, or action already executed).
+     * Execution IDs that cannot be executed at this time for any reason (delay not yet due, action was canceled, or
+     * action already executed) are skipped.
      *
      * This function can be called more than once without reverting. The execution IDs may have different delays
      * associated with them, and this function can execute a subset of the execution IDs if it is called before the
      * longest delay is due.
      *
-     * On the other hand, the function can still be called after all scheduled execution IDs are executed, but the
-     * `TimelockAuthorizer` will not execute any of them again. In that case, the function will only emit
-     * `ScheduledExecutionSkipped` events.
+     * On the other hand, this function can still be called after all scheduled execution IDs are resolved (either
+     * cancelled or executed). In that case the function call will do nothing, since the `TimelockAuthorizer` will not
+     * allow any execution.
      */
     function executeDelays() external {
         require(_migrationCompleted, "MIGRATION_INCOMPLETE");
@@ -134,8 +133,6 @@ contract TimelockAuthorizerTransitionMigrator {
             uint256 scheduledExecutionId = scheduledExecutionIds[i];
             if (timelockAuthorizer.canExecute(scheduledExecutionId)) {
                 timelockAuthorizer.execute(scheduledExecutionId);
-            } else {
-                emit ScheduledExecutionSkipped(scheduledExecutionId);
             }
         }
     }
