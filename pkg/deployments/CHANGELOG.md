@@ -20,6 +20,7 @@
 
 - Deprecated `20221207-aave-rebalanced-linear-pool-v3`.
 - Deprecated `20220425-unbutton-aave-linear-pool`.
+- Deprecated `20220404-erc4626-linear-pool-v2`.
 
 ### Breaking Changes
 
