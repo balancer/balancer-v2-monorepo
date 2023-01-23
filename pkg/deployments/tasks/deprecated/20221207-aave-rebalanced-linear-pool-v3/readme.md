@@ -1,5 +1,8 @@
 # 2022-12-07 - Aave Rebalanced Linear Pool v3
 
+> ⚠️ **DEPRECATED: do not use** ⚠️
+>
+
 Deployment of the `AaveLinearPoolFactory`, for Linear Pools with a wrapped aToken. This new deployment includes:
 
 - A fix for the `AaveLinearPool` being susceptible to spoofed revert data from the external call to fetch the wrapped token rate, potentially resulting in manipulation of the exchange rate used by `AaveLinearPoolRebalancer`.
