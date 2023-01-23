@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuSmartVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuStrategy.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
@@ -57,10 +56,19 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         }
 
         underlying.safeApprove(address(wrappedToken), amount);
-        wrappedToken.depositFor(amount, recipient);
+        IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
+        uint256 wrappedAmountBefore = wrappedTokenErc20.balanceOf(address(this));
+        wrappedToken.deposit(amount);
+        uint256 wrappedAmountAfter = wrappedTokenErc20.balanceOf(address(this));
+        uint256 withdrawnWrappedAmount = wrappedAmountAfter - wrappedAmountBefore;
+
+        if (recipient != address(this)) {
+            wrappedTokenErc20.safeApprove(recipient, withdrawnWrappedAmount);
+            wrappedTokenErc20.safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
+        }
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, _getWrappedAmount(amount, wrappedToken));
+            _setChainedReferenceValue(outputReference, withdrawnWrappedAmount);
         }
     }
 
@@ -82,52 +90,19 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
             _pullToken(sender, IERC20(address(wrappedToken)), amount);
         }
 
-        wrappedToken.withdraw(amount);
-        uint256 withdrawnAmount = _getMainAmount(amount, wrappedToken);
         IERC20 mainToken = IERC20(wrappedToken.underlying());
-        mainToken.safeTransferFrom(msg.sender, recipient, withdrawnAmount);
+        uint256 mainAmountBefore = mainToken.balanceOf(address(this));
+        wrappedToken.withdraw(amount);
+        uint256 mainAmountAfter = mainToken.balanceOf(address(this));
+        uint256 withdrawnMainAmount = mainAmountAfter - mainAmountBefore;
+
+        if (recipient != address(this)) {
+            mainToken.safeApprove(recipient, withdrawnMainAmount);
+            mainToken.safeTransferFrom(address(this), recipient, withdrawnMainAmount);
+        }
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, withdrawnAmount);
-        }
-    }
-
-    function _getMainAmount(uint256 wrappedAmount, ITetuSmartVault _wrappedToken) private view returns (uint256) {
-        uint256 rate = _getWrappedTokenRate(_wrappedToken);
-        return wrappedAmount.divDown(rate);
-    }
-
-    function _getWrappedAmount(uint256 mainAmount, ITetuSmartVault _wrappedToken) private view returns (uint256) {
-        uint256 rate = _getWrappedTokenRate(_wrappedToken);
-        return rate.mulDown(mainAmount);
-    }
-
-    function _getWrappedTokenRate(ITetuSmartVault _wrappedToken) private view returns (uint256) {
-        uint256 wrappedTotalSupply = IERC20(address(_wrappedToken)).totalSupply();
-        if (wrappedTotalSupply == 0) {
-            return 0;
-        }
-        // We couldn't use tetuVault.getPricePerFullShare function, since it introduces rounding issues in tokens
-        // with a small number of decimals. Therefore, we're calculating the rate using balance and suply
-        try _wrappedToken.underlyingBalanceInVault() returns (uint256 underlyingBalanceInVault) {
-            address strategy = ITetuSmartVault(address(_wrappedToken)).strategy();
-            if (address(strategy) == address(0)) {
-                return (10**18 * underlyingBalanceInVault/ wrappedTotalSupply) + 1;
-            }
-
-            try ITetuStrategy(strategy).investedUnderlyingBalance() returns (uint256 strategyInvestedUnderlyingBalance) {
-                return (10**18 * (underlyingBalanceInVault + strategyInvestedUnderlyingBalance) / wrappedTotalSupply) + 1;
-            } catch (bytes memory revertData) {
-                // By maliciously reverting here, TetuVault (or any other contract in the call stack)
-                // could trick the Pool into reporting invalid data to the query mechanism for swaps/joins/exits.
-                // We then check the revert data to ensure this doesn't occur.
-                ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
-            }
-        } catch (bytes memory revertData) {
-            // By maliciously reverting here, TetuVault (or any other contract in the call stack)
-            // could trick the Pool into reporting invalid data to the query mechanism for swaps/joins/exits.
-            // We then check the revert data to ensure this doesn't occur.
-            ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
+            _setChainedReferenceValue(outputReference, withdrawnMainAmount);
         }
     }
 }

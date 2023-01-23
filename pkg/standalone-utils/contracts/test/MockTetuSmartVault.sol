@@ -30,6 +30,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
     uint256 underlyingDecimals;
     uint256 private _underlyingBalanceInVault = 0;
     MockTetuStrategy private immutable _tetuStrategy;
+    uint256 _desiredRate;
 
     constructor(
         string memory name,
@@ -49,6 +50,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
 
     // Should pass rate with decimals from underlyingToken
     function setRate(uint256 newRate) public {
+        _desiredRate = newRate;
         uint256 totalSupply = this.totalSupply();
         // arbitrary number, just to make sure that both Vault and Invested values compose the rate.
         uint8 vaultInvestedRatio = 3;
@@ -66,17 +68,25 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
         return underlyingAsset.balanceOf(address(this));
     }
 
-    function deposit(uint256 amount) external override {}
-
-    function depositFor(uint256 amount, address recipient) external override {
+    function deposit(uint256 amount) external override {
         IERC20(underlyingAsset).safeTransferFrom(msg.sender, address(this), amount);
-        uint256 wrappedAmount = _getWrappedAmount(amount, this);
-        this.mint(recipient, wrappedAmount);
+        uint256 wrappedAmount = this.toTetuAmount(amount, this);
+        this.mint(msg.sender, wrappedAmount);
+        // Since rate calculation depends on totalSupply, we need to recalculate parameters
+        // that are base to rate calculation.
+        setRate(_desiredRate);
+    }
+
+    function depositFor(uint256, address) external pure override {
+        revert("Should not call this");
     }
 
     function withdraw(uint256 numberOfShares) external override {
         this.burn(msg.sender, numberOfShares);
-        uint256 mainAmount = _getMainAmount(numberOfShares, this);
+        // Since rate calculation depends on totalSupply, we need to recalculate parameters
+        // that are base to rate calculation.
+        setRate(_desiredRate);
+        uint256 mainAmount = this.fromTetuAmount(numberOfShares, this);
         TestToken(address(underlyingAsset)).mint(msg.sender, mainAmount);
     }
 
@@ -94,12 +104,14 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
         return address(_tetuStrategy);
     }
 
-    function _getMainAmount(uint256 wrappedAmount, ITetuSmartVault _wrappedToken) private view returns (uint256) {
+    // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
+    function fromTetuAmount(uint256 wrappedAmount, ITetuSmartVault _wrappedToken) external view returns (uint256) {
         uint256 rate = _getWrappedTokenRate(_wrappedToken);
         return wrappedAmount.divDown(rate);
     }
 
-    function _getWrappedAmount(uint256 mainAmount, ITetuSmartVault _wrappedToken) private view returns (uint256) {
+    // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
+    function toTetuAmount(uint256 mainAmount, ITetuSmartVault _wrappedToken) external view returns (uint256) {
         uint256 rate = _getWrappedTokenRate(_wrappedToken);
         return rate.mulDown(mainAmount);
     }

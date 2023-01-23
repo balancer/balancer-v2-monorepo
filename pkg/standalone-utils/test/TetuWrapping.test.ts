@@ -13,7 +13,7 @@ import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTr
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
@@ -49,6 +49,9 @@ describe.only('TetuWrapping', function () {
 
     await xDAI.mint(senderUser.address, fp(2500));
     await xDAI.connect(senderUser).approve(xDAI.address, fp(150));
+
+    // Underlying token decimals: Need to run after xDAI tokens are minted
+    await xDAI.setRate(bn(5e18));
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -118,7 +121,7 @@ describe.only('TetuWrapping', function () {
         testWrap();
       });
 
-      context('sender = senderUser, recipient = senderUser', () => {
+      context.only('sender = senderUser, recipient = senderUser', () => {
         beforeEach(() => {
           tokenSender = senderUser;
           tokenRecipient = senderUser;
@@ -146,7 +149,7 @@ describe.only('TetuWrapping', function () {
 
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          const expectedDieselAmount = await toTetuAmount(amount, xDAI.address);
+          const expectedTetuAmount = await xDAI.toTetuAmount(amount, xDAI.address);
 
           const receipt = await (
             await relayer.connect(senderUser).multicall([encodeWrap(xDAI.address, tokenSender, tokenRecipient, amount)])
@@ -180,14 +183,14 @@ describe.only('TetuWrapping', function () {
             {
               from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: expectedDieselAmount,
+              value: expectedTetuAmount,
             },
             xDAI
           );
         });
 
         it('stores wrap output as chained reference', async () => {
-          const expectedWrappedAmount = await toTetuAmount(amount, xDAI.address);
+          const expectedWrappedAmount = await xDAI.toTetuAmount(amount, xDAI.address);
 
           await relayer
             .connect(senderUser)
@@ -197,7 +200,7 @@ describe.only('TetuWrapping', function () {
         });
 
         it('wraps with chained references', async () => {
-          const expectedWrappedAmount = await toTetuAmount(amount, xDAI.address);
+          const expectedWrappedAmount = await xDAI.toTetuAmount(amount, xDAI.address);
           await setChainedReferenceContents(relayer, toChainedReference(0), amount);
 
           const receipt = await (
@@ -317,7 +320,7 @@ describe.only('TetuWrapping', function () {
             {
               from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: await fromTetuAmount(amount, xDAI.address),
+              value: await xDAI.fromTetuAmount(amount, xDAI.address),
             },
             DAI
           );
@@ -328,7 +331,7 @@ describe.only('TetuWrapping', function () {
             .connect(senderUser)
             .multicall([encodeUnwrap(xDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          const mainAmount = await fromTetuAmount(amount, xDAI.address);
+          const mainAmount = await xDAI.fromTetuAmount(amount, xDAI.address);
           await expectChainedReferenceContents(relayer, toChainedReference(0), mainAmount);
         });
 
@@ -369,7 +372,7 @@ describe.only('TetuWrapping', function () {
             {
               from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: await fromTetuAmount(amount, xDAI.address),
+              value: await xDAI.fromTetuAmount(amount, xDAI.address),
             },
             DAI
           );
@@ -378,7 +381,7 @@ describe.only('TetuWrapping', function () {
     });
   });
 
-  describe.only('complex actions', () => {
+  describe('complex actions', () => {
     let WETH: Token, DAIToken: Token, xDAIToken: Token;
     let poolTokens: TokenList;
     let poolId: string;
@@ -707,28 +710,3 @@ describe.only('TetuWrapping', function () {
     });
   });
 });
-
-async function fromTetuAmount(wrappedAmount: number, wrappedTokenAddress: string) {
-  const rate = await tetuRate(wrappedTokenAddress);
-  return (wrappedAmount * 10 ** 18) / rate;
-}
-
-async function toTetuAmount(mainAmount: number, wrappedTokenAddress: string) {
-  const rate = await tetuRate(wrappedTokenAddress);
-  return (mainAmount * rate) / 10 ** 18;
-}
-
-async function tetuRate(wrappedTokenAddress: string) {
-  const wrappedToken = await deployedAt('MockTetuSmartVault', wrappedTokenAddress);
-  const wrappedTotalSupply = wrappedToken.totalSupply();
-  if (wrappedTotalSupply == 0) {
-    return 0;
-  }
-  // We couldn't use tetuVault.getPricePerFullShare function, since it introduces rounding issues in tokens
-  // with a small number of decimals. Therefore, we're calculating the rate using balance and suply
-  const underlyingBalanceInVault = await wrappedToken.underlyingBalanceInVault();
-  const strategyAddress = await wrappedToken.strategy();
-  const strategy = await deployedAt('MockTetuStrategy', strategyAddress);
-  const strategyInvestedUnderlyingBalance = await strategy.investedUnderlyingBalance();
-  return (10 ** 18 * (underlyingBalanceInVault + strategyInvestedUnderlyingBalance)) / wrappedTotalSupply + 1;
-}
