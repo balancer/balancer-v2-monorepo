@@ -115,7 +115,7 @@ contract TimelockAuthorizerTransitionMigrator {
     /**
      * @notice Executes permissions scheduled during migration, all at once.
      * @dev `migratePermissions` must be called successfully first.
-     * Emits `ScheduledPermissionSkipped` event for permission IDs that cannot be executed at the time for any reason
+     * Emits `ScheduledPermissionSkipped` event for execution IDs that cannot be executed at this time for any reason
      * (delay not yet due, action was canceled, or action already executed).
      */
     function executeScheduledPermissions() external {
