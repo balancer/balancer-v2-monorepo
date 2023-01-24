@@ -70,6 +70,7 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
   });
 
   it('executes delayed permissions after their delay passes', async () => {
+    // The only expected delayed role (see mainnet.ts) is the following (14 days):
     // GaugeController.actionId('GaugeController', 'add_gauge(address,int128)')
     await advanceTime(14 * DAY);
     await migrator.executeDelays();
