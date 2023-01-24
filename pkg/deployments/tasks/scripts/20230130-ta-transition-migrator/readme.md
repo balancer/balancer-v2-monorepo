@@ -1,4 +1,4 @@
-# 2023-01-30 - GaugeAdder Migration Coordinator
+# 2023-01-30 - Timelock Authorizer Transition Migrator
 
 Deployment of the `TimelockAuthorizerTransitionMigrator`, responsible for migrating permissions granted to the old authorizer in the time period after the `TimelockAuthorizer` was deployed, while the old authorizer was still in use. 
 
