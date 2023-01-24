@@ -63,7 +63,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         uint256 withdrawnWrappedAmount = wrappedAmountAfter - wrappedAmountBefore;
 
         if (recipient != address(this)) {
-            wrappedTokenErc20.safeApprove(recipient, withdrawnWrappedAmount);
+            wrappedTokenErc20.safeApprove(address(this), withdrawnWrappedAmount);
             wrappedTokenErc20.safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
         }
 
@@ -97,7 +97,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         uint256 withdrawnMainAmount = mainAmountAfter - mainAmountBefore;
 
         if (recipient != address(this)) {
-            mainToken.safeApprove(recipient, withdrawnMainAmount);
+            mainToken.safeApprove(address(this), withdrawnMainAmount);
             mainToken.safeTransferFrom(address(this), recipient, withdrawnMainAmount);
         }
 

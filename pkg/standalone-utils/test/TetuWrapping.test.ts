@@ -121,7 +121,7 @@ describe.only('TetuWrapping', function () {
         testWrap();
       });
 
-      context.only('sender = senderUser, recipient = senderUser', () => {
+      context('sender = senderUser, recipient = senderUser', () => {
         beforeEach(() => {
           tokenSender = senderUser;
           tokenRecipient = senderUser;
@@ -182,11 +182,22 @@ describe.only('TetuWrapping', function () {
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
+              to: relayer.address,
               value: expectedTetuAmount,
             },
             xDAI
           );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: relayer.address,
+                to: tokenRecipient.address,
+                value: expectedTetuAmount,
+              },
+              xDAI
+            );
+          }
         });
 
         it('stores wrap output as chained reference', async () => {
@@ -236,11 +247,22 @@ describe.only('TetuWrapping', function () {
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
+              to: relayer.address,
               value: expectedWrappedAmount,
             },
             xDAI
           );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: relayer.address,
+                to: tokenRecipient.address,
+                value: expectedWrappedAmount,
+              },
+              xDAI
+            );
+          }
         });
       }
     });
@@ -292,6 +314,8 @@ describe.only('TetuWrapping', function () {
               .multicall([encodeUnwrap(xDAI.address, tokenSender, tokenRecipient, amount)])
           ).wait();
 
+          const unwrappedAmount = await xDAI.fromTetuAmount(amount, xDAI.address);
+
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
             expectTransferEvent(
@@ -319,11 +343,22 @@ describe.only('TetuWrapping', function () {
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: await xDAI.fromTetuAmount(amount, xDAI.address),
+              to: relayer.address,
+              value: unwrappedAmount,
             },
             DAI
           );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: relayer.address,
+                to: tokenRecipient.address,
+                value: unwrappedAmount,
+              },
+              DAI
+            );
+          }
         });
 
         it('stores unwrap output as chained reference', async () => {
@@ -344,6 +379,8 @@ describe.only('TetuWrapping', function () {
               .multicall([encodeUnwrap(xDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
+          const unwrappedAmount = await xDAI.fromTetuAmount(amount, xDAI.address);
+
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
             expectTransferEvent(
@@ -371,11 +408,22 @@ describe.only('TetuWrapping', function () {
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: await xDAI.fromTetuAmount(amount, xDAI.address),
+              to: relayer.address,
+              value: unwrappedAmount,
             },
             DAI
           );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: relayer.address,
+                to: tokenRecipient.address,
+                value: unwrappedAmount,
+              },
+              DAI
+            );
+          }
         });
       }
     });
@@ -516,7 +564,10 @@ describe.only('TetuWrapping', function () {
             tokenOut: xDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: relayer.address }, DAI);
+          if (recipientUser.address !== relayer.address) {
+            expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
+          }
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -625,7 +676,10 @@ describe.only('TetuWrapping', function () {
             tokenOut: xDAI.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: relayer.address }, DAI);
+          if (recipientUser.address !== relayer.address) {
+            expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
+          }
         });
 
         it('does not leave dust on the relayer', async () => {
