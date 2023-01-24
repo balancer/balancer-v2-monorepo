@@ -1,6 +1,6 @@
 import Task, { TaskMode } from '../../../src/task';
 
-import { roles as mainnetRoles } from './input/mainnet';
+import { roles as mainnetRoles, delayedRoles as mainnetDelayedRoles } from './input/mainnet';
 import { RoleData } from './input/types';
 
 // Start: block that contains the transaction that deployed the `TimelockAuthorizer`.
@@ -8,12 +8,13 @@ import { RoleData } from './input/types';
 // End: close to the current block at the time the `TimelockAuthorizerTransitionMigrator` is deployed.
 // It is expected that no roles were granted to the old authorizer after it.
 export const TRANSITION_START_BLOCK = 16085047;
-export const TRANSITION_END_BLOCK = 16442900;
+export const TRANSITION_END_BLOCK = 16477400;
 
 export type TimelockAuthorizerTransitionMigratorDeployment = {
   OldAuthorizer: string;
   NewAuthorizer: string;
   Roles: RoleData[];
+  DelayedRoles: RoleData[];
 };
 
 const OldAuthorizer = new Task('20210418-authorizer', TaskMode.READ_ONLY);
@@ -24,5 +25,6 @@ export default {
     OldAuthorizer: OldAuthorizer.output({ network: 'mainnet' }).Authorizer,
     NewAuthorizer: NewAuthorizer.output({ network: 'mainnet' }).TimelockAuthorizer,
     Roles: mainnetRoles,
+    DelayedRoles: mainnetDelayedRoles,
   },
 };

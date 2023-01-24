@@ -128,7 +128,9 @@ const liquidityMiningRoles: RoleData[] = flatten([
     GaugeAdderV3.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
     GaugeAdderV3.actionId('GaugeAdder', 'addOptimismGauge(address)'),
   ]),
+]);
 
+export const delayedRoles: RoleData[] = flatten([
   createRoleData(GaugeAdderV3.output().GaugeAdder, GaugeController.output().GaugeController, [
     GaugeController.actionId('GaugeController', 'add_gauge(address,int128)'),
   ]),

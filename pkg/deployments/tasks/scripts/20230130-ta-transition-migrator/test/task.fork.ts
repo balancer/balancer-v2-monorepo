@@ -11,6 +11,7 @@ import { getForkedNetwork } from '../../../../src/test';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { TRANSITION_END_BLOCK, TimelockAuthorizerTransitionMigratorDeployment } from '../input';
 import { RoleData } from '../input/types';
+import { DAY, advanceTime } from '@balancer-labs/v2-helpers/src/time';
 
 describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_END_BLOCK, function () {
   let input: TimelockAuthorizerTransitionMigratorDeployment;
@@ -18,7 +19,7 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
   let root: SignerWithAddress;
 
   let task: Task;
-  let roles: RoleData[];
+  let roles: RoleData[], delayedRoles: RoleData[];
 
   before('run task', async () => {
     task = new Task('20230130-ta-transition-migrator', TaskMode.TEST, getForkedNetwork(hre));
@@ -27,6 +28,7 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
 
     input = task.input() as TimelockAuthorizerTransitionMigratorDeployment;
     roles = input.Roles;
+    delayedRoles = input.DelayedRoles;
   });
 
   before('load old authorizer and impersonate multisig', async () => {
@@ -56,9 +58,23 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
     ).to.be.true;
   });
 
-  it('migrates all roles properly', async () => {
+  it('migrates all non-delayed roles properly', async () => {
     await migrator.migratePermissions();
     for (const roleData of roles) {
+      expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
+    }
+
+    for (const roleData of delayedRoles) {
+      expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.false;
+    }
+  });
+
+  it('executes delayed permissions after their delay passes', async () => {
+    // GaugeController.actionId('GaugeController', 'add_gauge(address,int128)')
+    await advanceTime(14 * DAY);
+    await migrator.executeDelays();
+
+    for (const roleData of delayedRoles) {
       expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
     }
   });
