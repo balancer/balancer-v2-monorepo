@@ -1,5 +1,8 @@
 # 2022-04-25 - Unbutton Aave Linear Pool
 
+> ⚠️ **DEPRECATED: do not use** ⚠️
+>
+
 Deployment of the `UnbuttonAaveLinearPoolFactory`, for Aave Linear Pools where both the main and wrapped tokens are UnbuttonTokens employing the IButtonWrapper interface to abstract rebasing functionality.
 
 ## Useful Files

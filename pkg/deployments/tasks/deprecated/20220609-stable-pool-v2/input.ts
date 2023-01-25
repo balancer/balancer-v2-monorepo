@@ -1,6 +1,6 @@
-import Task, { TaskMode } from '../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 
-export type ERC4626LinearPoolDeployment = {
+export type StablePoolV2Deployment = {
   Vault: string;
 };
 
