@@ -14,8 +14,11 @@ const BAL_ETH_POOL_LAST_CHANGED_BLOCK = 16473966;
 const OHM_ETH_POOL = '0xd1ec5e215e8148d76f4460e4097fd3d5ae0a3558';
 
 const BBAUSDC = '0x82698aecc9e28e9bb27608bd52cf57f704bd1b83';
+const BBAUSDC_POOL_ID = '0x82698aecc9e28e9bb27608bd52cf57f704bd1b83000000000000000000000336';
 const BBAUSDT = '0x2f4eb100552ef93840d5adc30560e5513dfffacb';
+const BBAUSDT_POOL_ID = '0x2f4eb100552ef93840d5adc30560e5513dfffacb000000000000000000000334';
 const LPePyvCurve_MIM_11FEB22 = '0x09b1b33bad0e87454ff05696b1151bfbd208a43f';
+const LPePyvCurve_MIM_11FEB22_POOL_ID = '0x09b1b33bad0e87454ff05696b1151bfbd208a43f0002000000000000000000a6';
 const LPePyvUSDC_28JAN22 = '0x10a2f8bd81ee2898d7ed18fb8f114034a549fa59';
 const PHANTOM_STABLE_POOL = '0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb2';
 const COMPOSABLE_STABLE_POOL = '0xa13a9247ea42d743238089903570127dda72fe44';
@@ -32,6 +35,22 @@ enum SwapFeeType {
   SWAP_FEE_PERCENTAGE = 0,
   PERCENT_FEE,
 }
+
+const defaultPoolDataQueryConfig = {
+  loadTokenBalanceUpdatesAfterBlock: false,
+  loadTotalSupply: false,
+  loadSwapFees: false,
+  loadLinearWrappedTokenRates: false,
+  loadNormalizedWeights: false,
+  loadTokenRates: false,
+
+  blockNumber: 0,
+  totalSupplyTypes: [],
+  swapFeeTypes: [],
+  linearPoolIdxs: [],
+  weightedPoolIdxs: [],
+  tokenRatePoolIdxs: [],
+};
 
 describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
   let balancerSorQueries: Contract;
@@ -176,7 +195,10 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
 
   context('token rates', () => {
     it('returns the correct rates for 1 pool', async () => {
-      const response = await balancerSorQueries.getTokenRatesForPools([COMPOSABLE_STABLE_POOL_ID]);
+      const response = await balancerSorQueries.getTokenRatesForPools(
+        [COMPOSABLE_STABLE_POOL_ID],
+        [COMPOSABLE_STABLE_POOL]
+      );
 
       expect(response[0][0]).to.equal(bn('1005671911533217346'));
       expect(response[0][1]).to.equal(bn('1001773828282482904'));
@@ -185,10 +207,10 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
     });
 
     it('returns the correct rates for several pools', async () => {
-      const response = await balancerSorQueries.getTokenRatesForPools([
-        COMPOSABLE_STABLE_POOL_ID,
-        PHANTOM_STABLE_POOL_ID,
-      ]);
+      const response = await balancerSorQueries.getTokenRatesForPools(
+        [COMPOSABLE_STABLE_POOL_ID, PHANTOM_STABLE_POOL_ID],
+        [COMPOSABLE_STABLE_POOL, PHANTOM_STABLE_POOL]
+      );
 
       expect(response[0][0]).to.equal(bn('1005671911533217346'));
       expect(response[0][1]).to.equal(bn('1001773828282482904'));
@@ -199,6 +221,88 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
       expect(response[1][1]).to.equal(bn('1000000000000000000'));
       expect(response[1][2]).to.equal(bn('1011888479898642476'));
       expect(response[1][3]).to.equal(bn('1010971331127696692'));
+    });
+  });
+
+  context('get pool data', () => {
+    it('loads only token balances', async () => {
+      const response = await balancerSorQueries.getPoolData([BAL_ETH_POOL_ID], {
+        ...defaultPoolDataQueryConfig,
+        loadTokenBalanceUpdatesAfterBlock: true,
+      });
+
+      expect(response.balances.length).to.equal(1);
+      expect(response.balances[0].length).to.equal(2);
+      expect(response.totalSupplies.length).to.equal(0);
+      expect(response.linearWrappedTokenRates.length).to.equal(0);
+      expect(response.weights.length).to.equal(0);
+      expect(response.tokenRates.length).to.equal(0);
+      expect(response.swapFees.length).to.equal(0);
+    });
+
+    it('loads total supply', async () => {
+      const response = await balancerSorQueries.getPoolData([BAL_ETH_POOL_ID, COMPOSABLE_STABLE_POOL_ID], {
+        ...defaultPoolDataQueryConfig,
+        loadTotalSupply: true,
+        totalSupplyTypes: [TotalSupplyType.TOTAL_SUPPLY, TotalSupplyType.ACTUAL_SUPPLY],
+      });
+
+      expect(response.totalSupplies[0]).to.equal(bn('13786043841624360249590791'));
+      expect(response.totalSupplies[1]).to.equal(bn('67178285823602489267972373'));
+    });
+
+    it('loads swap fees', async () => {
+      const response = await balancerSorQueries.getPoolData([BAL_ETH_POOL_ID, LPePyvCurve_MIM_11FEB22_POOL_ID], {
+        ...defaultPoolDataQueryConfig,
+        loadSwapFees: true,
+        swapFeeTypes: [SwapFeeType.SWAP_FEE_PERCENTAGE, SwapFeeType.PERCENT_FEE],
+      });
+
+      expect(response.swapFees[0]).to.equal(fp('0.01'));
+      expect(response.swapFees[1]).to.equal(fp('0.1'));
+    });
+
+    it('loads linear wrapped token rates at specified idxs', async () => {
+      const response = await balancerSorQueries.getPoolData([BBAUSDT_POOL_ID, BAL_ETH_POOL_ID, BBAUSDC_POOL_ID], {
+        ...defaultPoolDataQueryConfig,
+        loadLinearWrappedTokenRates: true,
+        linearPoolIdxs: [0, 2],
+      });
+
+      expect(response.linearWrappedTokenRates[0]).to.equal(fp('1.102128584906008204'));
+      expect(response.linearWrappedTokenRates[1]).to.equal(fp('1.081498386280161947'));
+    });
+
+    it('loads weights at specified idxs', async () => {
+      const response = await balancerSorQueries.getPoolData([BBAUSDT_POOL_ID, BAL_ETH_POOL_ID], {
+        ...defaultPoolDataQueryConfig,
+        loadNormalizedWeights: true,
+        weightedPoolIdxs: [1],
+      });
+
+      expect(response.weights[0][0]).to.equal(fp('0.8'));
+      expect(response.weights[0][1]).to.equal(fp('0.2'));
+    });
+
+    it('loads token rates at specified idxs', async () => {
+      const response = await balancerSorQueries.getPoolData(
+        [BAL_ETH_POOL_ID, COMPOSABLE_STABLE_POOL_ID, PHANTOM_STABLE_POOL_ID],
+        {
+          ...defaultPoolDataQueryConfig,
+          loadTokenRates: true,
+          tokenRatePoolIdxs: [1, 2],
+        }
+      );
+
+      expect(response.tokenRates[0][0]).to.equal(bn('1005671911533217346'));
+      expect(response.tokenRates[0][1]).to.equal(bn('1001773828282482904'));
+      expect(response.tokenRates[0][2]).to.equal(bn('1000000000000000000'));
+      expect(response.tokenRates[0][3]).to.equal(bn('1001905060971436536'));
+
+      expect(response.tokenRates[1][0]).to.equal(bn('1017033447123846653'));
+      expect(response.tokenRates[1][1]).to.equal(bn('1000000000000000000'));
+      expect(response.tokenRates[1][2]).to.equal(bn('1011888479898642476'));
+      expect(response.tokenRates[1][3]).to.equal(bn('1010971331127696692'));
     });
   });
 });

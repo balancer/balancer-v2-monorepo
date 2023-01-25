@@ -50,6 +50,21 @@ interface IPoolWithPercentFee {
     function percentFee() external view returns (uint256);
 }
 
+struct SorPoolDataQueryConfig {
+    bool loadTokenBalanceUpdatesAfterBlock;
+    bool loadTotalSupply;
+    bool loadSwapFees;
+    bool loadLinearWrappedTokenRates;
+    bool loadNormalizedWeights;
+    bool loadTokenRates;
+    uint256 blockNumber;
+    TotalSupplyType[] totalSupplyTypes;
+    SwapFeeType[] swapFeeTypes;
+    uint256[] linearPoolIdxs;
+    uint256[] weightedPoolIdxs;
+    uint256[] tokenRatePoolIdxs;
+}
+
 /**
  * @dev This contract builds on top of the Balancer V2 architecture to provide useful helpers for SOR
  * (Smart order router) initialization. It allows for bulking actions for many pools at once, with the overall goal
@@ -62,8 +77,72 @@ contract BalancerSorQueries {
         vault = _vault;
     }
 
-    function getPoolTokenBalancesWithUpdatesAfterBlock(bytes32[] memory poolIds, uint256 blockNumber)
+    function getPoolData(bytes32[] memory poolIds, SorPoolDataQueryConfig memory config)
         external
+        view
+        returns (
+            uint256[][] memory balances,
+            uint256[] memory totalSupplies,
+            uint256[] memory swapFees,
+            uint256[] memory linearWrappedTokenRates,
+            uint256[][] memory weights,
+            uint256[][] memory tokenRates
+        )
+    {
+        uint256 i;
+        address[] memory pools = new address[](poolIds.length);
+
+        for (i = 0; i < poolIds.length; i++) {
+            (pools[i], ) = vault.getPool(poolIds[i]);
+        }
+
+        if (config.loadTokenBalanceUpdatesAfterBlock) {
+            balances = getPoolTokenBalancesWithUpdatesAfterBlock(poolIds, config.blockNumber);
+        }
+
+        if (config.loadTotalSupply) {
+            totalSupplies = getTotalSupplyForPools(pools, config.totalSupplyTypes);
+        }
+
+        if (config.loadSwapFees) {
+            swapFees = getSwapFeePercentageForPools(pools, config.swapFeeTypes);
+        }
+
+        if (config.loadLinearWrappedTokenRates) {
+            address[] memory linearPools = new address[](config.linearPoolIdxs.length);
+
+            for (i = 0; i < config.linearPoolIdxs.length; i++) {
+                linearPools[i] = pools[config.linearPoolIdxs[i]];
+            }
+
+            linearWrappedTokenRates = getWrappedTokenRateForLinearPools(linearPools);
+        }
+
+        if (config.loadNormalizedWeights) {
+            address[] memory weightedPools = new address[](config.weightedPoolIdxs.length);
+
+            for (i = 0; i < config.weightedPoolIdxs.length; i++) {
+                weightedPools[i] = pools[config.weightedPoolIdxs[i]];
+            }
+
+            weights = getNormalizedWeightsForPools(weightedPools);
+        }
+
+        if (config.loadTokenRates) {
+            bytes32[] memory tokenRatePoolIds = new bytes32[](config.tokenRatePoolIdxs.length);
+            address[] memory tokenRatePools = new address[](config.tokenRatePoolIdxs.length);
+
+            for (i = 0; i < config.tokenRatePoolIdxs.length; i++) {
+                tokenRatePoolIds[i] = poolIds[config.tokenRatePoolIdxs[i]];
+                tokenRatePools[i] = pools[config.tokenRatePoolIdxs[i]];
+            }
+
+            tokenRates = getTokenRatesForPools(tokenRatePoolIds, tokenRatePools);
+        }
+    }
+
+    function getPoolTokenBalancesWithUpdatesAfterBlock(bytes32[] memory poolIds, uint256 blockNumber)
+        public
         view
         returns (uint256[][] memory)
     {
@@ -82,11 +161,7 @@ contract BalancerSorQueries {
         return allBalances;
     }
 
-    function getWrappedTokenRateForLinearPools(address[] memory poolAddresses)
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getWrappedTokenRateForLinearPools(address[] memory poolAddresses) public view returns (uint256[] memory) {
         uint256[] memory rates = new uint256[](poolAddresses.length);
 
         for (uint256 i = 0; i < poolAddresses.length; i++) {
@@ -97,7 +172,7 @@ contract BalancerSorQueries {
     }
 
     function getSwapFeePercentageForPools(address[] memory poolAddresses, SwapFeeType[] memory swapFeeTypes)
-        external
+        public
         view
         returns (uint256[] memory)
     {
@@ -115,7 +190,7 @@ contract BalancerSorQueries {
     }
 
     function getTotalSupplyForPools(address[] memory poolAddresses, TotalSupplyType[] memory totalSupplyTypes)
-        external
+        public
         view
         returns (uint256[] memory)
     {
@@ -134,7 +209,7 @@ contract BalancerSorQueries {
         return totalSupplies;
     }
 
-    function getNormalizedWeightsForPools(address[] memory poolAddresses) external view returns (uint256[][] memory) {
+    function getNormalizedWeightsForPools(address[] memory poolAddresses) public view returns (uint256[][] memory) {
         uint256[][] memory allWeights = new uint256[][](poolAddresses.length);
 
         for (uint256 i = 0; i < poolAddresses.length; i++) {
@@ -144,18 +219,20 @@ contract BalancerSorQueries {
         return allWeights;
     }
 
-    function getTokenRatesForPools(bytes32[] memory poolIds) external view returns (uint256[][] memory) {
+    function getTokenRatesForPools(bytes32[] memory poolIds, address[] memory poolAddresses)
+        public
+        view
+        returns (uint256[][] memory)
+    {
         uint256[][] memory allRates = new uint256[][](poolIds.length);
-        address pool;
         IERC20[] memory tokens;
 
         for (uint256 i = 0; i < poolIds.length; i++) {
-            (pool, ) = vault.getPool(poolIds[i]);
             (tokens, , ) = vault.getPoolTokens(poolIds[i]);
             allRates[i] = new uint256[](tokens.length);
 
             for (uint256 j = 0; j < tokens.length; j++) {
-                allRates[i][j] = IPoolWithTokenRates(pool).getTokenRate(tokens[j]);
+                allRates[i][j] = _getPoolTokenRate(poolAddresses[i], tokens[j]);
             }
         }
 
@@ -181,6 +258,14 @@ contract BalancerSorQueries {
     function _getPoolActualSupply(address poolAddress) internal view returns (uint256) {
         try IPoolWithActualSupply(poolAddress).getActualSupply() returns (uint256 actualSupply) {
             return actualSupply;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _getPoolTokenRate(address poolAddress, IERC20 token) internal view returns (uint256) {
+        try IPoolWithTokenRates(poolAddress).getTokenRate(token) returns (uint256 rate) {
+            return rate;
         } catch {
             return 0;
         }
