@@ -1,8 +1,10 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, ContractReceipt } from 'ethers';
 
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
@@ -20,6 +22,7 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
 
   let task: Task;
   let roles: RoleData[], delayedRoles: RoleData[];
+  let migrationReceipt: ContractReceipt;
 
   before('run task', async () => {
     task = new Task('20230130-ta-transition-migrator', TaskMode.TEST, getForkedNetwork(hre));
@@ -58,11 +61,42 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
     ).to.be.true;
   });
 
+  sharedBeforeEach(async () => {
+    migrationReceipt = await (await migrator.migratePermissions()).wait();
+  });
+
   it('migrates all non-delayed roles properly', async () => {
-    await migrator.migratePermissions();
     for (const roleData of roles) {
       expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
     }
+  });
+
+  it('schedules delayed roles', async () => {
+    for (let i = 0; i < delayedRoles.length; ++i) {
+      const roleData = delayedRoles[i];
+      expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.false;
+
+      const grantActionId = await newAuthorizer.getGrantPermissionActionId(roleData.role);
+      expectEvent.inIndirectReceipt(
+        migrationReceipt,
+        newAuthorizer.interface,
+        'ExecutionScheduled',
+        {
+          actionId: grantActionId,
+          scheduledExecutionId: await migrator.scheduledExecutionIds(i),
+        },
+        newAuthorizer.address
+      );
+    }
+  });
+
+  // The only expected delayed role (see mainnet.ts) is the following (14 days):
+  // GaugeController.actionId('GaugeController', 'add_gauge(address,int128)')
+  it('skips executions while delay is not due', async () => {
+    await advanceTime(7 * DAY);
+    const tx = await migrator.executeDelays();
+
+    expectEvent.notEmitted(await tx.wait(), 'ExecutionExecuted');
 
     for (const roleData of delayedRoles) {
       expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.false;
@@ -70,13 +104,16 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
   });
 
   it('executes delayed permissions after their delay passes', async () => {
-    // The only expected delayed role (see mainnet.ts) is the following (14 days):
-    // GaugeController.actionId('GaugeController', 'add_gauge(address,int128)')
-    await advanceTime(14 * DAY);
-    await migrator.executeDelays();
+    await advanceTime(14 * DAY); // 14 days since `migratePermissions` is called.
+    const receipt = await (await migrator.executeDelays()).wait();
 
-    for (const roleData of delayedRoles) {
+    for (let i = 0; i < delayedRoles.length; ++i) {
+      const roleData = delayedRoles[i];
       expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
+
+      expectEvent.inIndirectReceipt(receipt, newAuthorizer.interface, 'ExecutionExecuted', {
+        scheduledExecutionId: await migrator.scheduledExecutionIds(i),
+      });
     }
   });
 
