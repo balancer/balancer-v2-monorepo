@@ -12,6 +12,7 @@ const BAL_ETH_POOL = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56';
 const WSTETH_ETH_POOL_ID = '0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080';
 const BAL_ETH_POOL_LAST_CHANGED_BLOCK = 16473966;
 const OHM_ETH_POOL = '0xd1ec5e215e8148d76f4460e4097fd3d5ae0a3558';
+const WSTETH_ETH_POOL = '0x32296969ef14eb0c6d29669c550d4a0449130230';
 
 const BBAUSDC = '0x82698aecc9e28e9bb27608bd52cf57f704bd1b83';
 const BBAUSDC_POOL_ID = '0x82698aecc9e28e9bb27608bd52cf57f704bd1b83000000000000000000000336';
@@ -43,6 +44,7 @@ const defaultPoolDataQueryConfig = {
   loadLinearWrappedTokenRates: false,
   loadNormalizedWeights: false,
   loadTokenRates: false,
+  loadAmps: false,
 
   blockNumber: 0,
   totalSupplyTypes: [],
@@ -50,6 +52,7 @@ const defaultPoolDataQueryConfig = {
   linearPoolIdxs: [],
   weightedPoolIdxs: [],
   tokenRatePoolIdxs: [],
+  ampPoolIdxs: [],
 };
 
 describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
@@ -224,6 +227,21 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
     });
   });
 
+  context('amps', () => {
+    it('returns the correct amp for 1 pool', async () => {
+      const response = await balancerSorQueries.getAmpForPools([COMPOSABLE_STABLE_POOL]);
+
+      expect(response[0]).to.equal(bn('1472000'));
+    });
+
+    it('returns the correct amp for several pools', async () => {
+      const response = await balancerSorQueries.getAmpForPools([COMPOSABLE_STABLE_POOL, WSTETH_ETH_POOL]);
+
+      expect(response[0]).to.equal(bn('1472000'));
+      expect(response[1]).to.equal(bn('50000'));
+    });
+  });
+
   context('get pool data', () => {
     it('loads only token balances', async () => {
       const response = await balancerSorQueries.getPoolData([BAL_ETH_POOL_ID], {
@@ -303,6 +321,20 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
       expect(response.tokenRates[1][1]).to.equal(bn('1000000000000000000'));
       expect(response.tokenRates[1][2]).to.equal(bn('1011888479898642476'));
       expect(response.tokenRates[1][3]).to.equal(bn('1010971331127696692'));
+    });
+
+    it('loads amp at specified idxs', async () => {
+      const response = await balancerSorQueries.getPoolData(
+        [BBAUSDT_POOL_ID, WSTETH_ETH_POOL_ID, COMPOSABLE_STABLE_POOL_ID],
+        {
+          ...defaultPoolDataQueryConfig,
+          loadAmps: true,
+          ampPoolIdxs: [1, 2],
+        }
+      );
+
+      expect(response.amps[0]).to.equal(bn('50000'));
+      expect(response.amps[1]).to.equal(bn('1472000'));
     });
   });
 });

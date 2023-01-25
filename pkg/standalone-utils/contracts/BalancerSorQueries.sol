@@ -50,6 +50,10 @@ interface IPoolWithPercentFee {
     function percentFee() external view returns (uint256);
 }
 
+interface IPoolWithAmp {
+    function getAmplificationParameter() external view returns (uint256 value, bool isUpdating, uint256 precision);
+}
+
 struct SorPoolDataQueryConfig {
     bool loadTokenBalanceUpdatesAfterBlock;
     bool loadTotalSupply;
@@ -57,12 +61,14 @@ struct SorPoolDataQueryConfig {
     bool loadLinearWrappedTokenRates;
     bool loadNormalizedWeights;
     bool loadTokenRates;
+    bool loadAmps;
     uint256 blockNumber;
     TotalSupplyType[] totalSupplyTypes;
     SwapFeeType[] swapFeeTypes;
     uint256[] linearPoolIdxs;
     uint256[] weightedPoolIdxs;
     uint256[] tokenRatePoolIdxs;
+    uint256[] ampPoolIdxs;
 }
 
 /**
@@ -86,7 +92,8 @@ contract BalancerSorQueries {
             uint256[] memory swapFees,
             uint256[] memory linearWrappedTokenRates,
             uint256[][] memory weights,
-            uint256[][] memory tokenRates
+            uint256[][] memory tokenRates,
+            uint256[] memory amps
         )
     {
         uint256 i;
@@ -139,6 +146,16 @@ contract BalancerSorQueries {
 
             tokenRates = getTokenRatesForPools(tokenRatePoolIds, tokenRatePools);
         }
+
+        if (config.loadAmps) {
+            address[] memory ampPools = new address[](config.ampPoolIdxs.length);
+
+            for (i = 0; i < config.ampPoolIdxs.length; i++) {
+                ampPools[i] = pools[config.ampPoolIdxs[i]];
+            }
+
+            amps = getAmpForPools(ampPools);
+        }
     }
 
     function getPoolTokenBalancesWithUpdatesAfterBlock(bytes32[] memory poolIds, uint256 blockNumber)
@@ -169,6 +186,21 @@ contract BalancerSorQueries {
         }
 
         return rates;
+    }
+
+    function getAmpForPools(address[] memory poolAddresses)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        
+        uint256[] memory amps = new uint256[](poolAddresses.length);
+
+        for (uint256 i = 0; i < poolAddresses.length; i++) {
+            (amps[i], ,) = IPoolWithAmp(poolAddresses[i]).getAmplificationParameter();
+        }
+
+        return amps;
     }
 
     function getSwapFeePercentageForPools(address[] memory poolAddresses, SwapFeeType[] memory swapFeeTypes)
