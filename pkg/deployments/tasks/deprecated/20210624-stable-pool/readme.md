@@ -2,7 +2,7 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
-> This factory and associated Pools have been deprecated due to numerical issues when one of the token depegs. Use this [updated version](../../20220609-stable-pool-v2) instead.
+> This factory and associated Pools have been deprecated due to numerical issues when one of the token depegs. It was superseded by an [updated version (also now deprecated)](../20220609-stable-pool-v2).
 
 Deployment of the `StablePoolFactory`, for Stable Pools of up to 5 tokens.
 
