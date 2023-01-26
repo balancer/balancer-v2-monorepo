@@ -23,10 +23,25 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./WeightedPool.sol";
 
 contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode)
-    {
-        // solhint-disable-previous-line no-empty-blocks
+    string private _factoryVersion;
+    string private _poolVersion;
+
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode) {
+        _factoryVersion = factoryVersion;
+        _poolVersion = poolVersion;
+    }
+
+    function version() external view returns (string memory) {
+        return _factoryVersion;
+    }
+
+    function getPoolVersion() public view returns (string memory) {
+        return _poolVersion;
     }
 
     /**
@@ -59,7 +74,8 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     getProtocolFeePercentagesProvider(),
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    owner
+                    owner,
+                    getPoolVersion()
                 )
             );
     }

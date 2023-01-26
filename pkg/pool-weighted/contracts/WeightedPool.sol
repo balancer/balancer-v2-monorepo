@@ -27,6 +27,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     uint256 private constant _MAX_TOKENS = 8;
 
     uint256 private immutable _totalTokens;
+    string private _version;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
@@ -75,7 +76,8 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner
+        address owner,
+        string memory version
     )
         BaseWeightedPool(
             vault,
@@ -96,6 +98,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
         _totalTokens = numTokens;
+        _version = version;
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
@@ -177,6 +180,10 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
         return _totalTokens;
+    }
+
+    function version() external view returns (string memory) {
+        return _version;
     }
 
     /**
