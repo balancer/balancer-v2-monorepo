@@ -42,8 +42,9 @@ library VaultReentrancyLib {
 
         // Direct assignment (vs struct) saves gas, and we can let most arguments default to 0
         // Only the kind and sender are validated; asset and recipient don't matter when the value is 0
-        noop[0].kind = IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
+        noop[0].kind = IVault.UserBalanceOpKind.TRANSFER_EXTERNAL;
         noop[0].sender = address(this);
+        noop[0].asset = IAsset(address(1));
 
         vault.manageUserBalance(noop);
     }
