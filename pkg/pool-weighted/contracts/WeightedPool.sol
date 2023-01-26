@@ -182,6 +182,9 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         return _totalTokens;
     }
 
+    /**
+     * @notice Returns a JSON representation of the contract version containing name, version number and task ID.
+     */
     function version() external view returns (string memory) {
         return _version;
     }
