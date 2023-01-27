@@ -117,6 +117,19 @@ describeForkTest('TimelockAuthorizerTransitionMigrator', 'mainnet', TRANSITION_E
     }
   });
 
+  it('does nothing when executing delays the second time', async () => {
+    await advanceTime(14 * DAY); // 14 days since `migratePermissions` is called.
+    await migrator.executeDelays();
+    const receipt = await (await migrator.executeDelays()).wait();
+
+    for (let i = 0; i < delayedRoles.length; ++i) {
+      const roleData = delayedRoles[i];
+      expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
+    }
+
+    expectEvent.notEmitted(receipt, 'ExecutionExecuted');
+  });
+
   it('reverts after migrating the first time', async () => {
     await expect(migrator.migratePermissions()).to.be.revertedWith('ALREADY_MIGRATED');
   });
