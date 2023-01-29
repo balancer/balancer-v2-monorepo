@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "./relayer/BaseRelayerLibrary.sol";
 
 import "./relayer/AaveWrapping.sol";
+import "./relayer/BeefyWrapping.sol";
 import "./relayer/ERC4626Wrapping.sol";
 import "./relayer/GaugeActions.sol";
 import "./relayer/LidoWrapping.sol";
@@ -34,6 +35,7 @@ import "./relayer/VaultPermit.sol";
 contract BatchRelayerLibrary is
     AaveWrapping,
     BaseRelayerLibrary,
+    BeefyWrapping,
     ERC4626Wrapping,
     GaugeActions,
     LidoWrapping,
