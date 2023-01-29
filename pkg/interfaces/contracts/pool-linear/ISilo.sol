@@ -17,50 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "./IShareToken.sol";
 
-interface IInterestRateModel {
-    /// @dev get compound interest rate
-    /// @param silo address of Silo
-    /// @param asset address of an asset in Silo for which interest rate should be calculated
-    /// @param blockTimestamp current block timestamp
-    /// @return rcomp compounded interest rate from last update until now (1e18 == 100%)
-    function getCompoundInterestRate(
-        address silo,
-        address asset,
-        uint256 blockTimestamp
-    ) external view returns (uint256 rcomp);
-
-    /// @dev get current annual interest rate
-    /// @param _silo address of Silo
-    /// @param _asset address of an asset in Silo for which interest rate should be calculated
-    /// @param _blockTimestamp current block timestamp
-    /// @return rcur current annual interest rate (1e18 == 100%)
-    function getCurrentInterestRate(
-        address _silo,
-        address _asset,
-        uint256 _blockTimestamp
-    ) external view returns (uint256 rcur);
-}
-
-interface ISiloRepository {
-    /// @notice Get Interest Rate Model address for asset in given Silo
-    /// @dev If dedicated config is not set, method returns default config
-    /// @param silo address of Silo
-    /// @param asset address of an asset
-    /// @return address of interest rate model
-    function getInterestRateModel(address silo, address asset) external view returns (IInterestRateModel);
-
-    /// @dev Get protocol share fee
-    /// @return protocol share fee in precision points (Solvency._PRECISION_DECIMALS == 100%)
-    function protocolShareFee() external view returns (uint256);
-}
-
 interface IBaseSilo {
-    enum AssetStatus {
-        Undefined,
-        Active,
-        Removed
-    }
-
     /// Storage struct that holds all required data for a single token market
     struct AssetStorage {
         // Token that represents a share in totalDeposits of Silo
@@ -79,53 +36,14 @@ interface IBaseSilo {
         uint256 totalBorrowAmount;
     }
 
-    /// @dev Storage struct that holds data related to fees and interest
-    struct AssetInterestData {
-        // Total amount of already harvested protocol fees
-        uint256 harvestedProtocolFees;
-        // Total amount (ever growing) of asset token that has been earned by the protocol from
-        // generated interest.
-        uint256 protocolFees;
-        // Timestamp of the last time `interestRate` has been updated in storage.
-        uint64 interestRateTimestamp;
-        // True if asset was removed from the protocol. If so, deposit and borrow functions are disabled
-        // for that asset
-        AssetStatus status;
-    }
-
     /**
      * @dev returns the asset storage struct
      * @dev AssetStorage struct contains necessary information for calculating shareToken exchange rates
      */
     function assetStorage(address _asset) external view returns (AssetStorage memory);
-
-    /**
-     * @dev returns the interest data struct
-     * @dev Interest data struct helps us update necessary asset storage data closer to the time that it is
-     * updated on Silo's protocol during deposits and withdraws
-     */
-    function interestData(address _asset) external view returns (AssetInterestData memory);
-
-    /// @notice Get Silo Repository contract address
-    /// @return Silo Repository contract address
-    function siloRepository() external view returns (ISiloRepository);
 }
 
 interface ISilo is IBaseSilo {
-    /**
-     * @dev Deposits funds into the Silo
-     * @param _asset The address of the token to deposit
-     * @param _amount The amount of the token to deposit
-     * @param _collateralOnly: True means your shareToken is protected (cannot be swapped for interest)
-     * @return collateralAmount deposited amount
-     * @return collateralShare user collateral shares based on deposited amount
-     */
-    function deposit(
-        address _asset,
-        uint256 _amount,
-        bool _collateralOnly
-    ) external returns (uint256 collateralAmount, uint256 collateralShare);
-
     /**
      * @dev Deposits funds into the Silo
      * @param _asset The address of the token to deposit
@@ -141,20 +59,6 @@ interface ISilo is IBaseSilo {
         uint256 _amount,
         bool _collateralOnly
     ) external returns (uint256 collateralAmount, uint256 collateralShare);
-
-    /**
-     * @dev Withdraws funds from the Silo
-     * @param _asset The address of the token to withdraw
-     * @param _amount The amount of the token to withdraw
-     * @param _collateralOnly: True means your shareToken is protected (cannot be swapped for interest)
-     * @return withdrawnAmount withdrawn amount that was transferred to user
-     * @return withdrawnShare burned share based on `withdrawnAmount`
-     */
-    function withdraw(
-        address _asset,
-        uint256 _amount,
-        bool _collateralOnly
-    ) external returns (uint256 withdrawnAmount, uint256 withdrawnShare);
 
     /**
      * @dev Withdraws funds from the Silo

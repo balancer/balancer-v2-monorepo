@@ -58,8 +58,8 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
 
         // the collateralOnly param is set to false because we want to receive interest bearing shareTokens
         underlyingToken.safeApprove(address(silo), amount);
-        uint256 result;
-        (result, ) = silo.depositFor(address(underlyingToken), recipient, amount, false);
+
+        (uint256 result, ) = silo.depositFor(address(underlyingToken), recipient, amount, false);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);
@@ -76,7 +76,6 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
         }
-
         // Initialize the token we will be wrapping (underlying asset of shareToken)
         IERC20 underlyingToken = IERC20(wrappedToken.asset());
         // Initialize the corresponding Silo (Liquidity Pool)

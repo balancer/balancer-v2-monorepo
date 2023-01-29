@@ -26,9 +26,4 @@ interface IShareToken {
      * @dev returns the address of the silo
      */
     function silo() external view returns (ISilo);
-
-    /**
-     * @dev returns the supply of the shareToken
-     */
-    function totalSupply() external view returns (uint256);
 }
