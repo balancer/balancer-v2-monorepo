@@ -85,6 +85,30 @@ describeForkTest('WeightedPool V3', 'mainnet', 16520000, function () {
     return task.instanceAt('WeightedPool', event.args.pool);
   }
 
+  describe('getters', () => {
+    it('check factory version', async () => {
+      const expectedFactoryVersion = {
+        name: 'WeightedPoolFactory',
+        version: 3,
+        deployment: '20230130-weighted-pool-v3',
+      };
+
+      expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
+    });
+
+    it('check pool version', async () => {
+      const pool = await createPool();
+
+      const expectedPoolVersion = {
+        name: 'WeightedPool',
+        version: 3,
+        deployment: '20230130-weighted-pool-v3',
+      };
+
+      expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
+    });
+  });
+
   describe('create and swap', () => {
     let pool: Contract;
     let poolId: string;
