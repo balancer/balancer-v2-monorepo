@@ -15,8 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/lib/VaultReentrancyLib.sol";
-
 import "./BaseWeightedPool.sol";
 import "./WeightedPoolProtocolFees.sol";
 
@@ -389,7 +387,14 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         return supply.add(protocolFeesToBeMinted);
     }
 
-    function _onDisableRecoveryMode() internal override {
+    /**
+     * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
+     * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
+     * unsafe to call in such contexts, and hence it is protected.
+     */
+    function _onDisableRecoveryMode() internal override whenNotInVaultContext {
         // Update the postJoinExitInvariant to the value of the currentInvariant, zeroing out any protocol swap fees.
         _updatePostJoinExit(getInvariant());
 
