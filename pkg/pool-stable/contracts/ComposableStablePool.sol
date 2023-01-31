@@ -1138,7 +1138,14 @@ contract ComposableStablePool is
         _updatePostJoinExit(currentAmp, currentInvariant);
     }
 
-    function _onDisableRecoveryMode() internal override {
+    /**
+     * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
+     * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
+     * unsafe to call in such contexts, and hence it is protected.
+     */
+    function _onDisableRecoveryMode() internal override whenNotInVaultContext {
         // Enabling recovery mode short-circuits protocol fee computations, forcefully returning a zero percentage,
         // increasing the return value of `getRate()` and effectively forfeiting due protocol fees.
 
