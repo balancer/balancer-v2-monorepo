@@ -82,6 +82,13 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
     /**
      * @dev Returns the current value of the invariant.
+     *
+     * **IMPORTANT NOTE**: calling this function within a Vault context (i.e. in the middle of a join or an exit) is
+     * potentially unsafe, since the returned value may be incorrect. It is up to the caller to protect itself.
+     *
+     * Calculating the invariant requires the state of the pool to be in sync with the state of the vault.
+     * That condition may not be true in the middle of a join or an exit, which is why the value returned by this
+     * function under that circumstance could be incorrect.
      */
     function getInvariant() public view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
