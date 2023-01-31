@@ -23,10 +23,34 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./WeightedPool.sol";
 
 contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode)
-    {
-        // solhint-disable-previous-line no-empty-blocks
+    string private _factoryVersion;
+    string private _poolVersion;
+
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode) {
+        _factoryVersion = factoryVersion;
+        _poolVersion = poolVersion;
+    }
+
+    /**
+     * @notice Returns a JSON representation of the contract version containing name, version number and task ID.
+     */
+    function version() external view returns (string memory) {
+        return _factoryVersion;
+    }
+
+    /**
+     * @notice Returns a JSON representation of the deployed pool version containing name, version number and task ID.
+     *
+     * @dev This is typically only useful in complex Pool deployment schemes, where multiple subsystems need to know
+     * about each other. Note that this value will only be updated at factory creation time.
+     */
+    function getPoolVersion() public view returns (string memory) {
+        return _poolVersion;
     }
 
     /**
@@ -59,7 +83,8 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     getProtocolFeePercentagesProvider(),
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    owner
+                    owner,
+                    getPoolVersion()
                 )
             );
     }

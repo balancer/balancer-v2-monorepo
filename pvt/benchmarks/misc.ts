@@ -209,7 +209,9 @@ async function deployPoolFromFactory(
   } else if (poolName == 'ComposableStablePool') {
     factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
   } else {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy(`${fullName}Factory`, {
+      args: [vault.address, vault.getFeesProvider().address, 'factoryVersion', 'poolVersion'],
+    });
   }
 
   // We could reuse this factory if we saved it across pool deployments

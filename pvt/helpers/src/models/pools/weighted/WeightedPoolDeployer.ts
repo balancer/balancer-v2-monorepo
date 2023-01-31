@@ -147,6 +147,7 @@ export default {
             pauseWindowDuration,
             bufferPeriodDuration,
             owner,
+            'version',
           ],
           from,
         });
@@ -245,7 +246,7 @@ export default {
       }
       default: {
         const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [vault.address, vault.getFeesProvider().address, 'factoryVersion', 'poolVersion'],
           from,
         });
         const tx = await factory.create(
