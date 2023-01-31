@@ -368,7 +368,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      */
-    function getActualSupply() public view returns (uint256) {
+    function getActualSupply() external view returns (uint256) {
         uint256 supply = totalSupply();
 
         (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(
