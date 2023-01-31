@@ -1096,7 +1096,14 @@ contract ComposableStablePool is
         return virtualSupply.add(protocolFeeAmount);
     }
 
-    function _beforeProtocolFeeCacheUpdate() internal override {
+    /**
+     * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
+     * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
+     * unsafe to call in such contexts, and hence it is protected.
+     */
+    function _beforeProtocolFeeCacheUpdate() internal override whenNotInVaultContext {
         // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
         // percentages. Changing these would therefore result in the rate changing, which is not acceptable as this is a
         // sensitive value.
