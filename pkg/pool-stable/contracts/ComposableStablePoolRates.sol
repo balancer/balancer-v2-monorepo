@@ -164,11 +164,20 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     }
 
     /**
-     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
+     * @dev Sets a new duration for a token rate cache.
      * Note this function also updates the current cached value.
+     *
+     * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
+     * join or an exit because the state of the pool could be out of sync with the state of the vault.
+     * This makes the function unsafe to call in such contexts, and hence it is protected.
+     *
+     * It will also revert if there was no rate provider set initially.
+     *
      * @param duration Number of seconds until the current token rate is fetched again.
      */
-    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate whenNotInVaultContext {
         uint256 index = _getTokenIndex(token);
         IRateProvider provider = _getRateProvider(index);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
@@ -178,9 +187,16 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
 
     /**
      * @dev Forces a rate cache hit for a token.
-     * It will revert if the requested token does not have an associated rate provider.
+     *
+     * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
+     * join or an exit because the state of the pool could be out of sync with the state of the vault.
+     * This makes the function unsafe to call in such contexts, and hence it is protected.
+     *
+     * It will also revert if the requested token does not have an associated rate provider.
      */
-    function updateTokenRateCache(IERC20 token) external {
+    function updateTokenRateCache(IERC20 token) external whenNotInVaultContext {
         uint256 index = _getTokenIndex(token);
 
         IRateProvider provider = _getRateProvider(index);
