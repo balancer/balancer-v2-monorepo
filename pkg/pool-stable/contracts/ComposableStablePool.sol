@@ -1031,8 +1031,11 @@ contract ComposableStablePool is
      * the token rates increase). Therefore, the rate is a monotonically increasing function.
      *
      * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
-     * via reentrancy. However, this can only happen if one of the tokens in the Pool contains some form of callback
-     * behavior in the `transferFrom` function (like ERC777 tokens do). These tokens are strictly incompatible with the
+     * via reentrancy if called within a Vault context (i.e. in the middle of a join or an exit). It is up to the
+     * caller to ensure that the function is safe to call.
+     *
+     * This may happen e.g. if one of the tokens in the Pool contains some form of callback behavior in the
+     * `transferFrom` function (like ERC777 tokens do). These tokens are strictly incompatible with the
      * Vault and Pool design, and are not safe to be used.
      */
     function getRate() external view virtual override returns (uint256) {
