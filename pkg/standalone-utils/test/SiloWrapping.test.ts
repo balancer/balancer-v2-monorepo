@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
-import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { StablePoolEncoder, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
@@ -18,9 +18,10 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
+import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 
 describe('SiloWrapping', function () {
-  let USDC: Token, sUSDC: Token, mockSilo: Contract;
+  let DAI: Token, sDAI: Token, mockSilo: Contract;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
@@ -32,24 +33,24 @@ describe('SiloWrapping', function () {
   sharedBeforeEach('deploy Vault', async () => {
     vault = await Vault.create({ admin });
     // Set up and deploy tokens
-    USDC = await deploy('v2-solidity-utils/TestToken', {
-      args: ['USDC', 'USDC', 6],
+    DAI = await deploy('v2-solidity-utils/TestToken', {
+      args: ['DAI', 'DAI', 18],
     });
 
     mockSilo = await deploy('MockSilo', {
-      args: [USDC.address],
+      args: [DAI.address],
     });
 
-    sUSDC = await deploy('MockShareToken', {
-      args: ['sUSDC', 'sUSDC', mockSilo.address, USDC.address, 6]
+    sDAI = await deploy('MockShareToken', {
+      args: ['sDAI', 'sDAI', mockSilo.address, DAI.address, 18]
     }); 
 
     // initalize the asset storage mapping within the Silo for the main token
     await mockSilo.setAssetStorage(
-      USDC.address, // interestBearingAsset
-      sUSDC.address, // CollateralToken
-      sUSDC.address, // CollateralOnlyToken (using wrapped token as a placeholder)
-      sUSDC.address, // debtToken (using wrapped token as a placeholder)
+      DAI.address, // interestBearingAsset
+      sDAI.address, // CollateralToken
+      sDAI.address, // CollateralOnlyToken (using wrapped token as a placeholder)
+      sDAI.address, // debtToken (using wrapped token as a placeholder)
       fp(20000), // totalDeposits; These values do not matter for the sack of relayer tests
       fp(100), // collateralOnlyDeposits; These values do not matter for the sack of relayer tests
       fp(9000) // totalBorrowAmount; These values do not matter for the sack of relayer tests
@@ -57,11 +58,11 @@ describe('SiloWrapping', function () {
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
-    await USDC.mint(senderUser.address, fp(100));
-    await sUSDC.mint(senderUser.address, fp(100));
+    await DAI.mint(senderUser.address, fp(100));
+    await sDAI.mint(senderUser.address, fp(100));
 
-    await USDC.connect(senderUser).approve(vault.address, fp(100));
-    await sUSDC.connect(senderUser).approve(sUSDC.address, fp(100));
+    await DAI.connect(senderUser).approve(vault.address, fp(100));
+    await sDAI.connect(senderUser).approve(sDAI.address, fp(100));
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -94,7 +95,7 @@ describe('SiloWrapping', function () {
     outputReference?: BigNumberish
   ): string {
     return relayerLibrary.interface.encodeFunctionData('wrapShareToken', [
-      sUSDC.address,
+      sDAI.address,
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),
       amount,
@@ -109,7 +110,7 @@ describe('SiloWrapping', function () {
     outputReference?: BigNumberish
   ): string {
     return relayerLibrary.interface.encodeFunctionData('unwrapShareToken', [
-      sUSDC.address,
+      sDAI.address,
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),
       amount,
@@ -124,7 +125,7 @@ describe('SiloWrapping', function () {
   describe('primitives', () => {
     const amount = fp(1);
 
-    describe('wrap USDC', () => {
+    describe('wrap DAI', () => {
       let tokenSender: Account, tokenRecipient: Account;
 
       context('sender = senderUser, recipient = relayer', () => {
@@ -145,7 +146,7 @@ describe('SiloWrapping', function () {
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await USDC.connect(senderUser).transfer(relayer.address, amount);
+          await DAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
@@ -154,7 +155,7 @@ describe('SiloWrapping', function () {
 
       context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await USDC.connect(senderUser).transfer(relayer.address, amount);
+          await DAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = senderUser;
         });
@@ -164,7 +165,7 @@ describe('SiloWrapping', function () {
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
           // For these tests we will do a 1:1 wrapping and unwrapping due to no exposed conversion function for Silo
-          const expectedsUSDCAmount = amount;
+          const expectedsDAIAmount = amount;
 
           const receipt = await (
             await relayer.connect(senderUser).multicall([encodeWrap(tokenSender, tokenRecipient, amount)])
@@ -178,7 +179,7 @@ describe('SiloWrapping', function () {
               to: TypesConverter.toAddress(relayerIsSender ? mockSilo : relayer),
               value: amount,
             },
-            USDC
+            DAI
           );
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
@@ -186,26 +187,26 @@ describe('SiloWrapping', function () {
             {
               from: TypesConverter.toAddress(ZERO_ADDRESS),
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: expectedsUSDCAmount,
+              value: expectedsDAIAmount,
             },
-            sUSDC
+            sDAI
           );
         });
 
         it('stores wrap output as chained reference', async () => {
           // For these tests we will do a 1:1 wrapping and unwrapping due to no exposed conversion function for Silo
-          const expectedsUSDCAmount = amount;
+          const expectedsDAIAmount = amount;
 
           await relayer
             .connect(senderUser)
             .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedsUSDCAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedsDAIAmount);
         });
 
         it('wraps with chained references', async () => {
           // For these tests we will do a 1:1 wrapping and unwrapping due to no exposed conversion function for Silo
-          const expectedsUSDCAmount = amount;
+          const expectedsDAIAmount = amount;
           await setChainedReferenceContents(toChainedReference(0), amount);
 
           const receipt = await (
@@ -222,7 +223,7 @@ describe('SiloWrapping', function () {
               to: TypesConverter.toAddress(relayerIsSender ? mockSilo : relayer),
               value: amount,
             },
-            USDC
+            DAI
           );
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
@@ -230,20 +231,20 @@ describe('SiloWrapping', function () {
             {
               from: TypesConverter.toAddress(ZERO_ADDRESS),
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: expectedsUSDCAmount,
+              value: expectedsDAIAmount,
             },
-            sUSDC
+            sDAI
           );
         });
       }
     });
 
-    describe('unwrap sUSDC', () => {
+    describe('unwrap sDAI', () => {
       let tokenSender: Account, tokenRecipient: Account;
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          await sUSDC.connect(senderUser).approve(vault.address, fp(10));
+          await sDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = relayer;
         });
@@ -252,7 +253,7 @@ describe('SiloWrapping', function () {
 
       context('sender = senderUser, recipient = senderUser', () => {
         beforeEach(async () => {
-          await sUSDC.connect(senderUser).approve(vault.address, fp(10));
+          await sDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = senderUser;
         });
@@ -261,7 +262,7 @@ describe('SiloWrapping', function () {
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await sUSDC.connect(senderUser).transfer(relayer.address, amount);
+          await sDAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
@@ -270,7 +271,7 @@ describe('SiloWrapping', function () {
 
       context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await sUSDC.connect(senderUser).transfer(relayer.address, amount);
+          await sDAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = senderUser;
         });
@@ -291,7 +292,7 @@ describe('SiloWrapping', function () {
               to: TypesConverter.toAddress(relayerIsSender ? ZERO_ADDRESS : relayer),
               value: amount,
             },
-            sUSDC
+            sDAI
           );
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
@@ -301,7 +302,7 @@ describe('SiloWrapping', function () {
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: amount,
             },
-            USDC
+            DAI
           );
         });
 
@@ -310,8 +311,8 @@ describe('SiloWrapping', function () {
             .connect(senderUser)
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          const usdcAmount = amount;
-          await expectChainedReferenceContents(relayer, toChainedReference(0), usdcAmount);
+          const DAIAmount = amount;
+          await expectChainedReferenceContents(relayer, toChainedReference(0), DAIAmount);
         });
 
         it('unwraps with chained references', async () => {
@@ -331,7 +332,7 @@ describe('SiloWrapping', function () {
               to: TypesConverter.toAddress(relayerIsSender ? ZERO_ADDRESS : relayer),
               value: amount,
             },
-            sUSDC
+            sDAI
           );
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
@@ -341,339 +342,339 @@ describe('SiloWrapping', function () {
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: amount,
             },
-            USDC
+            DAI
           );
         });
       }
     });
   });
 
-  // describe('complex actions', () => {
-  //   let WETH: Token, USDCToken: Token, sUSDCToken: Token;
-  //   let poolTokens: TokenList;
-  //   let poolId: string;
-  //   let pool: StablePool;
-  //   let bptIndex: number;
+  describe('complex actions', () => {
+    let WETH: Token, DAIToken: Token, sDAIToken: Token;
+    let poolTokens: TokenList;
+    let poolId: string;
+    let pool: StablePool;
+    let bptIndex: number;
 
-  //   sharedBeforeEach('deploy pool', async () => {
-  //     WETH = await Token.deployedAt(await vault.instance.WETH());
-  //     USDCToken = await Token.deployedAt(await USDC.address);
-  //     sUSDCToken = await Token.deployedAt(await sUSDC.address);
-  //     poolTokens = new TokenList([WETH, sUSDCToken]).sort();
+    sharedBeforeEach('deploy pool', async () => {
+      WETH = await Token.deployedAt(await vault.instance.WETH());
+      DAIToken = await Token.deployedAt(await DAI.address);
+      sDAIToken = await Token.deployedAt(await sDAI.address);
+      poolTokens = new TokenList([WETH, sDAIToken]).sort();
 
-  //     pool = await StablePool.create({ tokens: poolTokens, vault });
-  //     poolId = pool.poolId;
+      pool = await StablePool.create({ tokens: poolTokens, vault });
+      poolId = pool.poolId;
 
-  //     await WETH.mint(senderUser, fp(2));
-  //     await WETH.approve(vault, MAX_UINT256, { from: senderUser });
+      await WETH.mint(senderUser, fp(2));
+      await WETH.approve(vault, MAX_UINT256, { from: senderUser });
 
-  //     // Seed liquidity in pool
-  //     await WETH.mint(admin, fp(200));
-  //     await WETH.approve(vault, MAX_UINT256, { from: admin });
+      // Seed liquidity in pool
+      await WETH.mint(admin, fp(200));
+      await WETH.approve(vault, MAX_UINT256, { from: admin });
 
-  //     await USDCToken.mint(admin, fp(150));
-  //     await USDCToken.approve(sUSDC, fp(150), { from: admin });
-  //     // await sUSDCToken.connect(admin).wrap(fp(150));
-  //     await sUSDCToken.approve(vault, MAX_UINT256, { from: admin });
+      await DAIToken.mint(admin, fp(150));
+      await DAIToken.approve(sDAI, fp(150), { from: admin });
+      // await sDAIToken.connect(admin).wrap(fp(150));
+      await sDAIToken.approve(vault, MAX_UINT256, { from: admin });
 
-  //     bptIndex = await pool.getBptIndex();
-  //     const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
+      bptIndex = await pool.getBptIndex();
+      const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
 
-  //     await pool.init({ initialBalances, from: admin });
-  //   });
+      await pool.init({ initialBalances, from: admin });
+    });
 
-  //   describe('swap', () => {
-  //     function encodeSwap(params: {
-  //       poolId: string;
-  //       kind: SwapKind;
-  //       tokenIn: Token;
-  //       tokenOut: Token;
-  //       amount: BigNumberish;
-  //       sender: Account;
-  //       recipient: Account;
-  //       outputReference?: BigNumberish;
-  //     }): string {
-  //       return relayerLibrary.interface.encodeFunctionData('swap', [
-  //         {
-  //           poolId: params.poolId,
-  //           kind: params.kind,
-  //           assetIn: params.tokenIn.address,
-  //           assetOut: params.tokenOut.address,
-  //           amount: params.amount,
-  //           userData: '0x',
-  //         },
-  //         {
-  //           sender: TypesConverter.toAddress(params.sender),
-  //           recipient: TypesConverter.toAddress(params.recipient),
-  //           fromInternalBalance: false,
-  //           toInternalBalance: false,
-  //         },
-  //         0,
-  //         MAX_UINT256,
-  //         0,
-  //         params.outputReference ?? 0,
-  //       ]);
-  //     }
+    describe('swap', () => {
+      function encodeSwap(params: {
+        poolId: string;
+        kind: SwapKind;
+        tokenIn: Token;
+        tokenOut: Token;
+        amount: BigNumberish;
+        sender: Account;
+        recipient: Account;
+        outputReference?: BigNumberish;
+      }): string {
+        return relayerLibrary.interface.encodeFunctionData('swap', [
+          {
+            poolId: params.poolId,
+            kind: params.kind,
+            assetIn: params.tokenIn.address,
+            assetOut: params.tokenOut.address,
+            amount: params.amount,
+            userData: '0x',
+          },
+          {
+            sender: TypesConverter.toAddress(params.sender),
+            recipient: TypesConverter.toAddress(params.recipient),
+            fromInternalBalance: false,
+            toInternalBalance: false,
+          },
+          0,
+          MAX_UINT256,
+          0,
+          params.outputReference ?? 0,
+        ]);
+      }
 
-  //     describe('swap using USDC as an input', () => {
-  //       let receipt: ContractReceipt;
-  //       const amount = fp(1);
+      describe('swap using DAI as an input', () => {
+        let receipt: ContractReceipt;
+        const amount = fp(1);
 
-  //       sharedBeforeEach('swap USDC for WETH', async () => {
-  //         receipt = await (
-  //           await relayer.connect(senderUser).multicall([
-  //             encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
-  //             encodeApprove(sUSDC, MAX_UINT256),
-  //             encodeSwap({
-  //               poolId,
-  //               kind: SwapKind.GivenIn,
-  //               tokenIn: sUSDC,
-  //               tokenOut: WETH,
-  //               amount: toChainedReference(0),
-  //               sender: relayer,
-  //               recipient: recipientUser,
-  //               outputReference: 0,
-  //             }),
-  //           ])
-  //         ).wait();
-  //       });
+        sharedBeforeEach('swap DAI for WETH', async () => {
+          receipt = await (
+            await relayer.connect(senderUser).multicall([
+              encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
+              encodeApprove(sDAI, MAX_UINT256),
+              encodeSwap({
+                poolId,
+                kind: SwapKind.GivenIn,
+                tokenIn: sDAI,
+                tokenOut: WETH,
+                amount: toChainedReference(0),
+                sender: relayer,
+                recipient: recipientUser,
+                outputReference: 0,
+              }),
+            ])
+          ).wait();
+        });
 
-  //       it('performs the given swap', async () => {
-  //         expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-  //           poolId,
-  //           tokenIn: sUSDC.address,
-  //           tokenOut: WETH.address,
-  //         });
+        it('performs the given swap', async () => {
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId,
+            tokenIn: sDAI.address,
+            tokenOut: WETH.address,
+          });
 
-  //         expectTransferEvent(receipt, { from: vault.address, to: recipientUser.address }, WETH);
-  //       });
+          expectTransferEvent(receipt, { from: vault.address, to: recipientUser.address }, WETH);
+        });
 
-  //       it('does not leave dust on the relayer', async () => {
-  //         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-  //         expect(await sUSDCToken.balanceOf(relayer)).to.be.eq(0);
-  //       });
-  //     });
+        it('does not leave dust on the relayer', async () => {
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
+        });
+      });
 
-  //     describe('swap using USDC as an output', () => {
-  //       let receipt: ContractReceipt;
-  //       const amount = fp(1);
+      describe('swap using DAI as an output', () => {
+        let receipt: ContractReceipt;
+        const amount = fp(1);
 
-  //       sharedBeforeEach('swap WETH for USDC', async () => {
-  //         receipt = await (
-  //           await relayer.connect(senderUser).multicall([
-  //             encodeSwap({
-  //               poolId,
-  //               kind: SwapKind.GivenIn,
-  //               tokenIn: WETH,
-  //               tokenOut: sUSDCToken,
-  //               amount,
-  //               sender: senderUser,
-  //               recipient: relayer,
-  //               outputReference: toChainedReference(0),
-  //             }),
-  //             encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0)),
-  //           ])
-  //         ).wait();
-  //       });
+        sharedBeforeEach('swap WETH for DAI', async () => {
+          receipt = await (
+            await relayer.connect(senderUser).multicall([
+              encodeSwap({
+                poolId,
+                kind: SwapKind.GivenIn,
+                tokenIn: WETH,
+                tokenOut: sDAIToken,
+                amount,
+                sender: senderUser,
+                recipient: relayer,
+                outputReference: toChainedReference(0),
+              }),
+              encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0)),
+            ])
+          ).wait();
+        });
 
-  //       it('performs the given swap', async () => {
-  //         expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-  //           poolId,
-  //           tokenIn: WETH.address,
-  //           tokenOut: sUSDCToken.address,
-  //         });
+        it('performs the given swap', async () => {
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId,
+            tokenIn: WETH.address,
+            tokenOut: sDAIToken.address,
+          });
 
-  //         expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, USDC);
-  //       });
+          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
 
-  //       it('does not leave dust on the relayer', async () => {
-  //         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-  //         expect(await sUSDCToken.balanceOf(relayer)).to.be.eq(0);
-  //       });
-  //     });
-  //   });
+        });
 
-  //   describe('batchSwap', () => {
-  //     function encodeBatchSwap(params: {
-  //       swaps: Array<{
-  //         poolId: string;
-  //         tokenIn: Token;
-  //         tokenOut: Token;
-  //         amount: BigNumberish;
-  //       }>;
-  //       sender: Account;
-  //       recipient: Account;
-  //       outputReferences?: Dictionary<BigNumberish>;
-  //     }): string {
-  //       const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
-  //         index: poolTokens.findIndexBySymbol(symbol),
-  //         key,
-  //       }));
+        it('does not leave dust on the relayer', async () => {
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
+        });
+      });
+    });
 
-  //       return relayerLibrary.interface.encodeFunctionData('batchSwap', [
-  //         SwapKind.GivenIn,
-  //         params.swaps.map((swap) => ({
-  //           poolId: swap.poolId,
-  //           assetInIndex: poolTokens.indexOf(swap.tokenIn),
-  //           assetOutIndex: poolTokens.indexOf(swap.tokenOut),
-  //           amount: swap.amount,
-  //           userData: '0x',
-  //         })),
-  //         poolTokens.addresses,
-  //         {
-  //           sender: TypesConverter.toAddress(params.sender),
-  //           recipient: TypesConverter.toAddress(params.recipient),
-  //           fromInternalBalance: false,
-  //           toInternalBalance: false,
-  //         },
-  //         new Array(poolTokens.length).fill(MAX_INT256),
-  //         MAX_UINT256,
-  //         0,
-  //         outputReferences,
-  //       ]);
-  //     }
+    describe('batchSwap', () => {
+      function encodeBatchSwap(params: {
+        swaps: Array<{
+          poolId: string;
+          tokenIn: Token;
+          tokenOut: Token;
+          amount: BigNumberish;
+        }>;
+        sender: Account;
+        recipient: Account;
+        outputReferences?: Dictionary<BigNumberish>;
+      }): string {
+        const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
+          index: poolTokens.findIndexBySymbol(symbol),
+          key,
+        }));
 
-  //     describe('swap using USDC as an input', () => {
-  //       let receipt: ContractReceipt;
-  //       const amount = fp(1);
+        return relayerLibrary.interface.encodeFunctionData('batchSwap', [
+          SwapKind.GivenIn,
+          params.swaps.map((swap) => ({
+            poolId: swap.poolId,
+            assetInIndex: poolTokens.indexOf(swap.tokenIn),
+            assetOutIndex: poolTokens.indexOf(swap.tokenOut),
+            amount: swap.amount,
+            userData: '0x',
+          })),
+          poolTokens.addresses,
+          {
+            sender: TypesConverter.toAddress(params.sender),
+            recipient: TypesConverter.toAddress(params.recipient),
+            fromInternalBalance: false,
+            toInternalBalance: false,
+          },
+          new Array(poolTokens.length).fill(MAX_INT256),
+          MAX_UINT256,
+          0,
+          outputReferences,
+        ]);
+      }
 
-  //       sharedBeforeEach('swap USDC for WETH', async () => {
-  //         receipt = await (
-  //           await relayer.connect(senderUser).multicall([
-  //             encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
-  //             encodeApprove(sUSDCToken, MAX_UINT256),
-  //             encodeBatchSwap({
-  //               swaps: [{ poolId, tokenIn: sUSDCToken, tokenOut: WETH, amount: toChainedReference(0) }],
-  //               sender: relayer,
-  //               recipient: recipientUser,
-  //             }),
-  //           ])
-  //         ).wait();
-  //       });
+      describe('swap using DAI as an input', () => {
+        let receipt: ContractReceipt;
+        const amount = fp(1);
 
-  //       it('performs the given swap', async () => {
-  //         expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-  //           poolId: poolId,
-  //           tokenIn: sUSDC.address,
-  //           tokenOut: WETH.address,
-  //         });
+        sharedBeforeEach('swap DAI for WETH', async () => {
+          receipt = await (
+            await relayer.connect(senderUser).multicall([
+              encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
+              encodeApprove(sDAIToken, MAX_UINT256),
+              encodeBatchSwap({
+                swaps: [{ poolId, tokenIn: sDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
+                sender: relayer,
+                recipient: recipientUser,
+              }),
+            ])
+          ).wait();
+        });
 
-  //         expectTransferEvent(receipt, { from: vault.address, to: recipientUser.address }, WETH);
-  //       });
+        it('performs the given swap', async () => {
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId: poolId,
+            tokenIn: sDAI.address,
+            tokenOut: WETH.address,
+          });
 
-  //       it('does not leave dust on the relayer', async () => {
-  //         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-  //         expect(await sUSDCToken.balanceOf(relayer)).to.be.eq(0);
-  //       });
-  //     });
+          expectTransferEvent(receipt, { from: vault.address, to: recipientUser.address }, WETH);
+        });
 
-  //     describe('swap using USDC as an output', () => {
-  //       let receipt: ContractReceipt;
-  //       const amount = fp(1);
+        it('does not leave dust on the relayer', async () => {
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
+        });
+      });
 
-  //       sharedBeforeEach('swap WETH for USDC', async () => {
-  //         receipt = await (
-  //           await relayer.connect(senderUser).multicall([
-  //             encodeBatchSwap({
-  //               swaps: [{ poolId, tokenIn: WETH, tokenOut: sUSDCToken, amount }],
-  //               sender: senderUser,
-  //               recipient: relayer,
-  //               outputReferences: { sUSDC: toChainedReference(0) },
-  //             }),
-  //             encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0)),
-  //           ])
-  //         ).wait();
-  //       });
+      describe('swap using DAI as an output', () => {
+        let receipt: ContractReceipt;
+        const amount = fp(1);
 
-  //       it('performs the given swap', async () => {
-  //         expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-  //           poolId: poolId,
-  //           tokenIn: WETH.address,
-  //           tokenOut: sUSDC.address,
-  //         });
+        sharedBeforeEach('swap WETH for DAI', async () => {
+          receipt = await (
+            await relayer.connect(senderUser).multicall([
+              encodeBatchSwap({
+                swaps: [{ poolId, tokenIn: WETH, tokenOut: sDAIToken, amount }],
+                sender: senderUser,
+                recipient: relayer,
+                outputReferences: { sDAI: toChainedReference(0) },
+              }),
+              encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0)),
+            ])
+          ).wait();
+        });
 
-  //         expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, USDC);
-  //       });
+        it('performs the given swap', async () => {
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId: poolId,
+            tokenIn: WETH.address,
+            tokenOut: sDAI.address,
+          });
+          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
+        });
 
-  //       it('does not leave dust on the relayer', async () => {
-  //         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-  //         expect(await sUSDCToken.balanceOf(relayer)).to.be.eq(0);
-  //       });
-  //     });
-  //   });
+        it('does not leave dust on the relayer', async () => {
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
+        });
+      });
+    });
 
-  //   describe('joinPool', () => {
-  //     function encodeJoin(params: {
-  //       poolId: string;
-  //       sender: Account;
-  //       recipient: Account;
-  //       assets: string[];
-  //       maxAmountsIn: BigNumberish[];
-  //       userData: string;
-  //       outputReference?: BigNumberish;
-  //     }): string {
-  //       return relayerLibrary.interface.encodeFunctionData('joinPool', [
-  //         params.poolId,
-  //         0, // WeightedPool
-  //         TypesConverter.toAddress(params.sender),
-  //         TypesConverter.toAddress(params.recipient),
-  //         {
-  //           assets: params.assets,
-  //           maxAmountsIn: params.maxAmountsIn,
-  //           userData: params.userData,
-  //           fromInternalBalance: false,
-  //         },
-  //         0,
-  //         params.outputReference ?? 0,
-  //       ]);
-  //     }
+    describe('joinPool', () => {
+      function encodeJoin(params: {
+        poolId: string;
+        sender: Account;
+        recipient: Account;
+        assets: string[];
+        maxAmountsIn: BigNumberish[];
+        userData: string;
+        outputReference?: BigNumberish;
+      }): string {
+        return relayerLibrary.interface.encodeFunctionData('joinPool', [
+          params.poolId,
+          0, // WeightedPool
+          TypesConverter.toAddress(params.sender),
+          TypesConverter.toAddress(params.recipient),
+          {
+            assets: params.assets,
+            maxAmountsIn: params.maxAmountsIn,
+            userData: params.userData,
+            fromInternalBalance: false,
+          },
+          0,
+          params.outputReference ?? 0,
+        ]);
+      }
 
-  //     let receipt: ContractReceipt;
-  //     let sendersUSDCBalanceBefore: BigNumber;
-  //     const amount = fp(1);
+      let receipt: ContractReceipt;
+      let sendersDAIBalanceBefore: BigNumber;
+      const amount = fp(1);
 
-  //     sharedBeforeEach('join the pool', async () => {
-  //       const { tokens: allTokens } = await pool.getTokens();
+      sharedBeforeEach('join the pool', async () => {
+        const { tokens: allTokens } = await pool.getTokens();
+        sendersDAIBalanceBefore = await sDAIToken.balanceOf(senderUser);
 
-  //       sendersUSDCBalanceBefore = await sUSDCToken.balanceOf(senderUser);
-  //       receipt = await (
-  //         await relayer.connect(senderUser).multicall([
-  //           encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
-  //           encodeApprove(sUSDCToken, MAX_UINT256),
-  //           encodeJoin({
-  //             poolId,
-  //             assets: allTokens,
-  //             sender: relayer,
-  //             recipient: recipientUser,
-  //             maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
-  //             userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-  //               poolTokens.map((token) => (token === sUSDCToken ? toChainedReference(0) : 0)),
-  //               0
-  //             ),
-  //           }),
-  //         ])
-  //       ).wait();
-  //     });
+        receipt = await (
+          await relayer.connect(senderUser).multicall([
+            encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(sDAIToken, MAX_UINT256),
+            encodeJoin({
+              poolId,
+              assets: allTokens,
+              sender: relayer,
+              recipient: recipientUser,
+              maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
+              userData: StablePoolEncoder.joinExactTokensInForBPTOut(
+                poolTokens.map((token) => (token === sDAIToken ? toChainedReference(0) : 0)),
+                0
+              ),
+            }),
+          ])
+        ).wait();
+      });
 
-  //     it('joins the pool', async () => {
-  //       expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
-  //         poolId,
-  //         liquidityProvider: relayer.address,
-  //       });
+      it('joins the pool', async () => {
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          poolId,
+          liquidityProvider: relayer.address,
+        });
 
-  //       // BPT minted to recipient
-  //       expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, pool);
-  //     });
+        // BPT minted to recipient
+        expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, pool);
+      });
 
-  //     it('does not take sUSDC from the user', async () => {
-  //       const sendersUSDCBalanceAfter = await sUSDCToken.balanceOf(senderUser);
-  //       expect(sendersUSDCBalanceAfter).to.be.eq(sendersUSDCBalanceBefore);
-  //     });
+      it('does not take sDAI from the user', async () => {
+        const sendersDAIBalanceAfter = await sDAIToken.balanceOf(senderUser);
+        expect(sendersDAIBalanceAfter).to.be.eq(sendersDAIBalanceBefore);
+      });
 
-  //     it('does not leave dust on the relayer', async () => {
-  //       expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-  //       expect(await sUSDCToken.balanceOf(relayer)).to.be.eq(0);
-  //     });
-  //   });
-  // });
+      it('does not leave dust on the relayer', async () => {
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
+      });
+    });
+  });
 });
