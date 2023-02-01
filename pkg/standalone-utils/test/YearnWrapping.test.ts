@@ -7,7 +7,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
-import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
@@ -677,7 +677,7 @@ describe('YearnWrapping', function () {
               sender: relayer,
               recipient: recipientUser,
               maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
-              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              userData: StablePoolEncoder.joinExactTokensInForBPTOut(
                 poolTokens.map((token) => (token === yvDAIToken ? toChainedReference(0) : 0)),
                 0
               ),
