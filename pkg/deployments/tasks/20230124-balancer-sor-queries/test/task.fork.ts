@@ -43,7 +43,7 @@ const defaultPoolDataQueryConfig = {
   loadSwapFees: false,
   loadLinearWrappedTokenRates: false,
   loadNormalizedWeights: false,
-  loadTokenRates: false,
+  loadScalingFactors: false,
   loadAmps: false,
 
   blockNumber: 0,
@@ -51,7 +51,7 @@ const defaultPoolDataQueryConfig = {
   swapFeeTypes: [],
   linearPoolIdxs: [],
   weightedPoolIdxs: [],
-  tokenRatePoolIdxs: [],
+  scalingFactorPoolIdxs: [],
   ampPoolIdxs: [],
 };
 
@@ -196,10 +196,9 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
     });
   });
 
-  context('token rates', () => {
-    it('returns the correct rates for 1 pool', async () => {
-      const response = await balancerSorQueries.getTokenRatesForPools(
-        [COMPOSABLE_STABLE_POOL_ID],
+  context('scaling factors', () => {
+    it('returns the correct scaling factors for 1 pool', async () => {
+      const response = await balancerSorQueries.getScalingFactorsForPools(
         [COMPOSABLE_STABLE_POOL]
       );
 
@@ -209,9 +208,8 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
       expect(response[0][3]).to.equal(bn('1001905060971436536'));
     });
 
-    it('returns the correct rates for several pools', async () => {
-      const response = await balancerSorQueries.getTokenRatesForPools(
-        [COMPOSABLE_STABLE_POOL_ID, PHANTOM_STABLE_POOL_ID],
+    it('returns the correct scaling factors for several pools', async () => {
+      const response = await balancerSorQueries.getScalingFactorsForPools(
         [COMPOSABLE_STABLE_POOL, PHANTOM_STABLE_POOL]
       );
 
@@ -254,7 +252,7 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
       expect(response.totalSupplies.length).to.equal(0);
       expect(response.linearWrappedTokenRates.length).to.equal(0);
       expect(response.weights.length).to.equal(0);
-      expect(response.tokenRates.length).to.equal(0);
+      expect(response.scalingFactors.length).to.equal(0);
       expect(response.swapFees.length).to.equal(0);
     });
 
@@ -307,20 +305,20 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
         [BAL_ETH_POOL_ID, COMPOSABLE_STABLE_POOL_ID, PHANTOM_STABLE_POOL_ID],
         {
           ...defaultPoolDataQueryConfig,
-          loadTokenRates: true,
-          tokenRatePoolIdxs: [1, 2],
+          loadScalingFactors: true,
+          scalingFactorPoolIdxs: [1, 2],
         }
       );
 
-      expect(response.tokenRates[0][0]).to.equal(bn('1005671911533217346'));
-      expect(response.tokenRates[0][1]).to.equal(bn('1001773828282482904'));
-      expect(response.tokenRates[0][2]).to.equal(bn('1000000000000000000'));
-      expect(response.tokenRates[0][3]).to.equal(bn('1001905060971436536'));
+      expect(response.scalingFactors[0][0]).to.equal(bn('1005671911533217346'));
+      expect(response.scalingFactors[0][1]).to.equal(bn('1001773828282482904'));
+      expect(response.scalingFactors[0][2]).to.equal(bn('1000000000000000000'));
+      expect(response.scalingFactors[0][3]).to.equal(bn('1001905060971436536'));
 
-      expect(response.tokenRates[1][0]).to.equal(bn('1017033447123846653'));
-      expect(response.tokenRates[1][1]).to.equal(bn('1000000000000000000'));
-      expect(response.tokenRates[1][2]).to.equal(bn('1011888479898642476'));
-      expect(response.tokenRates[1][3]).to.equal(bn('1010971331127696692'));
+      expect(response.scalingFactors[1][0]).to.equal(bn('1017033447123846653'));
+      expect(response.scalingFactors[1][1]).to.equal(bn('1000000000000000000'));
+      expect(response.scalingFactors[1][2]).to.equal(bn('1011888479898642476'));
+      expect(response.scalingFactors[1][3]).to.equal(bn('1010971331127696692'));
     });
 
     it('loads amp at specified idxs', async () => {

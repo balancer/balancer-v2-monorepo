@@ -30,8 +30,8 @@ interface IWeightedPool {
     function getNormalizedWeights() external view returns (uint256[] memory);
 }
 
-interface IPoolWithTokenRates {
-    function getTokenRate(IERC20 token) external view returns (uint256);
+interface IPoolWithScalingFactors {
+    function getScalingFactors() external view returns (uint256[] memory);
 }
 
 interface IPoolWithActualSupply {
@@ -51,7 +51,14 @@ interface IPoolWithPercentFee {
 }
 
 interface IPoolWithAmp {
-    function getAmplificationParameter() external view returns (uint256 value, bool isUpdating, uint256 precision);
+    function getAmplificationParameter()
+        external
+        view
+        returns (
+            uint256 value,
+            bool isUpdating,
+            uint256 precision
+        );
 }
 
 struct SorPoolDataQueryConfig {
@@ -60,14 +67,14 @@ struct SorPoolDataQueryConfig {
     bool loadSwapFees;
     bool loadLinearWrappedTokenRates;
     bool loadNormalizedWeights;
-    bool loadTokenRates;
+    bool loadScalingFactors;
     bool loadAmps;
     uint256 blockNumber;
     TotalSupplyType[] totalSupplyTypes;
     SwapFeeType[] swapFeeTypes;
     uint256[] linearPoolIdxs;
     uint256[] weightedPoolIdxs;
-    uint256[] tokenRatePoolIdxs;
+    uint256[] scalingFactorPoolIdxs;
     uint256[] ampPoolIdxs;
 }
 
@@ -92,7 +99,7 @@ contract BalancerSorQueries {
             uint256[] memory swapFees,
             uint256[] memory linearWrappedTokenRates,
             uint256[][] memory weights,
-            uint256[][] memory tokenRates,
+            uint256[][] memory scalingFactors,
             uint256[] memory amps
         )
     {
@@ -135,16 +142,14 @@ contract BalancerSorQueries {
             weights = getNormalizedWeightsForPools(weightedPools);
         }
 
-        if (config.loadTokenRates) {
-            bytes32[] memory tokenRatePoolIds = new bytes32[](config.tokenRatePoolIdxs.length);
-            address[] memory tokenRatePools = new address[](config.tokenRatePoolIdxs.length);
+        if (config.loadScalingFactors) {
+            address[] memory scalingFactorPools = new address[](config.scalingFactorPoolIdxs.length);
 
-            for (i = 0; i < config.tokenRatePoolIdxs.length; i++) {
-                tokenRatePoolIds[i] = poolIds[config.tokenRatePoolIdxs[i]];
-                tokenRatePools[i] = pools[config.tokenRatePoolIdxs[i]];
+            for (i = 0; i < config.scalingFactorPoolIdxs.length; i++) {
+                scalingFactorPools[i] = pools[config.scalingFactorPoolIdxs[i]];
             }
 
-            tokenRates = getTokenRatesForPools(tokenRatePoolIds, tokenRatePools);
+            scalingFactors = getScalingFactorsForPools(scalingFactorPools);
         }
 
         if (config.loadAmps) {
@@ -188,16 +193,11 @@ contract BalancerSorQueries {
         return rates;
     }
 
-    function getAmpForPools(address[] memory poolAddresses)
-        public
-        view
-        returns (uint256[] memory)
-    {
-        
+    function getAmpForPools(address[] memory poolAddresses) public view returns (uint256[] memory) {
         uint256[] memory amps = new uint256[](poolAddresses.length);
 
         for (uint256 i = 0; i < poolAddresses.length; i++) {
-            (amps[i], ,) = IPoolWithAmp(poolAddresses[i]).getAmplificationParameter();
+            (amps[i], , ) = IPoolWithAmp(poolAddresses[i]).getAmplificationParameter();
         }
 
         return amps;
@@ -251,24 +251,14 @@ contract BalancerSorQueries {
         return allWeights;
     }
 
-    function getTokenRatesForPools(bytes32[] memory poolIds, address[] memory poolAddresses)
-        public
-        view
-        returns (uint256[][] memory)
-    {
-        uint256[][] memory allRates = new uint256[][](poolIds.length);
-        IERC20[] memory tokens;
+    function getScalingFactorsForPools(address[] memory poolAddresses) public view returns (uint256[][] memory) {
+        uint256[][] memory allScalingFactors = new uint256[][](poolAddresses.length);
 
-        for (uint256 i = 0; i < poolIds.length; i++) {
-            (tokens, , ) = vault.getPoolTokens(poolIds[i]);
-            allRates[i] = new uint256[](tokens.length);
-
-            for (uint256 j = 0; j < tokens.length; j++) {
-                allRates[i][j] = _getPoolTokenRate(poolAddresses[i], tokens[j]);
-            }
+        for (uint256 i = 0; i < poolAddresses.length; i++) {
+            allScalingFactors[i] = IPoolWithScalingFactors(poolAddresses[i]).getScalingFactors();
         }
 
-        return allRates;
+        return allScalingFactors;
     }
 
     function _getLinearWrappedTokenRate(address poolAddress) internal view returns (uint256) {
@@ -290,14 +280,6 @@ contract BalancerSorQueries {
     function _getPoolActualSupply(address poolAddress) internal view returns (uint256) {
         try IPoolWithActualSupply(poolAddress).getActualSupply() returns (uint256 actualSupply) {
             return actualSupply;
-        } catch {
-            return 0;
-        }
-    }
-
-    function _getPoolTokenRate(address poolAddress, IERC20 token) internal view returns (uint256) {
-        try IPoolWithTokenRates(poolAddress).getTokenRate(token) returns (uint256 rate) {
-            return rate;
         } catch {
             return 0;
         }
