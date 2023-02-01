@@ -15,24 +15,34 @@
 pragma solidity ^0.7.0;
 
 /**
- * @notice This contract will be the registry where all protocol ids are added and registered
- * Preapproved protocols can be assigned before registration and will go through governance in
- * order to claim a protocol id. These protocol ids will be used accross pool types and will be
- * managed within this contract.
+ * @dev Registry of protocol IDs for external integrations with Balancer. The IDs chosen are arbitrary and do not affect
+ * behavior of any Balancer contracts. They are used only to tag specific contracts (usually pools) at the data layer.
  */
 interface IProtocolIdRegistry {
-    /**
-     * @notice Record protocol ID registrations.
-     * @dev Ids that are registered are protocols that have claimed an Id and already have
-     * a live pool deployed with said Id
-     * @param protocolId
-     * @param name of protocol
-     */
+    // Emitted when a new protocol ID is registered.
     event ProtocolIdRegistered(uint256 indexed protocolId, string name);
 
     /**
-     * @notice Register an id (and name) to differentiate between protocols.
-     * @dev This is a permissioned function. Protocol ids cannot be deregistered.
+     * @dev Registers an ID (and name) to differentiate among protocols. Protocol IDs cannot be deregistered.
      */
     function registerProtocolId(uint256 protocolId, string memory name) external;
+
+    /**
+     * @dev Returns true if `protocolId` has been registered and can be queried.
+     */
+    function isValidProtocolId(uint256 protocolId) external view returns (bool);
+
+    /**
+     * @dev Returns the name associated with a given `protocolId`.
+     */
+    function getProtocolName(uint256 protocolId) external view returns (string memory);
+}
+
+library ProtocolId {
+    // This list is not exhaustive - more protocol IDs can be added to the system. It is expected for this list to be
+    // extended with new protocol IDs as they are registered, to keep them all in one place and reduce
+    // likelihood of user error.
+    // solhint-disable private-vars-leading-underscore
+    uint256 internal constant AAVE_V2 = 0;
+    // solhint-enable private-vars-leading-underscore
 }

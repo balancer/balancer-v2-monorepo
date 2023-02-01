@@ -15,44 +15,46 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolIdRegistry.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
-    // Asssociate a name with each registered protocol that uses this factory.
     struct ProtocolIdData {
         string name;
         bool registered;
     }
 
-    // Maintain a set of recognized protocolIds.
-    mapping(uint256 => ProtocolIdData) private _protocolIds;
+    mapping(uint256 => ProtocolIdData) private _protocolIdData;
 
-    constructor(IVault vault) SingletonAuthentication(vault) {
-        _protocolIds[0] = ProtocolIdData({ name: "Aave", registered: true });
+    modifier withValidProtocolId(uint256 protocolId) {
+        require(isValidProtocolId(protocolId), "Non-existent protocol ID");
+        _;
     }
 
-    /**
-     * @notice Register an id (and name) to differentiate between protocols.
-     * @dev This is a permissioned function. Protocol ids cannot be deregistered.
-     */
-    function registerProtocolId(uint256 protocolId, string memory name) external override authenticate {
-        require(!_protocolIds[protocolId].registered, "Protocol ID already registered");
+    constructor(IVault vault) SingletonAuthentication(vault) {
+        _registerProtocolId(ProtocolId.AAVE_V2, "Aave v2");
+    }
 
+    /// @inheritdoc IProtocolIdRegistry
+    function registerProtocolId(uint256 protocolId, string memory name) external override authenticate {
+        require(!_protocolIdData[protocolId].registered, "Protocol ID already registered");
         _registerProtocolId(protocolId, name);
     }
 
-    /**
-     * @notice Retrieve the availability of a given protocol id
-     * @return bool is protocolId not in use
-     */
-    function isProtocolIdAvailable(uint256 protocolId) public view returns (bool) {
-        return (!_protocolIds[protocolId].registered) ? true : false;
+    /// @inheritdoc IProtocolIdRegistry
+    function isValidProtocolId(uint256 protocolId) public view override returns (bool) {
+        return _protocolIdData[protocolId].registered;
     }
 
     function _registerProtocolId(uint256 protocolId, string memory name) private {
-        _protocolIds[protocolId] = ProtocolIdData({ name: name, registered: true });
-
+        _protocolIdData[protocolId] = ProtocolIdData({ name: name, registered: true });
         emit ProtocolIdRegistered(protocolId, name);
+    }
+
+    /// @inheritdoc IProtocolIdRegistry
+    function getProtocolName(
+        uint256 protocolId
+    ) external view override withValidProtocolId(protocolId) returns (string memory) {
+        return _protocolIdData[protocolId].name;
     }
 }
