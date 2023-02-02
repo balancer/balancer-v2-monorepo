@@ -34,19 +34,19 @@ describe('ProtocolIdRegistry', () => {
                 })).to.emit('ProtocolIdRegistry', 'ProtocolIdRegistered');
         });
 
-        context('Aave v2 protocol is registered with protocol id 0', async () => {
+        context('Aave v1 protocol is registered with protocol id 0', async () => {
             it('Protocol Id is valid', async () => {
                 expect(await registry.isValidProtocolId(0)).to.equal(true);
             });
 
             it('Protocol name is correct', async () => {
-                expect(await registry.getProtocolName(0)).to.equal("Aave v2");
+                expect(await registry.getProtocolName(0)).to.equal("Aave v1");
             });
         })
     });
 
     describe('Registration', () => {
-        let newProtocolId: number = 10; 
+        let newProtocolId: number = 1000000000; 
         let newProtocolName: string = "Test Protocol";
         let transactionReceipt: any;
         sharedBeforeEach('grant permissions', async () => {
