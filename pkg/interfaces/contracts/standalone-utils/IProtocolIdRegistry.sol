@@ -43,6 +43,59 @@ library ProtocolId {
     // extended with new protocol IDs as they are registered, to keep them all in one place and reduce
     // likelihood of user error.
     // solhint-disable private-vars-leading-underscore
-    uint256 internal constant AAVE_V2 = 0;
+    uint256 internal constant AAVE_V1 = 0;
     // solhint-enable private-vars-leading-underscore
+    uint256 internal constant AAVE_V2 = 1;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant AAVE_V3 = 2;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant AURA = 3;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant BEEFY = 4;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant BEETHOVEN = 5;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant BUTTONWOOD = 6;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant COW = 7;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant CRON = 8;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant ELEMENT = 9;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant EULER = 10;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant FJORD = 11;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant GEARBOX = 12;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant GYROSCOPE = 13;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant ONEINCH = 14;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant MYCELIUM = 15;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant PARASWAP = 16;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant POWERPOOL = 17;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant PRIMEDAO = 18;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant REAPER = 19;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant SENSE = 20;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant SILO = 21;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant STAKEDAO = 22;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant STARGATE = 23;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant TETU = 24;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant TEMPUS = 25;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant XAVE = 26;
+    // solhint-enable private-vars-leading-underscore
+    uint256 internal constant YEARN = 27;
 }
