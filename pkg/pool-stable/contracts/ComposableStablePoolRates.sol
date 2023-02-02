@@ -85,6 +85,31 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     }
 
     /**
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting a zero-value internal
+     * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
+     * reentrancy protection will cause this function to revert.
+     *
+     * The exact function call doesn't really matter: we're just trying to trigger the Vault reentrancy check
+     * (and not hurt anything in case it works). An empty operation array with no specific operation at all works
+     * for that purpose, and is also the least expensive in terms of gas and bytecode size.
+     *
+     * Use this modifier with any function that can cause a state change in a pool and is either public itself,
+     * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
+     */
+    modifier whenNotInVaultContext() {
+        _ensureNotInVaultContext();
+        _;
+    }
+
+    /**
+     * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
+     */
+    function _ensureNotInVaultContext() private {
+        IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
+        getVault().manageUserBalance(noop);
+    }
+
+    /**
      * @dev Updates the old rate for the token at `index` (including BPT). Assumes `index` is valid.
      */
     function _updateOldRate(uint256 index) internal {
