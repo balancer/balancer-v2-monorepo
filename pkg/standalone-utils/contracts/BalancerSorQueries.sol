@@ -214,7 +214,13 @@ contract BalancerSorQueries {
             if (swapFeeTypes[i] == SwapFeeType.PERCENT_FEE) {
                 swapFees[i] = IPoolWithPercentFee(poolAddresses[i]).percentFee();
             } else {
-                swapFees[i] = IPoolWithSwapFeePercentage(poolAddresses[i]).getSwapFeePercentage();
+                // In instances where we get an unknown pool type that does not support the default getSwapFeePercentage
+                // we return a 0 swap fee.
+                try IPoolWithSwapFeePercentage(poolAddresses[i]).getSwapFeePercentage() returns (uint256 swapFee) {
+                    swapFees[i] = swapFee;
+                } catch {
+                    swapFees[i] = 0;
+                }
             }
         }
 

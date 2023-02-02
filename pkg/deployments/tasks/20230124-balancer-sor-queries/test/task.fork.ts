@@ -13,6 +13,7 @@ const WSTETH_ETH_POOL_ID = '0x32296969ef14eb0c6d29669c550d4a04491302300002000000
 const BAL_ETH_POOL_LAST_CHANGED_BLOCK = 16473966;
 const OHM_ETH_POOL = '0xd1ec5e215e8148d76f4460e4097fd3d5ae0a3558';
 const WSTETH_ETH_POOL = '0x32296969ef14eb0c6d29669c550d4a0449130230';
+const FX_POOL = '0x55bec22f8f6c69137ceaf284d9b441db1b9bfedc';
 
 const BBAUSDC = '0x82698aecc9e28e9bb27608bd52cf57f704bd1b83';
 const BBAUSDC_POOL_ID = '0x82698aecc9e28e9bb27608bd52cf57f704bd1b83000000000000000000000336';
@@ -137,6 +138,15 @@ describeForkTest('BalancerSorQueries', 'mainnet', 16474000, function () {
       expect(response[0]).to.equal(fp('0.01'));
       expect(response[1]).to.equal(fp('0.1'));
       expect(response[2]).to.equal(fp('0.00001'));
+    });
+
+    it('returns a 0 swap fee when passed an unknown pool type', async () => {
+      const response = await balancerSorQueries.getSwapFeePercentageForPools(
+        [FX_POOL],
+        [SwapFeeType.SWAP_FEE_PERCENTAGE]
+      );
+
+      expect(response[0]).to.equal('0');
     });
   });
 
