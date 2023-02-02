@@ -17,10 +17,6 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // We also create a Pool using the factory and verify it, to let us compute their action IDs and so that future
     // Pools are automatically verified. We however don't run any of this code in CHECK mode, since we don't care about
     // the contracts deployed here. The action IDs will be checked to be correct via a different mechanism.
-
-    // The pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare them here to
-    // appease the type system. Those are constructor arguments, but automatically provided by the factory.
-
     const newWeightedPoolParams = {
       name: 'DO NOT USE - Mock Weighted Pool',
       symbol: 'TEST',
@@ -33,6 +29,8 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       swapFeePercentage: bn(1e12),
     };
 
+    // The pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare them here to
+    // appease the type system. Those are constructor arguments, but automatically provided by the factory.
     const mockPoolArgs = {
       params: newWeightedPoolParams,
       vault: input.Vault,
