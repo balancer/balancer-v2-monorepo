@@ -1,4 +1,4 @@
-# 2023-01-30 - Weighted Pool Factory V3
+# 2023-02-06 - Weighted Pool Factory V3
 
 Deployment of the `WeightedPoolFactory`.
 

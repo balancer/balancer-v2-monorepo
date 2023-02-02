@@ -42,7 +42,7 @@ describeForkTest('WeightedPool V3', 'mainnet', 16520000, function () {
   const WEIGHTS = toNormalizedWeights([fp(20), fp(30), fp(50)]);
 
   before('run task', async () => {
-    task = new Task('20230130-weighted-pool-v3', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20230206-weighted-pool-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('WeightedPoolFactory');
   });
@@ -90,7 +90,7 @@ describeForkTest('WeightedPool V3', 'mainnet', 16520000, function () {
       const expectedFactoryVersion = {
         name: 'WeightedPoolFactory',
         version: 3,
-        deployment: '20230130-weighted-pool-v3',
+        deployment: '20230206-weighted-pool-v3',
       };
 
       expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
@@ -102,7 +102,7 @@ describeForkTest('WeightedPool V3', 'mainnet', 16520000, function () {
       const expectedPoolVersion = {
         name: 'WeightedPool',
         version: 3,
-        deployment: '20230130-weighted-pool-v3',
+        deployment: '20230206-weighted-pool-v3',
       };
 
       expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));

@@ -14,7 +14,7 @@ const ProtocolFeePercentagesProvider = new Task('20220725-protocol-fee-percentag
 const WETH = new Task('00000000-tokens', TaskMode.READ_ONLY);
 const BAL = new Task('00000000-tokens', TaskMode.READ_ONLY);
 
-const BaseVersion = { version: 3, deployment: '20230130-weighted-pool-v3' };
+const BaseVersion = { version: 3, deployment: '20230206-weighted-pool-v3' };
 
 export default {
   Vault,
