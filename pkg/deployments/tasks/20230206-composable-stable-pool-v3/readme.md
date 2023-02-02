@@ -1,4 +1,4 @@
-# 2023-01-30 - Composable Stable Pool V3
+# 2023-02-06 - Composable Stable Pool V3
 
 Deployment of `ComposableStablePoolFactory`, which allows creating Stable Pools that are suitable to be included in other Pools.
 

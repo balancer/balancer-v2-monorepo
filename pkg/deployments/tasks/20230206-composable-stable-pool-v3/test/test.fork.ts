@@ -42,7 +42,7 @@ describeForkTest.only('ComposableStablePool', 'mainnet', 16492500, function () {
   const initialBalances = [initialBalanceBUSD, initialBalanceUSDT];
 
   before('run task', async () => {
-    task = new Task('20230130-composable-stable-pool-v3', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20230206-composable-stable-pool-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('ComposableStablePoolFactory');
   });
@@ -122,7 +122,7 @@ describeForkTest.only('ComposableStablePool', 'mainnet', 16492500, function () {
       const expectedFactoryVersion = {
         name: 'ComposableStablePoolFactory',
         version: 3,
-        deployment: '20230130-composable-stable-pool-v3',
+        deployment: '20230206-composable-stable-pool-v3',
       };
 
       expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
@@ -134,7 +134,7 @@ describeForkTest.only('ComposableStablePool', 'mainnet', 16492500, function () {
       const expectedPoolVersion = {
         name: 'ComposableStablePool',
         version: 3,
-        deployment: '20230130-composable-stable-pool-v3',
+        deployment: '20230206-composable-stable-pool-v3',
       };
 
       expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
