@@ -21,7 +21,8 @@
     "/dist/{addresses,tasks}/**/*"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "yarn compile",
+    "compile": "tsc && hardhat compile && rm -rf artifacts/build-info",
     "check": "yarn check-artifacts && yarn check-deployments",
     "check-artifacts": "hardhat check-artifacts",
     "check-deployments": "hardhat check-deployments --network mainnet && hardhat check-deployments --network polygon && hardhat check-deployments --network arbitrum && hardhat check-deployments --network optimism && hardhat check-deployments --network goerli && hardhat check-deployments --network gnosis && hardhat check-deployments --network bsc",
@@ -30,7 +31,7 @@
     "build-address-lookup": "hardhat build-address-lookup --network mainnet && hardhat build-address-lookup --network polygon && hardhat build-address-lookup --network arbitrum && hardhat build-address-lookup --network optimism && hardhat build-address-lookup --network goerli && hardhat build-address-lookup --network gnosis && hardhat build-address-lookup --network bsc",
     "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "prepack": "yarn build",
-    "test": "hardhat test ./**/test/*.ts",
+    "test": "yarn build && hardhat test ./**/test/*.ts",
     "ci:prepare-config": "ts-node ci/prepare-config.ts"
   },
   "devDependencies": {
@@ -50,6 +51,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "ethers": "^5.7.2",
     "hardhat": "^2.12.5",
+    "hardhat-ignore-warnings": "^0.2.4",
     "hardhat-local-networks-config-plugin": "^0.0.6",
     "lodash.range": "^3.2.0",
     "node-fetch": "^2.6.7",
