@@ -15,7 +15,8 @@ import { BasePoolEncoder, StablePoolEncoder, SwapKind } from '@balancer-labs/bal
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
-describeForkTest.only('ComposableStablePool', 'mainnet', 16492500, function () {
+// TODO(@jubeira): remove `skip` once the fork test is finalized.
+describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function () {
   let task: Task;
 
   let factory: Contract;
