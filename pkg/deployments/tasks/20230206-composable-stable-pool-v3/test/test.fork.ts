@@ -9,31 +9,34 @@ import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { BasePoolEncoder, StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
-// TODO(@jubeira): remove `skip` once the fork test is finalized.
-describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function () {
+describeForkTest('ComposableStablePool V3', 'mainnet', 16577000, function () {
   let task: Task;
 
   let factory: Contract;
   let owner: SignerWithAddress;
-  let whale: SignerWithAddress;
+  let whale: SignerWithAddress, auraWhale: SignerWithAddress;
   let govMultisig: SignerWithAddress;
   let vault: Contract;
   let authorizer: Contract;
-  let busd: Contract;
-  let usdc: Contract;
+  let busd: Contract, usdc: Contract, aura: Contract, graviAura: Contract;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
   const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
   const USDC_SCALING = bn(1e12); // USDC has 6 decimals, so its scaling factor is 1e12
+  const AURA_HOLDER = '0x2af2b2e485e1854fd71590c7ffd104db0f66f8a6';
 
   const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
   const BUSD = '0x4Fabb145d64652a948d72533023f6E7A623C7C53';
+  const AURA = '0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF';
+  const GRAVIAURA = '0xBA485b556399123261a5F9c95d413B4f93107407';
 
   const tokens = [BUSD, USDC];
   const amplificationParameter = bn(400);
@@ -41,6 +44,16 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
   const initialBalanceBUSD = fp(1e6);
   const initialBalanceUSDC = fp(1e6).div(USDC_SCALING);
   const initialBalances = [initialBalanceBUSD, initialBalanceUSDC];
+
+  // Pool deployed from previous factory version (GRAVI AURA - AURA)
+  const GRAVI_AURA_POOL = '0x6A9603E481Fb8F2c09804ea9AdaB49A338855B90';
+
+  enum AttackType {
+    DISABLE_RECOVERY_MODE,
+    UPDATE_PROTOCOL_FEE_CACHE,
+    UPDATE_TOKEN_RATE_CACHE,
+    SET_TOKEN_RATE_CACHE_DURATION,
+  }
 
   before('run task', async () => {
     task = new Task('20230206-composable-stable-pool-v3', TaskMode.TEST, getForkedNetwork(hre));
@@ -51,6 +64,7 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
   before('load signers', async () => {
     owner = await getSigner();
     whale = await impersonate(LARGE_TOKEN_HOLDER, fp(100));
+    auraWhale = await impersonate(AURA_HOLDER, fp(100));
 
     govMultisig = await impersonate(GOV_MULTISIG, fp(100));
   });
@@ -64,13 +78,15 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
 
     busd = await task.instanceAt('ERC20', BUSD);
     usdc = await task.instanceAt('ERC20', USDC);
+    aura = await task.instanceAt('ERC20', AURA);
+    graviAura = await task.instanceAt('ERC20', GRAVIAURA);
 
     await busd.connect(whale).approve(vault.address, MAX_UINT256);
     await usdc.connect(whale).approve(vault.address, MAX_UINT256);
   });
 
-  async function createPool(tokens: string[], initialize = true): Promise<Contract> {
-    const rateProviders: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
+  async function createPool(tokens: string[], rateProvider = ZERO_ADDRESS, initialize = true): Promise<Contract> {
+    const rateProviders: string[] = Array(tokens.length).fill(rateProvider);
     const cacheDurations: BigNumber[] = Array(tokens.length).fill(bn(0));
     const exemptFlags: boolean[] = Array(tokens.length).fill(false);
 
@@ -265,6 +281,105 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
         expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).sub(bptIn), 0.001);
       });
     });
+  });
+
+  describe('read-only reentrancy protection', () => {
+    let pool: Contract;
+    let poolId: string;
+    let attacker: Contract;
+    // Actual amounts do not matter for the attack, so we pick an arbitrary value that the whale can transfer.
+    // The same amount will actually represent different quantities since the decimals may vary from token to token,
+    // but this is fine since we only need a valid join.
+    const attackerFunds = 1000;
+
+    sharedBeforeEach('deploy and fund attacker', async () => {
+      attacker = await deploy('ReadOnlyReentrancyAttackerCSP', { args: [vault.address] });
+      await busd.connect(whale).transfer(attacker.address, attackerFunds);
+      await usdc.connect(whale).transfer(attacker.address, attackerFunds);
+      await aura.connect(auraWhale).transfer(attacker.address, attackerFunds);
+      await graviAura.connect(auraWhale).transfer(attacker.address, attackerFunds);
+    });
+
+    context('when the target pool is not protected', () => {
+      sharedBeforeEach('get affected pool instance', async () => {
+        pool = await task.instanceAt('ComposableStablePool', GRAVI_AURA_POOL);
+        poolId = await pool.getPoolId();
+      });
+
+      itPerformsAttack(false);
+    });
+
+    context('when the target pool is protected', () => {
+      sharedBeforeEach('deploy pool with rate providers', async () => {
+        const rateProvider = await deploy('MockRateProvider');
+        pool = await createPool(tokens, rateProvider.address);
+        poolId = await pool.getPoolId();
+      });
+
+      itPerformsAttack(true);
+    });
+
+    function itPerformsAttack(expectRevert: boolean) {
+      const action = expectRevert ? 'rejects' : 'does not reject';
+
+      context('update protocol fee cache', () => {
+        it(`${action} protocol fee cache attack`, async () => {
+          await performAttack(AttackType.UPDATE_PROTOCOL_FEE_CACHE, expectRevert);
+        });
+      });
+
+      context('update token rate cache', () => {
+        it(`${action} token rate cache attack`, async () => {
+          await performAttack(AttackType.UPDATE_TOKEN_RATE_CACHE, expectRevert);
+        });
+      });
+
+      context('update token rate cache duration', () => {
+        sharedBeforeEach('grant permissions to attacker', async () => {
+          await authorizer
+            .connect(govMultisig)
+            .grantRole(await actionId(pool, 'setTokenRateCacheDuration'), attacker.address);
+        });
+
+        it(`${action} token rate cache duration attack`, async () => {
+          await performAttack(AttackType.SET_TOKEN_RATE_CACHE_DURATION, expectRevert);
+        });
+      });
+
+      context('disable recovery mode', () => {
+        sharedBeforeEach('grant permissions to attacker', async () => {
+          await authorizer
+            .connect(govMultisig)
+            .grantRole(await actionId(pool, 'disableRecoveryMode'), attacker.address);
+        });
+
+        it(`${action} disable recovery mode attack`, async () => {
+          await performAttack(AttackType.DISABLE_RECOVERY_MODE, expectRevert);
+        });
+      });
+    }
+
+    async function performAttack(attackType: AttackType, expectRevert: boolean) {
+      const allTokens = (await vault.getPoolTokens(poolId)).tokens;
+      // Amounts in must not include BPT in user data.
+      const userData = StablePoolEncoder.joinExactTokensInForBPTOut(Array(allTokens.length - 1).fill(attackerFunds), 0);
+
+      // We are doing exact tokens in, so max amounts are not relevant.
+      const joinRequest = {
+        assets: allTokens,
+        maxAmountsIn: Array(allTokens.length).fill(MAX_UINT256),
+        userData,
+        fromInternalBalance: false,
+      };
+
+      if (expectRevert) {
+        await expect(attacker.startAttack(poolId, joinRequest, attackType, { value: 10 })).to.be.revertedWith(
+          'BAL#420'
+        );
+      } else {
+        await attacker.startAttack(poolId, joinRequest, attackType, { value: 10 });
+      }
+    }
   });
 
   describe('recovery mode', () => {
