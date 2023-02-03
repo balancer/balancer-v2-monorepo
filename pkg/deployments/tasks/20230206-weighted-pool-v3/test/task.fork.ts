@@ -11,7 +11,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { getSigner, impersonate, getForkedNetwork, Task, TaskMode, describeForkTest } from '../../../src';
 
-describeForkTest('WeightedPool V3', 'mainnet', 16520000, function () {
+// TODO(@jubeira): remove `skip` once the fork test is finalized.
+describeForkTest.skip('WeightedPool V3', 'mainnet', 16550500, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress, govMultisig: SignerWithAddress;
   let factory: Contract,
     vault: Contract,
