@@ -35,30 +35,19 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
         _registerProtocolId(ProtocolId.AAVE_V1, "Aave v1");
         _registerProtocolId(ProtocolId.AAVE_V2, "Aave v2");
         _registerProtocolId(ProtocolId.AAVE_V3, "Aave v3");
-        _registerProtocolId(ProtocolId.AURA, "Aura");
+        _registerProtocolId(ProtocolId.AMPLEFORTH, "Ampleforth");
         _registerProtocolId(ProtocolId.BEEFY, "Beefy");
-        _registerProtocolId(ProtocolId.BEETHOVEN, "Beethoven X");
-        _registerProtocolId(ProtocolId.BUTTONWOOD, "Buttonwood");
-        _registerProtocolId(ProtocolId.COW, "CoW Protocol");
-        _registerProtocolId(ProtocolId.CRON, "Cron");
-        _registerProtocolId(ProtocolId.ELEMENT, "Element");
         _registerProtocolId(ProtocolId.EULER, "Euler");
-        _registerProtocolId(ProtocolId.FJORD, "Fjord");
         _registerProtocolId(ProtocolId.GEARBOX, "Gearbox");
-        _registerProtocolId(ProtocolId.GYROSCOPE, "Gyroscope");
-        _registerProtocolId(ProtocolId.ONEINCH, "1inch");
-        _registerProtocolId(ProtocolId.MYCELIUM, "Mycelium");
-        _registerProtocolId(ProtocolId.PARASWAP, "ParaSwap");
-        _registerProtocolId(ProtocolId.POWERPOOL, "PowerPool");
-        _registerProtocolId(ProtocolId.PRIMEDAO, "PrimeDAO");
+        _registerProtocolId(ProtocolId.IDLE, "Idle");
+        _registerProtocolId(ProtocolId.MORPHO, "Morpho");
+        _registerProtocolId(ProtocolId.RADIANT, "Radiant");
         _registerProtocolId(ProtocolId.REAPER, "Reaper");
-        _registerProtocolId(ProtocolId.SENSE, "Sense");
         _registerProtocolId(ProtocolId.SILO, "Silo");
-        _registerProtocolId(ProtocolId.STAKEDAO, "StakeDAO");
         _registerProtocolId(ProtocolId.STARGATE, "Stargate");
+        _registerProtocolId(ProtocolId.STURDY, "Sturdy");
+        _registerProtocolId(ProtocolId.TESSERA, "Tessera");
         _registerProtocolId(ProtocolId.TETU, "Tetu");
-        _registerProtocolId(ProtocolId.TEMPUS, "Tempus");
-        _registerProtocolId(ProtocolId.XAVE, "Xave");
         _registerProtocolId(ProtocolId.YEARN, "Yearn");
     }
 
