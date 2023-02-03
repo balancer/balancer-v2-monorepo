@@ -15,6 +15,7 @@
 - Deployed `PoolRecoveryHelper` to Gnosis.
 - Deployed `AaveLinearPoolFactory` to Gnosis.
 - Deployed `GaugeAdderV3` to Mainnet and Goerli.
+- Deployed `TimelockAuthorizerTransitionMigrator` to Mainnet.
 
 ### Deprecations
 
