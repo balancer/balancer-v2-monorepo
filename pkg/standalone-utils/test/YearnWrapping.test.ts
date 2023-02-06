@@ -45,6 +45,7 @@ describe('YearnWrapping', function () {
   sharedBeforeEach('mint tokens to senderUser', async () => {
     await DAI.mint(senderUser.address, fp(100));
     await DAI.connect(senderUser).approve(vault.address, fp(100));
+    await DAI.mint(yvDAI.address, fp(10000));
 
     await yvDAI.mint(senderUser.address, fp(2500));
     await yvDAI.connect(senderUser).approve(yvDAI.address, fp(150));
@@ -316,7 +317,7 @@ describe('YearnWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
+              from: yvDAI.address,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: await yvDAI.fromYearn(amount),
             },
@@ -368,7 +369,7 @@ describe('YearnWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
+              from: yvDAI.address,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: await yvDAI.fromYearn(amount),
             },
@@ -514,7 +515,7 @@ describe('YearnWrapping', function () {
             tokenOut: yvDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: yvDAI.address, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -623,7 +624,7 @@ describe('YearnWrapping', function () {
             tokenOut: yvDAI.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: yvDAI.address, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {

@@ -55,7 +55,8 @@ contract MockYearnTokenVault is IYearnTokenVault, TestToken {
     function withdraw(uint256 wrappedAmount, address recipient) external override returns (uint256) {
         this.burn(msg.sender, wrappedAmount);
         uint256 mainAmount = this.fromYearn(wrappedAmount);
-        TestToken(_underlyingToken).mint(recipient, mainAmount);
+        IERC20(_underlyingToken).safeApprove(address(this), mainAmount);
+        IERC20(_underlyingToken).safeTransferFrom(address(this), recipient, mainAmount);
         return mainAmount;
     }
 
