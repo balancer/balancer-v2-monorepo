@@ -26,10 +26,13 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // Pools are automatically verified. We however don't run any of this code in CHECK mode, since we don't care about
     // the contracts deployed here. The action IDs will be checked to be correct via a different mechanism.
 
+    // Always force redeployment of the mock contracts
+    const forceMock = true;
+
     // AaveLinearPools require a StaticAToken, which in turn requires a LendingPool.
-    const mockLendingPool = await task.deployAndVerify('MockAaveLendingPool', [], from, force);
+    const mockLendingPool = await task.deploy('MockAaveLendingPool', [], from, forceMock);
     const mockStaticATokenArgs = ['DO NOT USE - Mock Static AToken', 'TEST', 18, input.WETH, mockLendingPool.address];
-    const mockStaticAToken = await task.deployAndVerify('MockStaticAToken', mockStaticATokenArgs, from, force);
+    const mockStaticAToken = await task.deploy('MockStaticAToken', mockStaticATokenArgs, from, forceMock);
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare
     // them here to appease the type system. Those are constructor arguments, but automatically provided by the factory.
