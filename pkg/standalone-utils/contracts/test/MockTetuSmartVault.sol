@@ -87,7 +87,8 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
         // that are base to rate calculation.
         setRate(_desiredRate);
         uint256 mainAmount = this.fromTetuAmount(numberOfShares, this);
-        TestToken(address(underlyingAsset)).mint(msg.sender, mainAmount);
+        IERC20(underlyingAsset).safeApprove(address(this), mainAmount);
+        IERC20(underlyingAsset).safeTransferFrom(address(this), msg.sender, mainAmount);
     }
 
     function transferUnderlying(uint256 amount, address to) public {}

@@ -46,6 +46,7 @@ describe('TetuWrapping', function () {
   sharedBeforeEach('mint tokens to senderUser', async () => {
     await DAI.mint(senderUser.address, fp(100));
     await DAI.connect(senderUser).approve(vault.address, fp(100));
+    await DAI.mint(xDAI.address, fp(10000));
 
     await xDAI.mint(senderUser.address, fp(2500));
     await xDAI.connect(senderUser).approve(xDAI.address, fp(150));
@@ -342,7 +343,7 @@ describe('TetuWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
+              from: xDAI.address,
               to: relayer.address,
               value: unwrappedAmount,
             },
@@ -407,7 +408,7 @@ describe('TetuWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
+              from: xDAI.address,
               to: relayer.address,
               value: unwrappedAmount,
             },
@@ -564,7 +565,7 @@ describe('TetuWrapping', function () {
             tokenOut: xDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: relayer.address }, DAI);
+          expectTransferEvent(receipt, { from: xDAI.address, to: relayer.address }, DAI);
           if (recipientUser.address !== relayer.address) {
             expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
           }
@@ -676,7 +677,7 @@ describe('TetuWrapping', function () {
             tokenOut: xDAI.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: relayer.address }, DAI);
+          expectTransferEvent(receipt, { from: xDAI.address, to: relayer.address }, DAI);
           if (recipientUser.address !== relayer.address) {
             expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
           }
