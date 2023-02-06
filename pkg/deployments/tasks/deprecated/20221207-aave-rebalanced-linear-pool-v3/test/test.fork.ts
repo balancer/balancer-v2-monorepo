@@ -322,8 +322,8 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
         MAX_UINT256
       );
 
-      await setCode(USDT_LENDING_POOL, getArtifact('v2-pool-linear/MockAaveLendingPool').deployedBytecode);
-      const mockLendingPool = await deployedAt('v2-pool-linear/MockAaveLendingPool', USDT_LENDING_POOL);
+      await setCode(USDT_LENDING_POOL, getArtifact('MockAaveLendingPool').deployedBytecode);
+      const mockLendingPool = await deployedAt('MockAaveLendingPool', USDT_LENDING_POOL);
 
       await mockLendingPool.setRevertType(2); // Type 2 is malicious swap query revert
       await expect(rebalancer.rebalance(other.address)).to.be.revertedWith('BAL#357'); // MALICIOUS_QUERY_REVERT
