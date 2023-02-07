@@ -141,7 +141,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     }
 
     /**
-     * @dev Ensure we are not in a Vault context when this function is called, by attempting a zero-value internal
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal
      * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
      * reentrancy protection will cause this function to revert.
      *
@@ -331,8 +331,10 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
      *
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
-     * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
-     * unsafe to call in such contexts, and hence it is protected.
+     * an exit, because the state of the pool could be out of sync with the state of the vault. The modifier
+     * `whenNotInVaultContext` prevents calling this function (and in turn, the external
+     * `updateProtocolFeePercentageCache`) in such a context.
+     *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function _beforeProtocolFeeCacheUpdate() internal override whenNotInVaultContext {
@@ -378,11 +380,15 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      *
      * **IMPORTANT NOTE**: calling this function within a Vault context (i.e. in the middle of a join or an exit) is
-     * potentially unsafe, since the returned value may be incorrect. It is up to the caller to protect itself.
+     * potentially unsafe, since the returned value is manipulable. It is up to the caller to ensure safety.
      *
      * This is because this function calculates the invariant, which requires the state of the pool to be in sync
-     * with the state of the vault. That condition may not be true in the middle of a join or an exit, which is why
-     * the value returned by this function under that circumstance could be incorrect.
+     * with the state of the vault. That condition may not be true in the middle of a join or an exit.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the vault by calling a non-reentrant
+     * function before calling `getActualSupply`. That will make the transaction revert in an unsafe context.
+     * See `whenNotInVaultContext` in `WeightedPool` for reference.
+     *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getActualSupply() external view returns (uint256) {
@@ -401,8 +407,11 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
      *
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
-     * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
-     * unsafe to call in such contexts, and hence it is protected.
+     * an exit, because the state of the pool could be out of sync with the state of the vault.
+     *
+     * The modifier `whenNotInVaultContext` prevents calling this function (and in turn, the external
+     * `disableRecoveryMode`) in such a context.
+     *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function _onDisableRecoveryMode() internal override whenNotInVaultContext {
