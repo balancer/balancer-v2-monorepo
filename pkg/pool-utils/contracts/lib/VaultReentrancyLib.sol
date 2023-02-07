@@ -18,34 +18,19 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 library VaultReentrancyLib {
     /**
-     * @dev Ensure we are not in a Vault context when this function is called, by attempting a zero-value internal
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting an internal
      * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
      * reentrancy protection will cause this function to revert.
      *
      * The exact function call doesn't really matter: we're just trying to trigger the Vault reentrancy check
-     * (and not hurt anything in case it works). WITHDRAW_INTERNAL has the shortest code path, so should use
-     * the least gas.
+     * (and not hurt anything in case it works). An empty operation array with no specific operation at all works
+     * for that purpose, and is also the least expensive in terms of gas and bytecode size.
      *
      * Call this at the top of any function that can cause a state change in a pool and is either public itself,
      * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
      */
     function ensureNotInVaultContext(IVault vault) internal {
-        IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](1);
-        /*
-          noop[0] = IVault.UserBalanceOp({
-            kind: IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
-            asset: IAsset(address(0)),
-            amount: 0,
-            sender: address(this),
-            recipient: payable(address(0))
-        });*/
-
-        // Direct assignment (vs struct) saves gas, and we can let most arguments default to 0
-        // Only the kind and sender are validated; asset and recipient don't matter when the value is 0
-        noop[0].kind = IVault.UserBalanceOpKind.TRANSFER_EXTERNAL;
-        noop[0].sender = address(this);
-        noop[0].asset = IAsset(address(1));
-
+        IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
         vault.manageUserBalance(noop);
     }
 }
