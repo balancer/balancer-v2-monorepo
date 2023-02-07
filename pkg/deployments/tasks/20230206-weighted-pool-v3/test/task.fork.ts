@@ -252,12 +252,11 @@ describeForkTest('WeightedPool V3', 'mainnet', 16577000, function () {
         fromInternalBalance: false,
       };
 
+      const attack = attacker.startAttack(poolId, joinRequest, attackType, { value: 10 });
       if (expectRevert) {
-        await expect(attacker.startAttack(poolId, joinRequest, attackType, { value: 10 })).to.be.revertedWith(
-          'BAL#420'
-        );
+        await expect(attack).to.be.revertedWith('BAL#420');
       } else {
-        await expect(attacker.startAttack(poolId, joinRequest, attackType, { value: 10 })).to.not.be.reverted;
+        await expect(attack).to.not.be.reverted;
       }
     }
   });
