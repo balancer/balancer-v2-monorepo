@@ -140,6 +140,32 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
     }
 
+    /**
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal
+     * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
+     * reentrancy protection will cause this function to revert.
+     *
+     * The exact function call doesn't really matter: we're just trying to trigger the Vault reentrancy check
+     * (and not hurt anything in case it works). An empty operation array with no specific operation at all works
+     * for that purpose, and is also the least expensive in terms of gas and bytecode size.
+     *
+     * Use this modifier with any function that can cause a state change in a pool and is either public itself,
+     * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     */
+    modifier whenNotInVaultContext() {
+        _ensureNotInVaultContext();
+        _;
+    }
+
+    /**
+     * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
+     */
+    function _ensureNotInVaultContext() private {
+        IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
+        getVault().manageUserBalance(noop);
+    }
+
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
         // prettier-ignore
         if (token == _token0) { return _normalizedWeight0; }
@@ -301,7 +327,17 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         WeightedPoolProtocolFees._updatePostJoinExit(postJoinExitInvariant);
     }
 
-    function _beforeProtocolFeeCacheUpdate() internal override {
+    /**
+     * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
+     * an exit, because the state of the pool could be out of sync with the state of the Vault. The modifier
+     * `whenNotInVaultContext` prevents calling this function (and in turn, the external
+     * `updateProtocolFeePercentageCache`) in such a context.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     */
+    function _beforeProtocolFeeCacheUpdate() internal override whenNotInVaultContext {
         // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
         // percentages. Changing these would therefore result in the rate changing, which is not acceptable as this is a
         // sensitive value.
@@ -342,8 +378,20 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * even if they don't yet exist, they will effectively be included in any Pool operation that involves BPT.
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
+     *
+     * **IMPORTANT NOTE**: calling this function within a Vault context (i.e. in the middle of a join or an exit) is
+     * potentially unsafe, since the returned value is manipulable. It is up to the caller to ensure safety.
+     *
+     * This is because this function calculates the invariant, which requires the state of the pool to be in sync
+     * with the state of the Vault. That condition may not be true in the middle of a join or an exit.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
+     * function before calling `getActualSupply`. That will make the transaction revert in an unsafe context.
+     * (See `whenNotInVaultContext` in `WeightedPool`).
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
-    function getActualSupply() public view returns (uint256) {
+    function getActualSupply() external view returns (uint256) {
         uint256 supply = totalSupply();
 
         (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(
@@ -355,7 +403,18 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         return supply.add(protocolFeesToBeMinted);
     }
 
-    function _onDisableRecoveryMode() internal override {
+    /**
+     * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
+     * an exit, because the state of the pool could be out of sync with the state of the Vault.
+     *
+     * The modifier `whenNotInVaultContext` prevents calling this function (and in turn, the external
+     * `disableRecoveryMode`) in such a context.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     */
+    function _onDisableRecoveryMode() internal override whenNotInVaultContext {
         // Update the postJoinExitInvariant to the value of the currentInvariant, zeroing out any protocol swap fees.
         _updatePostJoinExit(getInvariant());
 
