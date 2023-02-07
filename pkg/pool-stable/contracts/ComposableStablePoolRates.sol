@@ -85,7 +85,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     }
 
     /**
-     * @dev Ensure we are not in a Vault context when this function is called, by attempting a zero-value internal
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal
      * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
      * reentrancy protection will cause this function to revert.
      *

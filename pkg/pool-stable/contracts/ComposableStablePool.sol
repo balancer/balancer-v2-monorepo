@@ -1040,6 +1040,10 @@ contract ComposableStablePool is
      *
      * There are also other situations where calling this function is unsafe. See
      * https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the vault by calling a non-reentrant
+     * function before calling `getRate`. That will make the transaction revert in an unsafe context.
+     * See `whenNotInVaultContext` in `ComposableStablePoolRates` for reference.
      */
     function getRate() external view virtual override returns (uint256) {
         // We need to compute the current invariant and actual total supply. The latter includes protocol fees that have
@@ -1092,6 +1096,11 @@ contract ComposableStablePool is
      *
      * This is because this function calculates the invariant, which requires the state of the pool to be in sync
      * with the state of the vault. That condition may not be true in the middle of a join or an exit.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the vault by calling a non-reentrant
+     * function before calling `getActualSupply`. That will make the transaction revert in an unsafe context.
+     * See `whenNotInVaultContext` in `ComposableStablePoolRates` for reference.
+     *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getActualSupply() external view returns (uint256) {
@@ -1103,7 +1112,10 @@ contract ComposableStablePool is
      * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
      *
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
-     * an exit, because the state of the pool could be out of sync with the state of the vault.
+     * an exit, because the state of the pool could be out of sync with the state of the vault. The modifier
+     * `whenNotInVaultContext` prevents calling this function (and in turn, the external
+     * `updateProtocolFeePercentageCache`) in such a context.
+     *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function _beforeProtocolFeeCacheUpdate() internal override whenNotInVaultContext {
@@ -1153,6 +1165,10 @@ contract ComposableStablePool is
      *
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
      * an exit, because the state of the pool could be out of sync with the state of the vault.
+     *
+     * The modifier `whenNotInVaultContext` prevents calling this function (and in turn, the external
+     * `disableRecoveryMode`) in such a context.
+     *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function _onDisableRecoveryMode() internal override whenNotInVaultContext {
