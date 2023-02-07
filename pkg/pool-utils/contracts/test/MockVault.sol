@@ -223,7 +223,8 @@ contract MockVault is IPoolSwapStructs {
         _authorizer = newAuthorizer;
     }
 
-    // Support VaultReentrancyLib
+    // This supports calls from the VaultReentrancyLib in unit tests, so that they don't revert.
+    // Note that it isn't itself protected by the Vault context, like the real Vault would be.
     function manageUserBalance(IVault.UserBalanceOp[] memory ops) external payable {
         // solhint-disable-previous-line no-empty-blocks
     }

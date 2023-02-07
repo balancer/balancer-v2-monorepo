@@ -18,7 +18,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 library VaultReentrancyLib {
     /**
-     * @dev Ensure we are not in a Vault context when this function is called, by attempting an internal
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal
      * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
      * reentrancy protection will cause this function to revert.
      *

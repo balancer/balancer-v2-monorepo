@@ -20,6 +20,11 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "../BaseGeneralPool.sol";
 import "../lib/VaultReentrancyLib.sol";
 
+/**
+ * @notice Pool Mock for testing the VaultReentrancyLib.
+ * @dev Defines an external "protected function" that reverts when called in the Vault context,
+ * and otherwise emits an event.
+ */
 contract MockReentrancyPool is BaseGeneralPool {
     using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
@@ -56,8 +61,10 @@ contract MockReentrancyPool is BaseGeneralPool {
         _totalTokens = tokens.length;
     }
 
-    // Define a public function protected by the library. Works when called externally; reverts if called
-    // during a Vault operation (join/swap/exit).
+    /**
+     * @dev Public function protected by the library. Works when called externally; reverts if called
+     * during a Vault operation (join/swap/exit).
+     */
     function protectedFunction() public {
         VaultReentrancyLib.ensureNotInVaultContext(getVault());
 
@@ -66,9 +73,9 @@ contract MockReentrancyPool is BaseGeneralPool {
   
     // Vault hooks
 
-    // Testing all the hooks is technically overkill: if it works in one Vault context, it works in all.
-    // We mock up an entire pool with all the hooks defined mainly for documentation purposes: in a real pool,
-    // these are all the places you need to protect.
+    // Overriding all the hooks is technically overkill: if it works in one Vault context, it works in all.
+    // We mock up an entire pool with all of them mainly for documentation purposes: in a real pool, these
+    // are all the contexts in which callers need to be protected against calling unsafe functions.
 
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
