@@ -14,11 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
-
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
+import "../interfaces/IStaticAToken.sol";
+
 contract MockStaticAToken is TestToken, IStaticAToken {
+    // solhint-disable-next-line var-name-mixedcase
     address private immutable _ASSET;
     ILendingPool private immutable _lendingPool;
 
