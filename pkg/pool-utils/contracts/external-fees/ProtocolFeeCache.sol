@@ -132,9 +132,7 @@ abstract contract ProtocolFeeCache is IProtocolFeeCache, RecoveryMode {
         return _feeIds.decodeUint(offset, _FEE_TYPE_ID_WIDTH);
     }
 
-    /**
-     * @inheritdoc IProtocolFeeCache
-     */
+    /// @inheritdoc IProtocolFeeCache
     function updateProtocolFeePercentageCache() external override {
         _beforeProtocolFeeCacheUpdate();
 

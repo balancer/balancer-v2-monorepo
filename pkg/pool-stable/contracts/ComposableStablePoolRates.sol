@@ -139,9 +139,7 @@ abstract contract ComposableStablePoolRates is IComposableStablePoolRates, Compo
         (duration, expires) = cache.getTimestamps();
     }
 
-    /**
-     * @inheritdoc IComposableStablePoolRates
-     */
+    /// @inheritdoc IComposableStablePoolRates
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external override authenticate {
         uint256 index = _getTokenIndex(token);
         IRateProvider provider = _getRateProvider(index);
@@ -150,9 +148,7 @@ abstract contract ComposableStablePoolRates is IComposableStablePoolRates, Compo
         emit TokenRateProviderSet(index, provider, duration);
     }
 
-    /**
-     * @inheritdoc IComposableStablePoolRates
-     */
+    /// @inheritdoc IComposableStablePoolRates
     function updateTokenRateCache(IERC20 token) external override {
         uint256 index = _getTokenIndex(token);
 
