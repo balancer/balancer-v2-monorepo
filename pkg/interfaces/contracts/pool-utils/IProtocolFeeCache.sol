@@ -12,27 +12,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-
-import "../RecoveryMode.sol";
-
-abstract contract MockRecoveryModeStorage is RecoveryMode {
-    bool private _recoveryMode;
-
-    constructor (IVault vault) RecoveryMode(vault) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
+interface IProtocolFeeCache {
     /**
-     * @notice Returns whether the pool is in Recovery Mode.
+     * @notice Updates the cache to the latest value set by governance.
+     * @dev Can be called by anyone to update the cached fee percentages.
      */
-    function inRecoveryMode() public view override returns (bool) {
-        return _recoveryMode;
-    }
-
-    function _setRecoveryMode(bool enabled) internal virtual override {
-        _recoveryMode = enabled;
-    }
+    function updateProtocolFeePercentageCache() external;
 }

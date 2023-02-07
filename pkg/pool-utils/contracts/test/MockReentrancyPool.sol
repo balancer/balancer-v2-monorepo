@@ -17,19 +17,21 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
-import "../BasePool.sol";
+import "../BaseGeneralPool.sol";
+import "../lib/VaultReentrancyLib.sol";
 
-contract MockBasePool is BasePool {
+/**
+ * @notice Pool Mock for testing the VaultReentrancyLib.
+ * @dev Defines an external "protected function" that reverts when called in the Vault context,
+ * and otherwise emits an event.
+ */
+contract MockReentrancyPool is BaseGeneralPool {
     using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     uint256 private immutable _totalTokens;
 
-    bool private _failBeforeSwapJoinExit;
-
-    event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
-    event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
-    event RecoveryModeExit(uint256 totalSupply, uint256[] balances, uint256 bptAmountIn);
+    event ProtectedFunctionCalled();
 
     constructor(
         IVault vault,
@@ -56,16 +58,45 @@ contract MockBasePool is BasePool {
             owner
         )
     {
-        _failBeforeSwapJoinExit = false;
         _totalTokens = tokens.length;
     }
 
-    function setMiscData(bytes32 data) external {
-        _setMiscData(data);
+    /**
+     * @dev Public function protected by the library. Works when called externally; reverts if called
+     * during a Vault operation (join/swap/exit).
+     */
+    function protectedFunction() public {
+        VaultReentrancyLib.ensureNotInVaultContext(getVault());
+
+        emit ProtectedFunctionCalled();
+    }
+  
+    // Vault hooks
+
+    // Overriding all the hooks is technically overkill: if it works in one Vault context, it works in all.
+    // We mock up an entire pool with all of them mainly for documentation purposes: in a real pool, these
+    // are all the contexts in which callers need to be protected against calling unsafe functions.
+
+    function _onSwapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256[] memory,
+        uint256,
+        uint256
+    ) internal override returns (uint256) {
+      protectedFunction();
+
+      return swapRequest.amount;
     }
 
-    function getMiscData() external view returns (bytes32) {
-        return _getMiscData();
+    function _onSwapGivenOut(
+        SwapRequest memory swapRequest,
+        uint256[] memory,
+        uint256,
+        uint256
+    ) internal override returns (uint256) {
+      protectedFunction();
+
+      return swapRequest.amount;
     }
 
     function _onInitializePool(
@@ -81,7 +112,7 @@ contract MockBasePool is BasePool {
         for (uint256 i = 0; i < amountsIn.length; i++) {
             bptAmountOut += amountsIn[i];
         }
-
+  
         return (bptAmountOut, amountsIn);
     }
 
@@ -91,11 +122,11 @@ contract MockBasePool is BasePool {
         address,
         uint256[] memory balances,
         uint256,
-        uint256 protocolSwapFeePercentage,
+        uint256,
         uint256[] memory,
         bytes memory
     ) internal override returns (uint256, uint256[] memory) {
-        emit InnerOnJoinPoolCalled(protocolSwapFeePercentage);
+        protectedFunction();
 
         return (0, new uint256[](balances.length));
     }
@@ -106,27 +137,28 @@ contract MockBasePool is BasePool {
         address,
         uint256[] memory balances,
         uint256,
-        uint256 protocolSwapFeePercentage,
+        uint256 ,
         uint256[] memory,
         bytes memory
     ) internal override returns (uint256, uint256[] memory) {
-        emit InnerOnExitPoolCalled(protocolSwapFeePercentage);
+        protectedFunction();
 
         return (0, new uint256[](balances.length));
     }
 
-    function setFailBeforeSwapJoinExit(bool fail) external {
-        _failBeforeSwapJoinExit = fail;
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.recoveryModeExit();
+
+        protectedFunction();
+
+        return (bptAmountIn, balances);
     }
 
-    function _beforeSwapJoinExit() internal override {
-        require(!_failBeforeSwapJoinExit, "FAIL_BEFORE_SWAP_JOIN_EXIT");
-        super._beforeSwapJoinExit();
-    }
-
-    function payProtocolFees(uint256 bptAmount) public {
-        _payProtocolFees(bptAmount);
-    }
+    // Stubbed functions
 
     function _getMaxTokens() internal pure override returns (uint256) {
         return 8;
@@ -147,32 +179,5 @@ contract MockBasePool is BasePool {
         for (uint256 i = 0; i < numTokens; i++) {
             scalingFactors[i] = FixedPoint.ONE;
         }
-    }
-
-    function doNotCallInRecovery() external view whenNotInRecoveryMode {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function notCallableInRecovery() external view {
-        _ensureNotInRecoveryMode();
-    }
-
-    function onlyCallableInRecovery() external view {
-        _ensureInRecoveryMode();
-    }
-
-    function _doRecoveryModeExit(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
-        uint256 bptAmountIn = userData.recoveryModeExit();
-        emit RecoveryModeExit(totalSupply, balances, bptAmountIn);
-        return (bptAmountIn, balances);
-    }
-
-    // Access the vault from RecoveryMode
-    function vault() external view returns (IVault) {
-        return _getVault();
     }
 }
