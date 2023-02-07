@@ -77,6 +77,8 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * an exit, because the state of the pool could be out of sync with the state of the vault.
      * `_onDisableRecoveryMode` will revert when called from such a context for weighted pools, effectively
      * protecting this function.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function disableRecoveryMode() external override authenticate {
         _setRecoveryMode(false);

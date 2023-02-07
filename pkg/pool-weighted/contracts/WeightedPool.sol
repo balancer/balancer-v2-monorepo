@@ -387,7 +387,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      *
      * To call this function safely, attempt to trigger the reentrancy guard in the vault by calling a non-reentrant
      * function before calling `getActualSupply`. That will make the transaction revert in an unsafe context.
-     * See `whenNotInVaultContext` in `WeightedPool` for reference.
+     * (See `whenNotInVaultContext` in `WeightedPool`).
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
