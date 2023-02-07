@@ -102,6 +102,8 @@ Returns an object with all contracts from a deployment and their addresses.
 | L2 Gauge Checkpointer                                   | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                           |
 | VeBoost V2                                              | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
 | Gauge Registrant V3, supporting the Adaptor entrypoint  | [`20230109-gauge-adder-v3`](./tasks/20230109-gauge-adder-v3)                                         |
+| Weighted Pool V3                                        | [`20230206-weighted-pool-v3`](./tasks/20230206-weighted-pool-v3)                                     |
+| Composable Stable Pools V3                              | [`20230206-composable-stable-pool-v3`](./tasks/20230206-composable-stable-pool-v3)                   |
 
 ## Scripts
 
