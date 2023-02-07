@@ -1041,7 +1041,7 @@ contract ComposableStablePool is
      * There are also other situations where calling this function is unsafe. See
      * https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
-     * To call this function safely, attempt to trigger the reentrancy guard in the vault by calling a non-reentrant
+     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
      * function before calling `getRate`. That will make the transaction revert in an unsafe context.
      * (See `whenNotInVaultContext` in `ComposableStablePoolRates`).
      */
@@ -1095,9 +1095,9 @@ contract ComposableStablePool is
      * potentially unsafe, since the returned value is manipulable. It is up to the caller to ensure safety.
      *
      * This is because this function calculates the invariant, which requires the state of the pool to be in sync
-     * with the state of the vault. That condition may not be true in the middle of a join or an exit.
+     * with the state of the Vault. That condition may not be true in the middle of a join or an exit.
      *
-     * To call this function safely, attempt to trigger the reentrancy guard in the vault by calling a non-reentrant
+     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
      * function before calling `getActualSupply`. That will make the transaction revert in an unsafe context.
      * (See `whenNotInVaultContext` in `ComposableStablePoolRates`).
      *
@@ -1112,7 +1112,7 @@ contract ComposableStablePool is
      * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
      *
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
-     * an exit, because the state of the pool could be out of sync with the state of the vault. The modifier
+     * an exit, because the state of the pool could be out of sync with the state of the Vault. The modifier
      * `whenNotInVaultContext` prevents calling this function (and in turn, the external
      * `updateProtocolFeePercentageCache`) in such a context.
      *
@@ -1164,7 +1164,7 @@ contract ComposableStablePool is
      * @dev This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
      *
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
-     * an exit, because the state of the pool could be out of sync with the state of the vault.
+     * an exit, because the state of the pool could be out of sync with the state of the Vault.
      *
      * The modifier `whenNotInVaultContext` prevents calling this function (and in turn, the external
      * `disableRecoveryMode`) in such a context.

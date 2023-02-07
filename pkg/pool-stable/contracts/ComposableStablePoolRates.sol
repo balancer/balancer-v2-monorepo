@@ -171,7 +171,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
      *
      * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
-     * join or an exit because the state of the pool could be out of sync with the state of the vault.
+     * join or an exit because the state of the pool could be out of sync with the state of the Vault.
      *
      * It will also revert if there was no rate provider set initially.
      *
@@ -193,7 +193,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
      *
      * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
-     * join or an exit because the state of the pool could be out of sync with the state of the vault.
+     * join or an exit because the state of the pool could be out of sync with the state of the Vault.
      *
      * It will also revert if the requested token does not have an associated rate provider.
      *
