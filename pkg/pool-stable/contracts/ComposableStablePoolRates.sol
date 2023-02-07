@@ -95,6 +95,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      *
      * Use this modifier with any function that can cause a state change in a pool and is either public itself,
      * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     modifier whenNotInVaultContext() {
         _ensureNotInVaultContext();
@@ -175,6 +176,8 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      *
      * It will also revert if there was no rate provider set initially.
      *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
      * @param duration Number of seconds until the current token rate is fetched again.
      */
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate whenNotInVaultContext {
@@ -195,6 +198,8 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * This makes the function unsafe to call in such contexts, and hence it is protected.
      *
      * It will also revert if the requested token does not have an associated rate provider.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function updateTokenRateCache(IERC20 token) external whenNotInVaultContext {
         uint256 index = _getTokenIndex(token);

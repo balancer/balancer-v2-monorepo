@@ -1037,6 +1037,7 @@ contract ComposableStablePool is
      * This may happen e.g. if one of the tokens in the Pool contains some form of callback behavior in the
      * `transferFrom` function (like ERC777 tokens do). These tokens are strictly incompatible with the
      * Vault and Pool design, and are not safe to be used.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getRate() external view virtual override returns (uint256) {
         // We need to compute the current invariant and actual total supply. The latter includes protocol fees that have
@@ -1090,6 +1091,7 @@ contract ComposableStablePool is
      * This is because this function calculates the invariant, which requires the state of the pool to be in sync
      * with the state of the vault. That condition may not be true in the middle of a join or an exit, which is why
      * the value returned by this function under that circumstance could be incorrect.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getActualSupply() external view returns (uint256) {
         (, uint256 virtualSupply, uint256 protocolFeeAmount, , ) = _getSupplyAndFeesData();
@@ -1102,6 +1104,7 @@ contract ComposableStablePool is
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
      * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
      * unsafe to call in such contexts, and hence it is protected.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function _beforeProtocolFeeCacheUpdate() internal override whenNotInVaultContext {
         // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
@@ -1151,6 +1154,7 @@ contract ComposableStablePool is
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
      * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
      * unsafe to call in such contexts, and hence it is protected.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function _onDisableRecoveryMode() internal override whenNotInVaultContext {
         // Enabling recovery mode short-circuits protocol fee computations, forcefully returning a zero percentage,
