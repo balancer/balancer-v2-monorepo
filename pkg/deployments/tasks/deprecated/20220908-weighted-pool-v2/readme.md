@@ -2,7 +2,7 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 > This deployment has been deprecated in favor of a new version with critical fixes: [weighted-pool-v3](../../20230206-weighted-pool-v3/).
-> See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for more details about the fixed vulnerability.
+> See this [forum post](https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345) for more details about the fixed vulnerability.
 
 
 Deployment of the `WeightedPoolFactory`, which allows creating Weighted Pools which include a number of improvements, including:
