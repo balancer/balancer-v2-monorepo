@@ -222,4 +222,9 @@ contract MockVault is IPoolSwapStructs {
     function setAuthorizer(IAuthorizer newAuthorizer) external {
         _authorizer = newAuthorizer;
     }
+
+    // Support VaultReentrancyLib
+    function manageUserBalance(IVault.UserBalanceOp[] memory ops) external payable {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }
