@@ -9,7 +9,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { fp, fpDiv, fpMul, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
-import { range } from 'lodash';
+import { max, range } from 'lodash';
 import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFees.behavior';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
@@ -42,17 +42,22 @@ describe('WeightedPool', function () {
 
     const initialBalances = range(1, 3).map(fp);
 
-    sharedBeforeEach('deploy pool', async () => {
+    sharedBeforeEach('deploy pool and real vault', async () => {
+      const vault = await Vault.create();
+
       tokens = allTokens.subset(2);
+      await tokens.mint({ to: lp.address, amount: max(initialBalances) });
+      await tokens.approve({ to: vault.address, from: lp, amount: max(initialBalances) });
 
       pool = await WeightedPool.create({
         poolType: WeightedPoolType.WEIGHTED_POOL,
         tokens,
         weights: WEIGHTS.slice(0, 2),
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        vault,
       });
 
-      await pool.init({ initialBalances, recipient: lp });
+      await pool.init({ initialBalances, recipient: lp, from: lp });
     });
 
     context('when leaving recovery mode', () => {
