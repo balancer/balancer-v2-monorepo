@@ -26,21 +26,21 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
   let vault: Contract;
   let authorizer: Contract;
   let busd: Contract;
-  let usdt: Contract;
+  let usdc: Contract;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
   const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
-  const USDT_SCALING = bn(1e12); // USDT has 6 decimals, so its scaling factor is 1e12
+  const USDC_SCALING = bn(1e12); // USDC has 6 decimals, so its scaling factor is 1e12
 
-  const USDT = '0xdac17f958d2ee523a2206206994597c13d831ec7';
+  const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
   const BUSD = '0x4Fabb145d64652a948d72533023f6E7A623C7C53';
 
-  const tokens = [BUSD, USDT];
+  const tokens = [BUSD, USDC];
   const amplificationParameter = bn(400);
   const swapFeePercentage = fp(0.01);
   const initialBalanceBUSD = fp(1e6);
-  const initialBalanceUSDT = fp(1e6).div(USDT_SCALING);
-  const initialBalances = [initialBalanceBUSD, initialBalanceUSDT];
+  const initialBalanceUSDC = fp(1e6).div(USDC_SCALING);
+  const initialBalances = [initialBalanceBUSD, initialBalanceUSDC];
 
   before('run task', async () => {
     task = new Task('20230206-composable-stable-pool-v3', TaskMode.TEST, getForkedNetwork(hre));
@@ -63,10 +63,10 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
     );
 
     busd = await task.instanceAt('ERC20', BUSD);
-    usdt = await task.instanceAt('ERC20', USDT);
+    usdc = await task.instanceAt('ERC20', USDC);
 
     await busd.connect(whale).approve(vault.address, MAX_UINT256);
-    await usdt.connect(whale).approve(vault.address, MAX_UINT256);
+    await usdc.connect(whale).approve(vault.address, MAX_UINT256);
   });
 
   async function createPool(tokens: string[], initialize = true): Promise<Contract> {
@@ -169,16 +169,16 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
         await vault
           .connect(owner)
           .swap(
-            { kind: SwapKind.GivenIn, poolId, assetIn: BUSD, assetOut: USDT, amount, userData: '0x' },
+            { kind: SwapKind.GivenIn, poolId, assetIn: BUSD, assetOut: USDC, amount, userData: '0x' },
             { sender: owner.address, recipient: owner.address, fromInternalBalance: false, toInternalBalance: false },
             0,
             MAX_UINT256
           );
 
         // Assert pool swap
-        const expectedUSDT = amount.div(USDT_SCALING);
+        const expectedUSDC = amount.div(USDC_SCALING);
         expectEqualWithError(await busd.balanceOf(owner.address), 0, 0.0001);
-        expectEqualWithError(await usdt.balanceOf(owner.address), bn(expectedUSDT), 0.1);
+        expectEqualWithError(await usdc.balanceOf(owner.address), bn(expectedUSDC), 0.1);
       });
     });
 
@@ -203,7 +203,7 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
         // Given the bptOut, the max amounts in should be slightly more than 1/5. Decimals make it a bit complicated.
         const adjustedBalances = [
           initialBalanceBUSD.div(fp(4.99)).mul(fp(1)),
-          initialBalanceUSDT.div(bn(4.99e6)).mul(1e6),
+          initialBalanceUSDC.div(bn(4.99e6)).mul(1e6),
         ];
         const maxAmountsIn = getRegisteredBalances(bptIndex, adjustedBalances);
 
@@ -286,8 +286,8 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
       const bptBalance = await pool.balanceOf(owner.address);
       expect(bptBalance).to.gt(0);
 
-      const vaultUSDTBalanceBeforeExit = await usdt.balanceOf(vault.address);
-      const ownerUSDTBalanceBeforeExit = await usdt.balanceOf(owner.address);
+      const vaultUSDCBalanceBeforeExit = await usdc.balanceOf(vault.address);
+      const ownerUSDCBalanceBeforeExit = await usdc.balanceOf(owner.address);
 
       const { tokens: registeredTokens } = await vault.getPoolTokens(poolId);
 
@@ -302,11 +302,11 @@ describeForkTest.skip('ComposableStablePool V3', 'mainnet', 16550500, function (
       const remainingBalance = await pool.balanceOf(owner.address);
       expect(remainingBalance).to.equal(0);
 
-      const vaultUSDTBalanceAfterExit = await usdt.balanceOf(vault.address);
-      const ownerUSDTBalanceAfterExit = await usdt.balanceOf(owner.address);
+      const vaultUSDCBalanceAfterExit = await usdc.balanceOf(vault.address);
+      const ownerUSDCBalanceAfterExit = await usdc.balanceOf(owner.address);
 
-      expect(vaultUSDTBalanceAfterExit).to.lt(vaultUSDTBalanceBeforeExit);
-      expect(ownerUSDTBalanceAfterExit).to.gt(ownerUSDTBalanceBeforeExit);
+      expect(vaultUSDCBalanceAfterExit).to.lt(vaultUSDCBalanceBeforeExit);
+      expect(ownerUSDCBalanceAfterExit).to.gt(ownerUSDCBalanceBeforeExit);
     });
   });
 
