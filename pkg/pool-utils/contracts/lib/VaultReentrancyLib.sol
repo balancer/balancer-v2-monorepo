@@ -28,7 +28,7 @@ library VaultReentrancyLib {
      *
      * Call this at the top of any function that can cause a state change in a pool and is either public itself,
      * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
-     * 
+     *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function ensureNotInVaultContext(IVault vault) internal {
