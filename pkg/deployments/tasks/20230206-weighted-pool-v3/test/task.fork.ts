@@ -49,7 +49,7 @@ describeForkTest('WeightedPool V3', 'mainnet', 16577000, function () {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = toNormalizedWeights([fp(20), fp(30), fp(50)]);
 
-  const COMP_WEIGHTED_POOL_V2 = '0x496ff26B76b8d23bbc6cF1Df1eeE4a48795490F7';
+  const COMP_WSTETH_WEIGHTED_POOL_V2 = '0x496ff26B76b8d23bbc6cF1Df1eeE4a48795490F7';
 
   enum AttackType {
     DISABLE_RECOVERY_MODE,
@@ -202,7 +202,7 @@ describeForkTest('WeightedPool V3', 'mainnet', 16577000, function () {
 
     context('when the target pool is not protected', () => {
       sharedBeforeEach('get affected pool instance', async () => {
-        pool = await task.instanceAt('WeightedPool', COMP_WEIGHTED_POOL_V2);
+        pool = await task.instanceAt('WeightedPool', COMP_WSTETH_WEIGHTED_POOL_V2);
         poolId = await pool.getPoolId();
       });
 
