@@ -14,11 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
-
 import "@balancer-labs/v2-pool-utils/contracts/test/MaliciousQueryReverter.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
+
+import "../interfaces/ILendingPool.sol";
 
 contract MockAaveLendingPool is ILendingPool, MaliciousQueryReverter {
     uint256 private _rate = 1e27;
