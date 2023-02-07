@@ -1,6 +1,7 @@
 # 2023-02-06 - Weighted Pool Factory V3
 
-Deployment of the `WeightedPoolFactory`.
+Deployment of the `WeightedPoolFactory`, which allows creating Weighted Pools.
+Supersedes `20220908-weighted-pool-v2`, fixing the reentrancy issue described in https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345.
 
 ## Useful Files
 
