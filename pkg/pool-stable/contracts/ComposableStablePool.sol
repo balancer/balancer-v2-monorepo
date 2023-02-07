@@ -1043,7 +1043,7 @@ contract ComposableStablePool is
      *
      * To call this function safely, attempt to trigger the reentrancy guard in the vault by calling a non-reentrant
      * function before calling `getRate`. That will make the transaction revert in an unsafe context.
-     * See `whenNotInVaultContext` in `ComposableStablePoolRates` for reference.
+     * (See `whenNotInVaultContext` in `ComposableStablePoolRates`).
      */
     function getRate() external view virtual override returns (uint256) {
         // We need to compute the current invariant and actual total supply. The latter includes protocol fees that have
@@ -1099,7 +1099,7 @@ contract ComposableStablePool is
      *
      * To call this function safely, attempt to trigger the reentrancy guard in the vault by calling a non-reentrant
      * function before calling `getActualSupply`. That will make the transaction revert in an unsafe context.
-     * See `whenNotInVaultContext` in `ComposableStablePoolRates` for reference.
+     * (See `whenNotInVaultContext` in `ComposableStablePoolRates`).
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
