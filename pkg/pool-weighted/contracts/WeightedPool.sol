@@ -151,6 +151,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      *
      * Use this modifier with any function that can cause a state change in a pool and is either public itself,
      * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     modifier whenNotInVaultContext() {
         _ensureNotInVaultContext();
@@ -332,6 +333,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
      * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
      * unsafe to call in such contexts, and hence it is protected.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function _beforeProtocolFeeCacheUpdate() internal override whenNotInVaultContext {
         // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
@@ -381,6 +383,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * This is because this function calculates the invariant, which requires the state of the pool to be in sync
      * with the state of the vault. That condition may not be true in the middle of a join or an exit, which is why
      * the value returned by this function under that circumstance could be incorrect.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getActualSupply() external view returns (uint256) {
         uint256 supply = totalSupply();
@@ -400,6 +403,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
      * an exit because the state of the pool could be out of sync with the state of the vault. This makes the function
      * unsafe to call in such contexts, and hence it is protected.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function _onDisableRecoveryMode() internal override whenNotInVaultContext {
         // Update the postJoinExitInvariant to the value of the currentInvariant, zeroing out any protocol swap fees.

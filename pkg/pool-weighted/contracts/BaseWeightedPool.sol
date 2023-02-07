@@ -89,6 +89,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * Calculating the invariant requires the state of the pool to be in sync with the state of the vault.
      * That condition may not be true in the middle of a join or an exit, which is why the value returned by this
      * function under that circumstance could be incorrect.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getInvariant() public view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
