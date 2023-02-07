@@ -1,6 +1,7 @@
 # 2023-02-06 - Composable Stable Pool V3
 
 Deployment of `ComposableStablePoolFactory`, which allows creating Stable Pools that are suitable to be included in other Pools.
+Supersedes `20221122-composable-stable-pool-v2`, fixing the reentrancy issue described in https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345.
 
 ## Useful Files
 
