@@ -19,6 +19,7 @@ import "./relayer/BaseRelayerLibrary.sol";
 
 import "./relayer/AaveWrapping.sol";
 import "./relayer/ERC4626Wrapping.sol";
+import "./relayer/EulerWrapping.sol";
 import "./relayer/GaugeActions.sol";
 import "./relayer/LidoWrapping.sol";
 import "./relayer/UnbuttonWrapping.sol";
@@ -35,6 +36,7 @@ contract BatchRelayerLibrary is
     AaveWrapping,
     BaseRelayerLibrary,
     ERC4626Wrapping,
+    EulerWrapping,
     GaugeActions,
     LidoWrapping,
     UnbuttonWrapping,
@@ -45,8 +47,9 @@ contract BatchRelayerLibrary is
     constructor(
         IVault vault,
         IERC20 wstETH,
-        IBalancerMinter minter
-    ) BaseRelayerLibrary(vault) LidoWrapping(wstETH) GaugeActions(minter) {
+        IBalancerMinter minter,
+        address eulerProtocol
+    ) BaseRelayerLibrary(vault) LidoWrapping(wstETH) GaugeActions(minter) EulerWrapping(eulerProtocol) {
         // solhint-disable-previous-line no-empty-blocks
     }
 }
