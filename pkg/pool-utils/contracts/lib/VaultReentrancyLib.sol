@@ -29,7 +29,9 @@ library VaultReentrancyLib {
      * Call this at the top of any function that can cause a state change in a pool and is either public itself,
      * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
      *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     * If this is *not* called in functions that are vulnerable to the read-only reentrancy issue described
+     * here (https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345), those functions are unsafe,
+     * and subject to manipulation that may result in loss of funds.
      */
     function ensureNotInVaultContext(IVault vault) internal {
         IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
