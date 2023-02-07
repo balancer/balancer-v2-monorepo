@@ -70,6 +70,15 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * @notice Disable recovery mode, which disables the special safe exit path for LPs.
      * @dev Protocol fees are not paid while in Recovery Mode, so it should only remain active for as long as strictly
      * necessary.
+     *
+     * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on the invariant value, which may be calculated incorrectly in the middle of a join or
+     * an exit, because the state of the pool could be out of sync with the state of the Vault.
+     * `_onDisableRecoveryMode` will revert when called from such a context for composable stable pools, effectively
+     * protecting this function.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function disableRecoveryMode() external override authenticate {
         _setRecoveryMode(false);

@@ -85,6 +85,32 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     }
 
     /**
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal
+     * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
+     * reentrancy protection will cause this function to revert.
+     *
+     * The exact function call doesn't really matter: we're just trying to trigger the Vault reentrancy check
+     * (and not hurt anything in case it works). An empty operation array with no specific operation at all works
+     * for that purpose, and is also the least expensive in terms of gas and bytecode size.
+     *
+     * Use this modifier with any function that can cause a state change in a pool and is either public itself,
+     * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     */
+    modifier whenNotInVaultContext() {
+        _ensureNotInVaultContext();
+        _;
+    }
+
+    /**
+     * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
+     */
+    function _ensureNotInVaultContext() private {
+        IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
+        getVault().manageUserBalance(noop);
+    }
+
+    /**
      * @dev Updates the old rate for the token at `index` (including BPT). Assumes `index` is valid.
      */
     function _updateOldRate(uint256 index) internal {
@@ -139,11 +165,21 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     }
 
     /**
-     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
+     * @dev Sets a new duration for a token rate cache.
      * Note this function also updates the current cached value.
+     *
+     * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
+     * join or an exit because the state of the pool could be out of sync with the state of the Vault.
+     *
+     * It will also revert if there was no rate provider set initially.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
      * @param duration Number of seconds until the current token rate is fetched again.
      */
-    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate whenNotInVaultContext {
         uint256 index = _getTokenIndex(token);
         IRateProvider provider = _getRateProvider(index);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
@@ -153,9 +189,17 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
 
     /**
      * @dev Forces a rate cache hit for a token.
-     * It will revert if the requested token does not have an associated rate provider.
+     *
+     * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
+     * join or an exit because the state of the pool could be out of sync with the state of the Vault.
+     *
+     * It will also revert if the requested token does not have an associated rate provider.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
-    function updateTokenRateCache(IERC20 token) external {
+    function updateTokenRateCache(IERC20 token) external whenNotInVaultContext {
         uint256 index = _getTokenIndex(token);
 
         IRateProvider provider = _getRateProvider(index);
