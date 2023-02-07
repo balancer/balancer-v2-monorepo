@@ -85,7 +85,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Protocol Fee Withdrawer                                 | [`20220517-protocol-fee-withdrawer`](./tasks/20220517-protocol-fee-withdrawer)                       |
 | Child Chain Gauge Token Adder                           | [`20220527-child-chain-gauge-token-adder`](./tasks/20220527-child-chain-gauge-token-adder)           |
 | Preseeded Voting Escrow Delegation                      | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
-| Stable Pools V2 of up to 5 tokens                       | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
 | Gauge Registrant V2, supporting new networks            | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
 | Distribution Scheduler for reward tokens on gauges      | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
 | Fee Distributor for veBAL holders V2                    | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
@@ -97,13 +96,14 @@ Returns an object with all contracts from a deployment and their addresses.
 | Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
 | Polygon Root Gauges V2, for veBAL voting                | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
-| Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
 | Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 | Authorizer Adaptor Entrypoint                           | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
 | Timelock Authorizer, governance contract                | [`20221202-timelock-authorizer`](./tasks/20221202-timelock-authorizer)                               |
 | L2 Gauge Checkpointer                                   | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                           |
 | VeBoost V2                                              | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
 | Gauge Registrant V3, supporting the Adaptor entrypoint  | [`20230109-gauge-adder-v3`](./tasks/20230109-gauge-adder-v3)                                         |
+| Weighted Pool V3                                        | [`20230206-weighted-pool-v3`](./tasks/20230206-weighted-pool-v3)                                     |
+| Composable Stable Pools V3                              | [`20230206-composable-stable-pool-v3`](./tasks/20230206-composable-stable-pool-v3)                   |
 
 ## Scripts
 
@@ -118,6 +118,7 @@ These are deployments for script-like contracts (often called 'coordinators') wh
 | Tribe BAL Minter Coordinator                        | [`20220606-tribe-bal-minter-coordinator`](./tasks/scripts/20220606-tribe-bal-minter-coordinator)           |
 | Coordination of the double entrypoint issue fix     | [`20220610-snx-recovery-coordinator`](./tasks/scripts/20220610-snx-recovery-coordinator)                   |
 | Coordination of the Gauge Adder migration           | [`20220721-gauge-adder-migration-coordinator`](./tasks/scripts/20220721-gauge-adder-migration-coordinator) |
+| Timelock authorizer transition permission migration | [`20230130-ta-transition-migrator`](./tasks/scripts/20230130-ta-transition-migrator)                       |
 
 ## Deprecated Deployments
 
@@ -148,6 +149,7 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Polygon Root Gauges, for veBAL voting                   | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)         |
 | Fee Distributor for veBAL holders                       | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                               |
 | Linear Pools for Unbutton tokens                        | [`20220425-unbutton-aave-linear-pool`](./tasks/deprecated/20220425-unbutton-aave-linear-pool)           |
+| Stable Pools V2 of up to 5 tokens                       | [`20220609-stable-pool-v2`](./tasks/deprecated/20220609-stable-pool-v2)                                 |
 | Optimism Root Gauges, for veBAL voting                  | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)       |
 | Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/deprecated/20220720-batch-relayer-v3)                             |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/deprecated/20220817-aave-rebalanced-linear-pool)       |
