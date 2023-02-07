@@ -48,6 +48,10 @@ contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
         return IAuthorizer(address(0));
     }
 
+    function vault() external view returns (IVault) {
+        return _getVault();
+    }
+
     function _doRecoveryModeExit(
         uint256[] memory,
         uint256,

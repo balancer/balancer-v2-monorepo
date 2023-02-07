@@ -86,6 +86,23 @@ describe('ProtocolFeeCache', () => {
     });
   });
 
+  describe('vault access', () => {
+    sharedBeforeEach('deploy fee cache', async () => {
+      protocolFeeCache = await deploy('MockProtocolFeeCache', {
+        args: [
+          vault.address,
+          vault.protocolFeesProvider.address,
+          { swap: ProtocolFee.SWAP, yield: ProtocolFee.YIELD, aum: ProtocolFee.AUM },
+        ],
+        from: admin,
+      });
+    });
+
+    it('stores the Vault', async () => {
+      expect(await protocolFeeCache.vault()).to.eq(vault.address);
+    });
+  });
+
   function itTestsProtocolFeePercentages(providerFeeIds: ProviderFeeIDs): void {
     sharedBeforeEach('deploy fee cache', async () => {
       protocolFeeCache = await deploy('MockProtocolFeeCache', {
