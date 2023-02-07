@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IReaperTokenVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IReaperTokenVault.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
