@@ -40,7 +40,7 @@ contract ReadOnlyReentrancyAttackerLP {
      * and regular joins and exits are disabled, the attacker contract must be the owner, and the only
      * way to enter the Vault context is a RecoveryMode exit.
      *
-     * This function must be called with a non-zero ETH value, and with the pool in Recovery Mode.
+     * This function must be called with the pool in Recovery Mode.
      *
      * @param poolId Pool ID to attack.
      * @param attackType Type of attack; determines which vulnerable pool function to call.
@@ -50,7 +50,6 @@ contract ReadOnlyReentrancyAttackerLP {
         AttackType attackType,
         uint256 bptAmountIn
     ) external payable {
-        require(msg.value > 0, "Insufficient ETH");
         _attackType = attackType;
         _poolId = poolId;
         IVault vault = _vault;
