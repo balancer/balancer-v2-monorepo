@@ -802,5 +802,27 @@
         "addZKSyncGauge(address)": "0xb4cefe9458423ef44656096dc0d1d04cfecf3df24dea1e05657f4b43bea0296d"
       }
     }
+  },
+  "20230206-weighted-pool-v3": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address)": "0x5e28c1305086eb84159df4390efc2031b79a164bc2dce3e3ae08912f41a1fa54",
+        "disable()": "0x1f8f892407c2cb710506d8998efcf8f6709b3c0fbbddfed6494ef08b7467c62f"
+      }
+    },
+    "WeightedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x0441ff033652bcEB75a011887F17B5dfC84Ddc6f",
+      "actionIds": {
+        "disableRecoveryMode()": "0x8d501e77af020f32c1679f4cbfd314fb02b3cb069916ba4a9d8b9dad2c4bf9cc",
+        "enableRecoveryMode()": "0xb1f17616596b3d2360ad06581e2bfca70cca3e1c29f629cd084fded06c061fc4",
+        "pause()": "0xc7cdb62ccea4a22a57d639c10da71a67acbaf7ab46c4508d0b9ecad84205babd",
+        "setAssetManagerPoolConfig(address,bytes)": "0x8f83d4658182d88f55f863844d354ff089459aec8967c83322d138bac30b3149",
+        "setSwapFeePercentage(uint256)": "0x3538d6d3dc0a61e256b030bcede35dfb4204bbc36452180e2d2f940d0ad35be7",
+        "unpause()": "0x26f158f951bade88b1b53b08de02e8a553a783332a43b06978d7c529f886a709",
+        "updateProtocolFeePercentageCache()": "0x3d1afd98f503391601036f3534b9ddd56f305678f9e25c8aa18baf666389be67"
+      }
+    }
   }
 }
