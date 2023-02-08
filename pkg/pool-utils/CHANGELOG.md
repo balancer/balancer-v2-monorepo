@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.1.1 (2023-02-08)
+
+### Bugfix
+
+- Fix dependency on `v2-solidity-utils`.
+
+## 3.1.0 (2023-02-08)
+
+### New Features
+
+- Added `VaultReentrancyLib`.
+- Added the Vault as a constructor argument to `RecoveryMode`.
+
 ## 3.0.1 (2022-12-12)
 
 ### Misc

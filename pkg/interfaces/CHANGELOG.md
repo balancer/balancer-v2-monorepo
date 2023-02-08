@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (20223-02-08)
 
 ### New Features
 
 - Added `checkpointGaugesOfTypeAboveRelativeWeight` to `IL2GaugeCheckpointer`.
 - Added `IComposableStablePoolRates`.
 - Added `IProtocolFeeCache`.
+- Added `setTargets` and `setSwapFeePercentage` to `ILinearPool`.
 
 ### Breaking changes
 
