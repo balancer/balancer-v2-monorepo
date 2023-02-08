@@ -4,6 +4,8 @@
 
 ### New Deployments
 
+- Deployed `WeightedPoolFactory` v3 to all networks.
+- Deployed `ComposableStablePoolFactory` v3 to all networks.
 - Deployed `L2GaugeCheckpointer` to Mainnet.
 - Deployed `VeBoostV2` to Mainnet.
 - Deployed `NoProtocolFeeLiquidityBootstrappingPoolFactory` to Gnosis.
