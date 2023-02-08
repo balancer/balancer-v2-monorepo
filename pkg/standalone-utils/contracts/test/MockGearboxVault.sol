@@ -71,6 +71,7 @@ contract MockGearboxVault is IGearboxVault {
     function removeLiquidity(uint256 wrappedAmount, address to) external override {
         MockGearboxDieselToken(_dieselTokenAddress).burn(msg.sender, wrappedAmount);
         uint256 mainAmount = this.fromDiesel(wrappedAmount);
-        TestToken(_underlyingToken).mint(to, mainAmount);
+        IERC20(_underlyingToken).safeApprove(address(this), mainAmount);
+        IERC20(_underlyingToken).safeTransferFrom(address(this), to, mainAmount);
     }
 }

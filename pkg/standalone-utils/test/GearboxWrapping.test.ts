@@ -24,7 +24,7 @@ import {
   toChainedReference,
 } from './helpers/chainedReferences';
 
-describe('GearboxWrapping', function () {
+describe.only('GearboxWrapping', function () {
   let DAI: Token, dDAI: Token;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
@@ -47,6 +47,7 @@ describe('GearboxWrapping', function () {
   sharedBeforeEach('mint tokens to senderUser', async () => {
     await DAI.mint(senderUser.address, fp(100));
     await DAI.connect(senderUser).approve(vault.address, fp(100));
+    await DAI.mint(gearboxVault.address, fp(10000));
 
     await dDAI.mint(senderUser.address, fp(2500));
     await dDAI.connect(senderUser).approve(dDAI.address, fp(150));
@@ -316,7 +317,7 @@ describe('GearboxWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
+              from: gearboxVault.address,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: await gearboxVault.fromDiesel(amount),
             },
@@ -368,7 +369,7 @@ describe('GearboxWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
+              from: gearboxVault.address,
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: await gearboxVault.fromDiesel(amount),
             },
@@ -514,7 +515,7 @@ describe('GearboxWrapping', function () {
             tokenOut: dDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: gearboxVault.address, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -623,7 +624,7 @@ describe('GearboxWrapping', function () {
             tokenOut: dDAI.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: gearboxVault.address, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
