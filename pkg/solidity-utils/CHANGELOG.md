@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.2 (2023-02-08)
+
+### Misc
+
+- Bump to republish.
+
 ## 3.0.1 (2022-12-12)
 
 ### Bugfix
