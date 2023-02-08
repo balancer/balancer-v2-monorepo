@@ -24,6 +24,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/VaultReentrancyLib.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -123,6 +124,27 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
+
+    /**
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal
+     * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
+     * reentrancy protection will cause this function to revert.
+     *
+     * Use this modifier with any function that can cause a state change in a pool and is either public itself,
+     * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     */
+    modifier whenNotInVaultContext() {
+        _ensureNotInVaultContext();
+        _;
+    }
+
+    /**
+     * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
+     */
+    function _ensureNotInVaultContext() private {
+        VaultReentrancyLib.ensureNotInVaultContext(getVault());
+    }
 
     constructor(
         IVault vault,
@@ -535,6 +557,13 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     /**
      * @dev For a Linear Pool, the rate represents the appreciation of BPT with respect to the underlying tokens. This
      * rate increases slowly as the wrapped token appreciates in value.
+     *
+     * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
+     * via reentrancy. See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
+     * function before calling `getRate`. That will make the transaction revert in an unsafe context.
+     * (See `whenNotInVaultContext`).
      */
     function getRate() external view override returns (uint256) {
         bytes32 poolId = getPoolId();
@@ -587,16 +616,13 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         upperTarget = poolState.decodeUint(_UPPER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
     }
 
-    /**
-     * @notice Set the lower and upper bounds of the zero-fee trading range for the main token balance.
-     * @dev For a new target range to be valid:
-     *      - the current balance must be between the current targets (meaning no fees are currently pending)
-     *      - the current balance must be between the new targets (meaning setting them does not create pending fees)
-     *
-     * The first requirement could be relaxed, as the LPs actually benefit from the pending fees not being paid out,
-     * but being stricter makes analysis easier at little expense.
-     */
-    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external authenticate {
+    /// @inheritdoc ILinearPool
+    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget)
+        external
+        override
+        authenticate
+        whenNotInVaultContext
+    {
         (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
         _require(_isMainBalanceWithinTargets(currentLowerTarget, currentUpperTarget), Errors.OUT_OF_TARGET_RANGE);
         _require(_isMainBalanceWithinTargets(newLowerTarget, newUpperTarget), Errors.OUT_OF_NEW_TARGET_RANGE);
@@ -643,11 +669,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         return _poolState.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
 
-    /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external authenticate {
+    /// @inheritdoc ILinearPool
+    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotInVaultContext {
         // For the swap fee percentage to be changeable:
         //  - the pool must currently be between the current targets (meaning no fees are currently pending)
         //
@@ -687,6 +710,14 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
      * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the recovery
      * mode exit function, the totalSupply can change as BPT are burned.
+     * 
+     * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
+     * via reentrancy. See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
+     * function before calling `getVirtualSupply`. That will make the transaction revert in an unsafe context.
+     * (See `whenNotInVaultContext`).
+
      */
     function getVirtualSupply() external view returns (uint256) {
         // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
