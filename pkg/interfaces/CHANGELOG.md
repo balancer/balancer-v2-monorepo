@@ -7,6 +7,7 @@
 - Added `checkpointGaugesOfTypeAboveRelativeWeight` to `IL2GaugeCheckpointer`.
 - Added `IComposableStablePoolRates`.
 - Added `IProtocolFeeCache`.
+- Added `setTargets` and `setSwapFeePercentage` to `ILinearPool`.
 
 ### Breaking changes
 
