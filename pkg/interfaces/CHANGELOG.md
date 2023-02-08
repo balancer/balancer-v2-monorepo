@@ -5,6 +5,8 @@
 ### New Features
 
 - Added `checkpointGaugesOfTypeAboveRelativeWeight` to `IL2GaugeCheckpointer`.
+- Added `IComposableStablePoolRates`.
+- Added `IProtocolFeeCache`.
 
 ### Breaking changes
 
