@@ -721,14 +721,13 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
      * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the recovery
      * mode exit function, the totalSupply can change as BPT are burned.
-     * 
+     *
      * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
      * via reentrancy. See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
      * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
      * function before calling `getVirtualSupply`. That will make the transaction revert in an unsafe context.
      * (See `whenNotInVaultContext`).
-
      */
     function getVirtualSupply() external view returns (uint256) {
         // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
