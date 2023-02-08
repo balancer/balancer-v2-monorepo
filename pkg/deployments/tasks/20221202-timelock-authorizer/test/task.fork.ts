@@ -5,6 +5,8 @@ import { Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
@@ -97,5 +99,49 @@ describeForkTest('TimelockAuthorizer', 'mainnet', 16076200, function () {
     expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
     expect(await newAuthorizer.isRoot(root.address)).to.be.true;
     expect(await newAuthorizer.isRoot(migrator.address)).to.be.false;
+  });
+
+  it('allows minting after the migration', async () => {
+    const balancerMinterTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    const balancerMinter = await balancerMinterTask.deployedInstance('BalancerMinter');
+
+    const balancerTokenAdminTask = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    const balancerTokenAdmin = await balancerTokenAdminTask.deployedInstance('BalancerTokenAdmin');
+
+    const tokensTask = new Task('00000000-tokens', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    const balAddress = tokensTask.output().BAL;
+    const balancerToken = await balancerTokenAdminTask.instanceAt('IERC20', balAddress);
+
+    const balancerMinterSigner = await impersonate(balancerMinter.address, fp(100));
+
+    const tx = await balancerTokenAdmin.connect(balancerMinterSigner).mint(balancerMinter.address, 100);
+
+    expectEvent.inIndirectReceipt(await tx.wait(), balancerToken.interface, 'Transfer', {
+      from: ZERO_ADDRESS,
+      to: balancerMinter.address,
+      value: 100,
+    });
+  });
+
+  it('allows migrating the authorizer address again', async () => {
+    const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
+
+    expect(await vault.getAuthorizer()).to.be.eq(newAuthorizer.address);
+
+    await newAuthorizer.connect(root).grantPermissions([setAuthorizerActionId], root.address, [vault.address]);
+
+    // Schedule authorizer change
+    const nextAuthorizer = '0xaF52695E1bB01A16D33D7194C28C42b10e0Dbec2';
+    const tx = await newAuthorizer
+      .connect(root)
+      .schedule(vault.address, vault.interface.encodeFunctionData('setAuthorizer', [nextAuthorizer]), [root.address]);
+    const event = expectEvent.inReceipt(await tx.wait(), 'ExecutionScheduled');
+
+    await advanceTime(30 * DAY);
+
+    // Execute authorizer change
+    await newAuthorizer.connect(root).execute(event.args.scheduledExecutionId);
+
+    expect(await vault.getAuthorizer()).to.be.eq(nextAuthorizer);
   });
 });

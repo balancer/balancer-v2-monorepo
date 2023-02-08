@@ -788,5 +788,67 @@
         "unpause()": "0x734b96f255027244606af8384c68f6cb6773f089519277c2dd148bf21954ab90"
       }
     }
+  },
+  "20230109-gauge-adder-v3": {
+    "GaugeAdder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addArbitrumGauge(address)": "0x96ff38090d2ed548492395d6d0149ea5b4421d71c2c3dd10f72f53f9bd45edda",
+        "addEthereumGauge(address)": "0xfcfb808c20096983bc85ee3b5b6aed175602a6a4ce74fa3f8f5187d34e1dba1c",
+        "addGaugeFactory(address,uint8)": "0x219b248d5bf3753cd21b9c0b700dea1fbab4235f8ee8d24cf41d833855fec117",
+        "addGnosisGauge(address)": "0xde0e249fc4cfa4b6153b12a35c645045eebba9e4ffad25ef5b72def766c46e23",
+        "addOptimismGauge(address)": "0x1fce0291bd19b4d377ab0d460c7363482933f3590df476c894f7bc94f8f900b8",
+        "addPolygonGauge(address)": "0xa79af7d75bf50fe3d19ae8537f3df157b608a7a3cff6bda2d970fbba470642ba",
+        "addZKSyncGauge(address)": "0xb4cefe9458423ef44656096dc0d1d04cfecf3df24dea1e05657f4b43bea0296d"
+      }
+    }
+  },
+  "20230206-weighted-pool-v3": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address)": "0x5e28c1305086eb84159df4390efc2031b79a164bc2dce3e3ae08912f41a1fa54",
+        "disable()": "0x1f8f892407c2cb710506d8998efcf8f6709b3c0fbbddfed6494ef08b7467c62f"
+      }
+    },
+    "WeightedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x0441ff033652bcEB75a011887F17B5dfC84Ddc6f",
+      "actionIds": {
+        "disableRecoveryMode()": "0x8d501e77af020f32c1679f4cbfd314fb02b3cb069916ba4a9d8b9dad2c4bf9cc",
+        "enableRecoveryMode()": "0xb1f17616596b3d2360ad06581e2bfca70cca3e1c29f629cd084fded06c061fc4",
+        "pause()": "0xc7cdb62ccea4a22a57d639c10da71a67acbaf7ab46c4508d0b9ecad84205babd",
+        "setAssetManagerPoolConfig(address,bytes)": "0x8f83d4658182d88f55f863844d354ff089459aec8967c83322d138bac30b3149",
+        "setSwapFeePercentage(uint256)": "0x3538d6d3dc0a61e256b030bcede35dfb4204bbc36452180e2d2f940d0ad35be7",
+        "unpause()": "0x26f158f951bade88b1b53b08de02e8a553a783332a43b06978d7c529f886a709",
+        "updateProtocolFeePercentageCache()": "0x3d1afd98f503391601036f3534b9ddd56f305678f9e25c8aa18baf666389be67"
+      }
+    }
+  },
+  "20230206-composable-stable-pool-v3": {
+    "ComposableStablePoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address)": "0xa0499989f0045b6c8fc7aa496c2172b053d3ed15124eedca31749cd5e29f2ada",
+        "disable()": "0xeedf83fdf967029f62d13d9d9102d27946945cb008bf326edfe2a4592c901659"
+      }
+    },
+    "ComposableStablePool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x2EF26d97B5870600BE341561298938c2e5df84f0",
+      "actionIds": {
+        "disableRecoveryMode()": "0xaf6f022f37dc5e877be30d820627d3c8bf7fe467076034a41ec92048973ba002",
+        "enableRecoveryMode()": "0xd6ebed127862549c3db449781ac9e80864eb794442effd53919d1c5ff820c431",
+        "pause()": "0xa27840506d37dc29759e536cc5c1d9757e80d9b1fa5548a1ca8619f33dd1072a",
+        "setAssetManagerPoolConfig(address,bytes)": "0x3397020917cfa9dadcf1e507b781c53b7f77b174ed85b5b12748ef5a6ae46722",
+        "setSwapFeePercentage(uint256)": "0xcc0b4f1263ce5d036eaa02e2e29bda7414b593c3f42a8aed4ad6c916edc1a565",
+        "setTokenRateCacheDuration(address,uint256)": "0x9bd7a3ed9d1fced64087af0c4015b1ed7adf5a068a84bbb0feec2aa73024f533",
+        "startAmplificationParameterUpdate(uint256,uint256)": "0xfa32fb6e69279c6a1376f910c7c71838dc2fce1ec3bab7d3b9580cdda3c70eae",
+        "stopAmplificationParameterUpdate()": "0x3a387b28ebb63c0b53c39cce6d9918e762408048d3f949a2f3f81c25805b7b61",
+        "unpause()": "0x8915665f458a61f28f8e8cf59a52457488207ba6b382536b63658892be082d27",
+        "updateProtocolFeePercentageCache()": "0xde0657f7ba5c70047b0aaead98b8ba2a9e3160a58febce65cf2406a531840658",
+        "updateTokenRateCache(address)": "0x1ff1e5781eca58df974b1c8ea055acf9aafd9a575d86b65afd7017c0bb89e9f5"
+      }
+    }
   }
 }

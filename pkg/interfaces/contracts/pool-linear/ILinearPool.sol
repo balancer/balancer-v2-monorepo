@@ -50,4 +50,35 @@ interface ILinearPool is IBasePool {
      * factor applied to them.
      */
     function getTargets() external view returns (uint256 lowerTarget, uint256 upperTarget);
+
+    /**
+     * @notice Set the lower and upper bounds of the zero-fee trading range for the main token balance.
+     * @dev For a new target range to be valid:
+     *      - the current balance must be between the current targets (meaning no fees are currently pending)
+     *      - the current balance must be between the new targets (meaning setting them does not create pending fees)
+     *
+     * The first requirement could be relaxed, as the LPs actually benefit from the pending fees not being paid out,
+     * but being stricter makes analysis easier at little expense.
+     *
+     * This is a permissioned function, reserved for the pool owner. It will revert when called within a Vault context
+     * (i.e. in the middle of a join or an exit).
+     *
+     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
+     * the pool during execution of a Vault hook.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     */
+    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external;
+
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function, reserved for the pool owner. It will revert when called within a Vault
+     * context (i.e. in the middle of a join or an exit).
+     *
+     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
+     * the pool during execution of a Vault hook.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     */
+    function setSwapFeePercentage(uint256 swapFeePercentage) external;
 }

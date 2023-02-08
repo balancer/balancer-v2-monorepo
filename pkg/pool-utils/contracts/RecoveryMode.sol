@@ -17,6 +17,7 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryMode.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -47,12 +48,18 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
 
+    IVault private immutable _vault;
+
     /**
      * @dev Reverts if the contract is in Recovery Mode.
      */
     modifier whenNotInRecoveryMode() {
         _ensureNotInRecoveryMode();
         _;
+    }
+
+    constructor(IVault vault) {
+        _vault = vault;
     }
 
     /**
@@ -131,4 +138,11 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
         uint256 totalSupply,
         bytes memory userData
     ) internal virtual returns (uint256, uint256[] memory);
+
+    /**
+     * @dev Keep a reference to the Vault, for use in reentrancy protection function calls that require it.
+     */
+    function _getVault() internal view returns (IVault) {
+        return _vault;
+    }
 }
