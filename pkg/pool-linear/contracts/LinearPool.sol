@@ -548,6 +548,13 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     /**
      * @dev For a Linear Pool, the rate represents the appreciation of BPT with respect to the underlying tokens. This
      * rate increases slowly as the wrapped token appreciates in value.
+     *
+     * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
+     * via reentrancy. See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
+     * function before calling `getRate`. That will make the transaction revert in an unsafe context.
+     * (See `whenNotInVaultContext`).
      */
     function getRate() external view override returns (uint256) {
         bytes32 poolId = getPoolId();
@@ -600,24 +607,13 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         upperTarget = poolState.decodeUint(_UPPER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
     }
 
-    /**
-     * @notice Set the lower and upper bounds of the zero-fee trading range for the main token balance.
-     * @dev For a new target range to be valid:
-     *      - the current balance must be between the current targets (meaning no fees are currently pending)
-     *      - the current balance must be between the new targets (meaning setting them does not create pending fees)
-     *
-     * The first requirement could be relaxed, as the LPs actually benefit from the pending fees not being paid out,
-     * but being stricter makes analysis easier at little expense.
-     *
-     * This is a permissioned function, and will revert when called within a Vault context (i.e. in the middle
-     * of a join or an exit).
-     *
-     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook.
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
-     */
-    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external authenticate whenNotInVaultContext {
+    /// @inheritdoc ILinearPool
+    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget)
+        external
+        override
+        authenticate
+        whenNotInVaultContext
+    {
         (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
         _require(_isMainBalanceWithinTargets(currentLowerTarget, currentUpperTarget), Errors.OUT_OF_TARGET_RANGE);
         _require(_isMainBalanceWithinTargets(newLowerTarget, newUpperTarget), Errors.OUT_OF_NEW_TARGET_RANGE);
@@ -664,17 +660,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         return _poolState.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
 
-    /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and will revert when called within a Vault context
-     * (i.e. in the middle of a join or an exit).
-     *
-     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook.
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external authenticate whenNotInVaultContext {
+    /// @inheritdoc ILinearPool
+    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotInVaultContext {
         // For the swap fee percentage to be changeable:
         //  - the pool must currently be between the current targets (meaning no fees are currently pending)
         //
@@ -714,6 +701,14 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
      * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the recovery
      * mode exit function, the totalSupply can change as BPT are burned.
+     * 
+     * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
+     * via reentrancy. See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
+     * function before calling `getVirtualSupply`. That will make the transaction revert in an unsafe context.
+     * (See `whenNotInVaultContext`).
+
      */
     function getVirtualSupply() external view returns (uint256) {
         // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
