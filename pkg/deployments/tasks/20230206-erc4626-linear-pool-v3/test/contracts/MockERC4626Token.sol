@@ -14,13 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IERC4626.sol";
-
-import "@balancer-labs/v2-pool-utils/contracts/test/MaliciousQueryReverter.sol";
-
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+
+import "../interfaces/IERC4626.sol";
+import "./MaliciousQueryReverter.sol";
 
 contract MockERC4626Token is TestToken, IERC4626, MaliciousQueryReverter {
     using FixedPoint for uint256;
@@ -86,7 +85,7 @@ contract MockERC4626Token is TestToken, IERC4626, MaliciousQueryReverter {
         return assets;
     }
 
-    function previewMint(uint256 shares) external view returns (uint256) {
+    function previewMint(uint256 shares) external view override returns (uint256) {
         maybeRevertMaliciously();
         uint256 assetsInShareDecimals = shares.divDown(_rate);
         uint256 assets = assetsInShareDecimals.mulDown(_scaleSharesToFP).divUp(_scaleAssetsToFP);
