@@ -589,7 +589,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
     // Targets
 
-    /// @inheritdocs
+    /// @inheritdoc ILinearPool
     function getTargets() public view override returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 poolState = _poolState;
 
@@ -598,8 +598,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         upperTarget = poolState.decodeUint(_UPPER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
     }
 
-    /// @inheritdocs
-    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external authenticate whenNotInVaultContext {
+    /// @inheritdoc ILinearPool
+    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external override authenticate whenNotInVaultContext {
         (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
         _require(_isMainBalanceWithinTargets(currentLowerTarget, currentUpperTarget), Errors.OUT_OF_TARGET_RANGE);
         _require(_isMainBalanceWithinTargets(newLowerTarget, newUpperTarget), Errors.OUT_OF_NEW_TARGET_RANGE);
@@ -643,7 +643,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         return _poolState.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
 
-    /// @inheritdocs
+    /// @inheritdoc ILinearPool
     function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotInVaultContext {
         // For the swap fee percentage to be changeable:
         //  - the pool must currently be between the current targets (meaning no fees are currently pending)

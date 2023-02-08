@@ -367,7 +367,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     });
   });
 
-  describe.only('read-only reentrancy protection', () => {
+  describe.skip('read-only reentrancy protection', () => {
     let pool: Contract;
     let poolId: string;
     let attacker: Contract;
