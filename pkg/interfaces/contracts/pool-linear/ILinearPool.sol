@@ -60,8 +60,8 @@ interface ILinearPool is IBasePool {
      * The first requirement could be relaxed, as the LPs actually benefit from the pending fees not being paid out,
      * but being stricter makes analysis easier at little expense.
      *
-     * This is a permissioned function, and will revert when called within a Vault context (i.e. in the middle
-     * of a join or an exit).
+     * This is a permissioned function, reserved for the pool owner. It will revert when called within a Vault context
+     * (i.e. in the middle of a join or an exit).
      *
      * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
      * the pool during execution of a Vault hook.
@@ -72,8 +72,8 @@ interface ILinearPool is IBasePool {
 
     /**
      * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and will revert when called within a Vault context
-     * (i.e. in the middle of a join or an exit).
+     * @dev This is a permissioned function, reserved for the pool owner. It will revert when called within a Vault
+     * context (i.e. in the middle of a join or an exit).
      *
      * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
      * the pool during execution of a Vault hook.

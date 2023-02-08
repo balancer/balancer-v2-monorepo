@@ -12,6 +12,12 @@
 
 - `IL2GaugeCheckpointer`: `getGaugeAt` renamed to `getGaugeAtIndex`.
 
+## 0.2.1 (2022-12-12)
+
+### Misc
+
+- Added examples to readme.
+
 ## 0.2.0 (2022-12-01)
 
 ### New Interfaces
