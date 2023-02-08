@@ -2,7 +2,7 @@
 
 Third deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with a ERC4626 yield-bearing token.
 Supersedes `20220404-erc4626-linear-pool-v2`, fixing the reentrancy issue described in https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345.
-Also has a fix in the `ERC4727LinearPoolRebalancer` to handle tokens which do not allow setting an approval without first setting the approval to zero.
+Also has a fix in the `ERC4626LinearPoolRebalancer` to handle tokens which do not allow setting an approval without first setting the approval to zero.
 
 ## Useful Files
 
