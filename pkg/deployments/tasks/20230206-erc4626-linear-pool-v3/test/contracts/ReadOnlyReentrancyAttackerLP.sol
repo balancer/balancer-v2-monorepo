@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+
 /**
  * @notice Performs a read-only reentrancy attack on a target linear pool, making use of the `receive` callback hook
  * in the middle of an exit operation.
@@ -82,13 +84,6 @@ contract ReadOnlyReentrancyAttackerLP {
         } else if (attackType == AttackType.SET_SWAP_FEE) {
             uint256 swapFeePercentage = ILinearPool(pool).getSwapFeePercentage();
             ILinearPool(pool).setSwapFeePercentage(swapFeePercentage);
-        }
-    }
-
-    function _asIAsset(IERC20[] memory tokens) private pure returns (IAsset[] memory assets) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            assets := tokens
         }
     }
 }
