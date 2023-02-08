@@ -58,7 +58,7 @@ contract ReadOnlyReentrancyAttackerLP {
         IVault vault = _vault;
 
         bytes memory userData = abi.encode(RECOVERY_MODE_EXIT_KIND, bptAmountIn);
-        (IERC20[] memory tokens, ,) = vault.getPoolTokens(poolId);
+        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
 
         IVault.ExitPoolRequest memory exitPoolRequest = IVault.ExitPoolRequest(
             _asIAsset(tokens),

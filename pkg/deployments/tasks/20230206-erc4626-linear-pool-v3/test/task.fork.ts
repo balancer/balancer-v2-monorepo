@@ -401,9 +401,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
         MAX_UINT256
       );
 
-      await authorizer
-          .connect(govMultisig)
-          .grantRole(await actionId(pool, 'enableRecoveryMode'), other.address);
+      await authorizer.connect(govMultisig).grantRole(await actionId(pool, 'enableRecoveryMode'), other.address);
 
       await pool.connect(other).enableRecoveryMode();
 
@@ -436,7 +434,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     context('set targets', () => {
       it(`set targets attack`, async () => {
         const bptBalance = await pool.balanceOf(attacker.address);
-        
+
         await performAttack(AttackType.SET_TARGETS, bptBalance);
       });
     });
