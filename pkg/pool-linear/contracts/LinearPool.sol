@@ -125,6 +125,15 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
 
+    /**
+     * @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal
+     * balance operation. If we are already in a Vault transaction (e.g., a swap, join, or exit), the Vault's
+     * reentrancy protection will cause this function to revert.
+     *
+     * Use this modifier with any function that can cause a state change in a pool and is either public itself,
+     * or called by a public function *outside* a Vault operation (e.g., join, exit, or swap).
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     */
     modifier whenNotInVaultContext() {
         _ensureNotInVaultContext();
         _;
