@@ -2,6 +2,8 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
+> This deployment has been deprecated in favor of a new version with critical fixes: [composable-stable-pool-v3](../../20230206-composable-stable-pool-v3/).
+> See this [forum post](https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345) for more details about the fixed vulnerability.
 
 Redeployment of `ComposableStablePoolFactory`, which allows creating Stable Pools that are suitable to be included in other Pools. This version adds proportional joins and exits, to improve the front-end UX.
 
