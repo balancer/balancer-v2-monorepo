@@ -44,12 +44,13 @@ contract ReadOnlyReentrancyAttackerLP {
      *
      * @param poolId Pool ID to attack.
      * @param attackType Type of attack; determines which vulnerable pool function to call.
+     * @param bptAmountIn Amount of BPT to exit with
      */
     function startAttack(
         bytes32 poolId,
         AttackType attackType,
         uint256 bptAmountIn
-    ) external payable {
+    ) external {
         _attackType = attackType;
         _poolId = poolId;
         IVault vault = _vault;
