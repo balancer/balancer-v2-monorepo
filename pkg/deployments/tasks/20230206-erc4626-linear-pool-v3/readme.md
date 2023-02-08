@@ -1,6 +1,7 @@
 # 2023-02-06 - ERC4626 Linear Pool V=3
 
-Third deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with a ERC4626 yield-bearing token. This version supersedes the previous version, 20220404-erc4626-linear-pool-v2.
+Third deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with a ERC4626 yield-bearing token.
+Supersedes `20220404-erc4626-linear-pool-v2`, fixing the reentrancy issue described in https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345.
 
 ## Useful Files
 

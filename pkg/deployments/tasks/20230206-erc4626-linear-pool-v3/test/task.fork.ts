@@ -1,6 +1,6 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { setCode } from '@nomicfoundation/hardhat-network-helpers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
@@ -9,7 +9,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
 import { describeForkTest } from '../../../src/forkTests';
-import { deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 export enum SwapKind {
   GivenIn = 0,
@@ -17,9 +18,11 @@ export enum SwapKind {
 }
 
 //TODO remove skip when we have build-info
-describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
+describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
-  let factory: Contract, vault: Contract, mainToken: Contract;
+  let govMultisig: SignerWithAddress;
+  let vault: Contract, authorizer: Contract, mainToken: Contract;
+  let v2Factory: Contract, v3Factory: Contract;
   let rebalancer: Contract;
 
   let task: Task;
@@ -33,6 +36,8 @@ describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function 
 
   const SWAP_FEE_PERCENTAGE = fp(0.01); // 1%
 
+  const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
+
   // The targets are set using 18 decimals, even if the token has fewer (as is the case for USDC);
   const INITIAL_UPPER_TARGET = fp(1e2);
 
@@ -42,23 +47,35 @@ describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function 
 
   const PROTOCOL_ID = 0;
 
+  enum AttackType {
+    SET_TARGETS,
+    SET_SWAP_FEE,
+  }
+
   let pool: Contract;
   let poolId: string;
 
   before('run task', async () => {
     task = new Task('20230206-erc4626-linear-pool-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
-    factory = await task.deployedInstance('ERC4626LinearPoolFactory');
+    v3Factory = await task.deployedInstance('ERC4626LinearPoolFactory');
+
+    const v2Task = new Task('20220404-erc4626-linear-pool-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    v2Factory = await v2Task.deployedInstance('ERC4626LinearPoolFactory');
   });
 
   before('load signers', async () => {
     [, owner, other] = await getSigners();
 
     holder = await impersonate(FRXETH_HOLDER, fp(100));
+    govMultisig = await impersonate(GOV_MULTISIG);
   });
 
   before('setup contracts', async () => {
     vault = await new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance('Vault');
+    authorizer = await new Task('20210418-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance(
+      'Authorizer'
+    );
 
     mainToken = await task.instanceAt('IERC20', frxEth);
     await mainToken.connect(holder).approve(vault.address, MAX_UINT256);
@@ -124,7 +141,7 @@ describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function 
 
   describe('create and check getters', () => {
     it('deploy a linear pool', async () => {
-      const tx = await factory.create(
+      const tx = await v3Factory.create(
         '',
         '',
         frxEth,
@@ -137,7 +154,7 @@ describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function 
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
       pool = await task.instanceAt('ERC4626LinearPool', event.args.pool);
-      expect(await factory.isPoolFromFactory(pool.address)).to.be.true;
+      expect(await v3Factory.isPoolFromFactory(pool.address)).to.be.true;
 
       poolId = await pool.getPoolId();
       const [registeredAddress] = await vault.getPool(poolId);
@@ -156,7 +173,7 @@ describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function 
         deployment: '20230206-erc4626-linear-pool-v3',
       };
 
-      expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
+      expect(await v3Factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
     });
 
     it('check pool version', async () => {
@@ -348,5 +365,119 @@ describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function 
       await mockLendingPool.setRevertType(2); // Type 2 is malicious swap query revert
       await expect(rebalancer.rebalance(other.address)).to.be.revertedWith('BAL#357'); // MALICIOUS_QUERY_REVERT
     });
+  });
+
+  describe.only('read-only reentrancy protection', () => {
+    let pool: Contract;
+    let poolId: string;
+    let attacker: Contract;
+
+    sharedBeforeEach('deploy attacker', async () => {
+      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
+    });
+
+    context.skip('when the target pool is not protected', () => {
+      sharedBeforeEach('deploy V2 pool and place in recovery mode', async () => {
+        const tx = await v2Factory.create(
+          '',
+          '',
+          frxEth,
+          erc4626Token,
+          INITIAL_UPPER_TARGET,
+          SWAP_FEE_PERCENTAGE,
+          attacker.address
+        );
+        const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
+
+        pool = await task.instanceAt('ERC4626LinearPool', event.args.pool);
+        poolId = await pool.getPoolId();
+
+        await authorizer
+            .connect(govMultisig)
+            .grantRole(await actionId(pool, 'enableRecoveryMode'), other.address);
+
+        await pool.connect(other).enableRecoveryMode();
+      });
+
+      itPerformsAttack(false);
+    });
+
+    context('when the target pool is protected', () => {
+      sharedBeforeEach('deploy V3 pool and place in recovery mode', async () => {
+        const tx = await v3Factory.create(
+          '',
+          '',
+          frxEth,
+          erc4626Token,
+          INITIAL_UPPER_TARGET,
+          SWAP_FEE_PERCENTAGE,
+          attacker.address,
+          PROTOCOL_ID
+        );
+        const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
+
+        pool = await task.instanceAt('ERC4626LinearPool', event.args.pool);
+        poolId = await pool.getPoolId();
+
+        await authorizer
+            .connect(govMultisig)
+            .grantRole(await actionId(pool, 'enableRecoveryMode'), other.address);
+
+        await pool.connect(other).enableRecoveryMode();
+      });
+
+      sharedBeforeEach('join pool and fund attacker', async () => {
+        const joinAmount = INITIAL_UPPER_TARGET.mul(2).div(FRXETH_SCALING);
+
+        await vault.connect(holder).swap(
+          {
+            kind: SwapKind.GivenIn,
+            poolId,
+            assetIn: frxEth,
+            assetOut: pool.address,
+            amount: joinAmount,
+            userData: '0x',
+          },
+          { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
+          0,
+          MAX_UINT256
+        );
+
+        const bptBalance = await pool.balanceOf(holder.address);
+
+        await pool.connect(holder).transfer(attacker.address, bptBalance);
+      });
+
+      itPerformsAttack(true);
+    });
+
+    function itPerformsAttack(expectRevert: boolean) {
+      const action = expectRevert ? 'rejects' : 'does not reject';
+
+      context('set targets', () => {
+        it(`${action} set targets attack`, async () => {
+          const bptBalance = await pool.balanceOf(attacker.address);
+          
+          await performAttack(AttackType.SET_TARGETS, bptBalance, expectRevert);
+        });
+      });
+
+      context('set swap fee', () => {
+        it(`${action} set swap fee attack`, async () => {
+          const bptBalance = await pool.balanceOf(attacker.address);
+
+          await performAttack(AttackType.SET_SWAP_FEE, bptBalance, expectRevert);
+        });
+      });
+    }
+
+    async function performAttack(attackType: AttackType, bptAmountIn: BigNumber, expectRevert: boolean) {
+      const attack = attacker.startAttack(poolId, attackType, bptAmountIn, { value: 10 });
+      if (expectRevert) {
+        await expect(attack).to.be.revertedWith('BAL#420');
+      } else {
+        await expect(attack).to.not.be.reverted;
+      }
+    }
   });
 });
