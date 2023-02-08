@@ -670,7 +670,6 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
     // Swap Fees
 
-
     function getSwapFeePercentage() public view virtual override returns (uint256) {
         return _poolState.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
