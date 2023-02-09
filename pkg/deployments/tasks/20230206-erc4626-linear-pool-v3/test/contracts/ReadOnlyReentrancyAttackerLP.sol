@@ -37,13 +37,13 @@ contract ReadOnlyReentrancyAttackerLP {
     uint256 private constant _SWAP_FEE_PERCENTAGE = 1e16;
 
     IVault private immutable _vault;
-    IERC20 private immutable _WETH;
+    IERC20 private immutable _weth;
     AttackType private _attackType;
     ILinearPool private _pool;
 
-    constructor(IVault vault, IERC20 WETH) {
+    constructor(IVault vault, IERC20 weth) {
         _vault = vault;
-        _WETH = WETH;
+        _weth = weth;
     }
 
     /**
@@ -75,12 +75,12 @@ contract ReadOnlyReentrancyAttackerLP {
 
         uint256 i = 0;
         for (i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == _WETH) {
+            if (tokens[i] == _weth) {
                 tokens[i] = IERC20(address(0));
                 break;
             }
         }
-        require(i < tokens.length, 'Pool does not contain WETH');
+        require(i < tokens.length, "Pool does not contain WETH");
 
         IVault.ExitPoolRequest memory exitPoolRequest = IVault.ExitPoolRequest(
             _asIAsset(tokens),
