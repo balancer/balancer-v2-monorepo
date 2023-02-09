@@ -51,7 +51,7 @@ contract ReadOnlyReentrancyAttackerLP {
      * must use RecoveryMode exit to perform the attack in a Vault context.
      *
      * The pool must have WETH, and the exit request must include the sentinel value (`address(0)`) so that the vault
-     * unwraps the token on its way out, effectively triggering the `receive` callback in this contract.
+     * unwraps the token on the way out, effectively triggering the `receive` callback in this contract.
      *
      * Finally, the attacker needs to have permission to call the target functions (`setTargets` and
      * `setSwapFeePercentage`) before the attack starts.
