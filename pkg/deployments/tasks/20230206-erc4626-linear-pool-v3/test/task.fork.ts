@@ -414,7 +414,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     }
 
     context('set targets', () => {
-      it(`does not trigger the set targets attack`, async () => {
+      it(`performs the set targets attack`, async () => {
         await performAttack(AttackType.SET_TARGETS);
       });
     });
