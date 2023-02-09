@@ -420,7 +420,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     });
 
     context('set swap fee', () => {
-      it(`does not trigger the set swap fee attack`, async () => {
+      it(`performs the set swap fee attack`, async () => {
         await performAttack(AttackType.SET_SWAP_FEE);
       });
     });
