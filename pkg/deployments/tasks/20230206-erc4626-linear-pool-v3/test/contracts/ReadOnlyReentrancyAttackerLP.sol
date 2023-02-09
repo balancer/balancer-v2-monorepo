@@ -52,7 +52,8 @@ contract ReadOnlyReentrancyAttackerLP {
      * called in `_processJoinPoolTransfers` in the Vault's `PoolBalances`: not in `_processExitPoolTransfers`.
      *
      * However, if you do an internal balance deposit of ETH, it will enter the Vault through user balance,
-     * and trigger the callback.
+     * and trigger the callback. This isn't a practical attack (nothing will be out of sync in the pool
+     * during it), but it verifies the reentrancy protection.
      *
      * @param pool Pool to attack.
      * @param attackType Type of attack; determines which vulnerable pool function to call.
