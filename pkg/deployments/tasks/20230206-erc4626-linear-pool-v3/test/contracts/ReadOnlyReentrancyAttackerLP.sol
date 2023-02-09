@@ -58,7 +58,7 @@ contract ReadOnlyReentrancyAttackerLP {
      *
      * @param pool Pool to attack.
      * @param attackType Type of attack; determines which vulnerable pool function to call.
-     * @param bptAmountIn Amount of BPT (ETH) to exit with.
+     * @param bptAmountIn Amount of BPT to exit with (exchanged for WETH, unwrapped to ETH)
      */
     function startAttack(
         ILinearPool pool,
