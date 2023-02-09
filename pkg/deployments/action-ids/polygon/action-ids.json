@@ -635,5 +635,20 @@
         "updateTokenRateCache(address)": "0xade7055deebb6b22c267d265d1705ef0ac92207b74b405de6fe239b63380341d"
       }
     }
+  },
+  "20230206-erc4626-linear-pool-v3": {
+    "ERC4626LinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x8736ff36AefD4A7f408d7cD2A3937172F94f8A34",
+      "actionIds": {
+        "disableRecoveryMode()": "0xfa622d172821d9fc7f1c07dd32678a73e16776f473232c5246ae2eba9dc27568",
+        "enableRecoveryMode()": "0x7461fb1ee70d064228f527e7d349d2429d9abb1a2ec29524519c9dd586f8f3c6",
+        "initialize()": "0x0119982710e8a37f33ece1c11f7b019c060cc6d23431578d22b1beef34643708",
+        "pause()": "0xa35728781c343f60b02e19dc90a50f0991daefdab1c5de541899d28dd065f7bf",
+        "setSwapFeePercentage(uint256)": "0xebcf876ca20204aac10dbecae7d6f0e45424ffc906585668776d5726b64f464a",
+        "setTargets(uint256,uint256)": "0x6b9adb82c7dca579c077378378d6545465281a86df1446c72ddf4c888f40e0b0",
+        "unpause()": "0xbc391e7298e7dfd01972421659778cab74ca955fb19fcd97709b550f86c1cc0d"
+      }
+    }
   }
 }
