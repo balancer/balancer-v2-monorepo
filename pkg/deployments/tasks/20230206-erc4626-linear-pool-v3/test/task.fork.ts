@@ -16,8 +16,7 @@ export enum SwapKind {
   GivenOut,
 }
 
-//TODO remove skip when we have build-info
-describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
+describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
   let vault: Contract, mainToken: Contract;
   let factory: Contract;
