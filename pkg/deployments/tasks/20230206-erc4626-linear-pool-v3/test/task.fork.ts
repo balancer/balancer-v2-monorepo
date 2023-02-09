@@ -152,8 +152,6 @@ describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function 
 
       const { assetManager } = await vault.getPoolTokenInfo(poolId, frxEth); // We could query for either frxEth or erc4626Token
       rebalancer = await task.instanceAt('ERC4626LinearPoolRebalancer', assetManager);
-
-      await mainToken.connect(holder).approve(rebalancer.address, MAX_UINT256); // To send extra main on rebalance
     });
 
     it('check factory version', async () => {
@@ -214,6 +212,10 @@ describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function 
   });
 
   describe('generate excess of main token and rebalance', () => {
+    before('approve the rebalancer', async () => {
+      await mainToken.connect(holder).approve(rebalancer.address, MAX_UINT256); // To send extra main on rebalance
+    });
+
     it('deposit main tokens', async () => {
       // We're going to join with enough main token to bring the Pool above its upper target, which will let us later
       // rebalance.
