@@ -19,19 +19,26 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
  * @notice Performs a read-only reentrancy attack on a target linear pool, making use of the `receive` callback hook
  * in the middle of an exit operation.
  */
 contract ReadOnlyReentrancyAttackerLP {
+    using FixedPoint for uint256;
+
     enum AttackType { SET_TARGETS, SET_SWAP_FEE }
 
     uint8 public constant RECOVERY_MODE_EXIT_KIND = 255;
 
+    uint256 private constant _LOWER_TARGET = 20e18;
+    uint256 private constant _UPPER_TARGET = 500e18;
+    uint256 private constant _SWAP_FEE_PERCENTAGE = 1e16;
+
     IVault private immutable _vault;
     AttackType private _attackType;
-    bytes32 private _poolId;
+    ILinearPool private _pool;
 
     constructor(IVault vault) {
         _vault = vault;
@@ -39,35 +46,34 @@ contract ReadOnlyReentrancyAttackerLP {
 
     /**
      * @dev Starts attack on target pool. Since LinearPool attacks can only be called by the owner,
-     * and regular joins and exits are disabled, the attacker contract must be the owner, and the only
-     * way to enter the Vault context is a RecoveryMode exit.
+     * and regular joins and exits are disabled, the attacker contract must be the owner.
      *
-     * This function must be called with the pool in Recovery Mode.
+     * It is possible to enter the Vault with a RecoveryMode exit - but `_handleRemainingEth` is only
+     * called in `_processJoinPoolTransfers` in the Vault's `PoolBalances`: not in `_processExitPoolTransfers`.
      *
-     * @param poolId Pool ID to attack.
+     * However, if you do an internal balance deposit of ETH, it will enter the Vault through user balance,
+     * and trigger the callback.
+     *
+     * @param pool Pool to attack.
      * @param attackType Type of attack; determines which vulnerable pool function to call.
-     * @param bptAmountIn Amount of BPT to exit with
+     * @param ethAmount Amount of ETH to deposit
      */
     function startAttack(
-        bytes32 poolId,
+        ILinearPool pool,
         AttackType attackType,
-        uint256 bptAmountIn
-    ) external {
+        uint256 ethAmount
+    ) external payable {
         _attackType = attackType;
-        _poolId = poolId;
-        IVault vault = _vault;
+        _pool = pool;
 
-        bytes memory userData = abi.encode(RECOVERY_MODE_EXIT_KIND, bptAmountIn);
-        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
+        ops[0].kind = IVault.UserBalanceOpKind.DEPOSIT_INTERNAL;
+        // asset defaults to 0 (ETH sentinel value)
+        ops[0].amount = ethAmount;
+        ops[0].sender = address(this);
+        ops[0].recipient = payable(address(this));
 
-        IVault.ExitPoolRequest memory exitPoolRequest = IVault.ExitPoolRequest(
-            _asIAsset(tokens),
-            new uint256[](tokens.length),
-            userData,
-            false
-        );
-
-        vault.exitPool(poolId, address(this), address(this), exitPoolRequest);
+        _vault.manageUserBalance{ value: msg.value }(ops);
     }
 
     receive() external payable {
@@ -76,14 +82,12 @@ contract ReadOnlyReentrancyAttackerLP {
 
     function _reenterAttack() internal {
         AttackType attackType = _attackType;
-        (address pool, ) = _vault.getPool(_poolId);
+        ILinearPool pool = _pool;
 
         if (attackType == AttackType.SET_TARGETS) {
-            (uint256 lowerTarget, uint256 upperTarget) = ILinearPool(pool).getTargets();
-            ILinearPool(pool).setTargets(lowerTarget, upperTarget);
+            pool.setTargets(_LOWER_TARGET, _UPPER_TARGET);
         } else if (attackType == AttackType.SET_SWAP_FEE) {
-            uint256 swapFeePercentage = ILinearPool(pool).getSwapFeePercentage();
-            ILinearPool(pool).setSwapFeePercentage(swapFeePercentage);
+            pool.setSwapFeePercentage(_SWAP_FEE_PERCENTAGE);
         }
     }
 }

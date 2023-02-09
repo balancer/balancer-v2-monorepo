@@ -10,7 +10,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
 import { describeForkTest } from '../../../src/forkTests';
 import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 export enum SwapKind {
   GivenIn = 0,
@@ -18,10 +17,9 @@ export enum SwapKind {
 }
 
 //TODO remove skip when we have build-info
-describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
+describeForkTest.skip('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
-  let govMultisig: SignerWithAddress;
-  let vault: Contract, authorizer: Contract, mainToken: Contract;
+  let vault: Contract, mainToken: Contract;
   let factory: Contract;
   let rebalancer: Contract;
 
@@ -29,18 +27,13 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
 
   const frxEth = '0x5E8422345238F34275888049021821E8E08CAa1f';
 
-  const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
   const erc4626Token = '0xac3e018457b222d93114458476f3e3416abbe38f';
 
-  const WETH_SCALING = bn(1); // WETH has 18 decimals, so its scaling factor is 1
   const FRXETH_SCALING = bn(1); // frxEth has 18 decimals, so its scaling factor is 1
 
   const FRXETH_HOLDER = '0xa1f8a6807c402e4a15ef4eba36528a3fed24e577';
-  const WETH_HOLDER = '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E';
 
   const SWAP_FEE_PERCENTAGE = fp(0.01); // 1%
-
-  const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   // The targets are set using 18 decimals, even if the token has fewer (as is the case for USDC);
   const INITIAL_UPPER_TARGET = fp(1e2);
@@ -69,14 +62,10 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     [, owner, other] = await getSigners();
 
     holder = await impersonate(FRXETH_HOLDER, fp(100));
-    govMultisig = await impersonate(GOV_MULTISIG);
   });
 
   before('setup contracts', async () => {
     vault = await new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance('Vault');
-    authorizer = await new Task('20210418-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance(
-      'Authorizer'
-    );
 
     mainToken = await task.instanceAt('IERC20', frxEth);
     await mainToken.connect(holder).approve(vault.address, MAX_UINT256);
@@ -338,85 +327,6 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     itRebalancesThePool(LinearPoolState.BALANCED);
   });
 
-  describe('read-only reentrancy protection', () => {
-    let wethPool: Contract;
-    let wethHolder: SignerWithAddress;
-    let poolId: string;
-    let attacker: Contract;
-
-    before('deploy attacker', async () => {
-      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
-    });
-
-    before('use WETH', async () => {
-      wethHolder = await impersonate(WETH_HOLDER, fp(100));
-      const weth = await deployedAt('IERC20', WETH);
-      await weth.connect(wethHolder).approve(vault.address, MAX_UINT256);
-    });
-
-    before('deploy pool and prepare', async () => {
-      const tx = await factory.create(
-        '',
-        '',
-        WETH,
-        erc4626Token,
-        INITIAL_UPPER_TARGET,
-        SWAP_FEE_PERCENTAGE,
-        attacker.address,
-        PROTOCOL_ID
-      );
-      const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
-
-      wethPool = await task.instanceAt('ERC4626LinearPool', event.args.pool);
-
-      poolId = await wethPool.getPoolId();
-
-      const joinAmount = INITIAL_UPPER_TARGET.div(2).div(WETH_SCALING);
-
-      await vault.connect(wethHolder).swap(
-        {
-          kind: SwapKind.GivenIn,
-          poolId,
-          assetIn: WETH,
-          assetOut: wethPool.address,
-          amount: joinAmount,
-          userData: '0x',
-        },
-        { sender: wethHolder.address, recipient: wethHolder.address, fromInternalBalance: false, toInternalBalance: false },
-        0,
-        MAX_UINT256
-      );
-
-      await authorizer.connect(govMultisig).grantRole(await actionId(wethPool, 'enableRecoveryMode'), other.address);
-
-      await wethPool.connect(other).enableRecoveryMode();
-
-      const bptBalance = await wethPool.balanceOf(holder.address);
-      await wethPool.connect(wethHolder).transfer(attacker.address, bptBalance);
-    });
-
-    async function performAttack(attackType: AttackType, bptAmountIn: BigNumber) {
-      const attack = attacker.startAttack(poolId, attackType, bptAmountIn);
-      await expect(attack).to.be.revertedWith('BAL#420');
-    }
-
-    context('set targets', () => {
-      it(`set targets attack`, async () => {
-        const bptBalance = await wethPool.balanceOf(attacker.address);
-
-        await performAttack(AttackType.SET_TARGETS, bptBalance.div(2));
-      });
-    });
-
-    context('set swap fee', () => {
-      it(`set swap fee attack`, async () => {
-        const bptBalance = await wethPool.balanceOf(attacker.address);
-
-        await performAttack(AttackType.SET_SWAP_FEE, bptBalance);
-      });
-    });
-  });
-
   describe('rebalancer query protection', async () => {
     it('reverts with a malicious lending pool', async () => {
       const { cash } = await vault.getPoolTokenInfo(poolId, frxEth);
@@ -444,6 +354,51 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
 
       await mockLendingPool.setRevertType(2); // Type 2 is malicious swap query revert
       await expect(rebalancer.rebalance(other.address)).to.be.revertedWith('BAL#357'); // MALICIOUS_QUERY_REVERT
+    });
+  });
+
+  describe('read-only reentrancy protection', () => {
+    let attacker: Contract;
+
+    before('deploy attacker', async () => {
+      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
+    });
+
+    async function performAttack(attackType: AttackType, ethAmount: BigNumber, expectRevert: boolean) {
+      // To trigger the callback and revert, send more than we need for the deposit
+      // If we send just enough, there will be no "extra" ETH, and it won't trigger the callback and attack
+      const amountToSend = expectRevert ? ethAmount.add(1) : ethAmount;
+
+      const attack = attacker.startAttack(pool.address, attackType, ethAmount, { value: amountToSend });
+      if (expectRevert) {
+        await expect(attack).to.be.revertedWith('BAL#420');
+      } else {
+        await expect(attack).to.not.be.reverted;
+      }
+    }
+
+    function itPerformsAttack(expectRevert: boolean) {
+      const action = expectRevert ? 'triggers' : 'does not trigger';
+
+      context('set targets', () => {
+        it(`${action} the set targets attack`, async () => {
+          await performAttack(AttackType.SET_TARGETS, fp(1), expectRevert);
+        });
+      });
+
+      context('set swap fee', () => {
+        it(`${action} the set swap fee attack`, async () => {
+          await performAttack(AttackType.SET_SWAP_FEE, fp(1), expectRevert);
+        });
+      });
+    }
+
+    context('when exactly enough ETH is sent', () => {
+      itPerformsAttack(false);
+    });
+
+    context('when too much ETH is sent', () => {
+      itPerformsAttack(true);
     });
   });
 });
