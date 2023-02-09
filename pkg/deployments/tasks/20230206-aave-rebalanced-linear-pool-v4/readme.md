@@ -2,9 +2,7 @@
 
 Deployment of the `AaveLinearPoolFactory`, for Linear Pools with a wrapped aToken.
 
-Supersedes `20221207-aave-rebalanced-linear-pool-v3`, with the following improvements:
-- Adds compatibility with AAVE V3 protocol.
-- Fixes the reentrancy issue described in this [forum post](https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345).
+Supersedes `20221207-aave-rebalanced-linear-pool-v3`, fixing the reentrancy issue described in this [forum post](https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345).
 
 ## Useful Files
 
