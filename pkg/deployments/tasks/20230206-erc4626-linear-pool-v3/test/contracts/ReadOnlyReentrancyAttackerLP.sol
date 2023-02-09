@@ -37,44 +37,59 @@ contract ReadOnlyReentrancyAttackerLP {
     uint256 private constant _SWAP_FEE_PERCENTAGE = 1e16;
 
     IVault private immutable _vault;
+    IERC20 private immutable _WETH;
     AttackType private _attackType;
     ILinearPool private _pool;
 
-    constructor(IVault vault) {
+    constructor(IVault vault, IERC20 WETH) {
         _vault = vault;
+        _WETH = WETH;
     }
 
     /**
-     * @dev Starts attack on target pool. Since LinearPool attacks can only be called by the owner,
-     * and regular joins and exits are disabled, the attacker contract must be the owner.
+     * @dev Starts attack on target pool. Since LinearPool regular joins and exits are disabled, the attacker contract
+     * must use RecoveryMode exit to perform the attack in a Vault context.
      *
-     * It is possible to enter the Vault with a RecoveryMode exit - but `_handleRemainingEth` is only
-     * called in `_processJoinPoolTransfers` in the Vault's `PoolBalances`: not in `_processExitPoolTransfers`.
+     * The pool must have WETH, and the exit request must include the sentinel value (`address(0)`) so that the vault
+     * unwraps the token on its way out, effectively triggering the `receive` callback in this contract.
      *
-     * However, if you do an internal balance deposit of ETH, it will enter the Vault through user balance,
-     * and trigger the callback. This isn't a practical attack (nothing will be out of sync in the pool
-     * during it), but it verifies the reentrancy protection.
+     * Finally, the attacker needs to have permission to call the target functions (`setTargets` and
+     * `setSwapFeePercentage`) before the attack starts.
      *
      * @param pool Pool to attack.
      * @param attackType Type of attack; determines which vulnerable pool function to call.
-     * @param ethAmount Amount of ETH to deposit
+     * @param bptAmountIn Amount of BPT (ETH) to exit with.
      */
     function startAttack(
         ILinearPool pool,
         AttackType attackType,
-        uint256 ethAmount
+        uint256 bptAmountIn
     ) external payable {
         _attackType = attackType;
         _pool = pool;
+        IVault vault = _vault;
+        bytes32 poolId = pool.getPoolId();
 
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
-        ops[0].kind = IVault.UserBalanceOpKind.DEPOSIT_INTERNAL;
-        // asset defaults to 0 (ETH sentinel value)
-        ops[0].amount = ethAmount;
-        ops[0].sender = address(this);
-        ops[0].recipient = payable(address(this));
+        bytes memory userData = abi.encode(RECOVERY_MODE_EXIT_KIND, bptAmountIn);
+        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
 
-        _vault.manageUserBalance{ value: msg.value }(ops);
+        uint256 i = 0;
+        for (i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == _WETH) {
+                tokens[i] = IERC20(address(0));
+                break;
+            }
+        }
+        require(i < tokens.length, 'Pool does not contain WETH');
+
+        IVault.ExitPoolRequest memory exitPoolRequest = IVault.ExitPoolRequest(
+            _asIAsset(tokens),
+            new uint256[](tokens.length),
+            userData,
+            false
+        );
+
+        vault.exitPool(poolId, address(this), address(this), exitPoolRequest);
     }
 
     receive() external payable {
