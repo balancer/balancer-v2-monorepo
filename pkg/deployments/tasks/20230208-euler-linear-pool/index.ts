@@ -99,6 +99,10 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     await task.verify('EulerLinearPool', mockPool.address, [mockPoolArgs]);
 
     // We can also verify the Asset Manager
-    await task.verify('EulerLinearPoolRebalancer', assetManagerAddress, [input.Vault, input.BalancerQueries]);
+    await task.verify('EulerLinearPoolRebalancer', assetManagerAddress, [
+      input.Vault,
+      input.BalancerQueries,
+      input.EulerProtocol,
+    ]);
   }
 };
