@@ -37,13 +37,11 @@ contract ReadOnlyReentrancyAttackerLP {
     uint256 private constant _SWAP_FEE_PERCENTAGE = 1e16;
 
     IVault private immutable _vault;
-    IERC20 private immutable _weth;
     AttackType private _attackType;
     ILinearPool private _pool;
 
-    constructor(IVault vault, IERC20 weth) {
+    constructor(IVault vault) {
         _vault = vault;
-        _weth = weth;
     }
 
     /**
@@ -68,6 +66,7 @@ contract ReadOnlyReentrancyAttackerLP {
         _attackType = attackType;
         _pool = pool;
         IVault vault = _vault;
+        IERC20 weth = vault.WETH();
         bytes32 poolId = pool.getPoolId();
 
         bytes memory userData = abi.encode(RECOVERY_MODE_EXIT_KIND, bptAmountIn);
@@ -75,8 +74,8 @@ contract ReadOnlyReentrancyAttackerLP {
 
         uint256 i = 0;
         for (i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == _weth) {
-                tokens[i] = IERC20(address(0));
+            if (tokens[i] == weth) {
+                tokens[i] = IERC20(address(0)); // This is the sentinel value to unwrap WETH.
                 break;
             }
         }

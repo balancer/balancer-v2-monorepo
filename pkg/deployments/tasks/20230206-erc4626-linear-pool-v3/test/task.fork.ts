@@ -352,7 +352,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     });
 
     before('deploy attacker', async () => {
-      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address, WETH] });
+      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
     });
 
     before('deploy pool and prepare', async () => {
