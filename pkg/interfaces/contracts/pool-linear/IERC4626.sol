@@ -14,6 +14,12 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+/**
+ * @title IERC4626, to support the yield-bearing token standard.
+ * @notice Used for ERC4626-derived Linear Pools.
+ * @dev There is another version of this in /solidity-utils/misc, used in standalone-utils tests.
+ * This version has an additional `previewMint` function, and is used in tests of derived Linear Pools.
+ */
 interface IERC4626 {
     /**
      * @dev Mints `shares` Vault shares to `receiver` by depositing exactly `amount` of underlying tokens.
