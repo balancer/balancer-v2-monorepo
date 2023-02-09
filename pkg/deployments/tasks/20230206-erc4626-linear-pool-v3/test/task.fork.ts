@@ -220,7 +220,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     itRebalancesThePool(LinearPoolState.MAIN_EXCESS);
 
     it('set final targets', async () => {
-      await pool.connect(owner).setTargets(FINAL_LOWER_TARGET, FINAL_UPPER_TARGET);
+      await expect(pool.connect(owner).setTargets(FINAL_LOWER_TARGET, FINAL_UPPER_TARGET)).to.not.be.reverted;
     });
   });
 
@@ -338,6 +338,85 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     itRebalancesThePool(LinearPoolState.BALANCED);
   });
 
+  describe('read-only reentrancy protection', () => {
+    let wethPool: Contract;
+    let wethHolder: SignerWithAddress;
+    let poolId: string;
+    let attacker: Contract;
+
+    before('deploy attacker', async () => {
+      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
+    });
+
+    before('use WETH', async () => {
+      wethHolder = await impersonate(WETH_HOLDER, fp(100));
+      const weth = await deployedAt('IERC20', WETH);
+      await weth.connect(wethHolder).approve(vault.address, MAX_UINT256);
+    });
+
+    before('deploy pool and prepare', async () => {
+      const tx = await factory.create(
+        '',
+        '',
+        WETH,
+        erc4626Token,
+        INITIAL_UPPER_TARGET,
+        SWAP_FEE_PERCENTAGE,
+        attacker.address,
+        PROTOCOL_ID
+      );
+      const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
+
+      wethPool = await task.instanceAt('ERC4626LinearPool', event.args.pool);
+
+      poolId = await wethPool.getPoolId();
+
+      const joinAmount = INITIAL_UPPER_TARGET.div(2).div(WETH_SCALING);
+
+      await vault.connect(wethHolder).swap(
+        {
+          kind: SwapKind.GivenIn,
+          poolId,
+          assetIn: WETH,
+          assetOut: wethPool.address,
+          amount: joinAmount,
+          userData: '0x',
+        },
+        { sender: wethHolder.address, recipient: wethHolder.address, fromInternalBalance: false, toInternalBalance: false },
+        0,
+        MAX_UINT256
+      );
+
+      await authorizer.connect(govMultisig).grantRole(await actionId(wethPool, 'enableRecoveryMode'), other.address);
+
+      await wethPool.connect(other).enableRecoveryMode();
+
+      const bptBalance = await wethPool.balanceOf(holder.address);
+      await wethPool.connect(wethHolder).transfer(attacker.address, bptBalance);
+    });
+
+    async function performAttack(attackType: AttackType, bptAmountIn: BigNumber) {
+      const attack = attacker.startAttack(poolId, attackType, bptAmountIn);
+      await expect(attack).to.be.revertedWith('BAL#420');
+    }
+
+    context('set targets', () => {
+      it(`set targets attack`, async () => {
+        const bptBalance = await wethPool.balanceOf(attacker.address);
+
+        await performAttack(AttackType.SET_TARGETS, bptBalance.div(2));
+      });
+    });
+
+    context('set swap fee', () => {
+      it(`set swap fee attack`, async () => {
+        const bptBalance = await wethPool.balanceOf(attacker.address);
+
+        await performAttack(AttackType.SET_SWAP_FEE, bptBalance);
+      });
+    });
+  });
+
   describe('rebalancer query protection', async () => {
     it('reverts with a malicious lending pool', async () => {
       const { cash } = await vault.getPoolTokenInfo(poolId, frxEth);
@@ -365,86 +444,6 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
 
       await mockLendingPool.setRevertType(2); // Type 2 is malicious swap query revert
       await expect(rebalancer.rebalance(other.address)).to.be.revertedWith('BAL#357'); // MALICIOUS_QUERY_REVERT
-    });
-  });
-
-  describe.skip('read-only reentrancy protection', () => {
-    let pool: Contract;
-    let poolId: string;
-    let attacker: Contract;
-
-    sharedBeforeEach('deploy attacker', async () => {
-      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
-    });
-
-    sharedBeforeEach('use WETH', async () => {
-      holder = await impersonate(WETH_HOLDER, fp(100));
-      const weth = await deployedAt('IERC20', WETH);
-      await weth.connect(holder).approve(vault.address, MAX_UINT256);
-    });
-
-    async function preparePool(): Promise<void> {
-      poolId = await pool.getPoolId();
-      const joinAmount = INITIAL_UPPER_TARGET.div(2).div(WETH_SCALING);
-
-      await vault.connect(holder).swap(
-        {
-          kind: SwapKind.GivenIn,
-          poolId,
-          assetIn: WETH,
-          assetOut: pool.address,
-          amount: joinAmount,
-          userData: '0x',
-        },
-        { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
-        0,
-        MAX_UINT256
-      );
-
-      await authorizer.connect(govMultisig).grantRole(await actionId(pool, 'enableRecoveryMode'), other.address);
-
-      await pool.connect(other).enableRecoveryMode();
-
-      const bptBalance = await pool.balanceOf(holder.address);
-      await pool.connect(holder).transfer(attacker.address, bptBalance);
-    }
-
-    sharedBeforeEach('deploy pool and prepare', async () => {
-      const tx = await factory.create(
-        '',
-        '',
-        WETH,
-        erc4626Token,
-        INITIAL_UPPER_TARGET,
-        SWAP_FEE_PERCENTAGE,
-        attacker.address,
-        PROTOCOL_ID
-      );
-      const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
-
-      pool = await task.instanceAt('ERC4626LinearPool', event.args.pool);
-      await preparePool();
-    });
-
-    async function performAttack(attackType: AttackType, bptAmountIn: BigNumber) {
-      const attack = attacker.startAttack(poolId, attackType, bptAmountIn);
-      await expect(attack).to.be.revertedWith('BAL#420');
-    }
-
-    context('set targets', () => {
-      it(`set targets attack`, async () => {
-        const bptBalance = await pool.balanceOf(attacker.address);
-
-        await performAttack(AttackType.SET_TARGETS, bptBalance);
-      });
-    });
-
-    context('set swap fee', () => {
-      it(`set swap fee attack`, async () => {
-        const bptBalance = await pool.balanceOf(attacker.address);
-
-        await performAttack(AttackType.SET_SWAP_FEE, bptBalance);
-      });
     });
   });
 });
