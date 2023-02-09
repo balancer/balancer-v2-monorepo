@@ -616,9 +616,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
     // Targets
 
-    /**
-     * @notice Return the lower and upper bounds of the zero-fee trading range for the main token balance.
-     */
+    /// @inheritdoc ILinearPool
     function getTargets() public view override returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 poolState = _poolState;
 
@@ -672,10 +670,6 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
     // Swap Fees
 
-    /**
-     * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in `_poolState`.
-     */
     function getSwapFeePercentage() public view virtual override returns (uint256) {
         return _poolState.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
