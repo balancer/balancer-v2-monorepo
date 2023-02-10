@@ -40,6 +40,7 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
         _registerProtocolId(ProtocolId.EULER, "Euler");
         _registerProtocolId(ProtocolId.GEARBOX, "Gearbox");
         _registerProtocolId(ProtocolId.IDLE, "Idle");
+        _registerProtocolId(ProtocolId.MIDAS, "Midas");
         _registerProtocolId(ProtocolId.MORPHO, "Morpho");
         _registerProtocolId(ProtocolId.RADIANT, "Radiant");
         _registerProtocolId(ProtocolId.REAPER, "Reaper");
@@ -68,9 +69,13 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
     }
 
     /// @inheritdoc IProtocolIdRegistry
-    function getProtocolName(
-        uint256 protocolId
-    ) external view override withValidProtocolId(protocolId) returns (string memory) {
+    function getProtocolName(uint256 protocolId)
+        external
+        view
+        override
+        withValidProtocolId(protocolId)
+        returns (string memory)
+    {
         return _protocolIdData[protocolId].name;
     }
 }
