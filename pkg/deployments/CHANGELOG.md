@@ -18,6 +18,7 @@
 - Deployed `AaveLinearPoolFactory` to Gnosis.
 - Deployed `GaugeAdderV3` to Mainnet and Goerli.
 - Deployed `TimelockAuthorizerTransitionMigrator` to Mainnet.
+- Deployed `EulerLinearPoolFactory` to Mainnet and Goerli.
 
 ### Deprecations
 
