@@ -97,7 +97,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     // solhint-disable var-name-mixedcase
     bytes32 public immutable GRANT_ACTION_ID;
     bytes32 public immutable REVOKE_ACTION_ID;
-    bytes32 public immutable EXECUTE_ACTION_ID;
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
     // These action ids do not need to be used by external actors as the action ids above do.
@@ -111,16 +110,26 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     uint256 private immutable _rootTransferDelay;
 
+    // Authorizer permissions
     address private _root;
     address private _pendingRoot;
-    ScheduledExecution[] private _scheduledExecutions;
+    mapping(uint256 => mapping(address => bool)) private _isExecutor;
+
+    // External permissions
     mapping(bytes32 => bool) private _isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
+
+    ScheduledExecution[] private _scheduledExecutions;
 
     /**
      * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
      */
     event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+
+    /**
+     * @notice Emitted when an executor is created for a scheduled execution `scheduledExecutionId`.
+     */
+    event ExecutorCreated(uint256 indexed scheduledExecutionId, address executor);
 
     /**
      * @notice Emitted when an execution `scheduledExecutionId` is executed.
@@ -188,7 +197,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         GRANT_ACTION_ID = grantActionId;
         REVOKE_ACTION_ID = revokeActionId;
-        EXECUTE_ACTION_ID = getActionId(TimelockAuthorizer.execute.selector);
         SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
         _GENERAL_GRANT_ACTION_ID = generalGrantActionId;
         _GENERAL_REVOKE_ACTION_ID = generalRevokeActionId;
@@ -262,13 +270,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     function getRevokePermissionActionId(bytes32 actionId) public view returns (bytes32) {
         return getExtendedActionId(REVOKE_ACTION_ID, actionId);
-    }
-
-    /**
-     * @notice Returns the action ID for executing the scheduled action with execution ID `executionId`.
-     */
-    function getExecuteExecutionActionId(uint256 executionId) public view returns (bytes32) {
-        return getExtendedActionId(EXECUTE_ACTION_ID, bytes32(executionId));
     }
 
     /**
@@ -562,15 +563,21 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
         // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_EXECUTABLE");
+        require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_YET_EXECUTABLE");
+
         if (scheduledExecution.protected) {
-            bytes32 executeScheduledActionId = getExecuteExecutionActionId(scheduledExecutionId);
-            bool isAllowed = hasPermission(executeScheduledActionId, msg.sender, address(this));
-            _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+            // Protected scheduled executions can only be executed by a set of accounts designated by the original
+            // scheduler.
+            _require(_isExecutor[scheduledExecutionId][msg.sender], Errors.SENDER_NOT_ALLOWED);
         }
 
         scheduledExecution.executed = true;
-        // Note that this is the only place in the entire contract we perform a non-view call to an external contract.
+
+        // Note that this is the only place in the entire contract we perform a non-view call to an external contract,
+        // i.e. this is the only context in which this contract can be re-entered, and by this point we've already
+        // completed all state transitions.
+        // This results in the scheduled execution being marked as 'executed' during its execution, but that should not
+        // be an issue.
         result = _executor.execute(scheduledExecution.where, scheduledExecution.data);
         emit ExecutionExecuted(scheduledExecutionId);
     }
@@ -795,9 +802,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             })
         );
 
-        bytes32 executeActionId = getExecuteExecutionActionId(scheduledExecutionId);
         for (uint256 i = 0; i < executors.length; i++) {
-            _grantPermission(executeActionId, executors[i], address(this));
+            // Note that we allow for repeated executors - this is not an issue
+            _isExecutor[scheduledExecutionId][executors[i]] = true;
+            emit ExecutorCreated(scheduledExecutionId, executors[i]);
         }
     }
 

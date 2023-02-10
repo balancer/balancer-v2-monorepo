@@ -1811,7 +1811,7 @@ describe('TimelockAuthorizer', () => {
 
                 it('cannot execute the action immediately', async () => {
                   const id = await schedule();
-                  await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+                  await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
                 });
 
                 it('can be executed by anyone', async () => {
@@ -1845,7 +1845,7 @@ describe('TimelockAuthorizer', () => {
 
               context('when an executor is specified', () => {
                 sharedBeforeEach('set executors', async () => {
-                  executors = [root];
+                  executors = [other];
                 });
 
                 it('schedules the requested execution', async () => {
@@ -1859,10 +1859,22 @@ describe('TimelockAuthorizer', () => {
                   expect(scheduledExecution.executableAt).to.be.at.almostEqual((await currentTimestamp()).add(delay));
                 });
 
+                it('emits ExecutorCreated events', async () => {
+                  const receipt = await authorizer.instance.connect(grantee).schedule(
+                    where.address,
+                    data,
+                    executors.map((e) => e.address)
+                  );
+
+                  for (const executor of executors) {
+                    expectEvent.inReceipt(await receipt.wait(), 'ExecutorCreated', { executor: executor.address });
+                  }
+                });
+
                 it('cannot execute the action immediately', async () => {
                   const id = await schedule();
                   await expect(authorizer.execute(id, { from: executors[0] })).to.be.revertedWith(
-                    'ACTION_NOT_EXECUTABLE'
+                    'ACTION_NOT_YET_EXECUTABLE'
                   );
                 });
 
@@ -2032,7 +2044,7 @@ describe('TimelockAuthorizer', () => {
 
             context('when the delay has not passed', () => {
               it('reverts', async () => {
-                await expect(authorizer.execute(id, { from })).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+                await expect(authorizer.execute(id, { from })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
               });
             });
           });
@@ -2231,7 +2243,7 @@ describe('TimelockAuthorizer', () => {
           it('can be executed after the delay', async () => {
             const id = await authorizer.scheduleRootChange(newPendingRoot, [], { from: root });
 
-            await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+            await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
 
             await advanceTime(ROOT_CHANGE_DELAY);
             await authorizer.execute(id);
