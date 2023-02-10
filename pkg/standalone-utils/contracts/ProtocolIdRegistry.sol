@@ -40,7 +40,6 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
         _registerProtocolId(ProtocolId.EULER, "Euler");
         _registerProtocolId(ProtocolId.GEARBOX, "Gearbox");
         _registerProtocolId(ProtocolId.IDLE, "Idle");
-        _registerProtocolId(ProtocolId.MIDAS, "Midas");
         _registerProtocolId(ProtocolId.MORPHO, "Morpho");
         _registerProtocolId(ProtocolId.RADIANT, "Radiant");
         _registerProtocolId(ProtocolId.REAPER, "Reaper");
@@ -50,6 +49,7 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
         _registerProtocolId(ProtocolId.TESSERA, "Tessera");
         _registerProtocolId(ProtocolId.TETU, "Tetu");
         _registerProtocolId(ProtocolId.YEARN, "Yearn");
+        _registerProtocolId(ProtocolId.MIDAS, "Midas");
     }
 
     /// @inheritdoc IProtocolIdRegistry

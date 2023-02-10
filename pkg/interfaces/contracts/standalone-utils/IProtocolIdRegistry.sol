@@ -51,15 +51,15 @@ library ProtocolId {
     uint256 internal constant EULER = 5;
     uint256 internal constant GEARBOX = 6;
     uint256 internal constant IDLE = 7;
-    uint256 internal constant MIDAS = 8;
-    uint256 internal constant MORPHO = 9;
-    uint256 internal constant RADIANT = 10;
-    uint256 internal constant REAPER = 11;
-    uint256 internal constant SILO = 12;
-    uint256 internal constant STARGATE = 13;
-    uint256 internal constant STURDY = 14;
-    uint256 internal constant TESSERA = 15;
-    uint256 internal constant TETU = 16;
-    uint256 internal constant YEARN = 17;
+    uint256 internal constant MORPHO = 8;
+    uint256 internal constant RADIANT = 9;
+    uint256 internal constant REAPER = 10;
+    uint256 internal constant SILO = 11;
+    uint256 internal constant STARGATE = 12;
+    uint256 internal constant STURDY = 13;
+    uint256 internal constant TESSERA = 14;
+    uint256 internal constant TETU = 15;
+    uint256 internal constant YEARN = 16;
+    uint256 internal constant MIDAS = 17;
     // solhint-enable private-vars-leading-underscore
 }
