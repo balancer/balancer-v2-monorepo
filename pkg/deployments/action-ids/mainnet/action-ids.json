@@ -1031,5 +1031,20 @@
         "updateTokenRateCache(address)": "0xa45b3817be69283e48b590151aa33c454f162e520261a3dd248ffee7c58f1020"
       }
     }
+  },
+  "20230208-euler-linear-pool": {
+    "EulerLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xDEC02e6642e2c999aF429F5cE944653CAd15e093",
+      "actionIds": {
+        "disableRecoveryMode()": "0x96f03c8a74f7dd50da19854ff59638ec83927c186dc3ea7a87253f1bdfa76c20",
+        "enableRecoveryMode()": "0xd269952fc957849d80da7d2dee21410055532f5209b87829c7e70e53c0cbdb70",
+        "initialize()": "0x83095be82a6ab22c54db03ed53185781ddc76c9b12d9a011d5ee0f3e16958017",
+        "pause()": "0xb4cb52710958874af2680e9d5d4a9cb17e6923502cb7e86f3ae557c6349b3f3f",
+        "setSwapFeePercentage(uint256)": "0xb6bd869a6825ba2f1c9eba4c1d907dd5791b335cebd7f401b5f5efb9340a4450",
+        "setTargets(uint256,uint256)": "0x3c41e27d020ed56c209b202d47efeb4484e52537c3e6ec646e8ba1c123ea16cf",
+        "unpause()": "0xba620d90bf43ed4e28d08953a56a063710cfccbbc468b90ec556433bb1b0b27f"
+      }
+    }
   }
 }
