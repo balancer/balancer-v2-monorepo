@@ -649,6 +649,13 @@
         "setTargets(uint256,uint256)": "0x6b9adb82c7dca579c077378378d6545465281a86df1446c72ddf4c888f40e0b0",
         "unpause()": "0xbc391e7298e7dfd01972421659778cab74ca955fb19fcd97709b550f86c1cc0d"
       }
+    },
+    "ERC4626LinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x98933eeecdc70ae1fe94f3986354960201f8e848e98bfaf2f496681643c38541",
+        "disable()": "0x5ec883ecf16774e6b304f1e06322669694ffb90c13167afeac8ed7b68ab0869e"
+      }
     }
   }
 }
