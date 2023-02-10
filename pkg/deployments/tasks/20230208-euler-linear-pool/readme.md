@@ -6,4 +6,4 @@ First deployment of the `EulerLinearPoolFactory`, for Linear Pools with an Euler
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`EulerLinearPool` artifact](./artifact/EulerLinearPoolFactory.json)
+- [`EulerLinearPoolFactory` artifact](./artifact/EulerLinearPoolFactory.json)
