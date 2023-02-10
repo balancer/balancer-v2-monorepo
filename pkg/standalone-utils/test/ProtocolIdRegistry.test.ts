@@ -81,18 +81,21 @@ describe('ProtocolIdRegistry', () => {
             it('reverts when registering existing ID', async () => {
                 await expect(registry.connect(authorizedUser).registerProtocolId(0, "Test Protocol")).to.be.revertedWith('Protocol ID already registered');
             });
-            it('searching for name in non-existent protocol ID', async () => {
-                await expect(registry.getProtocolName(MAX_UINT256)).to.be.revertedWith('Non-existent protocol ID');
-            });
-            it('check non-valid ID',async () => {
-                expect( await registry.isValidProtocolId(MAX_UINT256)).to.equal(false);
-            });
         });
 
         context('non-authorized user', async () => {
             it('registration gets reverted', async () => {
-                await expect(registry.connect(other).registerProtocolId(newProtocolId, newProtocolName)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+                await expect(registry.connect(other).registerProtocolId(newProtocolId, newProtocolName)).to.be.revertedWith('BAL#401');
             });
+        });
+    });
+
+    describe('Unregistered queries', () => {
+        it('searching for name in non-existent protocol ID', async () => {
+            await expect(registry.getProtocolName(MAX_UINT256)).to.be.revertedWith('Non-existent protocol ID');
+        });
+        it('check non-valid ID',async () => {
+            expect( await registry.isValidProtocolId(MAX_UINT256)).to.equal(false);
         });
     });
 })
