@@ -105,6 +105,8 @@ Returns an object with all contracts from a deployment and their addresses.
 | Weighted Pool V3                                        | [`20230206-weighted-pool-v3`](./tasks/20230206-weighted-pool-v3)                                     |
 | Composable Stable Pools V3                              | [`20230206-composable-stable-pool-v3`](./tasks/20230206-composable-stable-pool-v3)                   |
 | Linear Pools for ERC4626 Tokens V3                      | [`20230206-erc4626-linear-pool-v3`](./tasks/20230206-erc4626-linear-pool-v3)                         |
+| Linear Pools for Aave aTokens (with rebalancing) V4     | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/20230206-aave-rebalanced-linear-pool-v4)         |
+| Linear Pools for Euler Tokens                           | [`20230208-euler-linear-pool`](./tasks/20230208-euler-linear-pool)                                   |
 
 ## Scripts
 
@@ -153,9 +155,9 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Stable Pools V2 of up to 5 tokens                       | [`20220609-stable-pool-v2`](./tasks/deprecated/20220609-stable-pool-v2)                                 |
 | Optimism Root Gauges, for veBAL voting                  | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)       |
 | Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/deprecated/20220720-batch-relayer-v3)                             |
-| Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/deprecated/20220817-aave-rebalanced-linear-pool)       |
+| Linear Pools for Aave aTokens (with rebalancing) V2     | [`20220817-aave-rebalanced-linear-pool`](./tasks/deprecated/20220817-aave-rebalanced-linear-pool)       |
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/deprecated/20220906-composable-stable-pool)                 |
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/deprecated/20220908-weighted-pool-v2)                             |
 | Managed Pool                                            | [`20221021-managed-pool`](./tasks/deprecated/20221021-managed-pool)                                     |
 | Composable Stable Pools V2                              | [`20221122-composable-stable-pool-v2`](./tasks/deprecated/20221122-composable-stable-pool-v2)           |
-| Linear Pools for Aave aTokens with built-in rebalancing | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |
+| Linear Pools for Aave aTokens (with rebalancing) V3     | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |

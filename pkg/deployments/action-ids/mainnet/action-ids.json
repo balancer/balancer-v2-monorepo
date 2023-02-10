@@ -1032,6 +1032,28 @@
       }
     }
   },
+  "20230206-erc4626-linear-pool-v3": {
+    "ERC4626LinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x2ade4ba0e9b92ee5b27f97f7cb9b8412bf5d4bad0f7b83b34efd964c3bcf409d",
+        "disable()": "0xb1bb0315049487d8b225a40fc17d5a02647e84002cfa5b11eda57b967629f72c"
+      }
+    },
+    "ERC4626LinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xfeF969638C52899f91781f1Be594aF6f40B99BAd",
+      "actionIds": {
+        "disableRecoveryMode()": "0xab16f8806195c2717e850506d6c858cb12c882c668564f3c1b6731068783272f",
+        "enableRecoveryMode()": "0x650376aebfe02b35334f3ae96d46b9e5659baa84220d58312d9d2e2920ec9f1d",
+        "initialize()": "0xe9b329af10e94b6894103233c888c0a8c3cbefd21401d16e19bcfce0ea8bed6f",
+        "pause()": "0x4b30a773b13a4e650bf9220bd12ad34272192036659373a62363dbb94e08f523",
+        "setSwapFeePercentage(uint256)": "0xf0498ccb15b689c1257a638831837f9a1a6e21c1530e7b0c4f9e0fa6af0651c9",
+        "setTargets(uint256,uint256)": "0x98ac729537b2c4aea25f652542bb7769f700500018ca6a9f9879466f75194838",
+        "unpause()": "0xb8a2ce31e605b78815daec498fcc52002a37a783fb454b9fe0e4925444699e6a"
+      }
+    }
+  },
   "20230208-euler-linear-pool": {
     "EulerLinearPool": {
       "useAdaptor": false,
