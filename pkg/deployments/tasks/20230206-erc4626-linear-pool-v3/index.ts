@@ -99,6 +99,5 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
     // We can also verify the Asset Manager
     await task.verify('ERC4626LinearPoolRebalancer', assetManagerAddress, [input.Vault, input.BalancerQueries]);
-    await task.save({ ERC4626LinearPoolRebalancer: assetManagerAddress });
   }
 };
