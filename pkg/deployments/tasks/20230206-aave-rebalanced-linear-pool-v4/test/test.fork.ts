@@ -340,8 +340,7 @@ describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
     let attacker: Contract;
 
     before('deploy attacker', async () => {
-      // Source from 20230206-erc4626-linear-pool-v3 task.
-      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
+      attacker = await deploy('ReadOnlyReentrancyAttackerAaveLP', { args: [vault.address] });
     });
 
     async function performAttack(attackType: AttackType, ethAmount: BigNumber, expectRevert: boolean) {
