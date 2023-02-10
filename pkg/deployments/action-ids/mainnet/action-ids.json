@@ -1033,17 +1033,24 @@
     }
   },
   "20230206-erc4626-linear-pool-v3": {
+    "ERC4626LinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x98933eeecdc70ae1fe94f3986354960201f8e848e98bfaf2f496681643c38541",
+        "disable()": "0x5ec883ecf16774e6b304f1e06322669694ffb90c13167afeac8ed7b68ab0869e"
+      }
+    },
     "ERC4626LinearPool": {
       "useAdaptor": false,
-      "factoryOutput": "0x126e7643235ec0ab9c103c507642dC3F4cA23C66",
+      "factoryOutput": "0xf984eb2b8a7ef780245a797a2fccd82f346409ca",
       "actionIds": {
-        "disableRecoveryMode()": "0xab16f8806195c2717e850506d6c858cb12c882c668564f3c1b6731068783272f",
-        "enableRecoveryMode()": "0x650376aebfe02b35334f3ae96d46b9e5659baa84220d58312d9d2e2920ec9f1d",
-        "initialize()": "0xe9b329af10e94b6894103233c888c0a8c3cbefd21401d16e19bcfce0ea8bed6f",
-        "pause()": "0x4b30a773b13a4e650bf9220bd12ad34272192036659373a62363dbb94e08f523",
-        "setSwapFeePercentage(uint256)": "0xf0498ccb15b689c1257a638831837f9a1a6e21c1530e7b0c4f9e0fa6af0651c9",
-        "setTargets(uint256,uint256)": "0x98ac729537b2c4aea25f652542bb7769f700500018ca6a9f9879466f75194838",
-        "unpause()": "0xb8a2ce31e605b78815daec498fcc52002a37a783fb454b9fe0e4925444699e6a"
+        "disableRecoveryMode()": "0x541412e0bfa3ff92e78aaa6272dc265e37356c9a06ea99c41e507b841cbdaf39",
+        "enableRecoveryMode()": "0x1af047704bcfd3e1466e6f18e52a32f872a6efd426a13675bc2513e447b0238d",
+        "initialize()": "0x1e783661023b1e72d6a5ee068eefcb0b8dd5b23151336636e6a0e413f2203ad8",
+        "pause()": "0x343468c5eda28b04bd0d752d84a11bd0ba70d76ed5fc481e15de7f36b4937787",
+        "setSwapFeePercentage(uint256)": "0x4e369965828f3a76cdcb37d24a69a3ddf1f0bbfa9110f9978e25d804504b279f",
+        "setTargets(uint256,uint256)": "0x342f10e709ad2a053a4e5035c4b3b703fea94c19f458d3887a6323472f0e42cd",
+        "unpause()": "0x88750d9fe81cc28abdc1c823f271c75e76cbd232145d0e83e405ce7810dd187f"
       }
     }
   }
