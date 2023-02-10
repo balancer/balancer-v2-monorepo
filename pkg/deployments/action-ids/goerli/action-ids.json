@@ -864,6 +864,13 @@
         "setTargets(uint256,uint256)": "0x2c7bba59983418a55126cdd07a69d73a710ec5fa3366f5b12c369de97d43492e",
         "unpause()": "0x3bd06a773652f06ff2bc008fa41cc79cc7028608b1c1d40254e0f441525e3b43"
       }
+    },
+    "EulerLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x11873d44400e1fb523b61bf4042b8a4ebeaa4c2e16b1f7e38f03fc98ec187442",
+        "disable()": "0x3dcf6c9d1f7bcff6477a09e1a18ca76f56c83f7e055276096a5acdd3c24f022a"
+      }
     }
   }
 }
