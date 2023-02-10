@@ -22,8 +22,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
- * @notice Performs a read-only reentrancy attack on a target linear pool, making use of the `receive` callback hook
- * in the middle of an Vault operation.
+ * @notice Performs a read-only reentrancy attack on a target linear pool, making use of the `receive` callback
+ * in the middle of a Vault operation.
  */
 contract ReadOnlyReentrancyAttackerAaveLP {
     using FixedPoint for uint256;
