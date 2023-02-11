@@ -106,6 +106,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Composable Stable Pools V3                              | [`20230206-composable-stable-pool-v3`](./tasks/20230206-composable-stable-pool-v3)                   |
 | Linear Pools for ERC4626 Tokens V3                      | [`20230206-erc4626-linear-pool-v3`](./tasks/20230206-erc4626-linear-pool-v3)                         |
 | Linear Pools for Aave aTokens (with rebalancing) V4     | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/20230206-aave-rebalanced-linear-pool-v4)         |
+| Linear Pools for Euler Tokens                           | [`20230208-euler-linear-pool`](./tasks/20230208-euler-linear-pool)                                   |
 
 ## Scripts
 
