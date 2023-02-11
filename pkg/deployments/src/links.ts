@@ -10,6 +10,7 @@ import fs from 'fs';
 export function checkLinks(task: Task): void {
   const filePath = path.join(task.dir(), `readme.md`);
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+
   if (fileExists) {
     const readmeContents = fs.readFileSync(filePath).toString();
     const lines = readmeContents.split('\n');

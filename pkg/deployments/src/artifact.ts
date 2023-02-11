@@ -38,12 +38,13 @@ function _extractArtifact(task: Task, file: string, contract?: string) {
  * @param task - The task for which to check artifact integrity.
  */
 export function checkArtifact(task: Task): void {
-  let readmeContents = '';
+  let readmeLines: string[] = [];
 
   const filePath = path.join(task.dir(), `readme.md`);
-  const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
-  if (fileExists) {
-    readmeContents = fs.readFileSync(filePath).toString();
+  const readmeFileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+  if (readmeFileExists) {
+    const readmeContents = fs.readFileSync(filePath).toString();
+    readmeLines = readmeContents.split('\n');
   }
 
   const buildInfoDirectory = path.resolve(task.dir(), 'build-info');
@@ -58,7 +59,12 @@ export function checkArtifact(task: Task): void {
       const artifactMatch = JSON.stringify(actualArtifact) === JSON.stringify(expectedArtifact);
       if (artifactMatch) {
         logger.success(`Verified artifact integrity of contract '${contractName}' of task '${task.id}'`);
-        checkReadmeArtifactLink(task, contractName, readmeContents);
+
+        // Since this is an *artifact* check, don't fail if there is no readme at all (mixing concerns).
+        // If there is a readme, it must contain a link to all artifacts, though.
+        if (readmeFileExists) {
+          checkReadmeArtifactLink(task, contractName, readmeLines);
+        }
       } else {
         throw Error(
           `The artifact for contract '${contractName}' of task '${task.id}' does not match the contents of its build-info`
@@ -71,27 +77,23 @@ export function checkArtifact(task: Task): void {
 /**
  * Ensure there is a readme with the expected link to the artifact file (and no invalid ones).
  */
-function checkReadmeArtifactLink(task: Task, contractName: string, readmeContents: string): void {
-  if (readmeContents === '') {
-    throw Error(`Missing readme.md for task '${task.id}'`);
+function checkReadmeArtifactLink(task: Task, contractName: string, readmeLines: string[]): void {
+  const expectedContent = `- [\`${contractName}\` artifact](./artifact/${contractName}.json)`;
+  let found = false;
+
+  for (const line of readmeLines) {
+    // Tolerate differences in case (e.g., veBoost vs VeBoost).
+    if (line.toLowerCase() == expectedContent.toLowerCase()) {
+      found = true;
+    } else if (line.includes(' artifact](')) {
+      throw Error(`Missing or malformed artifact link:\n${line}`);
+    }
+  }
+
+  if (found) {
+    logger.success(`Verified artifact link for contract '${contractName}' of task '${task.id}'`);
   } else {
-    const lines = readmeContents.split('\n');
-    const expectedContent = `- [\`${contractName}\` artifact](./artifact/${contractName}.json)`;
-    let found = false;
-
-    for (const line of lines) {
-      if (line.toLowerCase() == expectedContent.toLowerCase()) {
-        found = true;
-      } else if (line.includes(' artifact](')) {
-        throw Error(`Unexpected or malformed artifact link:\n${line}`);
-      }
-    }
-
-    if (found) {
-      logger.success(`Verified artifact link for contract '${contractName}' of task '${task.id}'`);
-    } else {
-      throw Error(`Missing artifact link for contract '${contractName}' of task '${task.id}'`);
-    }
+    throw Error(`Missing artifact link for contract '${contractName}' of task '${task.id}'`);
   }
 }
 
