@@ -18,6 +18,7 @@
 - Deployed `AaveLinearPoolFactory` to Gnosis.
 - Deployed `GaugeAdderV3` to Mainnet and Goerli.
 - Deployed `TimelockAuthorizerTransitionMigrator` to Mainnet.
+- Deployed `AaveLinearPoolV4` to all networks.
 - Deployed `ERC4626LinearPoolFactory` to Mainnet, Goerli, Arbitrum, Polygon, and Optimism.
 - Deployed `EulerLinearPoolFactory` to Mainnet and Goerli.
 
