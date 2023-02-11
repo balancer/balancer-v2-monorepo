@@ -85,8 +85,7 @@ function checkReadmeArtifactLink(task: Task, contractName: string, readmeLines: 
     // Tolerate differences in case (e.g., veBoost vs VeBoost).
     if (line.toLowerCase() == expectedContent.toLowerCase()) {
       found = true;
-    } else if (line.includes(' artifact](')) {
-      throw Error(`Missing or malformed artifact link:\n${line}`);
+      break;
     }
   }
 
