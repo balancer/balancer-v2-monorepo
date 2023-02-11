@@ -19,6 +19,7 @@ import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import { Logger } from './src/logger';
 import { checkActionIds, checkActionIdUniqueness, saveActionIds } from './src/actionId';
+import { checkLinks } from './src/links';
 import { saveContractDeploymentAddresses } from './src/network';
 import { name } from './package.json';
 
@@ -119,6 +120,22 @@ task('check-artifacts', `check that contract artifacts correspond to their build
       for (const taskID of Task.getAllTaskIds()) {
         const task = new Task(taskID, TaskMode.READ_ONLY);
         checkArtifact(task);
+      }
+    }
+  });
+
+task('check-links', `check that any links present in the readme file are valid`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const task = new Task(args.id, TaskMode.READ_ONLY);
+      checkLinks(task);
+    } else {
+      for (const taskID of Task.getAllTaskIds()) {
+        const task = new Task(taskID, TaskMode.READ_ONLY);
+        checkLinks(task);
       }
     }
   });
