@@ -1,5 +1,6 @@
 import path from 'path';
 import Task from './task';
+import logger from './logger';
 import fs from 'fs';
 
 /**
@@ -12,7 +13,10 @@ export function checkLinks(task: Task): void {
   if (fileExists) {
     const readmeContents = fs.readFileSync(filePath).toString();
     const lines = readmeContents.split('\n');
-    const linkRegex = /\[(.*?)\]\((.*?)\)/g;
+    // Look for *local* links only: "./"
+    // This will skip external links (e.g., to forum posts), which we cannot verify
+    const linkRegex = /\[(.*?)\]\((\.\/.*?)\)/g;
+    let linkCnt = 0;
 
     for (const line of lines) {
       let match;
@@ -24,7 +28,13 @@ export function checkLinks(task: Task): void {
         if (!fs.existsSync(linkPath) || !fs.statSync(linkPath).isFile()) {
           throw Error(`Broken link to '${text}' in task '${task.id}': ('${link}')`);
         }
+
+        linkCnt++;
       }
+    }
+
+    if (linkCnt > 0) {
+      logger.success(`Verified ${linkCnt} links in task '${task.id}'`);
     }
   } else {
     throw Error(`Missing readme.md for task '${task.id}'`);
