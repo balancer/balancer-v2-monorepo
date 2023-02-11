@@ -507,16 +507,17 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // these two delays combined will result in the original delay.
         // For example, if an action's delay is 20 days and we wish to reduce it to 5 days, we need to wait 15 days
         // before the new shorter delay is effective, to make it impossible to execute the action before the full
-        // initial 20 days happen.
+        // original 20-day delay period has elapsed.
         //
         // If we're increasing the delay on an action, we could in principle execute this change immediately, since the
         // larger delay would fulfill the original constraint imposed by the first delay.
         // For example, if we wish to increase the delay of an action from 5 days to 20 days, there is no need to wait
         // as it would not be possible to execute the action with a delay shorter than the initial 5 days at any point.
         //
-        // However, requiring no delay to increase an action's delay creates an issue: it'd be possible to effectively
-        // disable actions by setting huge delays (e.g. 2 years) for them. Because of this, all delay changes are
-        // subject to a minimum execution delay, to allow for proper scrutiny of these potentially dangerous actions.
+        // However, not requiring a delay to increase an action's delay creates an issue: it would be possible to
+        // effectively disable actions by setting huge delays (e.g. 2 years) for them. Because of this, all delay
+        // changes are subject to a minimum execution delay, to allow for proper scrutiny of these potentially
+        // dangerous actions.
 
         uint256 actionDelay = _delaysPerActionId[actionId];
         uint256 executionDelay = newDelay < actionDelay
