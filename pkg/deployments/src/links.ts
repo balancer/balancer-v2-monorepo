@@ -1,5 +1,4 @@
 import path from 'path';
-import logger from './logger';
 import Task from './task';
 import fs from 'fs';
 
