@@ -63,5 +63,14 @@ jobs:
       - name: Check Action IDs
         run: yarn workspace @balancer-labs/v2-deployments check-action-ids
 
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Check Deployment Links
+        run: yarn workspace @balancer-labs/v2-deployments check-links
+
 env:
   CI: true
