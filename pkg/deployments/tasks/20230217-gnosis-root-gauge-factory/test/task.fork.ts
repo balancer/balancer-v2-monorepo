@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 import { BigNumber, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { advanceTime, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, currentTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import Task, { TaskMode } from '../../../src/task';
@@ -16,7 +16,7 @@ import { range } from 'lodash';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { describeForkTest } from '../../../src/forkTests';
 
-describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16621507, function () {
+describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
   let factory: Contract, gauge: Contract;
   let vault: Contract,
@@ -28,7 +28,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16621507, function () {
   let BAL: string;
   let task: Task;
 
-  const VEBAL_HOLDER = '0xCB3593C7c0dFe13129Ff2B6add9bA402f76c797e';
+  const VEBAL_HOLDER = '0x03de3132e3d448ce03ada2457f0bc779f18f553b';
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   const FP_SCALING_FACTOR = fp(1);
@@ -100,24 +100,69 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16621507, function () {
     await authorizer
       .connect(govMultisig)
       .grantRole(await authorizerAdaptor.getActionId(gauge.interface.getSighash('checkpoint')), admin.address);
+
+    // Currently we only have Gauge types defined up to Arbitrum. We need to add the Gnosis GaugeType to be able to add the factory
+    // First grant permission to call add_type to the admin.
+    await authorizer
+      .connect(govMultisig)
+      .grantRole(
+        await authorizerAdaptor.getActionId(gaugeController.interface.getSighash('add_type(string)')),
+        admin.address
+      );
+
+    await authorizer
+      .connect(govMultisig)
+      .grantRole(
+        await authorizerAdaptor.getActionId(gaugeController.interface.getSighash('add_gauge(address,int128)')),
+        admin.address
+      );
   });
 
-  it.skip('add gauge to gauge controller', async () => {
+  it('add gauge factory', async () => {
+    // Not actually using this, but leaving it in to document the process
+
+    // Because the Vyper `add_type` function has a default argument, we need to access it using the full signature, in the Sighash for the
+    // permission (above), and when actually calling it with arguments (below).
+    await authorizerAdaptor
+      .connect(admin)
+      .performAction(
+        gaugeController.address,
+        gaugeController.interface.encodeFunctionData('add_type(string)', ['Gnosis'])
+      );
+
     await gaugeAdder.addGaugeFactory(factory.address, GaugeType.Gnosis);
-    await gaugeAdder.addGnosisGauge(gauge.address);
+  });
+
+  it('add gauge to gauge controller', async () => {
+    // Add gauge directly through the controller, since we can't use GaugeAdder V3 without the TimelockAuthorizer migration
+    //await gaugeAdder.addGnosisGauge(gauge.address);
+
+    await authorizerAdaptor
+      .connect(admin)
+      .performAction(
+        gaugeController.address,
+        gaugeController.interface.encodeFunctionData('add_gauge(address,int128)', [gauge.address, GaugeType.Gnosis])
+      );
 
     expect(await gaugeController.gauge_exists(gauge.address)).to.be.true;
   });
 
   it.skip('vote for gauge', async () => {
     expect(await gaugeController.get_gauge_weight(gauge.address)).to.equal(0);
+    expect(await gauge.getCappedRelativeWeight(await currentTimestamp())).to.equal(0);
+
     await gaugeController.connect(veBALHolder).vote_for_gauge_weights(gauge.address, 10000); // Max voting power is 10k points
 
     // We now need to go through an epoch for the votes to be locked in
     await advanceTime(DAY * 8);
 
     await gaugeController.checkpoint();
-    expect(await gaugeController['gauge_relative_weight(address)'](gauge.address)).to.be.gt(0);
+
+    // Gauge weight is equal to the cap, and controller weight for the gauge is greater than the cap.
+    expect(
+      await gaugeController['gauge_relative_weight(address,uint256)'](gauge.address, await currentWeekTimestamp())
+    ).to.be.gt(weightCap);
+    expect(await gauge.getCappedRelativeWeight(await currentTimestamp())).to.equal(weightCap);
   });
 
   it.skip('mint & bridge tokens', async () => {
