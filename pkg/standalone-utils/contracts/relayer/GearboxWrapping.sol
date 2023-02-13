@@ -36,11 +36,11 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
         IGearboxDieselToken wrappedToken,
         address sender,
         address recipient,
-        uint256 amount,
+        uint256 mainAmount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
+        if (_isChainedReference(mainAmount)) {
+            mainAmount = _getChainedReferenceValue(mainAmount);
         }
         IGearboxVault gearboxVault = IGearboxVault(wrappedToken.owner());
         IERC20 underlying = IERC20(gearboxVault.underlyingToken());
@@ -49,14 +49,14 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, underlying, amount);
+            _pullToken(sender, underlying, mainAmount);
         }
 
-        underlying.safeApprove(address(gearboxVault), amount);
-        gearboxVault.addLiquidity(amount, recipient, 0);
+        underlying.safeApprove(address(gearboxVault), mainAmount);
+        gearboxVault.addLiquidity(mainAmount, recipient, 0);
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, gearboxVault.toDiesel(amount));
+            _setChainedReferenceValue(outputReference, gearboxVault.toDiesel(mainAmount));
         }
     }
 
@@ -64,25 +64,25 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
         IGearboxDieselToken wrappedToken,
         address sender,
         address recipient,
-        uint256 amount,
+        uint256 dieselAmount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
+        if (_isChainedReference(dieselAmount)) {
+            dieselAmount = _getChainedReferenceValue(dieselAmount);
         }
 
         // The unwrap caller is the implicit sender of tokens, so if the goal is for the tokens
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, IERC20(address(wrappedToken)), amount);
+            _pullToken(sender, IERC20(address(wrappedToken)), dieselAmount);
         }
 
         IGearboxVault gearboxVault = IGearboxVault(wrappedToken.owner());
-        gearboxVault.removeLiquidity(amount, recipient);
+        gearboxVault.removeLiquidity(dieselAmount, recipient);
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, gearboxVault.fromDiesel(amount));
+            _setChainedReferenceValue(outputReference, gearboxVault.fromDiesel(dieselAmount));
         }
     }
 }

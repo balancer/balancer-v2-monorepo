@@ -75,33 +75,83 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 15485000, function () {
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
   });
 
-  it.only('can deposit to gearbox protocol', async () => {
+  describe.only('GearboxWrapping', async () => {
     const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
     const USDC_HOLDER = '0xdfd5293d8e347dfe59e90efd55b2956a1343963d';
     const dUSDC = '0xc411db5f5eb3f7d552f9b8454b2d74097ccde6e3';
 
-    const usdcToken = await task.instanceAt('IERC20', USDC);
-    // const wrappedToken = await task.instanceAt('IERC20', dUSDC);
-
-    let gearboxSender = await impersonate(USDC_HOLDER);
-    await vault.connect(gearboxSender).setRelayerApproval(gearboxSender.address, relayer.address, true);
-
+    let usdcToken: Contract, wrappedToken: Contract, dieselToken: Contract, gearboxVault: Contract;
+    let gearboxSender: SignerWithAddress;
+    let chainedReference: BigNumber;
     const amountToDeposit = 100e6;
 
-    const balanceOfSenderBefore = await usdcToken.balanceOf(gearboxSender.address);
+    before(async () => {
+      usdcToken = await task.instanceAt('IERC20', USDC);
+      wrappedToken = await task.instanceAt('IERC20', dUSDC);
+      dieselToken = await task.instanceAt('IGearboxDieselToken', dUSDC);
+      gearboxVault = await task.instanceAt('IGearboxVault', await dieselToken.owner());
+      gearboxSender = await impersonate(USDC_HOLDER);
 
-    const depositIntoGearbox = library.interface.encodeFunctionData('wrapGearbox', [
-      dUSDC,
-      gearboxSender.address,
-      relayer.address,
-      amountToDeposit,
-    ]);
+      await vault.connect(gearboxSender).setRelayerApproval(gearboxSender.address, relayer.address, true);
+    });
 
-    await relayer.connect(gearboxSender).multicall([depositIntoGearbox]);
+    it('should deposit successfully', async () => {
+      const balanceOfUSDCBefore = await usdcToken.balanceOf(gearboxSender.address);
+      // Relayer will be the contract receiving the wrapped tokens
+      const balanceOfDieselBefore = await wrappedToken.balanceOf(relayer.address);
 
-    const balanceOfSenderAfter = await usdcToken.balanceOf(gearboxSender.address);
+      expect(balanceOfDieselBefore).to.be.equal(0);
 
-    expect(balanceOfSenderAfter - balanceOfSenderBefore).to.be.equal(amountToDeposit);
+      // Approving vault to pull tokens from user.
+      await usdcToken.connect(gearboxSender).approve(vault.address, amountToDeposit);
+
+      chainedReference = toChainedReference(30);
+      const depositIntoGearbox = library.interface.encodeFunctionData('wrapGearbox', [
+        dUSDC,
+        gearboxSender.address,
+        relayer.address,
+        amountToDeposit,
+        chainedReference,
+      ]);
+
+      await relayer.connect(gearboxSender).multicall([depositIntoGearbox]);
+
+      const balanceOfUSDCAfter = await usdcToken.balanceOf(gearboxSender.address);
+      // Relayer will be the contract receiving the wrapped tokens
+      const balanceOfDieselAfter = await wrappedToken.balanceOf(relayer.address);
+      const expectedBalanceOfDieselAfter = await gearboxVault.toDiesel(amountToDeposit);
+
+      expect(balanceOfUSDCBefore - balanceOfUSDCAfter).to.be.equal(amountToDeposit);
+      expect(balanceOfDieselAfter).to.be.equal(expectedBalanceOfDieselAfter);
+    });
+
+    it('should withdraw successfully', async () => {
+      const usdcAmountToWithdraw = 100e6;
+      const dieselAmountToWithdraw = await gearboxVault.toDiesel(usdcAmountToWithdraw);
+
+      const balanceOfUSDCBefore = await usdcToken.balanceOf(gearboxSender.address);
+      // Relayer will be the contract receiving the wrapped tokens
+      const balanceOfDieselBefore = await wrappedToken.balanceOf(relayer.address);
+
+      expect(balanceOfDieselBefore).to.be.equal(dieselAmountToWithdraw);
+
+      const withdrawFromGearbox = library.interface.encodeFunctionData('unwrapGearbox', [
+        dUSDC,
+        relayer.address,
+        gearboxSender.address,
+        chainedReference,
+        0,
+      ]);
+
+      await relayer.connect(gearboxSender).multicall([withdrawFromGearbox]);
+
+      const balanceOfUSDCAfter = await usdcToken.balanceOf(gearboxSender.address);
+      // Relayer will be the contract receiving the wrapped tokens
+      const balanceOfDieselAfter = await wrappedToken.balanceOf(relayer.address);
+
+      expect(balanceOfDieselAfter).to.be.equal(0);
+      expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.equal(usdcAmountToWithdraw);
+    });
   });
 
   it('sender can unstake, exit, join and stake', async () => {
