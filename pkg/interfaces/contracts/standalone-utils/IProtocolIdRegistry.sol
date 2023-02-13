@@ -61,5 +61,6 @@ library ProtocolId {
     uint256 internal constant TETU = 15;
     uint256 internal constant YEARN = 16;
     uint256 internal constant MIDAS = 17;
+    uint256 internal constant AGAVE = 18;
     // solhint-enable private-vars-leading-underscore
 }

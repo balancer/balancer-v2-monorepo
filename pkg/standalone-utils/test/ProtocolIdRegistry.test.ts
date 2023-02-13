@@ -1,9 +1,9 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -48,7 +48,7 @@ describe('ProtocolIdRegistry', () => {
   describe('Registration', () => {
     const newProtocolId = 1000000000;
     const newProtocolName = 'Test Protocol';
-    let transactionReceipt: any;
+    let transactionReceipt: ContractReceipt;
     sharedBeforeEach('grant permissions', async () => {
       await authorizer
         .connect(admin)

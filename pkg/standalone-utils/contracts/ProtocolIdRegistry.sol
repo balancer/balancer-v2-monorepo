@@ -50,6 +50,7 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
         _registerProtocolId(ProtocolId.TETU, "Tetu");
         _registerProtocolId(ProtocolId.YEARN, "Yearn");
         _registerProtocolId(ProtocolId.MIDAS, "Midas");
+        _registerProtocolId(ProtocolId.AGAVE, "Agave");
     }
 
     /// @inheritdoc IProtocolIdRegistry
