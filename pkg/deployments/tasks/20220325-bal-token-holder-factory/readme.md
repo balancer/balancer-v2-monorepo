@@ -6,5 +6,4 @@ Deployment of `BALTokenHolderFactory` which deploys simple contracts which holds
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`BALTokenHolder` artifact](./artifact/BALTokenHolder.json)
 - [`BALTokenHolderFactory` artifact](./artifact/BALTokenHolderFactory.json)

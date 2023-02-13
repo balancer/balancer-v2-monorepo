@@ -9,5 +9,4 @@ Deployment of the `ArbitrumRootGaugeFactory`, for stakeless gauges that bridge f
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`ArbitrumRootGauge` artifact](./artifact/ArbitrumRootGauge.json)
 - [`ArbitrumRootGaugeFactory` artifact](./artifact/ArbitrumRootGaugeFactory.json)
