@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "../BaseGaugeFactory.sol";
 import "./ArbitrumRootGauge.sol";
