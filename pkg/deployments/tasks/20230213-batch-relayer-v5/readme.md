@@ -1,8 +1,8 @@
-# 2022-09-16 - Batch Relayer V4
+# 2022-09-16 - Batch Relayer V5
 
-Deployment of the fourth `BalancerRelayer` using `BatchRelayerLibrary`, for combining multiple operations (swaps, joins, etc.) in a single transaction.
+Deployment of the fifth `BalancerRelayer` using `BatchRelayerLibrary`, for combining multiple operations (swaps, joins, etc.) in a single transaction.
 
-This new version provides quality of life improvements, like read-only chained references and ways to read them.
+This new version provides relayers for tokens of the recently created linear pools, which is needed to manipulate the tokens inside a pool.
 
 ## Useful Files
 
