@@ -38,6 +38,9 @@ export function checkLinks(task: Task): void {
       logger.success(`Verified ${linkCnt} links in task '${task.id}'`);
     }
   } else {
-    throw Error(`Missing readme.md for task '${task.id}'`);
+    const isTopLevelFolder = ["deprecated", "scripts"].includes(path.basename(task.dir()));
+    if (!isTopLevelFolder) {
+      throw Error(`Missing readme.md for task '${task.id}'`);
+    }
   }
 }
