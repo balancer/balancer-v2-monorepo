@@ -2,7 +2,7 @@ import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { GaugeType } from '@balancer-labs/balancer-js/src/types';
-import { BigNumber, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumber, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -30,8 +30,6 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
 
   const VEBAL_HOLDER = '0x03de3132e3d448ce03ada2457f0bc779f18f553b';
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
-
-  const FP_SCALING_FACTOR = fp(1);
 
   const weightCap = fp(0.001);
 
@@ -106,7 +104,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
     await authorizer
       .connect(govMultisig)
       .grantRole(
-        await authorizerAdaptor.getActionId(gaugeController.interface.getSighash('add_type(string)')),
+        await authorizerAdaptor.getActionId(gaugeController.interface.getSighash('add_type(string,uint256)')),
         admin.address
       );
 
@@ -127,7 +125,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
       .connect(admin)
       .performAction(
         gaugeController.address,
-        gaugeController.interface.encodeFunctionData('add_type(string)', ['Gnosis'])
+        gaugeController.interface.encodeFunctionData('add_type(string,uint256)', ['Gnosis', fp(0.7)])
       );
 
     await gaugeAdder.addGaugeFactory(factory.address, GaugeType.Gnosis);
@@ -147,7 +145,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
     expect(await gaugeController.gauge_exists(gauge.address)).to.be.true;
   });
 
-  it.skip('vote for gauge', async () => {
+  it('vote for gauge', async () => {
     expect(await gaugeController.get_gauge_weight(gauge.address)).to.equal(0);
     expect(await gauge.getCappedRelativeWeight(await currentTimestamp())).to.equal(0);
 
@@ -165,11 +163,11 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
     expect(await gauge.getCappedRelativeWeight(await currentTimestamp())).to.equal(weightCap);
   });
 
-  it.skip('mint & bridge tokens', async () => {
+  it('mint & bridge tokens', async () => {
     // The gauge has votes for this week, and it will mint the first batch of tokens. We store the current gauge
     // relative weight, as it will change as time goes by due to vote decay.
     const firstMintWeekTimestamp = await currentWeekTimestamp();
-    const gaugeRelativeWeight = await gaugeController['gauge_relative_weight(address)'](gauge.address);
+    //const gaugeRelativeWeight = await gaugeController['gauge_relative_weight(address)'](gauge.address);
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
 
@@ -193,7 +191,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
     // The amount of tokens minted should equal the weekly emissions rate times the relative weight of the gauge
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
 
-    const expectedEmissions = gaugeRelativeWeight.mul(weeklyRate).div(FP_SCALING_FACTOR);
+    const expectedEmissions = weightCap.mul(weeklyRate).div(FP_ONE);
     expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
 
     // Tokens are minted for the gauge
@@ -219,7 +217,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
     });
   });
 
-  it.skip('mint multiple weeks', async () => {
+  it('mint multiple weeks', async () => {
     const numberOfWeeks = 5;
     await advanceTime(WEEK * numberOfWeeks);
     await gaugeController.checkpoint_gauge(gauge.address);
@@ -233,12 +231,16 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
       )
     );
 
+    // We require that they're all above the cap for simplicity - this lets us use the cap as each week's weight (and
+    // also tests cap behavior).
+    for (const relativeWeight of relativeWeights) {
+      expect(relativeWeight).to.be.gt(weightCap);
+    }
+
     // The amount of tokens minted should equal the sum of the weekly emissions rate times the relative weight of the
     // gauge (this assumes we're not crossing an emissions rate epoch so that the inflation remains constant).
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
-    const expectedEmissions = relativeWeights
-      .map((weight) => weight.mul(weeklyRate).div(FP_SCALING_FACTOR))
-      .reduce((sum, value) => sum.add(value));
+    const expectedEmissions = weightCap.mul(numberOfWeeks).mul(weeklyRate).div(FP_ONE);
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
     const tx = await authorizerAdaptor.connect(admin).performAction(gauge.address, calldata);
@@ -252,25 +254,27 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
     );
 
     // Tokens are minted for the gauge
-    expectTransferEvent(
+    const transferEvent = expectTransferEvent(
       await tx.wait(),
       {
         from: ZERO_ADDRESS,
         to: gauge.address,
-        value: expectedEmissions,
       },
       BAL
     );
+
+    expectEqualWithError(transferEvent.args.value, expectedEmissions, 0.01);
 
     // And the gauge then deposits those in the predicate via the bridge mechanism
     const bridgeInterface = new ethers.utils.Interface([
       'event TokensBridgingInitiated(address indexed token, address indexed sender, uint256 value, bytes32 indexed messageId)',
     ]);
 
-    expectEvent.inIndirectReceipt(await tx.wait(), bridgeInterface, 'TokensBridgingInitiated', {
+    const depositEvent = expectEvent.inIndirectReceipt(await tx.wait(), bridgeInterface, 'TokensBridgingInitiated', {
       token: BAL,
       sender: gauge.address,
-      value: expectedEmissions,
     });
+
+    expectEqualWithError(depositEvent.args.value, expectedEmissions, 0.01);
   });
 });
