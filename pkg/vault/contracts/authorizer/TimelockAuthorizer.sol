@@ -604,14 +604,18 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets `account`'s granter status to `allowed` for action `actionId` in target `where`.
-     * @dev Note that granters can revoke the granter status of other granters, even removing the root.
-     * However the root can always rejoin, and then remove any malicious granters.
+     * @notice Grants or revokes granter status to `account`'s for action `actionId` in target `where`.
+     * @dev Only the root can add and remove granters.
      *
      * Note that there are no delays associated with adding or removing granters. This is based on the assumption that
      * any action which a malicous user could exploit to damage the protocol will have a sufficiently long delay
      * associated with either granting permission for or exercising that permission such that the root will be able to
-     * reestablish control and cancel the action before it can be executed.
+     * reestablish control and cancel either the granting or associated action before it can be executed, and then
+     * remove the granter.
+     *
+     * A malicious granter may also attempt to use their granter status to grant permission to multiple accounts, but
+     * they cannot create new granters. Therefore, root can simply first revoke their granter status, and then revoke
+     * the permissions granted to said no longer increasing set of accounts.
      */
     function manageGranter(
         bytes32 actionId,
@@ -620,9 +624,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bool allowed
     ) external {
         // Root may grant or revoke granter status from any address.
-        // Granters may only revoke a granter status from any address.
-        bool isAllowed = isRoot(msg.sender) || (!allowed && isGranter(actionId, msg.sender, where));
-        _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
 
         bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
@@ -664,14 +666,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets `account`'s revoker status to `allowed` for action `actionId` in target `where`.
-     * @dev Note that revokers can revoke the revoker status of other revokers, even banning the root.
-     * However the root can always rejoin, and then remove any malicious revokers.
+     * @notice Grants or revokes revoker status to `account`'s for action `actionId` in target `where`.
+     * @dev Only the root can add and remove revokers.
      *
      * Note that there are no delays associated with adding or removing revokers. This is based on the assumption that
      * any permissions for which revocation from key addresses would be dangerous (e.g. preventing the BalancerMinter
      * from minting BAL) have sufficiently long delays associated with revoking them that the root will be able to
      * reestablish control and cancel the revocation before the scheduled revocation can be executed.
+     *
+     * A malicious cannot create new revokers, so root can simply revoke their status once.
      */
     function manageRevoker(
         bytes32 actionId,
@@ -679,10 +682,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         bool allowed
     ) external {
-        // Root may grant or revoke revoker status from any address.
-        // Revokers may only revoke a revoker status from any address.
-        bool isAllowed = isRoot(msg.sender) || (!allowed && isRevoker(actionId, msg.sender, where));
-        _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
 
         bytes32 revokePermissionsActionId = getRevokePermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
