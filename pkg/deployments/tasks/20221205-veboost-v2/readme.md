@@ -6,4 +6,4 @@ Deployment of the veBoostV2, a replacement for the [`PreseededVotingEscrowDelega
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`veBoostV2` artifact](./artifact/veBoostV2.json)
+- [`VeBoostV2` artifact](./artifact/VeBoostV2.json)
