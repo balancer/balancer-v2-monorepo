@@ -92,7 +92,7 @@ function checkReadmeArtifactLink(task: Task, contractName: string, readmeLines: 
   if (found) {
     logger.success(`Verified artifact link for contract '${contractName}' of task '${task.id}'`);
   } else {
-    throw Error(`Missing artifact link for contract '${contractName}' of task '${task.id}'`);
+    throw Error(`Missing or malformed artifact link for contract '${contractName}' of task '${task.id}'`);
   }
 }
 
