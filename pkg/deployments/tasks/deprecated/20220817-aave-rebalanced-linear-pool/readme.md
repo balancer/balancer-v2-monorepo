@@ -12,6 +12,4 @@ Deployment of the `AaveLinearPoolFactory`, for Linear Pools with a wrapped aToke
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
-- [`AaveLinearPool` artifact](./artifact/AaveLinearPool.json)
 - [`AaveLinearPoolFactory` artifact](./artifact/AaveLinearPoolFactory.json)
-- [`AaveLinearPoolRebalancer` artifact](./artifact/AaveLinearPoolRebalancer.json)

@@ -16,5 +16,4 @@ Redeployment of `ComposableStablePoolFactory`, which allows creating Stable Pool
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`ComposableStablePool` ABI](./abi/ComposableStablePool.json)
-- [`ComposableStablePoolFactory` ABI](./abi/ComposableStablePoolFactory.json)
+- [`ComposableStablePoolFactory` artifact](./artifact/ComposableStablePoolFactory.json)
