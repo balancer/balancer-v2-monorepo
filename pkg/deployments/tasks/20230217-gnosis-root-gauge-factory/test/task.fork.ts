@@ -25,7 +25,7 @@ import { describeForkTest } from '../../../src/forkTests';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
-describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
+describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16627100, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
   let factory: Contract, gauge: Contract;
   let vault: Contract,
@@ -82,6 +82,11 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
+  });
+
+  before('update balancer token admin rate', async () => {
+    await advanceTime(WEEK * 5);
+    await BALTokenAdmin.update_mining_parameters();
   });
 
   before('create veBAL whale', async () => {
@@ -304,7 +309,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
       BAL
     );
 
-    expectEqualWithError(transferEvent.args.value, expectedEmissions, 0.01);
+    expect(transferEvent.args.value).to.be.almostEqual(expectedEmissions);
 
     // And the gauge then deposits those in the predicate via the bridge mechanism
     const bridgeInterface = new ethers.utils.Interface([
@@ -316,6 +321,6 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
       sender: gauge.address,
     });
 
-    expectEqualWithError(depositEvent.args.value, expectedEmissions, 0.01);
+    expect(depositEvent.args.value).to.be.almostEqual(expectedEmissions);
   });
 });
