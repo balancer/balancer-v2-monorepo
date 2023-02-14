@@ -77,6 +77,7 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
     function _renameProtocolId(uint256 protocolId, string memory newName) private {
         require(isValidProtocolId(protocolId), "Protocol ID not registered");
         _protocolIdData[protocolId].name = newName;
+        emit ProtocolIdRenamed(protocolId, newName);
     }
 
     /// @inheritdoc IProtocolIdRegistry

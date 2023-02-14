@@ -22,6 +22,9 @@ interface IProtocolIdRegistry {
     // Emitted when a new protocol ID is registered.
     event ProtocolIdRegistered(uint256 indexed protocolId, string name);
 
+    // Emitted when a protocol IDs name has been updated.
+    event ProtocolIdRenamed(uint256 indexed protocolId, string name);
+
     /**
      * @dev Registers an ID (and name) to differentiate among protocols. Protocol IDs cannot be deregistered.
      */
