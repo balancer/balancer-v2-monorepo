@@ -25,6 +25,14 @@ describe('ProtocolIdRegistry', () => {
     });
   });
 
+  sharedBeforeEach('grant permissions', async () => {
+    await authorizer.connect(admin).grantPermissions(
+      ['registerProtocolId', 'renameProtocolId'].map((fn) => actionId(registry, fn)),
+      authorizedUser.address,
+      [registry.address, registry.address]
+    );
+  });
+
   describe('Constructor', () => {
     it('events are emitted for protocols initialized in the constructor', async () => {
       expect(
@@ -49,11 +57,6 @@ describe('ProtocolIdRegistry', () => {
     const newProtocolId = 1000000000;
     const newProtocolName = 'Test Protocol';
     let transactionReceipt: ContractReceipt;
-    sharedBeforeEach('grant permissions', async () => {
-      await authorizer
-        .connect(admin)
-        .grantPermissions([actionId(registry, 'registerProtocolId')], authorizedUser.address, [registry.address]);
-    });
 
     context('authorized user', async () => {
       sharedBeforeEach('register protocol', async () => {
@@ -97,6 +100,25 @@ describe('ProtocolIdRegistry', () => {
     });
     it('check non-valid ID', async () => {
       expect(await registry.isValidProtocolId(MAX_UINT256)).to.equal(false);
+    });
+  });
+
+  describe('renaming protocol IDs', async () => {
+    const newName = 'Test Protocol';
+
+    it('successful renaming with authorized user', async () => {
+      await registry.connect(authorizedUser).renameProtocolId(0, newName);
+      expect(await registry.getProtocolName(0)).is.equal(newName);
+    });
+
+    it('trying to rename a non-registered Id', async () => {
+      await expect(registry.connect(authorizedUser).renameProtocolId(MAX_UINT256, newName)).to.be.revertedWith(
+        'Protocol ID not registered'
+      );
+    });
+
+    it('Unauthorized user not able to rename an ID', async () => {
+      await expect(registry.connect(other).renameProtocolId(1, newName)).to.be.revertedWith('BAL#401');
     });
   });
 });

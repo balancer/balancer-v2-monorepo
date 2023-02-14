@@ -28,6 +28,11 @@ interface IProtocolIdRegistry {
     function registerProtocolId(uint256 protocolId, string memory name) external;
 
     /**
+     * @dev Changes the name of an existing protocol ID. Should only be used to update in the case of mistakes.
+     */
+    function renameProtocolId(uint256 protocolId, string memory newName) external;
+
+    /**
      * @dev Returns true if `protocolId` has been registered and can be queried.
      */
     function isValidProtocolId(uint256 protocolId) external view returns (bool);

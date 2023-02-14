@@ -59,6 +59,11 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
     }
 
     /// @inheritdoc IProtocolIdRegistry
+    function renameProtocolId(uint256 protocolId, string memory newName) external override authenticate {
+        _renameProtocolId(protocolId, newName);
+    }
+
+    /// @inheritdoc IProtocolIdRegistry
     function isValidProtocolId(uint256 protocolId) public view override returns (bool) {
         return _protocolIdData[protocolId].registered;
     }
@@ -67,6 +72,11 @@ contract ProtocolIdRegistry is IProtocolIdRegistry, SingletonAuthentication {
         require(!isValidProtocolId(protocolId), "Protocol ID already registered");
         _protocolIdData[protocolId] = ProtocolIdData({ name: name, registered: true });
         emit ProtocolIdRegistered(protocolId, name);
+    }
+
+    function _renameProtocolId(uint256 protocolId, string memory newName) private {
+        require(isValidProtocolId(protocolId), "Protocol ID not registered");
+        _protocolIdData[protocolId].name = newName;
     }
 
     /// @inheritdoc IProtocolIdRegistry
