@@ -14,10 +14,14 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('TimelockAuthorizer', () => {
   let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
-  let root: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress, from: SignerWithAddress;
+  let root: SignerWithAddress,
+    nextRoot: SignerWithAddress,
+    grantee: SignerWithAddress,
+    other: SignerWithAddress,
+    from: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, root, grantee, other] = await ethers.getSigners();
+    [, root, nextRoot, grantee, other] = await ethers.getSigners();
   });
 
   const ACTION_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
@@ -37,7 +41,10 @@ describe('TimelockAuthorizer', () => {
   sharedBeforeEach('deploy authorizer', async () => {
     let authorizerContract: Contract;
 
-    ({ instance: vault, authorizer: authorizerContract } = await Vault.create({ admin: root }));
+    ({ instance: vault, authorizer: authorizerContract } = await Vault.create({
+      admin: root,
+      nextAdmin: nextRoot.address,
+    }));
 
     authorizer = new TimelockAuthorizer(authorizerContract, root);
     authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault.address] });
