@@ -72,24 +72,13 @@ contract MockSilo is ISilo, MockBaseSilo {
         return (_amount, 0);
     }
 
-    function withdrawFor(
-        address _asset,
-        address _depositor,
-        address _receiver,
-        uint256 _amount,
-        bool /*_collateralOnly*/
-    ) external override returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
-        address shareTokenAddress = address(this.assetStorage(_asset).collateralToken);
-        MockShareToken(shareTokenAddress).burn(_depositor, _amount);
-        TestToken(_asset).mint(_receiver, _amount);
-        return (_amount, 0);
-    }
-
-    function withdraw(address /*_asset*/, uint256 _amount, bool /*_collateralOnly*/)
+    function withdraw(address _asset, uint256 _amount, bool /*_collateralOnly*/)
         external
         override
-        pure
         returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
+            address shareTokenAddress = address(this.assetStorage(_asset).collateralToken);
+            MockShareToken(shareTokenAddress).burn(msg.sender, _amount);
+            TestToken(_asset).mint(msg.sender, _amount);
             return (_amount, 0);
         }  
 }

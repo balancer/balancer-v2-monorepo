@@ -61,25 +61,6 @@ interface ISilo is IBaseSilo {
     ) external returns (uint256 collateralAmount, uint256 collateralShare);
 
     /**
-     * @dev Withdraws funds from the Silo
-     * @param _asset The address of the token to withdraw
-     * @param _depositor The address that originally deposited the collateral tokens being withdrawn,
-     * it should be the one initiating the withdrawal through the router
-     * @param _receiver The address that will receive the withdrawn tokens
-     * @param _amount The amount of the token to withdraw
-     * @param _collateralOnly: True means your shareToken is protected (cannot be swapped for interest)
-     * @return withdrawnAmount withdrawn amount that was transferred to user
-     * @return withdrawnShare burned share based on `withdrawnAmount`
-     */
-    function withdrawFor(
-        address _asset,
-        address _depositor,
-        address _receiver,
-        uint256 _amount,
-        bool _collateralOnly
-    ) external returns (uint256 withdrawnAmount, uint256 withdrawnShare);
-
-    /**
      * @dev Withdraw `_amount` of `_asset` tokens from the Silo to `msg.sender`
      * @param _asset The address of the token to withdraw
      * @param _amount The amount of the token to withdraw
@@ -87,7 +68,9 @@ interface ISilo is IBaseSilo {
      * @return withdrawnAmount withdrawn amount that was transferred to user
      * @return withdrawnShare burned share based on `withdrawnAmount`
      */
-    function withdraw(address _asset, uint256 _amount, bool _collateralOnly)
-        external
-        returns (uint256 withdrawnAmount, uint256 withdrawnShare);
+    function withdraw(
+        address _asset,
+        uint256 _amount,
+        bool _collateralOnly
+    ) external returns (uint256 withdrawnAmount, uint256 withdrawnShare);
 }

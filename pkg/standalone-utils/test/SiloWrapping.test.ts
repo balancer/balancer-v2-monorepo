@@ -41,8 +41,8 @@ describe('SiloWrapping', function () {
     });
 
     sDAI = await deploy('MockShareToken', {
-      args: ['sDAI', 'sDAI', mockSilo.address, DAI.address, 18]
-    }); 
+      args: ['sDAI', 'sDAI', mockSilo.address, DAI.address, 18],
+    });
 
     // initalize the asset storage mapping within the Silo for the main token
     await mockSilo.setAssetStorage(
@@ -297,7 +297,7 @@ describe('SiloWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: amount,
             },
@@ -337,7 +337,7 @@ describe('SiloWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
               to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: amount,
             },
@@ -483,8 +483,7 @@ describe('SiloWrapping', function () {
             tokenOut: sDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
-
+          expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -592,7 +591,7 @@ describe('SiloWrapping', function () {
             tokenIn: WETH.address,
             tokenOut: sDAI.address,
           });
-          expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
