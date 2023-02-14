@@ -1995,70 +1995,78 @@ describe('TimelockAuthorizer', () => {
 
       context('when the action is protected', () => {
         sharedBeforeEach('set executors', async () => {
-          executors = [root];
+          executors = [root, other];
         });
 
         context('when the sender is an allowed executor', () => {
-          sharedBeforeEach('set sender', async () => {
-            from = executors[0];
-          });
+          itLetsExecutorExecute(0);
+          itLetsExecutorExecute(1);
 
-          context('when the action was not cancelled', () => {
-            sharedBeforeEach('schedule execution', async () => {
-              id = await schedule();
-            });
-
-            context('when the delay has passed', () => {
-              sharedBeforeEach('advance time', async () => {
-                await advanceTime(delay);
+          function itLetsExecutorExecute(index: number) {
+            context(`with executor #${index}`, () => {
+              sharedBeforeEach('set sender', async () => {
+                if (index >= executors.length) throw new Error('Invalid executor index');
+                from = executors[index];
               });
 
-              it('executes the action', async () => {
-                const receipt = await authorizer.execute(id, { from });
+              context('when the action was not cancelled', () => {
+                sharedBeforeEach('schedule execution', async () => {
+                  id = await schedule();
+                });
 
-                const scheduledExecution = await authorizer.getScheduledExecution(id);
-                expect(scheduledExecution.executed).to.be.true;
+                context('when the delay has passed', () => {
+                  sharedBeforeEach('advance time', async () => {
+                    await advanceTime(delay);
+                  });
 
-                expectEvent.inIndirectReceipt(
-                  await receipt.wait(),
-                  authenticatedContract.interface,
-                  'ProtectedFunctionCalled',
-                  { data: functionData }
-                );
-              });
+                  it('executes the action', async () => {
+                    const receipt = await authorizer.execute(id, { from });
 
-              it('emits an event', async () => {
-                const receipt = await authorizer.execute(id, { from });
+                    const scheduledExecution = await authorizer.getScheduledExecution(id);
+                    expect(scheduledExecution.executed).to.be.true;
 
-                expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', {
-                  scheduledExecutionId: id,
+                    expectEvent.inIndirectReceipt(
+                      await receipt.wait(),
+                      authenticatedContract.interface,
+                      'ProtectedFunctionCalled',
+                      { data: functionData }
+                    );
+                  });
+
+                  it('emits an event', async () => {
+                    const receipt = await authorizer.execute(id, { from });
+
+                    expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', {
+                      scheduledExecutionId: id,
+                    });
+                  });
+
+                  it('cannot be executed twice', async () => {
+                    await authorizer.execute(id, { from });
+
+                    await expect(authorizer.execute(id, { from })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
+                  });
+                });
+
+                context('when the delay has not passed', () => {
+                  it('reverts', async () => {
+                    await expect(authorizer.execute(id, { from })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
+                  });
                 });
               });
 
-              it('cannot be executed twice', async () => {
-                await authorizer.execute(id, { from });
+              context('when the action was cancelled', () => {
+                sharedBeforeEach('schedule and cancel action', async () => {
+                  id = await schedule();
+                  await authorizer.cancel(id, { from: grantee });
+                });
 
-                await expect(authorizer.execute(id, { from })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
+                it('reverts', async () => {
+                  await expect(authorizer.execute(id, { from })).to.be.revertedWith('ACTION_ALREADY_CANCELLED');
+                });
               });
             });
-
-            context('when the delay has not passed', () => {
-              it('reverts', async () => {
-                await expect(authorizer.execute(id, { from })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
-              });
-            });
-          });
-
-          context('when the action was cancelled', () => {
-            sharedBeforeEach('schedule and cancel action', async () => {
-              id = await schedule();
-              await authorizer.cancel(id, { from: grantee });
-            });
-
-            it('reverts', async () => {
-              await expect(authorizer.execute(id, { from })).to.be.revertedWith('ACTION_ALREADY_CANCELLED');
-            });
-          });
+          }
         });
 
         context('when the sender is not an allowed executor', () => {
