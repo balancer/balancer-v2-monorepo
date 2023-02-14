@@ -7,5 +7,4 @@ Deployment of the `SingleRecipientGaugeFactory`, for liquidity gauges which forw
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`SingleRecipientGauge` artifact](./artifact/SingleRecipientGauge.json)
 - [`SingleRecipientGaugeFactory` artifact](./artifact/SingleRecipientGaugeFactory.json)

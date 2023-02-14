@@ -16,3 +16,4 @@ Aditionally, the `WETH` argument may represent different things in different net
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`Vault` artifact](./artifact/Vault.json)
+- [`BalancerHelpers` artifact](./artifact/BalancerHelpers.json)

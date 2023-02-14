@@ -82,8 +82,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
     // an arbitrarily long delay.
     uint256 public constant MAX_DELAY = 2 * (365 days);
-    // We need a minimum delay period to ensure that scheduled actions may be properly scrutinised.
-    uint256 public constant MIN_DELAY = 5 days;
+
+    // We need a minimum delay period to ensure that all delay changes may be properly scrutinised.
+    uint256 public constant MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = 5 days;
 
     struct ScheduledExecution {
         address where;
@@ -504,15 +505,24 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // If we're reducing the action's delay then we must first wait for the difference between the two delays.
         // This means that if we immediately schedule the action for execution once the delay is reduced, then
         // these two delays combined will result in the original delay.
+        // For example, if an action's delay is 20 days and we wish to reduce it to 5 days, we need to wait 15 days
+        // before the new shorter delay is effective, to make it impossible to execute the action before the full
+        // original 20-day delay period has elapsed.
         //
-        // If we're increasing the delay on an action, we could execute this change immediately as it's impossible to
-        // perform an action sooner by increasing its delay. Requiring a potentially long delay before increasing the
-        // delay just adds unnecessary friction to increasing security for sensitive actions.
+        // If we're increasing the delay on an action, we could in principle execute this change immediately, since the
+        // larger delay would fulfill the original constraint imposed by the first delay.
+        // For example, if we wish to increase the delay of an action from 5 days to 20 days, there is no need to wait
+        // as it would not be possible to execute the action with a delay shorter than the initial 5 days at any point.
         //
-        // We also enforce a minimum delay period to allow proper scrutiny of the change of the action's delay.
+        // However, not requiring a delay to increase an action's delay creates an issue: it would be possible to
+        // effectively disable actions by setting huge delays (e.g. 2 years) for them. Because of this, all delay
+        // changes are subject to a minimum execution delay, to allow for proper scrutiny of these potentially
+        // dangerous actions.
 
         uint256 actionDelay = _delaysPerActionId[actionId];
-        uint256 executionDelay = newDelay < actionDelay ? Math.max(actionDelay - newDelay, MIN_DELAY) : MIN_DELAY;
+        uint256 executionDelay = newDelay < actionDelay
+            ? Math.max(actionDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
+            : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
 
         bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);

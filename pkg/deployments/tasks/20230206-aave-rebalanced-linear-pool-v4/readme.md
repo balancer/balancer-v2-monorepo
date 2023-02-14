@@ -13,6 +13,4 @@ Supersedes `20221207-aave-rebalanced-linear-pool-v3`, fixing the reentrancy issu
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`AaveLinearPool` artifact](./artifact/AaveLinearPool.json)
 - [`AaveLinearPoolFactory` artifact](./artifact/AaveLinearPoolFactory.json)
-- [`AaveLinearPoolRebalancer` artifact](./artifact/AaveLinearPoolRebalancer.json)

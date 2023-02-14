@@ -12,4 +12,4 @@ Also has a fix in the `ERC4626LinearPoolRebalancer` to handle tokens which requi
 - [Optimism mainnet addresses](./output/optimism.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`ERC4626LinearPool` artifact](./artifact/ERC4626LinearPool.json)
+- [`ERC4626LinearPoolFactory` artifact](./artifact/ERC4626LinearPoolFactory.json)
