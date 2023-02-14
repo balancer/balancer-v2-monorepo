@@ -2207,6 +2207,10 @@ describe('TimelockAuthorizer', () => {
       ROOT_CHANGE_DELAY = await authorizer.instance.getRootTransferDelay();
     });
 
+    it('sets the nextRoot as the pending root during construction', async () => {
+      expect(await authorizer.instance.getPendingRoot()).to.equal(nextRoot.address);
+    });
+
     context('when the sender is the root', async () => {
       context('when trying to execute it directly', async () => {
         it('reverts', async () => {
