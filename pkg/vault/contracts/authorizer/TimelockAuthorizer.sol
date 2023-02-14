@@ -164,11 +164,17 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     constructor(
-        address admin,
+        address initialRoot,
+        address nextRoot,
         IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
         uint256 rootTransferDelay
     ) {
-        _setRoot(admin);
+        _setRoot(initialRoot);
+        // By setting `nextRoot` as the pending root, it can immediately call `claimRoot` and replace `initialRoot`,
+        // skipping the root transfer delay for the very first root transfer. This is very useful in schemes where a
+        // migrator contract is the initial root and performs some initial setup, and then needs to transfer this
+        // permission to some other account.
+        _setPendingRoot(nextRoot);
 
         _vault = authorizerAdaptorEntrypoint.getVault();
         _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
@@ -181,11 +187,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bytes32 generalGrantActionId = getExtendedActionId(grantActionId, GENERAL_PERMISSION_SPECIFIER);
         bytes32 generalRevokeActionId = getExtendedActionId(revokeActionId, GENERAL_PERMISSION_SPECIFIER);
 
-        // These don't technically need to be granted as `admin` will be the new root, and can grant these permissions
-        // directly to themselves. By granting here improves ergonomics, especially in testing, as the admin is now
+        // These don't technically need to be granted as `initialRoot` is the new root, and can grant these permissions
+        // directly to themselves. By granting here improves ergonomics, especially in testing, as `initialRoot` is now
         // ready to grant any permission.
-        _grantPermission(generalGrantActionId, admin, EVERYWHERE);
-        _grantPermission(generalRevokeActionId, admin, EVERYWHERE);
+        _grantPermission(generalGrantActionId, initialRoot, EVERYWHERE);
+        _grantPermission(generalRevokeActionId, initialRoot, EVERYWHERE);
 
         GRANT_ACTION_ID = grantActionId;
         REVOKE_ACTION_ID = revokeActionId;
