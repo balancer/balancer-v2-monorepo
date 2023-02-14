@@ -127,6 +127,14 @@ describeForkTest.only('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, fun
       .create_lock(await bal80weth20Pool.balanceOf(balWhale.address), currentTime.add(MONTH * 12));
   });
 
+  // This block number is close to an epoch change, so we first move to the next one and update the emission rates
+  // in the BAL token admin. This is not strictly necessary, but completing the whole test within the same epoch
+  // simplifies the math for the expected emissions down below.
+  before('update balancer token admin rate', async () => {
+    await advanceTime(WEEK * 5);
+    await BALTokenAdmin.update_mining_parameters();
+  });
+
   it('create gauge', async () => {
     // We use an EOA as the single recipient; in practice it will probably be a contract.
     const tx = await factory.create(recipient.address, weightCap);
