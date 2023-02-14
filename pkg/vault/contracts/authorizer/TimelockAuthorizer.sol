@@ -113,6 +113,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     // Authorizer permissions
     address private _root;
     address private _pendingRoot;
+
+    // scheduled execution id => account => is executor
     mapping(uint256 => mapping(address => bool)) private _isExecutor;
 
     // External permissions
@@ -129,7 +131,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     /**
      * @notice Emitted when an executor is created for a scheduled execution `scheduledExecutionId`.
      */
-    event ExecutorCreated(uint256 indexed scheduledExecutionId, address executor);
+    event ExecutorCreated(uint256 indexed scheduledExecutionId, address indexed executor);
 
     /**
      * @notice Emitted when an execution `scheduledExecutionId` is executed.
