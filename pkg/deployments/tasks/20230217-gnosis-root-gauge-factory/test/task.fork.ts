@@ -4,17 +4,26 @@ import { Contract } from 'ethers';
 import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 import { BigNumber, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { advanceTime, currentTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import {
+  advanceTime,
+  currentTimestamp,
+  currentWeekTimestamp,
+  DAY,
+  WEEK,
+  MONTH,
+} from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { describeForkTest } from '../../../src/forkTests';
+import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
 describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
@@ -24,12 +33,16 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
     authorizerAdaptor: Contract,
     BALTokenAdmin: Contract,
     gaugeController: Contract,
-    gaugeAdder: Contract;
+    gaugeAdder: Contract,
+    veBAL: Contract,
+    bal80weth20Pool: Contract;
   let BAL: string;
   let task: Task;
 
-  const VEBAL_HOLDER = '0x03de3132e3d448ce03ada2457f0bc779f18f553b';
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
+
+  const VEBAL_POOL = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56';
+  const VAULT_BOUNTY = fp(1000);
 
   const weightCap = fp(0.001);
 
@@ -48,7 +61,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
     admin = await getSigner(0);
     recipient = await getSigner(1);
 
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
+    veBALHolder = await impersonate((await getSigner(2)).address, VAULT_BOUNTY.add(fp(5))); // plus gas
   });
 
   before('setup contracts', async () => {
@@ -69,6 +82,34 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
+  });
+
+  before('create veBAL whale', async () => {
+    const veBALTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    veBAL = await veBALTask.instanceAt('VotingEscrow', veBALTask.output({ network: 'mainnet' }).VotingEscrow);
+
+    bal80weth20Pool = await deployedAt('v2-pool-weighted/WeightedPool', VEBAL_POOL);
+
+    const poolId = await bal80weth20Pool.getPoolId();
+
+    await vault.connect(veBALHolder).joinPool(
+      poolId,
+      veBALHolder.address,
+      veBALHolder.address,
+      {
+        assets: [BAL, ZERO_ADDRESS],
+        maxAmountsIn: [0, VAULT_BOUNTY],
+        fromInternalBalance: false,
+        userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, VAULT_BOUNTY], 0),
+      },
+      { value: VAULT_BOUNTY }
+    );
+
+    await bal80weth20Pool.connect(veBALHolder).approve(veBAL.address, MAX_UINT256);
+    const currentTime = await currentTimestamp();
+    await veBAL
+      .connect(veBALHolder)
+      .create_lock(await bal80weth20Pool.balanceOf(veBALHolder.address), currentTime.add(MONTH * 12));
   });
 
   it('create gauge', async () => {
@@ -125,7 +166,7 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16521970, function () {
       .connect(admin)
       .performAction(
         gaugeController.address,
-        gaugeController.interface.encodeFunctionData('add_type(string,uint256)', ['Gnosis', fp(0.7)])
+        gaugeController.interface.encodeFunctionData('add_type(string,uint256)', ['Gnosis', 1])
       );
 
     await gaugeAdder.addGaugeFactory(factory.address, GaugeType.Gnosis);
