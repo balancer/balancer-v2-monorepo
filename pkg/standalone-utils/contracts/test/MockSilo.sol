@@ -84,4 +84,12 @@ contract MockSilo is ISilo, MockBaseSilo {
         TestToken(_asset).mint(_receiver, _amount);
         return (_amount, 0);
     }
+
+    function withdraw(address /*_asset*/, uint256 _amount, bool /*_collateralOnly*/)
+        external
+        override
+        pure
+        returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
+            return (_amount, 0);
+        }  
 }

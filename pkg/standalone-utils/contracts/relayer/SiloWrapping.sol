@@ -23,7 +23,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
-
+import "hardhat/console.sol";
 /**
  * @title SiloWrapping
  * @notice Allows users to wrap and unwrap Silo shareTokens
@@ -87,9 +87,15 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, IERC20(address(wrappedToken)), amount);
         }
+        
+        console.log("amount: ", amount);
 
         // No approval is needed here, as the  shareTokens are burned directly from the relayer's account
-        (uint256 result, ) = silo.withdrawFor(address(underlyingToken), address(this), recipient, amount, false);
+        (uint256 result, ) = silo.withdraw(address(underlyingToken), amount, false);
+
+        underlyingToken.safeTransfer(recipient, result);
+
+        console.log("withdrawn amount: ", result);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);
