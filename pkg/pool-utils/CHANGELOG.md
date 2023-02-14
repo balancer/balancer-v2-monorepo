@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 3.1.2 (2023-02-14)
+
+### Bugfix
 
 - Make `VaultReentrancyLib` compatible with solc >=0.7.0 <0.9.0.
 
