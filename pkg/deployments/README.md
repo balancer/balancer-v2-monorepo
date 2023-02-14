@@ -76,7 +76,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Admin of the BAL token                                  | [`20220325-balancer-token-admin`](./tasks/20220325-balancer-token-admin)                             |
 | Gauge Registrant                                        | [`20220325-gauge-adder`](./tasks/20220325-gauge-adder)                                               |
 | Liquidity Mining: veBAL, Gauge Controller and Minter    | [`20220325-gauge-controller`](./tasks/20220325-gauge-controller)                                     |
-| Single Recipient Stakeless Gauges                       | [`20220325-single-recipient-gauge-factory`](./tasks/20220325-single-recipient-gauge-factory)         |
 | Test Balancer Token                                     | [`20220325-test-balancer-token`](./tasks/20220325-test-balancer-token)                               |
 | Delegation of veBAL boosts                              | [`20220325-ve-delegation`](./tasks/20220325-ve-delegation)                                           |
 | Gauges on child networks (L2s and sidechains)           | [`20220413-child-chain-gauge-factory`](./tasks/20220413-child-chain-gauge-factory)                   |
@@ -107,6 +106,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Linear Pools for ERC4626 Tokens V3                      | [`20230206-erc4626-linear-pool-v3`](./tasks/20230206-erc4626-linear-pool-v3)                         |
 | Linear Pools for Aave aTokens (with rebalancing) V4     | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/20230206-aave-rebalanced-linear-pool-v4)         |
 | Linear Pools for Euler Tokens                           | [`20230208-euler-linear-pool`](./tasks/20230208-euler-linear-pool)                                   |
+| Single Recipient Stakeless Gauges V2                    | [`20230215-single-recipient-gauge-factory`](./tasks/20230215-single-recipient-gauge-factory-v2/)     |
 
 ## Scripts
 
@@ -147,6 +147,7 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for ERC4626 Tokens                         | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                       |
 | Batch Relayer V2                                        | [`20220318-batch-relayer-v2`](./tasks/deprecated/20220318-batch-relayer-v2)                             |
 | Mainnet Staking Gauges                                  | [`20220325-mainnet-gauge-factory`](./tasks/deprecated/20220325-mainnet-gauge-factory)                   |
+| Single Recipient Stakeless Gauges                       | [`20220325-single-recipient-gauge-factory`](./tasks/deprecated/20220325-single-recipient-gauge-factory) |
 | Linear Pools for ERC4626 Tokens V2                      | [`20220404-erc4626-linear-pool-v2`](./tasks/deprecated/20220404-erc4626-linear-pool-v2)                 |
 | Arbitrum Root Gauges, for veBAL voting                  | [`20220413-arbitrum-root-gauge-factory`](./tasks/deprecated/20220413-arbitrum-root-gauge-factory)       |
 | Polygon Root Gauges, for veBAL voting                   | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)         |
