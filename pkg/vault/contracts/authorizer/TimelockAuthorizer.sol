@@ -614,7 +614,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants or revokes granter status to `account`'s for action `actionId` in target `where`.
+     * @notice Grants or revokes granter status to `account` for action `actionId` in target `where`.
      * @dev Only the root can add and remove granters.
      *
      * Note that there are no delays associated with adding or removing granters. This is based on the assumption that
@@ -624,8 +624,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * remove the granter.
      *
      * A malicious granter may also attempt to use their granter status to grant permission to multiple accounts, but
-     * they cannot create new granters. Therefore, root can simply first revoke their granter status, and then revoke
-     * the permissions granted to said no longer increasing set of accounts.
+     * they cannot create new granters. Therefore, the danger posed by a malicious granter is limited and self-
+     * contained. Root can mitigate the situation simply and completely by revoking first their granter status,
+     * and then any permissions granted by that account, knowing there cannot be any more.
      */
     function manageGranter(
         bytes32 actionId,
@@ -676,7 +677,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants or revokes revoker status to `account`'s for action `actionId` in target `where`.
+     * @notice Grants or revokes revoker status to `account` for action `actionId` in target `where`.
      * @dev Only the root can add and remove revokers.
      *
      * Note that there are no delays associated with adding or removing revokers. This is based on the assumption that
@@ -684,7 +685,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * from minting BAL) have sufficiently long delays associated with revoking them that the root will be able to
      * reestablish control and cancel the revocation before the scheduled revocation can be executed.
      *
-     * A malicious cannot create new revokers, so root can simply revoke their status once.
+     * A malicious revoker cannot create new revokers, so root can simply revoke their status once.
      */
     function manageRevoker(
         bytes32 actionId,
