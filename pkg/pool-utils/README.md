@@ -3,7 +3,7 @@
 # Balancer V2 Pool Utilities
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-pool-utils.svg)](https://www.npmjs.org/package/@balancer-labs/v2-pool-utils)
-[![Docs](https://img.shields.io/badge/docs-%F0%9F%93%84-blue)](https://docs.balancer.fi/developers/smart-contracts/apis/pools)
+[![Docs](https://img.shields.io/badge/docs-%F0%9F%93%84-blue)](https://docs.balancer.fi/products/balancer-pools)
 
 This package contains Solidity utilities for developing Balancer V2 Pools, implementing common patterns such as token decimal scaling, caller checks on hooks, etc.
 

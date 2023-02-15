@@ -9,5 +9,4 @@ Deployment of the `PolygonRootGaugeFactory`, for stakeless gauges that bridge fu
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`PolygonRootGauge` artifact](./artifact/PolygonRootGauge.json)
 - [`PolygonRootGaugeFactory` artifact](./artifact/PolygonRootGaugeFactory.json)

@@ -2,7 +2,7 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
-> This factory has been deprecated due to being superceded by this [updated version](../../20220609-stable-pool-v2). All pools from this factory remain functional but new pool deployments should use the new factory.
+> This factory was superseded by this [updated version (also now deprecated)](../20220908-weighted-pool-v2).
 
 Deployment of the `WeightedPoolFactory`, for Weighted Pools of up to 8 tokens, and `WeightedPool2TokensFactory`, for Weighted Pools restricted to 2 tokens, but with an optional price oracle.
 
@@ -12,5 +12,5 @@ Deployment of the `WeightedPoolFactory`, for Weighted Pools of up to 8 tokens, a
 - [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
-- [`WeightedPool` artifact](./artifact/WeightedPool.json)
-- [`WeightedPool2Tokens` artifact](./artifact/WeightedPool2Tokens.json)
+- [`WeightedPoolFactory` artifact](./artifact/WeightedPoolFactory.json)
+- [`WeightedPool2TokensFactory` artifact](./artifact/WeightedPool2TokensFactory.json)
