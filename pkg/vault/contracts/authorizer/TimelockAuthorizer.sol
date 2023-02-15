@@ -187,8 +187,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bytes32 generalGrantActionId = getExtendedActionId(grantActionId, GENERAL_PERMISSION_SPECIFIER);
         bytes32 generalRevokeActionId = getExtendedActionId(revokeActionId, GENERAL_PERMISSION_SPECIFIER);
 
-        // These don't technically need to be granted as `initialRoot` is the new root, and can grant these permissions
-        // directly to themselves. By granting here improves ergonomics, especially in testing, as `initialRoot` is now
+        // These don't technically need to be granted, as `initialRoot` is the new root, and can grant these permissions
+        // directly to itself. But granting here improves ergonomics, especially in testing, as `initialRoot` is now
         // ready to grant any permission.
         _grantPermission(generalGrantActionId, initialRoot, EVERYWHERE);
         _grantPermission(generalRevokeActionId, initialRoot, EVERYWHERE);
