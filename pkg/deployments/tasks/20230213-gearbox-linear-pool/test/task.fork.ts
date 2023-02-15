@@ -18,7 +18,7 @@ export enum SwapKind {
 
 describeForkTest('GearboxLinearPoolFactory', 'mainnet', 15989794, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
-  let vault: Contract, authorizer: Contract, mainToken: Contract;
+  let vault: Contract, mainToken: Contract;
   let factory: Contract;
   let rebalancer: Contract;
 
@@ -64,9 +64,6 @@ describeForkTest('GearboxLinearPoolFactory', 'mainnet', 15989794, function () {
 
   before('setup contracts', async () => {
     vault = await new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance('Vault');
-    authorizer = await new Task('20210418-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance(
-      'Authorizer'
-    );
 
     mainToken = await task.instanceAt('IERC20', USDC);
     await mainToken.connect(holder).approve(vault.address, MAX_UINT256);
