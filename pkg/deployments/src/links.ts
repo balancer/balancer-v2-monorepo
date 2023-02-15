@@ -47,7 +47,14 @@ export function checkLinks(task: Task): void {
 }
 
 export function checkMainReadme(): void {
-  const filePath = path.join(__dirname, `../readme.md`);
+  let rootPath = __dirname;
+  // Work both locally and in CI (task and "all")
+  if (path.basename(rootPath) != 'deployment') {
+    rootPath = path.join(__dirname, `../`);
+  }
+  console.log(`rootPath: ${rootPath}`);
+
+  const filePath = path.join(rootPath, `readme.md`);
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 
   if (fileExists) {
@@ -57,13 +64,6 @@ export function checkMainReadme(): void {
     // This will skip external links (e.g., to forum posts), which we cannot verify.
     const linkRegex = /\[(.*?)\]\((\.\/.*?)\)/g;
     let linkCnt = 0;
-
-    let rootPath = __dirname;
-    // Work both locally and in CI (task and "all")
-    if (path.basename(rootPath) != 'deployment') {
-      rootPath = path.join(__dirname, `../`);
-    }
-    console.log(`rootPath: ${rootPath}`);
 
     for (const line of lines) {
       let match;
