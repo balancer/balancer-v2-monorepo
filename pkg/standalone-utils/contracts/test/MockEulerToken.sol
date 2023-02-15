@@ -62,7 +62,7 @@ contract MockEulerToken is IEulerToken, TestToken {
     }
 
     // convert underlying Balance to eToken
-    function convertUnderlyingToBalance(uint256 balance) external view returns (uint256) {
+    function convertUnderlyingToBalance(uint256 balance) external override view returns (uint256) {
         return balance * (1/exchangeRateMultiplier);
     }
 

@@ -26,6 +26,8 @@ import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
 import "./IBaseRelayerLibrary.sol";
 import "./interfaces/IMockEulerToken.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title EulerWrapping
  * @notice Allows users to wrap and unwrap Euler tokens
@@ -68,22 +70,30 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
 
         underlying.safeApprove(_eulerProtocol, amount);
 
-        // Calling `deposit` on an EulerToken does not return any values
-        // to satisfy the chainedReferenceCondition the amount of
-        // wrappedTokens need to be known. For en ERC4626 Vault for example
-        // the amount of `shares` minted is being returned. Similar behaviour
-        // is being emulated here
-
         // calculated balances of the wrappedToken in the Relayer
         IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
-        uint256 wrappedAmountBefore = wrappedTokenErc20.balanceOf(address(this));
+        // uint256 wrappedAmountBefore = wrappedTokenErc20.balanceOf(address(this));
 
-        // Deposit into EulerToken
+        console.log("WRAP: Relayer has amount of mainToken", underlying.balanceOf(address(this)));
+        console.log("WRAP: Relayer wants to deposit amount of mainToken", amount);
+
+        // Deposit MainToken into EulerToken
         // 0 for the Euler primary account
         wrappedToken.deposit(0, amount);
 
-        uint256 wrappedAmountAfter = wrappedTokenErc20.balanceOf(address(this));
-        uint256 withdrawnWrappedAmount = wrappedAmountAfter - wrappedAmountBefore;
+        // uint256 wrappedAmountAfter = wrappedTokenErc20.balanceOf(address(this));
+
+        // @notice Convert an underlying amount to an eToken balance, taking into account current exchange rate
+        // @param underlyingAmount Amount in underlying units (same decimals as underlying token)
+        // @return eToken balance, in internal book-keeping units (18 decimals)
+        // https://github.com/euler-xyz/euler-contracts/blob/master/contracts/modules/EToken.sol#L117
+        
+        // TODO: Is this call more efficient from a gas & precision perspective? 
+        uint256 withdrawnWrappedAmount = wrappedToken.convertUnderlyingToBalance(amount);
+        console.log("WRAP: Relayer has amount of wrappedToken", wrappedTokenErc20.balanceOf(address(this)));
+        console.log("WRAP: Relayer expected to receive amount of wrappedToken", withdrawnWrappedAmount);
+
+        console.log("WRAP");
 
         if (recipient != address(this)) {
             wrappedTokenErc20.safeApprove(address(this), withdrawnWrappedAmount);
@@ -99,7 +109,7 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
         IEulerToken wrappedToken,
         address sender,
         address recipient,
-        uint256 amount,
+        uint256 amount, 
         uint256 outputReference
     ) external payable {
         if (_isChainedReference(amount)) {
@@ -113,12 +123,25 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
             _pullToken(sender, IERC20(address(wrappedToken)), amount);
         }
 
+        // TODO: Delete next 2 lines after design decision has been taken
         IERC20 mainToken = IERC20(wrappedToken.underlyingAsset());
-        uint256 mainAmountBefore = mainToken.balanceOf(address(this));
+        // uint256 mainAmountBefore = mainToken.balanceOf(address(this));
+
+        // Euler offers two ways to withdraw. Either calculate the MainTokenOut via
+        // 1. MainTokenOut = wrappedToken.convertBalanceToUnderlying(WrappedTokenAmount); or
+        // 2. withdraw as Much MainToken as one gets when depositing WrappedTokenAmount back
+        // When using option 1, the possibility exists to have dust of WrappedToken in the relayer
+        // Therefor option 2 is chosen
         // 0 for the Euler primary account
-        wrappedToken.withdraw(0, amount);
-        uint256 mainAmountAfter = mainToken.balanceOf(address(this));
-        uint256 withdrawnMainAmount = mainAmountAfter - mainAmountBefore;
+        wrappedToken.withdraw(0, 2**256 - 1); //MAX_UINT forces option 2
+
+        // TODO: Delete next line after design decision has been taken
+        // uint256 mainAmountAfter = mainToken.balanceOf(address(this));
+
+        uint256 withdrawnMainAmount = wrappedToken.convertBalanceToUnderlying(amount);
+
+        console.log("UNWRAP: Relayer has amount of mainToken", mainToken.balanceOf(address(this)));
+        console.log("UNWRAP: According to Euler Relayer wouldve got MainTokenAmount", withdrawnMainAmount);
 
         if (recipient != address(this)) {
             mainToken.safeApprove(address(this), withdrawnMainAmount);

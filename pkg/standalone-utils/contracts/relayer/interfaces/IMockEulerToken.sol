@@ -26,6 +26,14 @@ interface IEulerToken {
     function convertBalanceToUnderlying(uint256) external view returns (uint256);
 
     /**
+     * @dev Convert an underlying amount to an eToken balance, taking into account current exchange rate
+     * @param underlyingAmount Amount in underlying units (same decimals as underlying token)
+     * @return eToken balance, in internal book-keeping units (18 decimals)
+     * https://github.com/euler-xyz/euler-contracts/blob/master/contracts/modules/EToken.sol#L117
+     */
+    function convertUnderlyingToBalance(uint underlyingAmount) external view returns (uint);
+
+    /**
      * @dev Transfer underlying tokens from sender to the Euler pool, and increase account's eTokens
      */
     function deposit(uint256 subAccountId, uint256 amount) external;
