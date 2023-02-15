@@ -16,7 +16,7 @@ export enum SwapKind {
   GivenOut,
 }
 
-describeForkTest('GearboxLinearPoolFactory', 'mainnet', 15989794, function () {
+describeForkTest('GearboxLinearPoolFactory', 'mainnet', 16636000, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
   let vault: Contract, mainToken: Contract;
   let factory: Contract;
@@ -148,7 +148,7 @@ describeForkTest('GearboxLinearPoolFactory', 'mainnet', 15989794, function () {
       const [registeredAddress] = await vault.getPool(poolId);
       expect(registeredAddress).to.equal(pool.address);
 
-      const { assetManager } = await vault.getPoolTokenInfo(poolId, USDC); // We could query for either frxEth or mooToken
+      const { assetManager } = await vault.getPoolTokenInfo(poolId, USDC);
       rebalancer = await task.instanceAt('GearboxLinearPoolRebalancer', assetManager);
     });
 
@@ -361,7 +361,8 @@ describeForkTest('GearboxLinearPoolFactory', 'mainnet', 15989794, function () {
     let attacker: Contract;
 
     before('deploy attacker', async () => {
-      attacker = await deploy('ReadOnlyReentrancyAttackerGearboxLP', { args: [vault.address] });
+      // Using Reentrancy Attacker from Aave Fork Test (task 20230206-aave-rebalanced-linear-pool-v4)
+      attacker = await deploy('ReadOnlyReentrancyAttackerAaveLP', { args: [vault.address] });
     });
 
     async function performAttack(attackType: AttackType, ethAmount: BigNumber, expectRevert: boolean) {
