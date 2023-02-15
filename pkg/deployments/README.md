@@ -66,7 +66,7 @@ Returns an object with all contracts from a deployment and their addresses.
 ## Active Deployments
 
 | Description                                             | Task ID                                                                                              |
-| ------------------------------------------------------- |------------------------------------------------------------------------------------------------------|
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Authorizer, governance contract                         | [`20210418-authorizer`](./tasks/20210418-authorizer)                                                 |
 | Vault, main protocol contract                           | [`20210418-vault`](./tasks/20210418-vault)                                                           |
 | Rate Provider for wstETH                                | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
