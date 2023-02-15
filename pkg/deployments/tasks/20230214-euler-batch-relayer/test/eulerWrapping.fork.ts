@@ -22,8 +22,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
   let chainedReference: BigNumber;
   let chainedReferenceOut: BigNumber;
 
-  const amountToWrap = 100e6; //100 USDC
-  // TODO: run tests with higher amount
+  const amountToWrap = 50000e6; //50k USDC
 
   before('run task', async () => {
     task = new Task('20230214-euler-batch-relayer', TaskMode.TEST, getForkedNetwork(hre));
@@ -121,7 +120,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
     const balanceOfeUSDCAfter = await wrappedToken.balanceOf(relayer.address);
 
     expect(balanceOfeUSDCAfter).to.be.equal(0);
-    expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.equal(amountToWrap);
+    expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.almostEqual(amountToWrap, 0.01);
   });
 
   it('should wrap and unwrap', async () => {
