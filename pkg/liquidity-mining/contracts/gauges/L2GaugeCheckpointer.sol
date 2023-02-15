@@ -37,11 +37,9 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     mapping(IGaugeAdder.GaugeType => EnumerableSet.AddressSet) private _gauges;
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IGaugeController private immutable _gaugeController;
-    IGaugeAdder private immutable _gaugeAdder;
 
-    constructor(IGaugeAdder gaugeAdder, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) {
-        _gaugeAdder = gaugeAdder;
-        _gaugeController = gaugeAdder.getGaugeController();
+    constructor(IGaugeController gaugeController, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) {
+        _gaugeController = gaugeController;
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
     }
 
@@ -50,9 +48,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         _;
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#addGauges`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
@@ -62,10 +58,8 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
 
         for (uint256 i = 0; i < gauges.length; i++) {
             IStakelessGauge gauge = gauges[i];
-            require(
-                _gaugeAdder.isGaugeFromValidFactory(address(gauge), gaugeType),
-                "Gauge does not come from a valid factory"
-            );
+            // Gauges must come from a valid factory to be added to the gauge controller, so gauges that don't pass
+            // the valid factory check will be rejected by the controller.
             require(_gaugeController.gauge_exists(address(gauge)), "Gauge was not added to the GaugeController");
             require(!gauge.is_killed(), "Gauge was killed");
             require(gaugesForType.add(address(gauge)), "Gauge already added to the checkpointer");
@@ -74,9 +68,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         }
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#removeGauges`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
@@ -95,9 +87,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         }
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#hasGauge`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function hasGauge(IGaugeAdder.GaugeType gaugeType, IStakelessGauge gauge)
         external
         view
@@ -108,9 +98,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return _gauges[gaugeType].contains(address(gauge));
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#getTotalGauges`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function getTotalGauges(IGaugeAdder.GaugeType gaugeType)
         external
         view
@@ -121,10 +109,8 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return _gauges[gaugeType].length();
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#getGaugeAt`.
-     */
-    function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index)
+    /// @inheritdoc IL2GaugeCheckpointer
+    function getGaugeAtIndex(IGaugeAdder.GaugeType gaugeType, uint256 index)
         external
         view
         override
@@ -134,10 +120,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return IStakelessGauge(_gauges[gaugeType].at(index));
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#checkpointGaugesAboveRelativeWeight`.
-     * Unspent ETH is sent back to sender.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override nonReentrant {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
@@ -152,9 +135,28 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         Address.sendValue(msg.sender, address(this).balance);
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#getTotalBridgeCost`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
+    function checkpointGaugesOfTypeAboveRelativeWeight(IGaugeAdder.GaugeType gaugeType, uint256 minRelativeWeight)
+        external
+        payable
+        override
+        withSupportedGaugeType(gaugeType)
+        nonReentrant
+    {
+        // solhint-disable-next-line not-rely-on-time
+        uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
+
+        _checkpointGauges(gaugeType, minRelativeWeight, currentPeriod);
+
+        // Send back any leftover ETH to the caller.
+        // Most gauge types don't need to send value, and this step can be skipped in those cases.
+        uint256 remainingBalance = address(this).balance;
+        if (remainingBalance > 0) {
+            Address.sendValue(msg.sender, remainingBalance);
+        }
+    }
+
+    /// @inheritdoc IL2GaugeCheckpointer
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
@@ -169,16 +171,14 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
                 continue;
             }
 
-            // Cost per gauge is always the same, but getting the cost every time makes the code simpler,
-            // and this function is only to be used off-chain.
+            // Cost per gauge might not be the same if gauges come from different factories, so we add each
+            // gauge's bridge cost individually.
             totalCost += ArbitrumRootGauge(gauge).getTotalBridgeCost();
         }
         return totalCost;
     }
 
-    /**
-     * @dev See `IL2GaugeCheckpointer#isSupportedGaugeType`.
-     */
+    /// @inheritdoc IL2GaugeCheckpointer
     function isSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) external pure override returns (bool) {
         return _isSupportedGaugeType(gaugeType);
     }
@@ -195,20 +195,19 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         uint256 minRelativeWeight,
         uint256 currentPeriod
     ) private {
-        uint256 totalTypeGauges = _gauges[gaugeType].length();
+        EnumerableSet.AddressSet storage typeGauges = _gauges[gaugeType];
+
+        uint256 totalTypeGauges = typeGauges.length();
         if (totalTypeGauges == 0) {
             // Return early if there's no work to be done.
             return;
         }
 
-        EnumerableSet.AddressSet storage typeGauges = _gauges[gaugeType];
-
-        // We can do this cast safely because we check that the gauge was created from the ArbitrumRootGaugeFactory
-        // when we added it to the address set. At this point, we have at least one gauge so unchecked_at(0) is valid.
-        // Moreover, the cost per gauge is always the same, so we don't need to call the getter for the cost every time.
-        uint256 costPerCheckpoint = gaugeType == IGaugeAdder.GaugeType.Arbitrum
-            ? ArbitrumRootGauge(typeGauges.unchecked_at(0)).getTotalBridgeCost()
-            : 0;
+        // Arbitrum gauges need to send ETH when performing the checkpoint to pay for bridge costs. Furthermore,
+        // if gauges come from different factories, the cost per gauge might not be the same for all gauges.
+        function(address) internal performCheckpoint = gaugeType == IGaugeAdder.GaugeType.Arbitrum
+            ? _checkpointArbitrumGauge
+            : _checkpointCostlessBridgeGauge;
 
         for (uint256 i = 0; i < totalTypeGauges; ++i) {
             address gauge = typeGauges.unchecked_at(i);
@@ -216,12 +215,26 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
             if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
                 continue;
             }
-
-            _authorizerAdaptorEntrypoint.performAction{ value: costPerCheckpoint }(
-                gauge,
-                abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
-            );
+            performCheckpoint(gauge);
         }
+    }
+
+    /**
+     * @dev Performs checkpoint for Arbitrum gauge, forwarding ETH to pay bridge costs.
+     */
+    function _checkpointArbitrumGauge(address gauge) private {
+        uint256 checkpointCost = ArbitrumRootGauge(gauge).getTotalBridgeCost();
+        _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
+            gauge,
+            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
+        );
+    }
+
+    /**
+     * @dev Performs checkpoint for non-Arbitrum gauge; does not forward any ETH.
+     */
+    function _checkpointCostlessBridgeGauge(address gauge) private {
+        _authorizerAdaptorEntrypoint.performAction(gauge, abi.encodeWithSelector(IStakelessGauge.checkpoint.selector));
     }
 
     /**
