@@ -22,7 +22,8 @@ describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
   let chainedReference: BigNumber;
   let chainedReferenceOut: BigNumber;
 
-  const amountToWrap = 1e6; //100 USDC
+  const amountToWrap = 100e6; //100 USDC
+  // TODO: run tests with higher amount
 
   before('run task', async () => {
     task = new Task('20230214-euler-batch-relayer', TaskMode.TEST, getForkedNetwork(hre));
@@ -63,7 +64,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
   });
 
-  it.skip('should wrap successfully', async () => {
+  it('should wrap successfully', async () => {
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
     const balanceOfeUSDClBefore = await wrappedToken.balanceOf(relayer.address);
@@ -96,7 +97,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
     expect(balanceOfeUSDCAfter).to.be.equal(expectedbalanceOfeUSDCAfter);
   });
 
-  it.skip('should unwrap successfully', async () => {
+  it('should unwrap successfully', async () => {
     // in underlying decimals
     const eAmountToWithdraw = await eToken.convertUnderlyingToBalance(amountToWrap);
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
