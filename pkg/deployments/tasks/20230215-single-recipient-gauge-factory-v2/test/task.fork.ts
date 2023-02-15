@@ -22,7 +22,7 @@ import { range } from 'lodash';
 import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
-describeForkTest.only('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, function () {
+describeForkTest('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, function () {
   let admin: SignerWithAddress, recipient: SignerWithAddress, balWhale: SignerWithAddress;
   let vault: Contract,
     authorizer: Contract,
