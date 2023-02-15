@@ -416,6 +416,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
+     * @notice Returns true if `account` is an executor for `scheduledExecutionId`.
+     */
+    function isExecutor(uint256 scheduledExecutionId, address account) public view returns (bool) {
+        return _isExecutor[scheduledExecutionId][account];
+    }
+
+    /**
      * @notice Returns true if execution `scheduledExecutionId` can be executed.
      * Only true if it is not already executed or cancelled, and if the execution delay has passed.
      */
@@ -570,7 +577,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         if (scheduledExecution.protected) {
             // Protected scheduled executions can only be executed by a set of accounts designated by the original
             // scheduler.
-            _require(_isExecutor[scheduledExecutionId][msg.sender], Errors.SENDER_NOT_ALLOWED);
+            _require(isExecutor(scheduledExecutionId, msg.sender), Errors.SENDER_NOT_ALLOWED);
         }
 
         scheduledExecution.executed = true;

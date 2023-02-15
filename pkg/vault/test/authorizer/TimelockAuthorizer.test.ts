@@ -11,6 +11,7 @@ import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { time } from 'console';
 
 describe('TimelockAuthorizer', () => {
   let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
@@ -2012,6 +2013,10 @@ describe('TimelockAuthorizer', () => {
               context('when the action was not cancelled', () => {
                 sharedBeforeEach('schedule execution', async () => {
                   id = await schedule();
+                });
+
+                it('sender is marked as an executor', async () => {
+                  expect(await authorizer.instance.isExecutor(id, from.address)).to.be.true;
                 });
 
                 context('when the delay has passed', () => {
