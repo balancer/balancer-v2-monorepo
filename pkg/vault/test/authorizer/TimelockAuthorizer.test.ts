@@ -32,7 +32,7 @@ describe('TimelockAuthorizer', () => {
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
-  const MIN_DELAY = 5 * DAY;
+  const MINIMUM_EXECUTION_DELAY = 5 * DAY;
 
   sharedBeforeEach('deploy authorizer', async () => {
     let authorizerContract: Contract;
@@ -1681,7 +1681,7 @@ describe('TimelockAuthorizer', () => {
 
             context('when the delay is being increased', () => {
               context('when there was no previous delay', () => {
-                itSchedulesTheDelayChangeCorrectly(MIN_DELAY);
+                itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
               });
 
               context('when there was a previous delay set', () => {
@@ -1691,13 +1691,13 @@ describe('TimelockAuthorizer', () => {
                   await authorizer.setDelay(action, previousDelay, { from: root });
                 });
 
-                itSchedulesTheDelayChangeCorrectly(MIN_DELAY);
+                itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
               });
             });
 
             context('when the delay is being decreased', () => {
               const previousDelay = delay * 2;
-              const executionDelay = Math.max(previousDelay - delay, MIN_DELAY);
+              const executionDelay = Math.max(previousDelay - delay, MINIMUM_EXECUTION_DELAY);
 
               sharedBeforeEach('set previous delay', async () => {
                 await authorizer.setDelay(action, previousDelay, { from: root });
@@ -1710,7 +1710,7 @@ describe('TimelockAuthorizer', () => {
           context('when the delay is greater than the delay to set the authorizer in the vault', () => {
             it('reverts on execution', async () => {
               const id = await authorizer.scheduleDelayChange(action, delay, [], { from: root });
-              await advanceTime(MIN_DELAY);
+              await advanceTime(MINIMUM_EXECUTION_DELAY);
               await expect(authorizer.execute(id)).to.be.revertedWith('DELAY_EXCEEDS_SET_AUTHORIZER');
             });
           });
