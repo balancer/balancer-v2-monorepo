@@ -2,6 +2,7 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -65,7 +66,7 @@ describe('L2GaugeCheckpointer', () => {
 
     // Gauge adder & add factories to gauge adder.
     gaugeAdder = await deploy('GaugeAdder', {
-      args: [gaugeController.address, ZERO_ADDRESS, adaptorEntrypoint.address],
+      args: [gaugeController.address, adaptorEntrypoint.address],
     });
     const action = await actionId(gaugeAdder, 'addGaugeFactory');
     await vault.grantPermissionsGlobally([action], admin);
@@ -84,7 +85,7 @@ describe('L2GaugeCheckpointer', () => {
 
   sharedBeforeEach('deploy L2 gauge checkpointer', async () => {
     L2GaugeCheckpointer = await deploy('L2GaugeCheckpointer', {
-      args: [gaugeAdder.address, adaptorEntrypoint.address],
+      args: [gaugeController.address, adaptorEntrypoint.address],
     });
   });
 
@@ -117,7 +118,7 @@ describe('L2GaugeCheckpointer', () => {
       });
 
       it('reverts getting gauge at index', async () => {
-        await expect(L2GaugeCheckpointer.getGaugeAt(gaugeType, 0)).to.be.revertedWith(REVERT_MSG);
+        await expect(L2GaugeCheckpointer.getGaugeAtIndex(gaugeType, 0)).to.be.revertedWith(REVERT_MSG);
       });
     });
   }
@@ -133,11 +134,13 @@ describe('L2GaugeCheckpointer', () => {
     });
 
     describe(`add gauges for ${GaugeType[gaugeType]}`, () => {
+      // Gauges must come from a valid factory to be added to the gauge controller, so gauges that don't pass the valid
+      // factory check will be rejected by the controller.
       context('with incorrect factory and controller setup', () => {
         it('reverts', async () => {
           const otherGaugeType = GaugeType.Optimism;
           await expect(L2GaugeCheckpointer.addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
-            'Gauge does not come from a valid factory'
+            'Gauge was not added to the GaugeController'
           );
         });
       });
@@ -279,7 +282,7 @@ describe('L2GaugeCheckpointer', () => {
   async function expectGaugesAt(gaugeType: GaugeType, gauges: string[]) {
     expect(await L2GaugeCheckpointer.getTotalGauges(gaugeType)).to.be.eq(gauges.length);
     for (let i = 0; i < gauges.length; i++) {
-      expect(await L2GaugeCheckpointer.getGaugeAt(gaugeType, i)).to.be.eq(gauges[i]);
+      expect(await L2GaugeCheckpointer.getGaugeAtIndex(gaugeType, i)).to.be.eq(gauges[i]);
     }
   }
 
