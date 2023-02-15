@@ -33,7 +33,6 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16627100, function () {
     authorizerAdaptor: Contract,
     BALTokenAdmin: Contract,
     gaugeController: Contract,
-    gaugeAdder: Contract,
     veBAL: Contract,
     bal80weth20Pool: Contract;
   let BAL: string;
@@ -71,9 +70,6 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16627100, function () {
 
     const authorizerAdaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizerAdaptor = await authorizerAdaptorTask.deployedInstance('AuthorizerAdaptor');
-
-    const gaugeAdderTask = new Task('20230109-gauge-adder-v3', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    gaugeAdder = await gaugeAdderTask.deployedInstance('GaugeAdder');
 
     const balancerTokenAdminTask = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY, getForkedNetwork(hre));
     BALTokenAdmin = await balancerTokenAdminTask.deployedInstance('BalancerTokenAdmin');
@@ -128,25 +124,13 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16627100, function () {
   });
 
   it('grant permissions', async () => {
-    // We need to grant permission to the admin to add the Optimism factory to the GaugeAdder, and also to then add
-    // gauges from said factory to the GaugeController.
+    // We need to grant permission to the admin to add gauges to the GaugeController.
     const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
 
-    const selectors = ['addGaugeFactory', 'addGnosisGauge'].map((method) => gaugeAdder.interface.getSighash(method));
-    await Promise.all(
-      selectors.map(
-        async (selector) =>
-          await authorizer.connect(govMultisig).grantRole(await gaugeAdder.getActionId(selector), admin.address)
-      )
-    );
-
-    // We also need to grant permissions to mint in the gauges, which is done via the Authorizer Adaptor
     await authorizer
       .connect(govMultisig)
       .grantRole(await authorizerAdaptor.getActionId(gauge.interface.getSighash('checkpoint')), admin.address);
 
-    // Currently we only have Gauge types defined up to Arbitrum. We need to add the Gnosis GaugeType to be able to add the factory
-    // First grant permission to call add_type to the admin.
     await authorizer
       .connect(govMultisig)
       .grantRole(
@@ -162,24 +146,15 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16627100, function () {
       );
   });
 
-  it('add gauge factory', async () => {
-    // Not actually using this, but leaving it in to document the process
+  it('add gauge to gauge controller', async () => {
+    // Add gauge directly through the controller, since we can't use GaugeAdder V3 without the TimelockAuthorizer
 
-    // Because the Vyper `add_type` function has a default argument, we need to access it using the full signature, in the Sighash for the
-    // permission (above), and when actually calling it with arguments (below).
     await authorizerAdaptor
       .connect(admin)
       .performAction(
         gaugeController.address,
         gaugeController.interface.encodeFunctionData('add_type(string,uint256)', ['Gnosis', 1])
       );
-
-    await gaugeAdder.addGaugeFactory(factory.address, GaugeType.Gnosis);
-  });
-
-  it('add gauge to gauge controller', async () => {
-    // Add gauge directly through the controller, since we can't use GaugeAdder V3 without the TimelockAuthorizer migration
-    //await gaugeAdder.addGnosisGauge(gauge.address);
 
     await authorizerAdaptor
       .connect(admin)
@@ -213,7 +188,6 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16627100, function () {
     // The gauge has votes for this week, and it will mint the first batch of tokens. We store the current gauge
     // relative weight, as it will change as time goes by due to vote decay.
     const firstMintWeekTimestamp = await currentWeekTimestamp();
-    //const gaugeRelativeWeight = await gaugeController['gauge_relative_weight(address)'](gauge.address);
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
 
