@@ -66,7 +66,7 @@ Returns an object with all contracts from a deployment and their addresses.
 ## Active Deployments
 
 | Description                                             | Task ID                                                                                              |
-| ------------------------------------------------------- |------------------------------------------------------------------------------------------------------|
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Authorizer, governance contract                         | [`20210418-authorizer`](./tasks/20210418-authorizer)                                                 |
 | Vault, main protocol contract                           | [`20210418-vault`](./tasks/20210418-vault)                                                           |
 | Rate Provider for wstETH                                | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
@@ -109,7 +109,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Linear Pools for Euler Tokens                           | [`20230208-euler-linear-pool`](./tasks/20230208-euler-linear-pool)                                   |
 | Linear Pools for Yearn Tokens                           | [`20230213-yearn-linear-pool`](./tasks/20230213-yearn-linear-pool)                                   |
 
-## Scripts 
+## Scripts
 
 These are deployments for script-like contracts (often called 'coordinators') which are typically granted some permission by Governance and then executed, after which they become useless.
 
