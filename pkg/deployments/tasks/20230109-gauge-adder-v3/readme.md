@@ -9,4 +9,4 @@ Deployment of the new `GaugeAdder`, a helper contract which helps prevent some f
 - [`GaugeAdder` artifact](./artifact/GaugeAdder.json)
 - [`LiquidityGaugeFactory` artifact](./artifact/LiquidityGaugeFactory.json)
 - [`LiquidityGaugeV5` artifact](./artifact/LiquidityGaugeV5.json)
-- [Previous `GaugeAdder` deployment](../deprecated/20220628-gauge-adder-v2/)
+- [Previous `GaugeAdder` deployment](../20220628-gauge-adder-v2/)
