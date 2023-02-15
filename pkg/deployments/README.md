@@ -132,11 +132,11 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 
 | Description                                             | Task ID                                                                                                 |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Weighted Pools of up to 8 tokens                        | [`20210418-weighted-pool`](./deprecated/tasks/20210418-weighted-pool)                                   |
+| Weighted Pools of up to 8 tokens                        | [`20210418-weighted-pool`](./tasks/deprecated/20210418-weighted-pool)                                   |
 | Stable Pools of up to 5 tokens                          | [`20210624-stable-pool`](./tasks/deprecated/20210624-stable-pool)                                       |
 | Liquidity Bootstrapping Pools of up to 4 tokens         | [`20210721-liquidity-bootstrapping-pool`](./tasks/deprecated/20210721-liquidity-bootstrapping-pool)     |
 | Meta Stable Pools with 2 tokens and price oracle        | [`20210727-meta-stable-pool`](./tasks/deprecated/20210727-meta-stable-pool)                             |
-| Distributor contract for LDO rewards                    | [`20210811-ldo-merkle`](./deprecated/tasks/deprecated/20210811-ldo-merkle)                              |
+| Distributor contract for LDO rewards                    | [`20210811-ldo-merkle`](./tasks/deprecated/20210811-ldo-merkle)                              |
 | Relayer for Lido stETH wrapping/unwrapping              | [`20210812-lido-relayer`](./tasks/deprecated/20210812-lido-relayer)                                     |
 | Basic Investment Pools for few tokens                   | [`20210907-investment-pool`](./tasks/deprecated/20210907-investment-pool)                               |
 | Distributor contract for arbitrum BAL rewards           | [`20210913-bal-arbitrum-merkle`](./tasks/deprecated/20210913-bal-arbitrum-merkle)                       |
