@@ -149,16 +149,16 @@ describe('TimelockAuthorizerMigrator', () => {
   });
 
   context('executeDelays', () => {
-    context("when MIN_DELAY hasn't passed", () => {
+    context("when MINIMUM_CHANGE_DELAY_EXECUTION_DELAY hasn't passed", () => {
       it('reverts', async () => {
         await expect(migrator.executeDelays()).to.be.revertedWith('CANNOT_TRIGGER_DELAYS_MIGRATION_YET');
       });
     });
 
-    context('when MIN_DELAY has passed', () => {
+    context('when MINIMUM_CHANGE_DELAY_EXECUTION_DELAY has passed', () => {
       sharedBeforeEach('advance time', async () => {
-        const MIN_DELAY = await newAuthorizer.MIN_DELAY();
-        await advanceTime(MIN_DELAY);
+        const MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = await newAuthorizer.MINIMUM_CHANGE_DELAY_EXECUTION_DELAY();
+        await advanceTime(MINIMUM_CHANGE_DELAY_EXECUTION_DELAY);
       });
 
       it('sets up delays properly', async () => {
@@ -189,8 +189,8 @@ describe('TimelockAuthorizerMigrator', () => {
 
     context('when delays have been migrated', () => {
       sharedBeforeEach('advance time', async () => {
-        const MIN_DELAY = await newAuthorizer.MIN_DELAY();
-        await advanceTime(MIN_DELAY);
+        const MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = await newAuthorizer.MINIMUM_CHANGE_DELAY_EXECUTION_DELAY();
+        await advanceTime(MINIMUM_CHANGE_DELAY_EXECUTION_DELAY);
         await migrator.executeDelays();
       });
 
@@ -202,9 +202,9 @@ describe('TimelockAuthorizerMigrator', () => {
 
       context('when the ROOT_CHANGE_DELAY has passed', () => {
         sharedBeforeEach('advance time', async () => {
-          const MIN_DELAY = await newAuthorizer.MIN_DELAY();
+          const MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = await newAuthorizer.MINIMUM_CHANGE_DELAY_EXECUTION_DELAY();
           const ROOT_CHANGE_DELAY = await newAuthorizer.getRootTransferDelay();
-          await advanceTime(ROOT_CHANGE_DELAY.sub(MIN_DELAY));
+          await advanceTime(ROOT_CHANGE_DELAY.sub(MINIMUM_CHANGE_DELAY_EXECUTION_DELAY));
         });
 
         it('executes the first step of the root transfer', async () => {
@@ -234,15 +234,15 @@ describe('TimelockAuthorizerMigrator', () => {
   context('finalizeMigration', () => {
     context('when root transfer has been started', () => {
       sharedBeforeEach('advance time', async () => {
-        const MIN_DELAY = await newAuthorizer.MIN_DELAY();
-        await advanceTime(MIN_DELAY);
+        const MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = await newAuthorizer.MINIMUM_CHANGE_DELAY_EXECUTION_DELAY();
+        await advanceTime(MINIMUM_CHANGE_DELAY_EXECUTION_DELAY);
         await migrator.executeDelays();
       });
 
       sharedBeforeEach('start root transfer', async () => {
-        const MIN_DELAY = await newAuthorizer.MIN_DELAY();
+        const MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = await newAuthorizer.MINIMUM_CHANGE_DELAY_EXECUTION_DELAY();
         const ROOT_CHANGE_DELAY = await newAuthorizer.getRootTransferDelay();
-        await advanceTime(ROOT_CHANGE_DELAY.sub(MIN_DELAY));
+        await advanceTime(ROOT_CHANGE_DELAY.sub(MINIMUM_CHANGE_DELAY_EXECUTION_DELAY));
         await migrator.startRootTransfer();
       });
 

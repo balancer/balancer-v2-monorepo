@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-stable/IComposableStablePoolRates.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
@@ -23,7 +24,7 @@ import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
 import "./ComposableStablePoolStorage.sol";
 
-abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
+abstract contract ComposableStablePoolRates is IComposableStablePoolRates, ComposableStablePoolStorage {
     using PriceRateCache for bytes32;
     using FixedPoint for uint256;
 
@@ -138,12 +139,8 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
         (duration, expires) = cache.getTimestamps();
     }
 
-    /**
-     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current token rate is fetched again.
-     */
-    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+    /// @inheritdoc IComposableStablePoolRates
+    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external override authenticate {
         uint256 index = _getTokenIndex(token);
         IRateProvider provider = _getRateProvider(index);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
@@ -151,11 +148,8 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
         emit TokenRateProviderSet(index, provider, duration);
     }
 
-    /**
-     * @dev Forces a rate cache hit for a token.
-     * It will revert if the requested token does not have an associated rate provider.
-     */
-    function updateTokenRateCache(IERC20 token) external {
+    /// @inheritdoc IComposableStablePoolRates
+    function updateTokenRateCache(IERC20 token) external override {
         uint256 index = _getTokenIndex(token);
 
         IRateProvider provider = _getRateProvider(index);

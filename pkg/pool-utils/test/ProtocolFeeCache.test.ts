@@ -75,17 +75,38 @@ describe('ProtocolFeeCache', () => {
     it('reverts during deployment', async () => {
       await expect(
         deploy('MockProtocolFeeCache', {
-          args: [vault.protocolFeesProvider.address, { swap: 137, yield: ProtocolFee.SWAP, aum: ProtocolFee.YIELD }],
+          args: [
+            vault.address,
+            vault.protocolFeesProvider.address,
+            { swap: 137, yield: ProtocolFee.SWAP, aum: ProtocolFee.YIELD },
+          ],
           from: admin,
         })
       ).to.be.revertedWith('Non-existent fee type');
     });
   });
 
+  describe('vault access', () => {
+    sharedBeforeEach('deploy fee cache', async () => {
+      protocolFeeCache = await deploy('MockProtocolFeeCache', {
+        args: [
+          vault.address,
+          vault.protocolFeesProvider.address,
+          { swap: ProtocolFee.SWAP, yield: ProtocolFee.YIELD, aum: ProtocolFee.AUM },
+        ],
+        from: admin,
+      });
+    });
+
+    it('stores the Vault', async () => {
+      expect(await protocolFeeCache.vault()).to.eq(vault.address);
+    });
+  });
+
   function itTestsProtocolFeePercentages(providerFeeIds: ProviderFeeIDs): void {
     sharedBeforeEach('deploy fee cache', async () => {
       protocolFeeCache = await deploy('MockProtocolFeeCache', {
-        args: [vault.protocolFeesProvider.address, providerFeeIds],
+        args: [vault.address, vault.protocolFeesProvider.address, providerFeeIds],
         from: admin,
       });
     });

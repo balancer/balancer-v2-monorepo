@@ -36,15 +36,6 @@ interface IGaugeAdder is IAuthentication {
     function getGaugeController() external view returns (IGaugeController);
 
     /**
-     * @notice Returns the gauge corresponding to a Balancer pool `pool` on Ethereum mainnet.
-     * Only returns gauges which have been added to the Gauge Controller.
-     * @dev Gauge Factories also implement a `getPoolGauge` function which maps pools to gauges which it has deployed.
-     * This function provides global information by using which gauge has been added to the Gauge Controller
-     * to represent the canonical gauge for a given pool address.
-     */
-    function getPoolGauge(IERC20 pool) external view returns (ILiquidityGauge);
-
-    /**
      * @notice Returns the `index`'th factory for gauge type `gaugeType`
      */
     function getFactoryForGaugeType(GaugeType gaugeType, uint256 index) external view returns (address);

@@ -76,7 +76,7 @@ interface IL2GaugeCheckpointer {
      * @param gaugeType - Type of the gauge.
      * @param index - Index of the added gauge.
      */
-    function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index) external view returns (IStakelessGauge);
+    function getGaugeAtIndex(IGaugeAdder.GaugeType gaugeType, uint256 index) external view returns (IStakelessGauge);
 
     /**
      * @dev Performs a checkpoint for all added gauges above the given relative weight threshold.
@@ -84,6 +84,16 @@ interface IL2GaugeCheckpointer {
      * @param minRelativeWeight - Threshold to filter out gauges below it.
      */
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable;
+
+    /**
+     * @dev Performs a checkpoint for all added gauges of a given type above the given relative weight threshold.
+     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * @param gaugeType - Type of the gauge.
+     * @param minRelativeWeight - Threshold to filter out gauges below it.
+     */
+    function checkpointGaugesOfTypeAboveRelativeWeight(IGaugeAdder.GaugeType gaugeType, uint256 minRelativeWeight)
+        external
+        payable;
 
     /**
      * @dev Returns the ETH cost to checkpoint all gauges for a given minimum relative weight.
