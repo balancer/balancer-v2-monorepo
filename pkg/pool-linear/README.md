@@ -19,7 +19,7 @@ $ npm install @balancer-labs/v2-pool-linear
 
 ### Usage
 
-This package includes [`AaveLinearPool`](./contracts/aave/AaveLinearPool.sol), a Linear Pool that integrates with the [Aave Protocol](https://aave.com/) and holds [aTokens](https://docs.aave.com/developers/tokens/atoken) as their "Wrapped" token.
+This package includes the [`LinearPool`](./contracts/LinearPool.sol) base condtract. Derived Linear Pool that integrate with the [Aave Protocol](https://aave.com/) and hold [aTokens](https://docs.aave.com/developers/tokens/atoken) as their "Wrapped" token can be found in the [Orb Collective repo](https://github.com/orbcollective/linear-pools).
 
 However, some users might want to develop their own kind of Linear Pool, potentially integrating with a different protocol. In order to do this, you must inherit the [`LinearPool`](./contracts/LinearPool.sol) contract and implement the `_getWrappedTokenRate()` function:
 
@@ -55,7 +55,7 @@ _Note: this example is missing some details, like calling the constructor of `Li
 
 Additionally, users might want to also take advantage of the [`LinearPoolRebalancer`](./contracts/LinearPoolRebalancer.sol) contract to have a simple, permissionless and highly efficient way of rebalancing their Pools.
 
-To do this, inherit from `LinearPoolRebalancer` and implement the `_wrapTokens`, `_unwrapTokens` and `_getRequiredTokensToWrap` functions. See [`AaveLinearPoolRebalancer`](./contracts/aave/AaveLinearPoolRebalancer.sol) for an example.
+To do this, inherit from `LinearPoolRebalancer` and implement the `_wrapTokens`, `_unwrapTokens` and `_getRequiredTokensToWrap` functions. See [`AaveLinearPoolRebalancer`](https://github.com/orbcollective/linear-pools/blob/master/pkg/linear-pools/contracts/aave-v2-linear-pool/AaveLinearPoolRebalancer.sol) for an example.
 
 ## Licensing
 
