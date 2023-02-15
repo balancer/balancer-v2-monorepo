@@ -76,8 +76,7 @@ export function checkMainReadme(): void {
     }
 
     logger.success(`Verified ${linkCnt} links in the main readme.md`);
-  }
-  else {
+  } else {
     throw Error(`Missing main /deployments readme.md`);
   }
 }
