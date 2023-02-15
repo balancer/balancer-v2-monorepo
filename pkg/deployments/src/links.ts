@@ -58,7 +58,12 @@ export function checkMainReadme(): void {
     const linkRegex = /\[(.*?)\]\((\.\/.*?)\)/g;
     let linkCnt = 0;
 
-    const rootPath = path.join(__dirname, `../`);
+    let rootPath = __dirname;
+    // Work both locally and in CI (task and "all")
+    if (path.basename(rootPath) != 'deployment') {
+      rootPath = path.join(__dirname, `../`);
+    }
+    console.log(`rootPath: ${rootPath}`);
 
     for (const line of lines) {
       let match;
