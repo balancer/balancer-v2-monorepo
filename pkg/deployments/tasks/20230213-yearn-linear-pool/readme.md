@@ -13,3 +13,4 @@ Also has a fix in the `YearnLinearPoolRebalancer` to handle tokens which require
 - [`YearnLinearPoolFactory` artifact](./artifact/YearnLinearPoolFactory.json)
 - [`YearnLinearPool` artifact](./artifact/YearnLinearPool.json)
 - [`YearnLinearPoolRebalancer` artifact](./artifact/YearnLinearPoolRebalancer.json)
+- [`YearnShareValueHelper` artifact](./artifact/YearnShareValueHelper.json)

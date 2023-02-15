@@ -16,7 +16,7 @@ export enum SwapKind {
   GivenOut,
 }
 
-describeForkTest('YearnLinearPoolFactory', 'optimism', 38556442, function () {
+describeForkTest('YearnLinearPoolFactory', 'mainnet', 16610000, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
   let vault: Contract, authorizer: Contract, mainToken: Contract;
   let factory: Contract;
@@ -24,12 +24,12 @@ describeForkTest('YearnLinearPoolFactory', 'optimism', 38556442, function () {
 
   let task: Task;
 
-  const USDC = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
-  const yvUSDC = '0x4c8b1958b09b3bde714f68864bcc3a74eaf1a23d';
+  const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+  const yvUSDC = '0xa354F35829Ae975e850e23e9615b11Da1B3dC4DE';
 
   const USDC_SCALING = bn(1e12); // USDC has 6 decimals, so its scaling factor is 1e12
 
-  const USDC_HOLDER = '0xf390830df829cf22c53c8840554b98eafc5dcbc2';
+  const USDC_HOLDER = '0x7713974908Be4BEd47172370115e8b1219F4A5f0';
 
   const SWAP_FEE_PERCENTAGE = fp(0.01); // 1%
 
@@ -40,7 +40,7 @@ describeForkTest('YearnLinearPoolFactory', 'optimism', 38556442, function () {
   const FINAL_LOWER_TARGET = fp(0.2e5);
   const FINAL_UPPER_TARGET = fp(5e5);
 
-  const PROTOCOL_ID = 0;
+  const PROTOCOL_ID = 3;
 
   enum AttackType {
     SET_TARGETS,
