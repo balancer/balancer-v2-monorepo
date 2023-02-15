@@ -22,18 +22,18 @@ import "./interfaces/IGearboxDieselToken.sol";
 contract MockGearboxVault is IGearboxVault, MaliciousQueryReverter {
     using FixedPoint for uint256;
 
+    address private immutable _asset;
     uint256 private _rate = 1e27;
-    address private immutable _ASSET;
 
     constructor(address underlyingAsset) {
-        _ASSET = underlyingAsset;
+        _asset = underlyingAsset;
+    }
+
+    function underlyingToken() external view override returns (address) {
+        return _asset;
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function underlyingToken() external view override returns (address) {
-        return _ASSET;
-    }
-
     function getDieselRate_RAY() external view override returns (uint256) {
         maybeRevertMaliciously();
         return _rate;
@@ -51,7 +51,11 @@ contract MockGearboxVault is IGearboxVault, MaliciousQueryReverter {
         uint256,
         address,
         uint256
-    ) external pure override {}
+    ) external pure override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    function removeLiquidity(uint256, address) external pure override {}
+    function removeLiquidity(uint256, address) external pure override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }
