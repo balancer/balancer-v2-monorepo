@@ -149,7 +149,7 @@ describeForkTest('YearnLinearPoolFactory', 'mainnet', 16610000, function () {
       const [registeredAddress] = await vault.getPool(poolId);
       expect(registeredAddress).to.equal(pool.address);
 
-      const { assetManager } = await vault.getPoolTokenInfo(poolId, USDC); // We could query for either frxEth or mooToken
+      const { assetManager } = await vault.getPoolTokenInfo(poolId, USDC);
       rebalancer = await task.instanceAt('YearnLinearPoolRebalancer', assetManager);
     });
 
@@ -362,7 +362,8 @@ describeForkTest('YearnLinearPoolFactory', 'mainnet', 16610000, function () {
     let attacker: Contract;
 
     before('deploy attacker', async () => {
-      attacker = await deploy('ReadOnlyReentrancyAttackerYearnLP', { args: [vault.address] });
+      // Using Reentrancy Attacker from Aave Fork Test (task 20230206-aave-rebalanced-linear-pool-v4)
+      attacker = await deploy('ReadOnlyReentrancyAttackerAaveLP', { args: [vault.address] });
     });
 
     async function performAttack(attackType: AttackType, ethAmount: BigNumber, expectRevert: boolean) {
