@@ -63,5 +63,11 @@ jobs:
       - name: Check Action IDs
         run: yarn workspace @balancer-labs/v2-deployments check-action-ids
 
+  markdown-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: gaurav-nelson/github-action-markdown-link-check@v1
+
 env:
   CI: true
