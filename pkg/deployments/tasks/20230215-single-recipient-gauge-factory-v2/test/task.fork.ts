@@ -64,35 +64,23 @@ describeForkTest('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, function
 
   before('setup contracts', async () => {
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    vault = await vaultTask.instanceAt('Vault', vaultTask.output({ network: 'mainnet' }).Vault);
+    vault = await vaultTask.deployedInstance('Vault');
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
     const authorizerAdaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    authorizerAdaptor = await authorizerAdaptorTask.instanceAt(
-      'AuthorizerAdaptor',
-      authorizerAdaptorTask.output({ network: 'mainnet' }).AuthorizerAdaptor
-    );
+    authorizerAdaptor = await authorizerAdaptorTask.deployedInstance('AuthorizerAdaptor');
 
     const weightedPoolTask = new Task('20210418-weighted-pool', TaskMode.READ_ONLY, getForkedNetwork(hre));
     bal80weth20Pool = await weightedPoolTask.instanceAt('WeightedPool2Tokens', BAL80WETH20_POOL);
 
     const balancerTokenAdminTask = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    BALTokenAdmin = await balancerTokenAdminTask.instanceAt(
-      'BalancerTokenAdmin',
-      balancerTokenAdminTask.output({ network: 'mainnet' }).BalancerTokenAdmin
-    );
+    BALTokenAdmin = await balancerTokenAdminTask.deployedInstance('BalancerTokenAdmin');
 
     BAL = await BALTokenAdmin.getBalancerToken();
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    gaugeController = await gaugeControllerTask.instanceAt(
-      'GaugeController',
-      gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
-    );
-    veBAL = await gaugeControllerTask.instanceAt(
-      'VotingEscrow',
-      gaugeControllerTask.output({ network: 'mainnet' }).VotingEscrow
-    );
+    gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
+    veBAL = await gaugeControllerTask.deployedInstance('VotingEscrow');
 
     // We use test balancer token to make use of the ERC-20 interface.
     const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
@@ -109,7 +97,7 @@ describeForkTest('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, function
       balWhale.address,
       balWhale.address,
       {
-        assets: [BAL, ZERO_ADDRESS],
+        assets: [BAL, ZERO_ADDRESS], // Using sentinel value to join with ETH instead of WETH.
         maxAmountsIn: [MAX_UINT256, MAX_UINT256],
         fromInternalBalance: false,
         userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
