@@ -54,7 +54,6 @@ export function checkMainReadme(): void {
   }
 
   const filePath = path.join(rootPath, `README.md`);
-  console.log(`filePath: ${filePath}`);
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 
   if (fileExists) {
