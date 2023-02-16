@@ -4,5 +4,4 @@ Deployment of the `GnosisRootGaugeFactory`, for stakeless gauges that bridge fun
 
 ## Useful Files
 
-- [Ethereum mainnet addresses](./output/mainnet.json)
 - [`GnosisRootGaugeFactory` artifact](./artifact/GnosisRootGaugeFactory.json)
