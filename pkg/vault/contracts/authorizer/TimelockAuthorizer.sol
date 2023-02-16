@@ -98,7 +98,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     // solhint-disable var-name-mixedcase
     bytes32 public immutable GRANT_ACTION_ID;
     bytes32 public immutable REVOKE_ACTION_ID;
-    bytes32 public immutable EXECUTE_ACTION_ID;
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
     // These action ids do not need to be used by external actors as the action ids above do.
@@ -112,16 +111,28 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     uint256 private immutable _rootTransferDelay;
 
+    // Authorizer permissions
     address private _root;
     address private _pendingRoot;
-    ScheduledExecution[] private _scheduledExecutions;
+
+    // scheduled execution id => account => is executor
+    mapping(uint256 => mapping(address => bool)) private _isExecutor;
+
+    // External permissions
     mapping(bytes32 => bool) private _isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
+
+    ScheduledExecution[] private _scheduledExecutions;
 
     /**
      * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
      */
     event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+
+    /**
+     * @notice Emitted when an executor is created for a scheduled execution `scheduledExecutionId`.
+     */
+    event ExecutorCreated(uint256 indexed scheduledExecutionId, address indexed executor);
 
     /**
      * @notice Emitted when an execution `scheduledExecutionId` is executed.
@@ -189,7 +200,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         GRANT_ACTION_ID = grantActionId;
         REVOKE_ACTION_ID = revokeActionId;
-        EXECUTE_ACTION_ID = getActionId(TimelockAuthorizer.execute.selector);
         SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
         _GENERAL_GRANT_ACTION_ID = generalGrantActionId;
         _GENERAL_REVOKE_ACTION_ID = generalRevokeActionId;
@@ -263,13 +273,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     function getRevokePermissionActionId(bytes32 actionId) public view returns (bytes32) {
         return getExtendedActionId(REVOKE_ACTION_ID, actionId);
-    }
-
-    /**
-     * @notice Returns the action ID for executing the scheduled action with execution ID `executionId`.
-     */
-    function getExecuteExecutionActionId(uint256 executionId) public view returns (bytes32) {
-        return getExtendedActionId(EXECUTE_ACTION_ID, bytes32(executionId));
     }
 
     /**
@@ -411,6 +414,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     function getScheduledExecution(uint256 scheduledExecutionId) external view returns (ScheduledExecution memory) {
         return _scheduledExecutions[scheduledExecutionId];
+    }
+
+    /**
+     * @notice Returns true if `account` is an executor for `scheduledExecutionId`.
+     */
+    function isExecutor(uint256 scheduledExecutionId, address account) public view returns (bool) {
+        return _isExecutor[scheduledExecutionId][account];
     }
 
     /**
@@ -572,15 +582,21 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
         // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_EXECUTABLE");
+        require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_YET_EXECUTABLE");
+
         if (scheduledExecution.protected) {
-            bytes32 executeScheduledActionId = getExecuteExecutionActionId(scheduledExecutionId);
-            bool isAllowed = hasPermission(executeScheduledActionId, msg.sender, address(this));
-            _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+            // Protected scheduled executions can only be executed by a set of accounts designated by the original
+            // scheduler.
+            _require(isExecutor(scheduledExecutionId, msg.sender), Errors.SENDER_NOT_ALLOWED);
         }
 
         scheduledExecution.executed = true;
-        // Note that this is the only place in the entire contract we perform a non-view call to an external contract.
+
+        // Note that this is the only place in the entire contract we perform a non-view call to an external contract,
+        // i.e. this is the only context in which this contract can be re-entered, and by this point we've already
+        // completed all state transitions.
+        // This results in the scheduled execution being marked as 'executed' during its execution, but that should not
+        // be an issue.
         result = _executor.execute(scheduledExecution.where, scheduledExecution.data);
         emit ExecutionExecuted(scheduledExecutionId);
     }
@@ -614,14 +630,19 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets `account`'s granter status to `allowed` for action `actionId` in target `where`.
-     * @dev Note that granters can revoke the granter status of other granters, even removing the root.
-     * However the root can always rejoin, and then remove any malicious granters.
+     * @notice Grants or revokes granter status to `account` for action `actionId` in target `where`.
+     * @dev Only the root can add and remove granters.
      *
      * Note that there are no delays associated with adding or removing granters. This is based on the assumption that
      * any action which a malicous user could exploit to damage the protocol will have a sufficiently long delay
      * associated with either granting permission for or exercising that permission such that the root will be able to
-     * reestablish control and cancel the action before it can be executed.
+     * reestablish control and cancel either the granting or associated action before it can be executed, and then
+     * remove the granter.
+     *
+     * A malicious granter may also attempt to use their granter status to grant permission to multiple accounts, but
+     * they cannot create new granters. Therefore, the danger posed by a malicious granter is limited and self-
+     * contained. Root can mitigate the situation simply and completely by revoking first their granter status,
+     * and then any permissions granted by that account, knowing there cannot be any more.
      */
     function manageGranter(
         bytes32 actionId,
@@ -630,9 +651,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bool allowed
     ) external {
         // Root may grant or revoke granter status from any address.
-        // Granters may only revoke a granter status from any address.
-        bool isAllowed = isRoot(msg.sender) || (!allowed && isGranter(actionId, msg.sender, where));
-        _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
 
         bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
@@ -674,14 +693,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets `account`'s revoker status to `allowed` for action `actionId` in target `where`.
-     * @dev Note that revokers can revoke the revoker status of other revokers, even banning the root.
-     * However the root can always rejoin, and then remove any malicious revokers.
+     * @notice Grants or revokes revoker status to `account` for action `actionId` in target `where`.
+     * @dev Only the root can add and remove revokers.
      *
      * Note that there are no delays associated with adding or removing revokers. This is based on the assumption that
      * any permissions for which revocation from key addresses would be dangerous (e.g. preventing the BalancerMinter
      * from minting BAL) have sufficiently long delays associated with revoking them that the root will be able to
      * reestablish control and cancel the revocation before the scheduled revocation can be executed.
+     *
+     * A malicious revoker cannot create new revokers, so root can simply revoke their status once.
      */
     function manageRevoker(
         bytes32 actionId,
@@ -689,10 +709,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         bool allowed
     ) external {
-        // Root may grant or revoke revoker status from any address.
-        // Revokers may only revoke a revoker status from any address.
-        bool isAllowed = isRoot(msg.sender) || (!allowed && isRevoker(actionId, msg.sender, where));
-        _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
 
         bytes32 revokePermissionsActionId = getRevokePermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
@@ -805,9 +822,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             })
         );
 
-        bytes32 executeActionId = getExecuteExecutionActionId(scheduledExecutionId);
         for (uint256 i = 0; i < executors.length; i++) {
-            _grantPermission(executeActionId, executors[i], address(this));
+            // Note that we allow for repeated executors - this is not an issue
+            _isExecutor[scheduledExecutionId][executors[i]] = true;
+            emit ExecutorCreated(scheduledExecutionId, executors[i]);
         }
     }
 

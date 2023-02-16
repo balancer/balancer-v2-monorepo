@@ -22,10 +22,18 @@ interface IProtocolIdRegistry {
     // Emitted when a new protocol ID is registered.
     event ProtocolIdRegistered(uint256 indexed protocolId, string name);
 
+    // Emitted when a protocol IDs name has been updated.
+    event ProtocolIdRenamed(uint256 indexed protocolId, string name);
+
     /**
      * @dev Registers an ID (and name) to differentiate among protocols. Protocol IDs cannot be deregistered.
      */
     function registerProtocolId(uint256 protocolId, string memory name) external;
+
+    /**
+     * @dev Changes the name of an existing protocol ID. Should only be used to update in the case of mistakes.
+     */
+    function renameProtocolId(uint256 protocolId, string memory newName) external;
 
     /**
      * @dev Returns true if `protocolId` has been registered and can be queried.
