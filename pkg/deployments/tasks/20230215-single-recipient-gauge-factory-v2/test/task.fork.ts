@@ -168,6 +168,7 @@ describeForkTest('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, function
 
       gauge = await task.instanceAt('SingleRecipientGauge', event.args.gauge);
       expect(await gauge.getRecipient()).to.equal(recipient);
+      expect(await gauge.isRecipientFeeDistributor()).to.equal(mode == RecipientMode.FeeDistributorRecipient);
 
       expect(await factory.isGaugeFromFactory(gauge.address)).to.be.true;
     });
