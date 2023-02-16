@@ -14,5 +14,5 @@ Deployment of the `MetaStablePoolFactory`, for Meta Stable Pools of 2 tokens.
 - [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
-- [`MetaStablePool` ABI](abi/MetaStablePool.json)
-- [`MetaStablePoolFactory` ABI](abi/MetaStablePoolFactory.json)
+- [`QueryProcessor` artifact](./artifact/QueryProcessor.json)
+- [`MetaStablePoolFactory` artifact](./artifact/MetaStablePoolFactory.json)

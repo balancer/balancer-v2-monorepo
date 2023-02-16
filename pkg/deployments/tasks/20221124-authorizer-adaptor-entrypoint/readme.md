@@ -11,4 +11,4 @@ Deployment of the `AuthorizerAdaptorEntrypoint`, a gateway contract created to a
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`AuthorizerAdaptor` artifact](./artifact/AuthorizerAdaptor.json))
+- [`AuthorizerAdaptorEntrypoint` artifact](./artifact/AuthorizerAdaptorEntrypoint.json)

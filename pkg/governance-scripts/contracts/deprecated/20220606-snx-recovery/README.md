@@ -13,4 +13,4 @@ This contract returns the sBTC and SNX which were swept into the ProtocolFeeColl
 
 - <https://forum.balancer.fi/t/medium-severity-bug-found/3161>
 
-- [DoubleEntrypointFixRelayer](../../../deployments/tasks/20220513-double-entrypoint-fix-relayer/readme.md)
+- [DoubleEntrypointFixRelayer](../../../../deployments/tasks/20220513-double-entrypoint-fix-relayer/readme.md)
