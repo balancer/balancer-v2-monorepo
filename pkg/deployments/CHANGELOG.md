@@ -4,8 +4,9 @@
 
 ### New Deployments
 
-- Deployed `L2GaugeCheckpointerV2` to Mainnet.
-  - Deprecated `L2GaugeCheckpointer`.
+- Deployed `WeightedPoolFactory` v3 to all networks.
+- Deployed `ComposableStablePoolFactory` v3 to all networks.
+- Deployed `L2GaugeCheckpointer` to Mainnet.
 - Deployed `VeBoostV2` to Mainnet.
 - Deployed `NoProtocolFeeLiquidityBootstrappingPoolFactory` to Gnosis.
 - Deployed `ERC4626LinearPoolFactory` to Gnosis.
@@ -16,6 +17,16 @@
 - Deployed `PoolRecoveryHelper` to Gnosis.
 - Deployed `AaveLinearPoolFactory` to Gnosis.
 - Deployed `GaugeAdderV3` to Mainnet and Goerli.
+- Deployed `TimelockAuthorizerTransitionMigrator` to Mainnet.
+- Deployed `AaveLinearPoolV4` to all networks.
+- Deployed `ERC4626LinearPoolFactory` to Mainnet, Goerli, Arbitrum, Polygon, and Optimism.
+- Deployed `EulerLinearPoolFactory` to Mainnet and Goerli.
+
+### Deprecations
+
+- Deprecated `20221207-aave-rebalanced-linear-pool-v3`.
+- Deprecated `20220425-unbutton-aave-linear-pool`.
+- Deprecated `20220404-erc4626-linear-pool-v2`.
 
 ### Breaking Changes
 

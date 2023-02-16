@@ -10,4 +10,4 @@ Deployment of the `ChildChainLiquidityGaugeFactory`, for liquidity gauges to be 
 - [Goerli testnet addresses](./output/goerli.json)
 - [`ChildChainStreamer` artifact](./artifact/ChildChainStreamer.json)
 - [`RewardsOnlyGauge` artifact](./artifact/RewardsOnlyGauge.json)
-- [`ChildChainGaugeFactory` artifact](./artifact/ChildChainGaugeFactory.json)
+- [`ChildChainLiquidityGaugeFactory` artifact](./artifact/ChildChainLiquidityGaugeFactory.json)

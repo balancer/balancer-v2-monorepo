@@ -5,7 +5,6 @@
 ## Deployment preparation tasks checklist:
 
 - [ ] Deployments `README` is updated with the new task name and link
-- [ ] Deployments `CHANGELOG` is updated
 - [ ] Task `README` has a description and links to the artifacts and expected output folders <!-- Specify target networks (some contracts are not deployed to every network) -->
 - [ ] `build-info` is updated with artifacts compiled at the specified commit
 - [ ] Artifacts are generated from `build-info`

@@ -8,7 +8,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describe('TimelockAuthorizer', () => {
+describe('TimelockAuthorizerRoot', () => {
   let authorizer: TimelockAuthorizer, vault: Contract;
   let root: SignerWithAddress, grantee: SignerWithAddress;
 
@@ -127,46 +127,6 @@ describe('TimelockAuthorizer', () => {
 
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-    });
-
-    it('can have their global grant permissions revoked by an authorized address for any contract', async () => {
-      await authorizer.addGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE, { from: root });
-
-      await authorizer.removeGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: grantee });
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, WHERE_1)).to.be.false;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.false;
-
-      await authorizer.addGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: root });
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, WHERE_1)).to.be.true;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
-    });
-
-    it('cannot have their global grant permissions revoked by an authorized address for a specific contract', async () => {
-      await authorizer.addGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1, { from: root });
-
-      await expect(
-        authorizer.removeGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: grantee })
-      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
-    });
-
-    it('can have their global revoke permissions revoked by an authorized address for any contract', async () => {
-      await authorizer.addRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE, { from: root });
-
-      await authorizer.removeRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: grantee });
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, root, WHERE_1)).to.be.false;
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.false;
-
-      await authorizer.addRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: root });
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, WHERE_1)).to.be.true;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
-    });
-
-    it('cannot have their global revoke permissions revoked by an authorized address for a specific contract', async () => {
-      await authorizer.addRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1, { from: root });
-
-      await expect(
-        authorizer.removeRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: grantee })
-      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
 });

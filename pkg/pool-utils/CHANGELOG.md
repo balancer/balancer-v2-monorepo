@@ -1,8 +1,34 @@
 # Changelog
 
-## 2.1.0 (unreleased)
+## 3.1.2 (2023-02-14)
 
-- Grant infinite BPT allowance to the Vault.
+### Bugfix
+
+- Make `VaultReentrancyLib` compatible with solc >=0.7.0 <0.9.0.
+
+## 3.1.1 (2023-02-08)
+
+### Bugfix
+
+- Fix dependency on `v2-solidity-utils`.
+
+## 3.1.0 (2023-02-08)
+
+### New Features
+
+- Added `VaultReentrancyLib`.
+- Added the Vault as a constructor argument to `RecoveryMode`.
+
+## 3.0.1 (2022-12-12)
+
+### Misc
+
+- Updated readme.
+- Removed unnecessary dependency on the `v2-vault` package.
+
+## 3.0.0 (2022-12-12)
+
+- Re-release, potentially breaking backwards compatibility.
 
 ## 2.0.1 (2021-09-14)
 
