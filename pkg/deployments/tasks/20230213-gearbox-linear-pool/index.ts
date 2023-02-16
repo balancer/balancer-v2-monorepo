@@ -27,8 +27,8 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // the contracts deployed here. The action IDs will be checked to be correct via a different mechanism.
 
     // GearboxLinearPools require a Gearbox (Diesel) Token
-    const mockGearboxVault = await task.deployAndVerify('MockGearboxVault', [], from, force);
-    const mockDieselTokenArgs = ['DO NOT USE - Mock Diesel Token', 'TEST', 18, input.WETH, mockGearboxVault.address];
+    const mockGearboxVault = await task.deployAndVerify('MockGearboxVault', [input.WETH], from, force);
+    const mockDieselTokenArgs = ['DO NOT USE - Mock Diesel Token', 'TEST', 18, mockGearboxVault.address];
     const mockDieselToken = await task.deployAndVerify('MockGearboxDieselToken', mockDieselTokenArgs, from, force);
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare
