@@ -134,7 +134,6 @@ contract TimelockAuthorizerMigrator {
      * @notice Executes the scheduled setup of delays on the new authorizer
      */
     function executeDelays() external {
-        require(newAuthorizer.canExecute(_lastScheduledExecutionId), "CANNOT_TRIGGER_DELAYS_MIGRATION_YET");
         for (uint256 i = 0; i <= _lastScheduledExecutionId; i++) {
             newAuthorizer.execute(i);
         }

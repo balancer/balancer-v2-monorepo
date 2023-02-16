@@ -157,7 +157,7 @@ describe('TimelockAuthorizerMigrator', () => {
   context('executeDelays', () => {
     context("when MINIMUM_CHANGE_DELAY_EXECUTION_DELAY hasn't passed", () => {
       it('reverts', async () => {
-        await expect(migrator.executeDelays()).to.be.revertedWith('CANNOT_TRIGGER_DELAYS_MIGRATION_YET');
+        await expect(migrator.executeDelays()).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
       });
     });
 
