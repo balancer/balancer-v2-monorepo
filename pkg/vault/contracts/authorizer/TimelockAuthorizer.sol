@@ -450,7 +450,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         external
         returns (uint256 scheduledExecutionId)
     {
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        require(isRoot(msg.sender), "CALLER_IS_NOT_ROOT");
         bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
         return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
@@ -513,7 +513,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        require(isRoot(msg.sender), "CALLER_IS_NOT_ROOT");
 
         // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
         // current delay.
@@ -657,7 +657,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bool allowed
     ) external {
         // Root may grant or revoke granter status from any address.
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        require(isRoot(msg.sender), "CALLER_IS_NOT_ROOT");
 
         bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
@@ -715,7 +715,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         bool allowed
     ) external {
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        require(isRoot(msg.sender), "CALLER_IS_NOT_ROOT");
 
         bytes32 revokePermissionsActionId = getRevokePermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
