@@ -16,6 +16,8 @@ export default {
     const deployment = TypesConverter.toVaultDeployment(params);
 
     let { admin } = deployment;
+    const { nextAdmin } = deployment;
+
     const { from, mocked } = deployment;
     if (!admin) admin = from || (await ethers.getSigners())[0];
 
@@ -32,7 +34,7 @@ export default {
     );
 
     // Then, with the entrypoint correctly deployed, we create the actual authorizer to be used and set it in the vault.
-    const authorizer = await this._deployAuthorizer(admin, adaptorEntrypoint, from);
+    const authorizer = await this._deployAuthorizer(admin, adaptorEntrypoint, nextAdmin, from);
     const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
     await basicAuthorizer.grantRolesToMany([setAuthorizerActionId], [admin.address]);
     await vault.connect(admin).setAuthorizer(authorizer.address);
@@ -59,10 +61,11 @@ export default {
   async _deployAuthorizer(
     admin: SignerWithAddress,
     authorizerAdaptorEntrypoint: Contract,
+    nextAdmin: string,
     from?: SignerWithAddress
   ): Promise<Contract> {
     return deploy('v2-vault/TimelockAuthorizer', {
-      args: [admin.address, authorizerAdaptorEntrypoint.address, MONTH],
+      args: [admin.address, nextAdmin, authorizerAdaptorEntrypoint.address, MONTH],
       from,
     });
   },
