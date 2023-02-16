@@ -938,5 +938,27 @@
         "unpause()": "0x83bcfaf42b92fe4feab39595778058da856aed7dccb6e0f6a8224a99367467a7"
       }
     }
+  },
+  "20230213-gearbox-linear-pool": {
+    "GearboxLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x600eb93b43e029e57b4811d227627bc84ced59cbb9b017220301f8fb9b0bf7f7",
+        "disable()": "0xa58dda9de18631d652109124d2a3cad89a4e4dadbdb8f15187ddda657f63650a"
+      }
+    },
+    "GearboxLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x007e1830bcc05039c3926d6478f6b2912376e52e",
+      "actionIds": {
+        "disableRecoveryMode()": "0xfbb6d43a1a4b8f9e7e927d65ce8428f08b182a8fa9a84fe33e60060659d3a667",
+        "enableRecoveryMode()": "0xb76be8e742e4cb12126e4fc867333c0915425cba12ba2a9559f92a73d15eb430",
+        "initialize()": "0x68fc912eaeaf76df482b1d54a9cef62f939a21f3a725a266f489eb89e833aa3a",
+        "pause()": "0xe3aaafb3f2e202b308378b16091b9ad50c9c3748bc6953d3367ad4a864eac06e",
+        "setSwapFeePercentage(uint256)": "0xf096cdce611341da2a98a49ab1b3a60c60855de4dd6f42a33d3b6d23d86acee6",
+        "setTargets(uint256,uint256)": "0xc6c121c21372bdb7e9f07699dfdc2d0df5132e2d286afdcea9e6264f1566d402",
+        "unpause()": "0x383deff38933fd5c665bbd2744d463ec6cae2d3d3663e959b8fe4231d3b32c8b"
+      }
+    }
   }
 }

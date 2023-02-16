@@ -24,7 +24,7 @@ describe('VaultAuthorization', function () {
 
   sharedBeforeEach('deploy authorizer', async () => {
     const entrypoint = await deploy('MockAuthorizerAdaptorEntrypoint');
-    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, entrypoint.address, MONTH] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, entrypoint.address, MONTH] });
   });
 
   async function deployVault(authorizer: string): Promise<Contract> {

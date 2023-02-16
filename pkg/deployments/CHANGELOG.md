@@ -22,6 +22,7 @@
 - Deployed `ERC4626LinearPoolFactory` to Mainnet, Goerli, Arbitrum, Polygon, and Optimism.
 - Deployed `EulerLinearPoolFactory` to Mainnet and Goerli.
 - Deployed `YearnLinearPoolFactory` to Mainnet, Goerli, Arbitrum, Polygon, and Optimism.
+- Deployed `GearboxLinearPoolFactory` to Mainnet and Goerli.
 
 ### Deprecations
 
