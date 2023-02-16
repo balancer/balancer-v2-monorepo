@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { BytesLike, BigNumber } from 'ethers';
+import { BytesLike, BigNumber, BigNumberish } from 'ethers';
 import { expect } from 'chai';
 import { Contract, utils } from 'ethers';
 
@@ -9,6 +9,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MerkleTree } from '../lib/merkleTree';
@@ -194,18 +195,23 @@ describe('MerkleOrchard', () => {
     let elements: string[];
     let merkleTree: MerkleTree;
     let claims: Claim[];
+    let merkleProof: BytesLike[];
+    let distributionId: BigNumberish;
 
     sharedBeforeEach(async () => {
+      distributionId = 1;
       elements = [encodeElement(claimer1.address, claimableBalance)];
       merkleTree = new MerkleTree(elements);
       const root = merkleTree.getHexRoot();
 
-      await merkleOrchard.connect(distributor).createDistribution(token1.address, root, claimableBalance, 1);
-      const merkleProof: BytesLike[] = merkleTree.getHexProof(elements[0]);
+      await merkleOrchard
+        .connect(distributor)
+        .createDistribution(token1.address, root, claimableBalance, distributionId);
+      merkleProof = merkleTree.getHexProof(elements[0]);
 
       claims = [
         {
-          distributionId: bn(1),
+          distributionId: bn(distributionId),
           balance: claimableBalance,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -300,6 +306,48 @@ describe('MerkleOrchard', () => {
       expect(
         merkleOrchard.connect(admin).createDistribution(token1.address, root2, claimableBalance.mul(2), 1)
       ).to.be.revertedWith(errorMsg);
+    });
+
+    context('when claiming the same distribution ID twice', () => {
+      sharedBeforeEach('create a distribution with 2 users and twice the claimable balance', async () => {
+        distributionId = 2;
+        elements = [
+          encodeElement(claimer1.address, claimableBalance),
+          encodeElement(claimer2.address, claimableBalance),
+        ];
+        merkleTree = new MerkleTree(elements);
+        const root = merkleTree.getHexRoot();
+
+        await merkleOrchard
+          .connect(distributor)
+          .createDistribution(token1.address, root, claimableBalance.mul(2), distributionId);
+        merkleProof = merkleTree.getHexProof(elements[0]);
+
+        claims = [
+          {
+            distributionId: bn(distributionId),
+            balance: claimableBalance,
+            distributor: distributor.address,
+            tokenIndex: 0,
+            merkleProof,
+          },
+          {
+            distributionId: bn(distributionId),
+            balance: claimableBalance,
+            distributor: distributor.address,
+            tokenIndex: 0,
+            merkleProof,
+          },
+        ];
+      });
+
+      it('allows the user to claim a the same distribution twice', async () => {
+        await expectBalanceChange(
+          () => merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses),
+          tokens,
+          [{ account: claimer1, changes: { DAI: claimableBalance.mul(2) } }]
+        );
+      });
     });
   });
 
