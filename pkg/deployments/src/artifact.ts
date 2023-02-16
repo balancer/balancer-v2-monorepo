@@ -79,17 +79,9 @@ export function checkArtifact(task: Task): void {
  */
 function checkReadmeArtifactLink(task: Task, contractName: string, readmeLines: string[]): void {
   const expectedContent = `- [\`${contractName}\` artifact](./artifact/${contractName}.json)`;
-  let found = false;
+  const linkFound = readmeLines.find((line) => line.toLowerCase() == expectedContent.toLowerCase()) !== undefined;
 
-  for (const line of readmeLines) {
-    // Tolerate differences in case (e.g., veBoost vs VeBoost).
-    if (line.toLowerCase() == expectedContent.toLowerCase()) {
-      found = true;
-      break;
-    }
-  }
-
-  if (found) {
+  if (linkFound) {
     logger.success(`Verified artifact link for contract '${contractName}' of task '${task.id}'`);
   } else {
     throw Error(`Missing or malformed artifact link for contract '${contractName}' of task '${task.id}'`);
