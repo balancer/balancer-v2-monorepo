@@ -783,8 +783,8 @@ describe('TimelockAuthorizer', () => {
 
           sharedBeforeEach('set delay', async () => {
             const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-            await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: root });
-            await authorizer.setDelay(grantActionId, delay, { from: root });
+            await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
+            await authorizer.scheduleAndExecuteDelayChange(grantActionId, delay, { from: root });
           });
 
           it('reverts', async () => {
@@ -1074,8 +1074,8 @@ describe('TimelockAuthorizer', () => {
 
             sharedBeforeEach('set delay', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-              await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: root });
-              await authorizer.setDelay(revokeActionId, delay, { from: root });
+              await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
+              await authorizer.scheduleAndExecuteDelayChange(revokeActionId, delay, { from: root });
             });
 
             it('reverts', async () => {
@@ -1389,7 +1389,7 @@ describe('TimelockAuthorizer', () => {
           context('when the delay is less than or equal to the delay to set the authorizer in the vault', () => {
             sharedBeforeEach('set delay to set authorizer', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-              await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: root });
+              await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
             });
 
             function itSchedulesTheDelayChangeCorrectly(expectedDelay: number) {
@@ -1432,7 +1432,7 @@ describe('TimelockAuthorizer', () => {
                 const previousDelay = delay / 2;
 
                 sharedBeforeEach('set previous delay', async () => {
-                  await authorizer.setDelay(action, previousDelay, { from: root });
+                  await authorizer.scheduleAndExecuteDelayChange(action, previousDelay, { from: root });
                 });
 
                 itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
@@ -1444,7 +1444,7 @@ describe('TimelockAuthorizer', () => {
               const executionDelay = Math.max(previousDelay - delay, MINIMUM_EXECUTION_DELAY);
 
               sharedBeforeEach('set previous delay', async () => {
-                await authorizer.setDelay(action, previousDelay, { from: root });
+                await authorizer.scheduleAndExecuteDelayChange(action, previousDelay, { from: root });
               });
 
               itSchedulesTheDelayChangeCorrectly(executionDelay);
@@ -1462,7 +1462,7 @@ describe('TimelockAuthorizer', () => {
 
         context('when the action is performed directly', () => {
           it('reverts', async () => {
-            await expect(authorizer.instance.setDelay(action, delay)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(authorizer.instance.setDelay(action, delay)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
           });
         });
       });
@@ -1506,7 +1506,7 @@ describe('TimelockAuthorizer', () => {
     sharedBeforeEach('set authorizer permission delay', async () => {
       // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
       const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-      await authorizer.setDelay(setAuthorizerAction, 2 * delay, { from: root });
+      await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, 2 * delay, { from: root });
     });
 
     const schedule = async (): Promise<number> => {
@@ -1534,7 +1534,7 @@ describe('TimelockAuthorizer', () => {
               const delay = DAY * 5;
 
               sharedBeforeEach('set delay', async () => {
-                await authorizer.setDelay(action, delay, { from: root });
+                await authorizer.scheduleAndExecuteDelayChange(action, delay, { from: root });
               });
 
               context('when no executors are specified', () => {
@@ -1722,10 +1722,10 @@ describe('TimelockAuthorizer', () => {
     sharedBeforeEach('grant protected function permission with delay', async () => {
       // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
       const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-      await authorizer.setDelay(setAuthorizerAction, delay, { from: root });
+      await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay, { from: root });
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
-      await authorizer.setDelay(protectedFunctionAction, delay, { from: root });
+      await authorizer.scheduleAndExecuteDelayChange(protectedFunctionAction, delay, { from: root });
       await authorizer.grantPermissions(protectedFunctionAction, grantee, authenticatedContract, { from: root });
     });
 
@@ -1871,10 +1871,10 @@ describe('TimelockAuthorizer', () => {
     sharedBeforeEach('grant protected function permission with delay', async () => {
       // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
       const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-      await authorizer.setDelay(setAuthorizerAction, delay, { from: root });
+      await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay, { from: root });
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
-      await authorizer.setDelay(protectedFunctionAction, delay, { from: root });
+      await authorizer.scheduleAndExecuteDelayChange(protectedFunctionAction, delay, { from: root });
       await authorizer.grantPermissions(protectedFunctionAction, grantee, authenticatedContract, { from: root });
     });
 
@@ -1975,7 +1975,7 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', async () => {
       context('when trying to execute it directly', async () => {
         it('reverts', async () => {
-          await expect(authorizer.instance.setPendingRoot(grantee.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(authorizer.instance.setPendingRoot(grantee.address)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
         });
       });
 
@@ -2143,7 +2143,7 @@ describe('TimelockAuthorizer', () => {
         const delay = DAY;
 
         sharedBeforeEach('set delay on setting the new authorizer', async () => {
-          await authorizer.setDelay(setAuthorizerActionId, delay, { from: root });
+          await authorizer.scheduleAndExecuteDelayChange(setAuthorizerActionId, delay, { from: root });
         });
 
         it('root can nominate an address to change the authorizer address set on the Vault', async () => {

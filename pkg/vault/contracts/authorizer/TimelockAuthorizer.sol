@@ -170,7 +170,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event PendingRootSet(address indexed pendingRoot);
 
     modifier onlyExecutor() {
-        _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
+        require(msg.sender == address(_executor), "CAN_ONLY_BE_SCHEDULED");
         _;
     }
 
