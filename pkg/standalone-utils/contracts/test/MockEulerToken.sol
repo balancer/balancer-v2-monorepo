@@ -93,6 +93,12 @@ contract MockEulerToken is IEulerToken, TestToken {
 
         _onlyForMockStorage = subAccountId;
 
+        // EulerWrapping will pass MAX_UINT as this allows to exchange all wrappedTokens
+        // for maximum amount of mainTokens
+        // this mock transforms the amount to be the balanceOf mockEulerTokens in the relayer
+        // so that the appropriate amount can be transferedFrom via the mockEulerProtocol
+        amount = this.balanceOf(msg.sender);
+
         // request tokens from Euler protocol and send to the Relayer
         _mockMsgSender = msg.sender;
         IMockEulerProtocol(EULER_PROTOCOL).sendUnderlyingToRelayer(ASSET, amount, _mockMsgSender);
