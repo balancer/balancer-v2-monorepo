@@ -24,9 +24,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
 
 import "./IBaseRelayerLibrary.sol";
-import "./interfaces/IMockEulerToken.sol";
 
-import "hardhat/console.sol";
+import "./interfaces/IMockEulerToken.sol";
 
 /**
  * @title EulerWrapping
