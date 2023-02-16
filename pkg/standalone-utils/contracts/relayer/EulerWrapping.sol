@@ -73,11 +73,10 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
         // To calculate balances of the wrappedToken in the Relayer
         IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
 
-
         // Deposit MainToken into EulerToken
         // 0 for the Euler primary account
         wrappedToken.deposit(0, amount);
-        
+
         uint256 withdrawnWrappedAmount = wrappedTokenErc20.balanceOf(address(this));
 
         if (recipient != address(this)) {
@@ -94,7 +93,7 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
         IEulerToken wrappedToken,
         address sender,
         address recipient,
-        uint256 amount, 
+        uint256 amount,
         uint256 outputReference
     ) external payable {
         if (_isChainedReference(amount)) {

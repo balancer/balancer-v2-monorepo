@@ -8,7 +8,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
-describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
+describeForkTest('EulerWrapping', 'mainnet', 16636628, function () {
   let task: Task;
   let relayer: Contract, library: Contract;
   let vault: Contract, authorizer: Contract;
@@ -17,7 +17,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
   const USDC_HOLDER = '0x0a59649758aa4d66e25f08dd01271e891fe52199';
   const eUSDC = '0xEb91861f8A4e1C12333F42DCE8fB0Ecdc28dA716'; //proxy
 
-  let usdcToken: Contract, wrappedToken: Contract, eToken: Contract, eulerProtocol: Contract;
+  let usdcToken: Contract, wrappedToken: Contract, eToken: Contract;
   let sender: SignerWithAddress;
   let chainedReference: BigNumber;
   let chainedReferenceOut: BigNumber;
@@ -57,7 +57,6 @@ describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
     usdcToken = await task.instanceAt('IERC20', USDC);
     wrappedToken = await task.instanceAt('IERC20', eUSDC);
     eToken = await task.instanceAt('IEulerToken', eUSDC);
-    //eulerProtocol = await task.instanceAt('IGearboxVault', await dieselToken.owner());
     sender = await impersonate(USDC_HOLDER);
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
@@ -123,10 +122,10 @@ describeForkTest('EulerWrapping', 'mainnet', 16622559, function () {
     expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.almostEqual(amountToWrap, 0.01);
   });
 
-  it('should wrap and unwrap', async () => {
+  it('should wrap and unwrap successfully', async () => {
     chainedReference = toChainedReference(30);
     chainedReferenceOut = toChainedReference(80);
-    await usdcToken.connect(sender).approve(vault.address, amountToWrap * 3);
+    await usdcToken.connect(sender).approve(vault.address, amountToWrap * 2);
 
     const depositIntoEuler_1 = library.interface.encodeFunctionData('wrapEuler', [
       eUSDC,

@@ -31,7 +31,7 @@ interface IEulerToken {
      * @return eToken balance, in internal book-keeping units (18 decimals)
      * https://github.com/euler-xyz/euler-contracts/blob/master/contracts/modules/EToken.sol#L117
      */
-    function convertUnderlyingToBalance(uint underlyingAmount) external view returns (uint);
+    function convertUnderlyingToBalance(uint256 underlyingAmount) external view returns (uint256);
 
     /**
      * @dev Transfer underlying tokens from sender to the Euler pool, and increase account's eTokens

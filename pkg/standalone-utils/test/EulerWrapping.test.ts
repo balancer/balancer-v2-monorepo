@@ -153,7 +153,7 @@ describe('EulerWrapping', function () {
             receipt,
             {
               from: relayer.address,
-              to: mockEulerProtocol.address, // TODO: What event is meant here?
+              to: mockEulerProtocol.address,
               value: amount,
             },
             DAI
@@ -185,9 +185,6 @@ describe('EulerWrapping', function () {
     });
 
     describe('unwrap Euler', async () => {
-      // relayer unwrapping Euler means
-      // the relayer has eTokens and calls
-      // withdraw on an EulerToken
       let tokenSender: Account, tokenRecipient: Account;
 
       beforeEach(async () => {
@@ -198,7 +195,6 @@ describe('EulerWrapping', function () {
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          // check mint was successfull
           await eDAI.connect(senderUser).approve(vault.address, fp(100));
           tokenSender = senderUser;
           tokenRecipient = relayer;
@@ -207,13 +203,6 @@ describe('EulerWrapping', function () {
       });
 
       function testUnwrap(): void {
-        // the relayer is able to unwrap a senderUsers eToken Balance
-        // transfer eTokens from users balance to relayer
-        // relayer call withdraw on eToken
-        // senderUser eToken Balance example 100
-        // euler protocol underlying balance 100
-        // relayer underlying balance 0
-
         it('unwraps with immediate amounts', async () => {
           const receipt = await (
             await relayer
@@ -246,8 +235,6 @@ describe('EulerWrapping', function () {
           );
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
-            // why should there be a DAI mint event?
-            // TODO: check with Team how to hanle for fork tests?
             receipt,
             {
               from: mockEulerProtocol.address,
@@ -314,7 +301,6 @@ describe('EulerWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              // TODO: check for euler fork tests
               from: mockEulerProtocol.address,
               to: relayer.address,
               value: unwrappedAmount,
@@ -363,7 +349,6 @@ describe('EulerWrapping', function () {
       await DAIToken.mint(admin, fp(150));
       await DAIToken.mint(mockEulerProtocol, fp(5000));
       await DAIToken.approve(eDAI, fp(150), { from: admin });
-      // await xDAIToken.connect(admin).wrap(fp(150));
       await eDAIToken.approve(vault, MAX_UINT256, { from: admin });
 
       bptIndex = await pool.getBptIndex();
@@ -473,7 +458,6 @@ describe('EulerWrapping', function () {
             tokenOut: eDAIToken.address,
           });
 
-          // TODO: check layout for this test if required
           expectTransferEvent(receipt, { from: mockEulerProtocol.address, to: relayer.address }, DAI);
           if (recipientUser.address !== relayer.address) {
             expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
