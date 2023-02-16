@@ -3,6 +3,7 @@ import { Artifact, CompilerOutputContract } from 'hardhat/types';
 import path from 'path';
 import logger from './logger';
 import Task from './task';
+import fs from 'fs';
 
 /**
  * Extracts the artifact for the matching contract.
@@ -37,6 +38,15 @@ function _extractArtifact(task: Task, file: string, contract?: string) {
  * @param task - The task for which to check artifact integrity.
  */
 export function checkArtifact(task: Task): void {
+  let readmeLines: string[] = [];
+
+  const filePath = path.join(task.dir(), `readme.md`);
+  const readmeFileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+  if (readmeFileExists) {
+    const readmeContents = fs.readFileSync(filePath).toString();
+    readmeLines = readmeContents.split('\n');
+  }
+
   const buildInfoDirectory = path.resolve(task.dir(), 'build-info');
   if (existsSync(buildInfoDirectory) && statSync(buildInfoDirectory).isDirectory()) {
     for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
@@ -49,12 +59,32 @@ export function checkArtifact(task: Task): void {
       const artifactMatch = JSON.stringify(actualArtifact) === JSON.stringify(expectedArtifact);
       if (artifactMatch) {
         logger.success(`Verified artifact integrity of contract '${contractName}' of task '${task.id}'`);
+
+        // Since this is an *artifact* check, don't fail if there is no readme at all (mixing concerns).
+        // If there is a readme, it must contain a link to all artifacts, though.
+        if (readmeFileExists) {
+          checkReadmeArtifactLink(task, contractName, readmeLines);
+        }
       } else {
         throw Error(
           `The artifact for contract '${contractName}' of task '${task.id}' does not match the contents of its build-info`
         );
       }
     }
+  }
+}
+
+/**
+ * Ensure there is a readme with the expected link to the artifact file (and no invalid ones).
+ */
+function checkReadmeArtifactLink(task: Task, contractName: string, readmeLines: string[]): void {
+  const expectedContent = `- [\`${contractName}\` artifact](./artifact/${contractName}.json)`;
+  const linkFound = readmeLines.find((line) => line.toLowerCase() == expectedContent.toLowerCase()) !== undefined;
+
+  if (linkFound) {
+    logger.success(`Verified artifact link for contract '${contractName}' of task '${task.id}'`);
+  } else {
+    throw Error(`Missing or malformed artifact link for contract '${contractName}' of task '${task.id}'`);
   }
 }
 
