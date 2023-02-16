@@ -308,7 +308,7 @@ describe('MerkleOrchard', () => {
       ).to.be.revertedWith(errorMsg);
     });
 
-    context('when claiming the same distribution ID twice', () => {
+    context('when claiming the same distribution ID twice within the same request', () => {
       sharedBeforeEach('create a distribution with 2 users and twice the claimable balance', async () => {
         distributionId = 2;
         elements = [
@@ -341,12 +341,10 @@ describe('MerkleOrchard', () => {
         ];
       });
 
-      it('allows the user to claim a the same distribution twice', async () => {
-        await expectBalanceChange(
-          () => merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses),
-          tokens,
-          [{ account: claimer1, changes: { DAI: claimableBalance.mul(2) } }]
-        );
+      it('reverts', async () => {
+        await expect(
+          merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses)
+        ).to.be.revertedWith('cannot claim twice');
       });
     });
   });
