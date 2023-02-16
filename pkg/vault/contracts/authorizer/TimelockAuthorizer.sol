@@ -450,7 +450,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         external
         returns (uint256 scheduledExecutionId)
     {
-        require(isRoot(msg.sender), "CALLER_IS_NOT_ROOT");
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
         return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
@@ -475,7 +475,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     function claimRoot() external {
         address currentRoot = _root;
         address pendingRoot = _pendingRoot;
-        require(msg.sender == pendingRoot, "CALLER_IS_NOT_PENDING_ROOT");
+        require(msg.sender == pendingRoot, "SENDER_IS_NOT_PENDING_ROOT");
 
         // Grant powers to new root to grant or revoke any permission over any contract.
         _grantPermission(_GENERAL_GRANT_ACTION_ID, pendingRoot, EVERYWHERE);
@@ -513,7 +513,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
-        require(isRoot(msg.sender), "CALLER_IS_NOT_ROOT");
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
         // current delay.
@@ -657,7 +657,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bool allowed
     ) external {
         // Root may grant or revoke granter status from any address.
-        require(isRoot(msg.sender), "CALLER_IS_NOT_ROOT");
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
@@ -715,7 +715,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         bool allowed
     ) external {
-        require(isRoot(msg.sender), "CALLER_IS_NOT_ROOT");
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         bytes32 revokePermissionsActionId = getRevokePermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);

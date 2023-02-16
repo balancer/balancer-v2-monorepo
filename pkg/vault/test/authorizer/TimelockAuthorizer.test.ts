@@ -289,7 +289,7 @@ describe('TimelockAuthorizer', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.addGranter(actionId, grantee, where, { from })).to.be.revertedWith(
-              'CALLER_IS_NOT_ROOT'
+              'SENDER_IS_NOT_ROOT'
             );
           });
         };
@@ -371,7 +371,7 @@ describe('TimelockAuthorizer', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.removeGranter(actionId, grantee, where, { from })).to.be.revertedWith(
-              'CALLER_IS_NOT_ROOT'
+              'SENDER_IS_NOT_ROOT'
             );
           });
         };
@@ -649,7 +649,7 @@ describe('TimelockAuthorizer', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.addRevoker(actionId, grantee, where, { from })).to.be.revertedWith(
-              'CALLER_IS_NOT_ROOT'
+              'SENDER_IS_NOT_ROOT'
             );
           });
         };
@@ -691,7 +691,7 @@ describe('TimelockAuthorizer', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.removeRevoker(actionId, grantee, where, { from })).to.be.revertedWith(
-              'CALLER_IS_NOT_ROOT'
+              'SENDER_IS_NOT_ROOT'
             );
           });
         };
@@ -1486,7 +1486,7 @@ describe('TimelockAuthorizer', () => {
 
       it('reverts', async () => {
         await expect(authorizer.scheduleDelayChange(action, DAY, [], { from: grantee })).to.be.revertedWith(
-          'CALLER_IS_NOT_ROOT'
+          'SENDER_IS_NOT_ROOT'
         );
       });
     });
@@ -2049,7 +2049,7 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is not the root', async () => {
       it('reverts', async () => {
         await expect(authorizer.scheduleRootChange(grantee, [], { from: grantee })).to.be.revertedWith(
-          'CALLER_IS_NOT_ROOT'
+          'SENDER_IS_NOT_ROOT'
         );
       });
     });
@@ -2107,7 +2107,7 @@ describe('TimelockAuthorizer', () => {
 
     context('when the sender is not the pending root', async () => {
       it('reverts', async () => {
-        await expect(authorizer.claimRoot({ from: other })).to.be.revertedWith('CALLER_IS_NOT_PENDING_ROOT');
+        await expect(authorizer.claimRoot({ from: other })).to.be.revertedWith('SENDER_IS_NOT_PENDING_ROOT');
       });
     });
   });
