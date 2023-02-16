@@ -8,6 +8,4 @@ This version:
 
 ## Useful Files
 
-- [Ethereum mainnet addresses](./output/mainnet.json)
-- [Goerli testnet addresses](./output/goerli.json)
 - [`L2GaugeCheckpointer` artifact](./artifact/L2GaugeCheckpointer.json)
