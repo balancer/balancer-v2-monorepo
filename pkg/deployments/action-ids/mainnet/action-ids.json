@@ -1097,5 +1097,14 @@
         "disable()": "0xdf42af2dd96057a6f29e617c9d6c389e3ac79347b2e4d0b06b8d33cd7e15c40b"
       }
     }
+  },
+  "20230213-yearn-linear-pool": {
+    "YearnLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x1dbbb55d4b8809b485b085e9f2e8cf8e40d2ff5ae1454ebd8f1f102833e51cfb",
+        "disable()": "0xc6d41c26426784c7fab7298da04eab2259046b3c7c8351286ee364e4e0a3bd1e"
+      }
+    }
   }
 }
