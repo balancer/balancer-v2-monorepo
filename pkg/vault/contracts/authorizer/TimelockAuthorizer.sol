@@ -475,7 +475,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     function claimRoot() external {
         address currentRoot = _root;
         address pendingRoot = _pendingRoot;
-        _require(msg.sender == pendingRoot, Errors.SENDER_NOT_ALLOWED);
+        require(msg.sender == pendingRoot, "CALLER_IS_NOT_PENDING_ROOT");
 
         // Grant powers to new root to grant or revoke any permission over any contract.
         _grantPermission(_GENERAL_GRANT_ACTION_ID, pendingRoot, EVERYWHERE);

@@ -2107,7 +2107,7 @@ describe('TimelockAuthorizer', () => {
 
     context('when the sender is not the pending root', async () => {
       it('reverts', async () => {
-        await expect(authorizer.claimRoot({ from: other })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(authorizer.claimRoot({ from: other })).to.be.revertedWith('CALLER_IS_NOT_PENDING_ROOT');
       });
     });
   });
