@@ -5,6 +5,4 @@ This version adds a weight cap to single recipient gauges, and supersedes [singl
 
 ## Useful Files
 
-- [Ethereum mainnet addresses](./output/mainnet.json)
-- [Goerli testnet addresses](./output/goerli.json)
 - [`SingleRecipientGaugeFactory` artifact](./artifact/SingleRecipientGaugeFactory.json)
