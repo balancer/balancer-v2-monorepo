@@ -223,8 +223,6 @@ contract MerkleOrchard {
 
             (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distributionId);
 
-            // Start a new claims set
-            // Since channel ids are a hash, the initial zero id can be safely considered invalid
             bytes32 currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
             uint256 currentBits = 1 << distributionBitIndex;
             _setClaimedBits(currentChannelId, claimer, distributionWordIndex, currentBits);
