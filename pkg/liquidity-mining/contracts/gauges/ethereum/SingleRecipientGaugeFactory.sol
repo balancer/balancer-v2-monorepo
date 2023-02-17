@@ -49,7 +49,12 @@ contract SingleRecipientGaugeFactory is Version, BaseGaugeFactory {
         bool feeDistributorRecipient
     ) external returns (address) {
         address gauge = _create();
-        SingleRecipientGauge(gauge).initialize(recipient, relativeWeightCap, feeDistributorRecipient, getProductVersion());
+        SingleRecipientGauge(gauge).initialize(
+            recipient,
+            relativeWeightCap,
+            feeDistributorRecipient,
+            getProductVersion()
+        );
         return gauge;
     }
 }

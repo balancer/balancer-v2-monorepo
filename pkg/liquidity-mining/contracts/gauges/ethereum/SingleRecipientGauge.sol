@@ -28,7 +28,7 @@ contract SingleRecipientGauge is Version, StakelessGauge {
 
     // The version of the implementation is irrelevant, so we use an empty string.
     // The actual gauge version will be set during initialization.
-    constructor(IBalancerMinter minter) Version('') StakelessGauge(minter) {
+    constructor(IBalancerMinter minter) Version("") StakelessGauge(minter) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
