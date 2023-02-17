@@ -593,7 +593,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         if (scheduledExecution.protected) {
             // Protected scheduled executions can only be executed by a set of accounts designated by the original
             // scheduler.
-            _require(isExecutor(scheduledExecutionId, msg.sender), Errors.SENDER_NOT_ALLOWED);
+            require(isExecutor(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_EXECUTOR");
         }
 
         scheduledExecution.executed = true;
