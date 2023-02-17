@@ -23,7 +23,7 @@ contract MockLiquidityGaugeFactory is BaseGaugeFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(address pool, uint256 relativeWeightCap) external override returns (address) {
+    function create(address pool, uint256 relativeWeightCap) external returns (address) {
         address gauge = _create();
 
         MockLiquidityGauge(gauge).initialize(pool, relativeWeightCap);

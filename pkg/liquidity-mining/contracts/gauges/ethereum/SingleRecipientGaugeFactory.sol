@@ -29,11 +29,17 @@ contract SingleRecipientGaugeFactory is BaseGaugeFactory {
      * suitable before they are added to the GaugeController.
      * @param recipient The address to receive BAL minted from the gauge
      * @param relativeWeightCap The relative weight cap for the created gauge
+     * @param feeDistributorRecipient True if the recipient implements the IFeeDistributor interface and should receive
+     * tokens via the `depositToken` function.
      * @return The address of the deployed gauge
      */
-    function create(address recipient, uint256 relativeWeightCap) external override returns (address) {
+    function create(
+        address recipient,
+        uint256 relativeWeightCap,
+        bool feeDistributorRecipient
+    ) external returns (address) {
         address gauge = _create();
-        SingleRecipientGauge(gauge).initialize(recipient, relativeWeightCap);
+        SingleRecipientGauge(gauge).initialize(recipient, relativeWeightCap, feeDistributorRecipient);
         return gauge;
     }
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- Removed `IBaseGaugeFactory`.
+
 ## 0.3.0 (20223-02-08)
 
 ### New Features
