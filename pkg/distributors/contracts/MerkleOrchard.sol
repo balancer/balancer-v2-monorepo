@@ -221,7 +221,6 @@ contract MerkleOrchard {
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
 
-            // New scope to avoid stack-too-deep issues
             (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distributionId);
 
             // Start a new claims set
