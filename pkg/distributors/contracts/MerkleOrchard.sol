@@ -210,70 +210,17 @@ contract MerkleOrchard {
         bool asInternalBalance
     ) internal {
         uint256[] memory amounts = new uint256[](tokens.length);
-
-        // To save gas when setting claimed statuses in storage, we group claims for each channel and word index
-        // (referred to as a 'claims set'), aggregating the claim bits to set and total claimed amount, only committing
-        // to storage when changing claims sets (or when processing the last claim).
-        // This means that callers should sort claims by grouping distribution channels and distributions with the same
-        // word index in order to achieve reduced gas costs.
-
-        // Variables to support claims set aggregation
-        bytes32 currentChannelId; // Since channel ids are a hash, the initial zero id can be safely considered invalid
-        uint256 currentWordIndex;
-
-        uint256 currentBits; // The accumulated claimed bits to set in storage
-        uint256 currentClaimAmount; // The accumulated tokens to be claimed from the current channel (not claims set!)
-
         Claim memory claim;
+
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
 
-            // New scope to avoid stack-too-deep issues
-            {
-                (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distributionId);
+            (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distributionId);
 
-                if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
-                    if (currentWordIndex == distributionWordIndex) {
-                        // Same claims set as the previous one: simply track the new bit to set.
-                        currentBits |= 1 << distributionBitIndex;
-                    } else {
-                        // This case is an odd exception: the claims set is not the same, but the channel id is. This
-                        // happens for example when there are so many distributions that they don't fit in a single 32
-                        // byte bitmap.
-                        // Since the channel is the same, we can continue accumulating the claim amount, but must commit
-                        // the previous claim bits as they correspond to a different word index.
-                        _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
-
-                        // Start a new claims set, except channel id is the same as the previous one, and amount is not
-                        // reset.
-                        currentWordIndex = distributionWordIndex;
-                        currentBits = 1 << distributionBitIndex;
-                    }
-
-                    // Amounts are always accumulated for the same channel id
-                    currentClaimAmount += claim.balance;
-                } else {
-                    // Skip initial invalid claims set
-                    if (currentChannelId != bytes32(0)) {
-                        // Commit previous claims set
-                        _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
-                        _deductClaimedBalance(currentChannelId, currentClaimAmount);
-                    }
-
-                    // Start a new claims set
-                    currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
-                    currentWordIndex = distributionWordIndex;
-                    currentBits = 1 << distributionBitIndex;
-                    currentClaimAmount = claim.balance;
-                }
-            }
-
-            // Since a claims set is only committed if the next one is not part of the same set, the last claims set
-            // must be manually committed always.
-            if (i == claims.length - 1) {
-                _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
-                _deductClaimedBalance(currentChannelId, currentClaimAmount);
-            }
+            bytes32 currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
+            uint256 currentBits = 1 << distributionBitIndex;
+            _setClaimedBits(currentChannelId, claimer, distributionWordIndex, currentBits);
+            _deductClaimedBalance(currentChannelId, claim.balance);
 
             require(
                 _verifyClaim(currentChannelId, claim.distributionId, claimer, claim.balance, claim.merkleProof),
