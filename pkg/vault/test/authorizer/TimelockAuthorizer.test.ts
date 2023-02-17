@@ -1669,7 +1669,7 @@ describe('TimelockAuthorizer', () => {
             });
 
             it('reverts', async () => {
-              await expect(schedule()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+              await expect(schedule()).to.be.revertedWith('SENDER_DOES_NOT_HAVE_PERMISSION');
             });
           });
         });
@@ -1681,14 +1681,14 @@ describe('TimelockAuthorizer', () => {
           });
 
           it('reverts', async () => {
-            await expect(schedule()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(schedule()).to.be.revertedWith('SENDER_DOES_NOT_HAVE_PERMISSION');
           });
         });
       });
 
       context('when the sender does not have permission', () => {
         it('reverts', async () => {
-          await expect(schedule()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(schedule()).to.be.revertedWith('SENDER_DOES_NOT_HAVE_PERMISSION');
         });
       });
     });

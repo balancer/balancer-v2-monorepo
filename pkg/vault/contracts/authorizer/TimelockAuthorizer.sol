@@ -574,7 +574,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(where != address(_executor), "ATTEMPTING_EXECUTOR_REENTRANCY");
 
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
-        _require(hasPermission(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
         return _schedule(actionId, where, data, executors);
     }
 
