@@ -789,7 +789,7 @@ describe('TimelockAuthorizer', () => {
 
           it('reverts', async () => {
             await expect(authorizer.grantPermissions(ACTION_1, grantee, WHERE_1, { from })).to.be.revertedWith(
-              'SENDER_NOT_ALLOWED'
+              'SENDER_IS_NOT_GRANTER'
             );
           });
 
@@ -888,7 +888,7 @@ describe('TimelockAuthorizer', () => {
 
       it('reverts', async () => {
         await expect(authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
+          'SENDER_IS_NOT_GRANTER'
         );
       });
     });
@@ -996,7 +996,7 @@ describe('TimelockAuthorizer', () => {
       });
 
       it('reverts', async () => {
-        await expect(authorizer.grantPermissionsGlobally(ACTIONS, grantee)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(authorizer.grantPermissionsGlobally(ACTIONS, grantee)).to.be.revertedWith('SENDER_IS_NOT_GRANTER');
       });
     });
   });
@@ -1080,7 +1080,7 @@ describe('TimelockAuthorizer', () => {
 
             it('reverts', async () => {
               await expect(authorizer.revokePermissions(ACTION_1, grantee, WHERE_1, { from })).to.be.revertedWith(
-                'SENDER_NOT_ALLOWED'
+                'SENDER_IS_NOT_REVOKER'
               );
             });
 
@@ -1132,7 +1132,7 @@ describe('TimelockAuthorizer', () => {
 
       it('reverts', async () => {
         await expect(authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from })).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
+          'SENDER_IS_NOT_REVOKER'
         );
       });
     });
@@ -1234,7 +1234,7 @@ describe('TimelockAuthorizer', () => {
 
       it('reverts', async () => {
         await expect(authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from })).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
+          'SENDER_IS_NOT_REVOKER'
         );
       });
     });

@@ -678,7 +678,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // For permissions that have a delay when granting, `canGrant` will return false. `scheduleGrantPermission`
             // will succeed as it checks `isGranter` instead.
             // Note that `canGrant` will return true for the executor if the permission has a delay.
-            _require(canGrant(actionIds[i], msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
+            require(canGrant(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_GRANTER");
             _grantPermission(actionIds[i], account, where[i]);
         }
     }
@@ -692,7 +692,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
-        _require(isGranter(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
         bytes32 grantPermissionId = getGrantPermissionActionId(actionId);
         return _schedule(grantPermissionId, address(this), data, executors);
@@ -736,7 +736,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // For permissions that have a delay when granting, `canRevoke` will return false.
             // `scheduleRevokePermission` will succeed as it checks `isRevoker` instead.
             // Note that `canRevoke` will return true for the executor if the permission has a delay.
-            _require(canRevoke(actionIds[i], msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
+            require(canRevoke(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_REVOKER");
             _revokePermission(actionIds[i], account, where[i]);
         }
     }
@@ -750,7 +750,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
-        _require(isRevoker(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        require(isRevoker(actionId, msg.sender, where), "SENDER_IS_NOT_REVOKER");
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
         bytes32 revokePermissionId = getRevokePermissionActionId(actionId);
         return _schedule(revokePermissionId, address(this), data, executors);
