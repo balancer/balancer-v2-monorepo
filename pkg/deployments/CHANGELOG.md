@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New Networks
+
+- Deployed all L2 contracts to Avalanche.
+
 ### New Deployments
 
 - Deployed `WeightedPoolFactory` v3 to all networks.
