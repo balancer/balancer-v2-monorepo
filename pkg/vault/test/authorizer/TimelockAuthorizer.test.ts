@@ -1949,7 +1949,7 @@ describe('TimelockAuthorizer', () => {
         it('reverts', async () => {
           id = await schedule();
 
-          await expect(authorizer.cancel(id, { from })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(authorizer.cancel(id, { from })).to.be.revertedWith('SENDER_IS_NOT_CANCELER');
         });
       });
     });

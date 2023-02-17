@@ -626,9 +626,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // The root address may cancel any action even without this permission.
         IAuthentication target = IAuthentication(scheduledExecution.where);
         bytes32 actionId = target.getActionId(_decodeSelector(scheduledExecution.data));
-        _require(
+        require(
             hasPermission(actionId, msg.sender, scheduledExecution.where) || isRoot(msg.sender),
-            Errors.SENDER_NOT_ALLOWED
+            "SENDER_IS_NOT_CANCELER"
         );
 
         scheduledExecution.cancelled = true;
