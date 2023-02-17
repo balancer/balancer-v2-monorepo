@@ -195,7 +195,6 @@ describe('MerkleOrchard', () => {
     let elements: string[];
     let merkleTree: MerkleTree;
     let claims: Claim[];
-    let merkleProof: BytesLike[];
     let distributionId: BigNumberish;
 
     sharedBeforeEach(async () => {
@@ -207,7 +206,7 @@ describe('MerkleOrchard', () => {
       await merkleOrchard
         .connect(distributor)
         .createDistribution(token1.address, root, claimableBalance, distributionId);
-      merkleProof = merkleTree.getHexProof(elements[0]);
+      const merkleProof = merkleTree.getHexProof(elements[0]);
 
       claims = [
         {
@@ -271,7 +270,7 @@ describe('MerkleOrchard', () => {
 
       const claimsWithIncorrectClaimableBalance = [
         {
-          distributionId: 1,
+          distributionId,
           balance: incorrectClaimedBalance,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -309,8 +308,12 @@ describe('MerkleOrchard', () => {
     });
 
     context('when claiming the same distribution ID twice within the same request', () => {
+      let elements: string[];
+      let merkleTree: MerkleTree;
+      let claims: Claim[];
+
       sharedBeforeEach('create a distribution with 2 users and twice the claimable balance', async () => {
-        distributionId = 2;
+        const distributionId = bn(2);
         elements = [
           encodeElement(claimer1.address, claimableBalance),
           encodeElement(claimer2.address, claimableBalance),
@@ -321,18 +324,18 @@ describe('MerkleOrchard', () => {
         await merkleOrchard
           .connect(distributor)
           .createDistribution(token1.address, root, claimableBalance.mul(2), distributionId);
-        merkleProof = merkleTree.getHexProof(elements[0]);
+        const merkleProof = merkleTree.getHexProof(elements[0]);
 
         claims = [
           {
-            distributionId: bn(distributionId),
+            distributionId,
             balance: claimableBalance,
             distributor: distributor.address,
             tokenIndex: 0,
             merkleProof,
           },
           {
-            distributionId: bn(distributionId),
+            distributionId,
             balance: claimableBalance,
             distributor: distributor.address,
             tokenIndex: 0,

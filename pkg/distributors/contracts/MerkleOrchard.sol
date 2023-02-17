@@ -210,14 +210,8 @@ contract MerkleOrchard {
         bool asInternalBalance
     ) internal {
         uint256[] memory amounts = new uint256[](tokens.length);
-
-        // To save gas when setting claimed statuses in storage, we group claims for each channel and word index
-        // (referred to as a 'claims set'), aggregating the claim bits to set and total claimed amount, only committing
-        // to storage when changing claims sets (or when processing the last claim).
-        // This means that callers should sort claims by grouping distribution channels and distributions with the same
-        // word index in order to achieve reduced gas costs.
-
         Claim memory claim;
+
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
 
