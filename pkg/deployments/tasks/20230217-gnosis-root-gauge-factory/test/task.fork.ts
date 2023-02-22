@@ -82,6 +82,9 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16627100, function () {
   });
 
   before('update balancer token admin rate', async () => {
+    // We move forward past the BAL minting epoch, so that it doesn't fall in the middle of the 'multiple weeks' test,
+    // resulting in variable rates.
+
     await advanceTime(WEEK * 5);
     await BALTokenAdmin.update_mining_parameters();
   });
