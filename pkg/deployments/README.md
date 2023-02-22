@@ -107,6 +107,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Linear Pools for Yearn Tokens                           | [`20230213-yearn-linear-pool`](./tasks/20230213-yearn-linear-pool)                                   |
 | Linear Pools for Gearbox Tokens                         | [`20230213-gearbox-linear-pool`](./tasks/20230213-gearbox-linear-pool)                               |
 | Single Recipient Stakeless Gauges V2                    | [`20230215-single-recipient-gauge-factory`](./tasks/20230215-single-recipient-gauge-factory-v2/)     |
+| Gnosis Root Gauge, for veBAL voting                     | [`20230217-gnosis-root-gauge-factory`](./tasks/20230217-gnosis-root-gauge-factory)                   |
 
 ## Scripts
 
