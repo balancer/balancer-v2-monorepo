@@ -21,6 +21,7 @@ describeForkTest('MerkleOrchard V2', 'mainnet', 16684000, function () {
   let task: Task;
 
   const LDO_ADDRESS = '0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32';
+  // Root taken from https://github.com/balancer-labs/bal-mining-scripts/blob/incident-response/reports/_incident-response/_roots-lido.json.
   const LDO_ROOT = '0x748ae6b1a5704a0711f56bd6b109627ab0d39ae6c0eee11d85450fba7979c8ec';
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
@@ -53,6 +54,7 @@ describeForkTest('MerkleOrchard V2', 'mainnet', 16684000, function () {
   });
 
   before('compute merkle tree', async () => {
+    // Data taken from https://github.com/balancer-labs/bal-mining-scripts/blob/incident-response/reports/_incident-response/1/__ethereum_0x5a98fcbea516cf06857215779fd812ca3bef1b32.json.
     const filePath = path.join(task.dir(), 'test/data/ldo-claims.json');
 
     const ldoClaims = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
