@@ -18,9 +18,19 @@ pragma experimental ABIEncoderV2;
 import "../BaseGaugeFactory.sol";
 import "./SingleRecipientGauge.sol";
 
-contract SingleRecipientGaugeFactory is BaseGaugeFactory {
-    constructor(IBalancerMinter minter) BaseGaugeFactory(new SingleRecipientGauge(minter)) {
-        // solhint-disable-previous-line no-empty-blocks
+contract SingleRecipientGaugeFactory is Version, BaseGaugeFactory {
+    string private _productVersion;
+
+    constructor(
+        IBalancerMinter minter,
+        string memory factoryVersion,
+        string memory productVersion
+    ) Version(factoryVersion) BaseGaugeFactory(new SingleRecipientGauge(minter)) {
+        _productVersion = productVersion;
+    }
+
+    function getProductVersion() public view returns (string memory) {
+        return _productVersion;
     }
 
     /**
@@ -39,7 +49,12 @@ contract SingleRecipientGaugeFactory is BaseGaugeFactory {
         bool feeDistributorRecipient
     ) external returns (address) {
         address gauge = _create();
-        SingleRecipientGauge(gauge).initialize(recipient, relativeWeightCap, feeDistributorRecipient);
+        SingleRecipientGauge(gauge).initialize(
+            recipient,
+            relativeWeightCap,
+            feeDistributorRecipient,
+            getProductVersion()
+        );
         return gauge;
     }
 }

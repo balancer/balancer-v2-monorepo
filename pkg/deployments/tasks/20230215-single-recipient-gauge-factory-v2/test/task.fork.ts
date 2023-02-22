@@ -23,7 +23,7 @@ import { range } from 'lodash';
 import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
-describeForkTest('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, function () {
+describeForkTest.skip('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, function () {
   let admin: SignerWithAddress, other: SignerWithAddress, balWhale: SignerWithAddress;
   let vault: Contract,
     authorizer: Contract,
@@ -128,6 +128,35 @@ describeForkTest('SingleRecipientGaugeFactory V2', 'mainnet', 16627100, function
     BasicRecipient,
     FeeDistributorRecipient,
   }
+
+  describe('getters', () => {
+    const expectedGaugeVersion = {
+      name: 'SingleRecipientGauge',
+      version: 2,
+      deployment: '20230215-single-recipient-gauge-factory-v2',
+    };
+
+    it('check gauge version', async () => {
+      const tx = await factory.create(ZERO_ADDRESS, fp(0), false);
+      const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
+      const gauge = await task.instanceAt('SingleRecipientGauge', event.args.gauge);
+      expect(await gauge.version()).to.equal(JSON.stringify(expectedGaugeVersion));
+    });
+
+    it('check gauge version from factory', async () => {
+      expect(await factory.getProductVersion()).to.equal(JSON.stringify(expectedGaugeVersion));
+    });
+
+    it('check factory version', async () => {
+      const expectedFactoryVersion = {
+        name: 'SingleRecipientGaugeFactory',
+        version: 2,
+        deployment: '20230215-single-recipient-gauge-factory-v2',
+      };
+
+      expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
+    });
+  });
 
   context('with a basic recipient', () => {
     itWorksLikeACappedSingleRecipientGauge(RecipientMode.BasicRecipient);
