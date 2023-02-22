@@ -1,4 +1,5 @@
 import hre, { ethers } from 'hardhat';
+import { defaultAbiCoder } from '@ethersproject/abi';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { GaugeType } from '@balancer-labs/balancer-js/src/types';
@@ -296,5 +297,23 @@ describeForkTest('GnosisRootGaugeFactory', 'mainnet', 16627100, function () {
     });
 
     expect(depositEvent.args.value).to.be.almostEqual(expectedEmissions);
+
+    // The TokensBridgingInitiated event unfortunately doesn't include the L2 recipient address, so we check that by
+    // looking at some of the data encoded in the UserRequestForAffirmation event. Said data is relatively complicated,
+    // but the last bytes seem to be the ABI encoding of (token, recipient, amount). This is based on the event at index
+    // 261 of mainnet transaction 0x6a0dcbf72db757f83bf1c9b42e5f940c31e3240479614635fcbe5a5f72091692.
+    const ambInterface = new ethers.utils.Interface([
+      'event UserRequestForAffirmation(bytes32 indexed messageId, bytes encodedData)',
+    ]);
+
+    const userRequestEvent = expectEvent.inIndirectReceipt(await tx.wait(), ambInterface, 'UserRequestForAffirmation');
+
+    const expectedPartialEncodedData = defaultAbiCoder.encode(
+      ['address', 'address', 'uint256'],
+      [BAL, recipient.address, depositEvent.args.value]
+    );
+
+    // Remove the leading 0x when testing for substring inclusion
+    expect(userRequestEvent.args.encodedData).to.include(expectedPartialEncodedData.slice(2));
   });
 });
