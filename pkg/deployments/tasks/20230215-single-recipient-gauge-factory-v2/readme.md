@@ -8,3 +8,4 @@ Additionally, this version also supports the recipient implementing the `deposit
 ## Useful Files
 
 - [`SingleRecipientGaugeFactory` artifact](./artifact/SingleRecipientGaugeFactory.json)
+- [`SingleRecipientGauge` artifact](./artifact/SingleRecipientGauge.json)
