@@ -33,13 +33,6 @@
         "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1aff"
       }
     },
-    "BalancerHelpers": {
-      "useAdaptor": true,
-      "actionIds": {
-        "queryExit(bytes32,address,address,(address[],uint256[],bytes,bool))": "0xf4f356186a75b09724f4ecff0cdeddc9a844de2943da92e90789677b88810407",
-        "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))": "0xb9214e49ac04e057e70ae7e36d6acf7f93ebdc56f3bf44da2521f1d7f79bfbbc"
-      }
-    },
     "ProtocolFeesCollector": {
       "useAdaptor": false,
       "actionIds": {
@@ -195,12 +188,6 @@
         "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)": "0x49f8e6a34076295240b17ebff1f6412055cdd88e5a4a51b8ebd6d04353a1a069",
         "wrapStETH(address,address,uint256,uint256)": "0xeec9e55fa7823a1adb86f29adb9d8019b35135e2c008113150fad69ba3ea0c10"
       }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0x21ca1986868905677ad509adaaca740c12b6bb4fee9a6d48f5e1e221b13fb1c4"
-      }
     }
   },
   "20211208-aave-linear-pool": {
@@ -314,12 +301,6 @@
         "wrapERC4626(address,address,address,uint256,uint256)": "0x610ee1d9e53af0de0ced6d897421eaa84d9f3e7f83d4ba12374744b82f7e7e64",
         "wrapStETH(address,address,uint256,uint256)": "0xeec9e55fa7823a1adb86f29adb9d8019b35135e2c008113150fad69ba3ea0c10",
         "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0xff5141699b439e9fe4bc1600006f594350c9f8a1d966fc29a0d0760dc1b8cc40"
-      }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0x21ca1986868905677ad509adaaca740c12b6bb4fee9a6d48f5e1e221b13fb1c4"
       }
     }
   },

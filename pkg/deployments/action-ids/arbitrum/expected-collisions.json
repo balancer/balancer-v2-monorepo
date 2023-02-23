@@ -306,19 +306,5 @@
       "signature": "wrapStETH(address,address,uint256,uint256)",
       "useAdaptor": true
     }
-  ],
-  "0x21ca1986868905677ad509adaaca740c12b6bb4fee9a6d48f5e1e221b13fb1c4": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BalancerRelayer",
-      "signature": "multicall(bytes[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BalancerRelayer",
-      "signature": "multicall(bytes[])",
-      "useAdaptor": true
-    }
   ]
 }

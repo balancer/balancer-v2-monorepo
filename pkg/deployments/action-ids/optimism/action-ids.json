@@ -33,13 +33,6 @@
         "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1aff"
       }
     },
-    "BalancerHelpers": {
-      "useAdaptor": true,
-      "actionIds": {
-        "queryExit(bytes32,address,address,(address[],uint256[],bytes,bool))": "0xb0850f445323ec6662629ef0cdc2dc8c7e5d5d83978f7a784a2898758be1f2c2",
-        "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))": "0xf3d4a64f9e0923252136cba0230f182b2f699934c190943d25149f1cafce8ce2"
-      }
-    },
     "ProtocolFeesCollector": {
       "useAdaptor": false,
       "actionIds": {
@@ -204,12 +197,6 @@
         "wrapERC4626(address,address,address,uint256,uint256)": "0xb282fde5b2b10069424552227f94a0e55670418ced313d886e4f3ed18f9664c1",
         "wrapStETH(address,address,uint256,uint256)": "0x7adacb41fadeda1310655dd5b02f5b15b3805c325657b6b2ccde3ee3e5971ba2",
         "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x3e5d1134e52635f3935c7a91e97354b0c6fc62049775883d345f055420d97280"
-      }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0xc39cf075301d1b05cef3fc32c6b1797e285eef17806fad46628c0cfcee1396de"
       }
     }
   },

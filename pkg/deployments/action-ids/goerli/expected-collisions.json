@@ -341,26 +341,6 @@
       "useAdaptor": true
     }
   ],
-  "0x3f1c6da046c01fb8c9201a73d729522abd0f2e2fd48e8e1b0691925c37c6dec5": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BalancerRelayer",
-      "signature": "multicall(bytes[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BalancerRelayer",
-      "signature": "multicall(bytes[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "2022xxxx-batch-relayer-v3",
-      "contractName": "BalancerRelayer",
-      "signature": "multicall(bytes[])",
-      "useAdaptor": true
-    }
-  ],
   "0xc656e762de524a52243bd0ad98fe0208a4b763e5b3406a525dd47ba8814c5e88": [
     {
       "taskId": "20211208-aave-linear-pool",
