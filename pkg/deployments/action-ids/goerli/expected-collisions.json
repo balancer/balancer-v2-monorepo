@@ -475,6 +475,12 @@
       "contractName": "FeeDistributor",
       "signature": "checkpoint()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
     }
   ],
   "0x6b5e3750e9adcbd4a75428ed3fc6d2d3fc8a52866660ad3778d3f8c33108edff": [
@@ -679,6 +685,12 @@
       "contractName": "LiquidityGaugeV5",
       "signature": "killGauge()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
     }
   ],
   "0x75f03d945d74639aa78784e5071604aa86c170a9f4c32bdf428231d560be70b7": [
@@ -731,6 +743,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
       "signature": "unkillGauge()",
       "useAdaptor": true
     }
@@ -1036,6 +1054,20 @@
       "taskId": "20220714-fee-distributor-v2",
       "contractName": "FeeDistributor",
       "signature": "depositTokens(address[],uint256[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x53ded5c23d686756f2cc6a8feb053e1a98ea78534f788670216e0617a9cf7101": [
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
+      "signature": "setRelativeWeightCap(uint256)",
       "useAdaptor": true
     }
   ]

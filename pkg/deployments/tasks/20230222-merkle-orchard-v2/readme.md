@@ -5,4 +5,8 @@ This release supersedes [Merkle Orchard V1](../deprecated/20211012-merkle-orchar
 
 ## Useful Files
 
+- [Ethereum mainnet addresses](./output/mainnet.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`MerkleOrchard` artifact](./artifact/MerkleOrchard.json)
