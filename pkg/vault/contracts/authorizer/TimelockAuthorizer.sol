@@ -78,6 +78,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     address public constant EVERYWHERE = address(-1);
 
+    uint256 public constant GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
+
     // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
     // an arbitrarily long delay.
     uint256 public constant MAX_DELAY = 2 * (365 days);
@@ -119,6 +121,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     mapping(bytes32 => mapping(address => mapping(address => bool))) private _isGranter;
     // action id => delay
     mapping(bytes32 => uint256) private _grantDelays;
+    // scheduled execution id => account => is canceler
+    mapping(uint256 => mapping(address => bool)) private _isCanceler;
 
     // External permissions
     mapping(bytes32 => bool) private _isPermissionGranted;
@@ -145,6 +149,16 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * @notice Emitted when an account is removed as a granter `actionId` in `where`.
      */
     event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
+
+    /**
+     * @notice Emitted when a canceler is created for a scheduled execution `scheduledExecutionId`.
+     */
+    event CancelerCreated(uint256 indexed scheduledExecutionId, address indexed canceler);
+
+    /**
+     * @notice Emitted when a canceler is destroyed for a scheduled execution `scheduledExecutionId`.
+     */
+    event CancelerDestroyed(uint256 indexed scheduledExecutionId, address indexed canceler);
 
     /**
      * @notice Emitted when an execution `scheduledExecutionId` is executed.
@@ -620,17 +634,53 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
-        // The permission to cancel a scheduled action is the same one used to schedule it.
-        // The root address may cancel any action even without this permission.
-        IAuthentication target = IAuthentication(scheduledExecution.where);
-        bytes32 actionId = target.getActionId(_decodeSelector(scheduledExecution.data));
-        require(
-            hasPermission(actionId, msg.sender, scheduledExecution.where) || isRoot(msg.sender),
-            "SENDER_IS_NOT_CANCELER"
-        );
+        require(isCanceler(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_CANCELER");
 
         scheduledExecution.cancelled = true;
         emit ExecutionCancelled(scheduledExecutionId);
+    }
+
+    function isCanceler(uint256 scheduledExecutionId, address account) public view returns (bool) {
+        return
+            _isCanceler[scheduledExecutionId][account] ||
+            _isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID][account] ||
+            isRoot(account);
+    }
+
+    function createCanceler(uint256 scheduledExecutionId, address account) external {
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+        _createCanceler(scheduledExecutionId, account);
+    }
+
+    function destroyCanceler(uint256 scheduledExecutionId, address account) external {
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+
+        // The root account is always a canceler, and this cannot be revoked.
+        require(!isRoot(account), "CANNOT_DESTROY_ROOT_CANCELER");
+
+        if (_isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID][account]) {
+            // If an account is a global canceler, then it must explicitly lose this global privilege. This prevents
+            // scenarios where an account has their canceler status revoked over a specific scheduled execution id, but
+            // they can still cancel it because they have global permission.
+            // There's an edge case in which an account could have both specific and global cancel privilege, and still
+            // be able to cancel some scheduled executions after losing global privilege. This is considered an unlikely
+            // scenario, and would require manual destruction of the specific canceler privileges even after destruction
+            // of the global one.
+            require(scheduledExecutionId == GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, "ACCOUNT_IS_GLOBAL_CANCELER");
+        } else {
+            // Alternatively, they must currently be a canceler in order to be revoked.
+            require(_isCanceler[scheduledExecutionId][account], "ACCOUNT_IS_NOT_CANCELER");
+        }
+
+        _isCanceler[scheduledExecutionId][account] = false;
+        emit CancelerDestroyed(scheduledExecutionId, account);
+    }
+
+    function _createCanceler(uint256 scheduledExecutionId, address account) private {
+        require(!isCanceler(scheduledExecutionId, account), "ACCOUNT_IS_ALREADY_CANCELER");
+
+        _isCanceler[scheduledExecutionId][account] = true;
+        emit CancelerCreated(scheduledExecutionId, account);
     }
 
     /**
