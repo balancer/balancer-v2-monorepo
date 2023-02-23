@@ -29,7 +29,6 @@
 - Deployed `GnosisRootGaugeFactory` to Mainnet.
 - Deployed `MerkleOrchard` V2 to Mainnet, Goerli, Arbitrum and Polygon.
 - Deployed `SingleRecipientGaugeFactory` V2 to Mainnet and Goerli.
-- Deployed `GnosisRootGaugeFactory` to Mainnet.
 
 ### Deprecations
 
