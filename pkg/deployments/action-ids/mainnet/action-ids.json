@@ -1153,7 +1153,22 @@
       "useAdaptor": true,
       "actionIds": {
         "checkpoint()": "0x3f63974a377ba4713661ede455bceda6686a0395f8b8ed8701ad1f13bb926c4d",
-        "initialize(address,uint256)": "0xa7eb8749bae4020b0007b643972b60456da2b6b92fa6b583c7277fc2dea05a39",
+        "initialize(address,uint256)": "0xa7eb8749bae4020b0007b643972b60456da2b6b92fa6b583c7277fc2dea05a39"
+      }
+    }
+  },
+  "20230215-single-recipient-gauge-factory-v2": {
+    "SingleRecipientGaugeFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(address,uint256,bool)": "0x3e237ec96a5f978764d578c4f87c027ba38e169b9a934bd6a8ea5eda7a8db483"
+      }
+    },
+    "SingleRecipientGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "checkpoint()": "0x3f63974a377ba4713661ede455bceda6686a0395f8b8ed8701ad1f13bb926c4d",
+        "initialize(address,uint256,bool,string)": "0x0b6a82f31eef5601eb17b673333b6abd4afcb2798fe1469615dd09ece28dbc2a",
         "killGauge()": "0xec1d467d9ab03a0079c22a89037209f5763aec973897ea763e2cf25d71a5f12e",
         "setRelativeWeightCap(uint256)": "0xae60dce27f51ce5815357b9f6b40f200557867f8222262a1646c005d09b7dfba",
         "unkillGauge()": "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea"
