@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
@@ -170,7 +169,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event PendingRootSet(address indexed pendingRoot);
 
     modifier onlyExecutor() {
-        _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
+        require(msg.sender == address(_executor), "CAN_ONLY_BE_SCHEDULED");
         _;
     }
 
@@ -450,7 +449,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         external
         returns (uint256 scheduledExecutionId)
     {
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
         return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
@@ -475,7 +474,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     function claimRoot() external {
         address currentRoot = _root;
         address pendingRoot = _pendingRoot;
-        _require(msg.sender == pendingRoot, Errors.SENDER_NOT_ALLOWED);
+        require(msg.sender == pendingRoot, "SENDER_IS_NOT_PENDING_ROOT");
 
         // Grant powers to new root to grant or revoke any permission over any contract.
         _grantPermission(_GENERAL_GRANT_ACTION_ID, pendingRoot, EVERYWHERE);
@@ -513,7 +512,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
         // current delay.
@@ -574,7 +573,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(where != address(_executor), "ATTEMPTING_EXECUTOR_REENTRANCY");
 
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
-        _require(hasPermission(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
         return _schedule(actionId, where, data, executors);
     }
 
@@ -593,7 +592,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         if (scheduledExecution.protected) {
             // Protected scheduled executions can only be executed by a set of accounts designated by the original
             // scheduler.
-            _require(isExecutor(scheduledExecutionId, msg.sender), Errors.SENDER_NOT_ALLOWED);
+            require(isExecutor(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_EXECUTOR");
         }
 
         scheduledExecution.executed = true;
@@ -626,9 +625,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // The root address may cancel any action even without this permission.
         IAuthentication target = IAuthentication(scheduledExecution.where);
         bytes32 actionId = target.getActionId(_decodeSelector(scheduledExecution.data));
-        _require(
+        require(
             hasPermission(actionId, msg.sender, scheduledExecution.where) || isRoot(msg.sender),
-            Errors.SENDER_NOT_ALLOWED
+            "SENDER_IS_NOT_CANCELER"
         );
 
         scheduledExecution.cancelled = true;
@@ -657,7 +656,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bool allowed
     ) external {
         // Root may grant or revoke granter status from any address.
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
@@ -678,7 +677,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // For permissions that have a delay when granting, `canGrant` will return false. `scheduleGrantPermission`
             // will succeed as it checks `isGranter` instead.
             // Note that `canGrant` will return true for the executor if the permission has a delay.
-            _require(canGrant(actionIds[i], msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
+            require(canGrant(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_GRANTER");
             _grantPermission(actionIds[i], account, where[i]);
         }
     }
@@ -692,7 +691,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
-        _require(isGranter(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
         bytes32 grantPermissionId = getGrantPermissionActionId(actionId);
         return _schedule(grantPermissionId, address(this), data, executors);
@@ -715,7 +714,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         bool allowed
     ) external {
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         bytes32 revokePermissionsActionId = getRevokePermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
@@ -736,7 +735,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // For permissions that have a delay when granting, `canRevoke` will return false.
             // `scheduleRevokePermission` will succeed as it checks `isRevoker` instead.
             // Note that `canRevoke` will return true for the executor if the permission has a delay.
-            _require(canRevoke(actionIds[i], msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
+            require(canRevoke(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_REVOKER");
             _revokePermission(actionIds[i], account, where[i]);
         }
     }
@@ -750,7 +749,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
-        _require(isRevoker(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        require(isRevoker(actionId, msg.sender, where), "SENDER_IS_NOT_REVOKER");
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
         bytes32 revokePermissionId = getRevokePermissionActionId(actionId);
         return _schedule(revokePermissionId, address(this), data, executors);

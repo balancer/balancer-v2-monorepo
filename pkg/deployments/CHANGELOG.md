@@ -27,12 +27,20 @@
 - Deployed `EulerLinearPoolFactory` to Mainnet and Goerli.
 - Deployed `YearnLinearPoolFactory` to Mainnet, Goerli, Arbitrum, Polygon, and Optimism.
 - Deployed `GearboxLinearPoolFactory` to Mainnet and Goerli.
+- Deployed `ChildChainLiquidityGaugeFactory`, `ChildChainStreamer`, and `RewardsOnlyGauge` to Gnosis.
+- Deployed `ChildChainGaugeTokenAdder` to Gnosis.
+- Deployed `ChildChainGaugeRewardHelper` to Gnosis.
+- Deployed `GnosisRootGaugeFactory` to Mainnet.
+- Deployed `MerkleOrchard` V2 to Mainnet, Goerli, Arbitrum and Polygon.
+- Deployed `SingleRecipientGaugeFactory` V2 to Mainnet and Goerli.
 
 ### Deprecations
 
 - Deprecated `20221207-aave-rebalanced-linear-pool-v3`.
 - Deprecated `20220425-unbutton-aave-linear-pool`.
 - Deprecated `20220404-erc4626-linear-pool-v2`.
+- Deprecated `20220325-gauge-adder`.
+- Deprecated `20220628-gauge-adder-v2`.
 
 ### Breaking Changes
 

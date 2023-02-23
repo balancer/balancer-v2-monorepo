@@ -61,7 +61,7 @@ describe('GaugeRelativeWeightCap', () => {
     liquidityGaugeFactory = await deploy('LiquidityGaugeFactory', { args: [liquidityGaugeImplementation.address] });
     // SingleRecipient is the simplest StakelessGauge, so we test with that instead of using e.g. a mock (which would be
     // identical to SingleRecipient)
-    stakelessGaugeFactory = await deploy('SingleRecipientGaugeFactory', { args: [balMinter.address] });
+    stakelessGaugeFactory = await deploy('SingleRecipientGaugeFactory', { args: [balMinter.address, '', ''] });
   });
 
   sharedBeforeEach('set up permissions', async () => {
