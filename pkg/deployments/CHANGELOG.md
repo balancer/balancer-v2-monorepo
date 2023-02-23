@@ -23,6 +23,7 @@
 - Deployed `EulerLinearPoolFactory` to Mainnet and Goerli.
 - Deployed `YearnLinearPoolFactory` to Mainnet, Goerli, Arbitrum, Polygon, and Optimism.
 - Deployed `GearboxLinearPoolFactory` to Mainnet and Goerli.
+- Deployed `SingleRecipientGaugeFactory` V2 to Mainnet and Goerli.
 
 ### Deprecations
 

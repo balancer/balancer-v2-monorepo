@@ -960,5 +960,23 @@
         "unpause()": "0x383deff38933fd5c665bbd2744d463ec6cae2d3d3663e959b8fe4231d3b32c8b"
       }
     }
+  },
+  "20230215-single-recipient-gauge-factory-v2": {
+    "SingleRecipientGaugeFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(address,uint256,bool)": "0x48bb7b3af0371dc4fc46b1afc937bff3aba62f24e41a0e977dbf159548d47fcc"
+      }
+    },
+    "SingleRecipientGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "checkpoint()": "0x7f4b0536efcbd917495f0d8e7a96852c08739243c797e73f00d32999233f8d5d",
+        "initialize(address,uint256,bool,string)": "0xe5494c181b7f1227ef0a7734ac38ac1bd42162fcf1380306b1d111cdc5676086",
+        "killGauge()": "0x38f12558087095621293389b35508390a03d17855b55b2394ce67b3c47d4463d",
+        "setRelativeWeightCap(uint256)": "0x53ded5c23d686756f2cc6a8feb053e1a98ea78534f788670216e0617a9cf7101",
+        "unkillGauge()": "0x5e7938ef4e6a59634c9800645277831eda1a30b5efd9ec55235154211f9e2941"
+      }
+    }
   }
 }
