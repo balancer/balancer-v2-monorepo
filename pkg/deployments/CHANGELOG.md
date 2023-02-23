@@ -26,7 +26,7 @@
 - Deployed `ChildChainLiquidityGaugeFactory`, `ChildChainStreamer`, and `RewardsOnlyGauge` to Gnosis.
 - Deployed `ChildChainGaugeTokenAdder` to Gnosis.
 - Deployed `ChildChainGaugeRewardHelper` to Gnosis.
-- Deployed `GnosisRootGaugeFactory` on Mainnet.
+- Deployed `GnosisRootGaugeFactory` to Mainnet.
 
 ### Deprecations
 
