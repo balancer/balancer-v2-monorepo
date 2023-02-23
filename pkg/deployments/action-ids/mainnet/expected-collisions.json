@@ -545,13 +545,14 @@
       "useAdaptor": true
     },
     {
-<<<<<<< HEAD
       "taskId": "20230217-gnosis-root-gauge-factory",
       "contractName": "GnosisRootGauge",
-=======
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20230215-single-recipient-gauge-factory-v2",
       "contractName": "SingleRecipientGauge",
->>>>>>> master
       "signature": "killGauge()",
       "useAdaptor": true
     }
@@ -640,13 +641,14 @@
       "useAdaptor": true
     },
     {
-<<<<<<< HEAD
       "taskId": "20230217-gnosis-root-gauge-factory",
       "contractName": "GnosisRootGauge",
-=======
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20230215-single-recipient-gauge-factory-v2",
       "contractName": "SingleRecipientGauge",
->>>>>>> master
       "signature": "unkillGauge()",
       "useAdaptor": true
     }
@@ -1035,13 +1037,14 @@
       "useAdaptor": true
     },
     {
-<<<<<<< HEAD
       "taskId": "20230217-gnosis-root-gauge-factory",
       "contractName": "GnosisRootGauge",
-=======
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20230215-single-recipient-gauge-factory-v2",
       "contractName": "SingleRecipientGauge",
->>>>>>> master
       "signature": "setRelativeWeightCap(uint256)",
       "useAdaptor": true
     }
