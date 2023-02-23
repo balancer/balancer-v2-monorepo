@@ -305,5 +305,50 @@
         "unpause()": "0xdf74aa35ca13699649afd09db6086f7d5c7c8f820ce90357c4825b982a2cbafa"
       }
     }
+  },
+  "20220413-child-chain-gauge-factory": {
+    "RewardsOnlyGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "claim_rewards()": "0xcf0b2b6798f0926a93b908e27f332cfe675625416f0bb92ba5eba0210e8862ad",
+        "claim_rewards(address)": "0x148bace62efe321c95bf0889b402b31e98d5fdcc6ab4cb39b8098228a82d5c7f",
+        "claim_rewards(address,address)": "0x94551b28e4224ffdc70c9e7178f6ee9e48764fb50cf5635edd9bcf09d2df64c3",
+        "claimable_reward_write(address,address)": "0xfc679314994f093e3443cbe466b4000351be4d017dde5b9ee2f976d75895dd84",
+        "deposit(uint256)": "0xebd01fda981e6a2ce9baed03021c6bffe3678acf18bd69a03e20b91a8a7ea0f4",
+        "deposit(uint256,address)": "0x9b9e09750c8ed7d83806572801ddf623057c7e95ec15c1ea36c0670827095bed",
+        "deposit(uint256,address,bool)": "0xa7a296781ddbbfeee4f9ce8663551468770c83f65d153c064f9dbfeb70f02548",
+        "initialize(address,address,bytes32)": "0x160d6c7f4356bb088dfced82b71d12011d070259698cdaf9e8e3dc54a16d8f16",
+        "set_rewards(address,bytes32,address[8])": "0x04427096606d82eb0bae4dae90ee6092c33092524a75e0a2a806438943457a83",
+        "set_rewards_receiver(address)": "0x3b7c2782c806c66b41a98e6f998aa0056451d31e41d0f7d04238e0ed97a4350b",
+        "withdraw(uint256)": "0x2fbeeab59a2e8b7f4a4bb0d5b80177b8aef087f0063d317953cc3b9b3512136e",
+        "withdraw(uint256,bool)": "0x994c5c9162060c36fbbe4385f912f952d59113ec2bae61eed98052872009e2ed"
+      }
+    },
+    "ChildChainStreamer": {
+      "useAdaptor": true,
+      "actionIds": {
+        "add_reward(address,address,uint256)": "0x1b89af5fd70d90b47a73a66d5c4b0f73ca01ea21b5a9c30d783f222b1452e562",
+        "get_reward()": "0x87643eb119a19e1654fb9d119137d30aad0d2132f799205e66c18d41476c3a2a",
+        "initialize(address)": "0x2b460a731f9534cd88c1e413cdbc71cdc845a51dfcb8d26d48bb7b70df49bb90",
+        "notify_reward_amount(address)": "0xf139842955587e7816c90b6d72792f2b7e6014d560464517094450df28164bc8",
+        "remove_reward(address,address)": "0x1da39327dd83225169af7d55dd9b3feb33fc61ab0a25ca6b8919596f356cbf94",
+        "set_reward_distributor(address,address)": "0x9d575f62420250ec382e1e8e262ddae46d0d6817fab9fde48f9c6efd068e5844",
+        "set_reward_duration(address,uint256)": "0x8437b3a9baec9691032f2656bf1874cdd89f3fbd8682005ca84f336686c7d48c"
+      }
+    },
+    "ChildChainLiquidityGaugeFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(address)": "0x9b9ebe5b6e53727fbefa2541e629822e72cd8c63c1e2911094b42bab112590a0"
+      }
+    }
+  },
+  "20220527-child-chain-gauge-token-adder": {
+    "ChildChainGaugeTokenAdder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addTokenToGauge(address,address,address)": "0x1ff8dca7a9af725b8fde69703b657ae58c04e9a7153ef1025379deb0dda4f926"
+      }
+    }
   }
 }

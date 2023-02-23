@@ -23,6 +23,10 @@
 - Deployed `EulerLinearPoolFactory` to Mainnet and Goerli.
 - Deployed `YearnLinearPoolFactory` to Mainnet, Goerli, Arbitrum, Polygon, and Optimism.
 - Deployed `GearboxLinearPoolFactory` to Mainnet and Goerli.
+- Deployed `ChildChainLiquidityGaugeFactory`, `ChildChainStreamer`, and `RewardsOnlyGauge` to Gnosis.
+- Deployed `ChildChainGaugeTokenAdder` to Gnosis.
+- Deployed `ChildChainGaugeRewardHelper` to Gnosis.
+- Deployed `GnosisRootGaugeFactory` to Mainnet.
 - Deployed `MerkleOrchard` V2 to Mainnet, Goerli, Arbitrum and Polygon.
 - Deployed `SingleRecipientGaugeFactory` V2 to Mainnet and Goerli.
 
