@@ -27,20 +27,6 @@
       "useAdaptor": true
     }
   ],
-  "0x6fef9a8dcafc0cebe8ac27f7da400eca76b1550c0c7b475c9a6ce1334f4cd1b3": [
-    {
-      "taskId": "20220325-authorizer-adaptor",
-      "contractName": "AuthorizerAdaptor",
-      "signature": "performAction(address,bytes)",
-      "useAdaptor": false
-    },
-    {
-      "taskId": "20221124-authorizer-adaptor-entrypoint",
-      "contractName": "AuthorizerAdaptorEntrypoint",
-      "signature": "performAction(address,bytes)",
-      "useAdaptor": false
-    }
-  ],
   "0xf9d27f783f06c33f198165d11f500f70ae99e14c6624f234cac46e1fc1978bec": [
     {
       "taskId": "20220404-erc4626-linear-pool-v2",

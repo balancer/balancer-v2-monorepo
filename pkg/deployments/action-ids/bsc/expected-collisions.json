@@ -26,19 +26,5 @@
       "signature": "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))",
       "useAdaptor": true
     }
-  ],
-  "0xc04f5846b82301fafb719d6ec3ed20e109163bfc25b65b683a0b0b6d309a369c": [
-    {
-      "taskId": "20220325-authorizer-adaptor",
-      "contractName": "AuthorizerAdaptor",
-      "signature": "performAction(address,bytes)",
-      "useAdaptor": false
-    },
-    {
-      "taskId": "20221124-authorizer-adaptor-entrypoint",
-      "contractName": "AuthorizerAdaptorEntrypoint",
-      "signature": "performAction(address,bytes)",
-      "useAdaptor": false
-    }
   ]
 }

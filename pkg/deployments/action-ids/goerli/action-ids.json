@@ -149,14 +149,6 @@
       }
     }
   },
-  "20220325-authorizer-adaptor": {
-    "AuthorizerAdaptor": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0x86de7f38b01b0cb905a3ac31f25891f3ba5a50f5074181ac37bfbd28a4e31f16"
-      }
-    }
-  },
   "20220325-balancer-token-admin": {
     "BalancerTokenAdmin": {
       "useAdaptor": false,
@@ -720,14 +712,6 @@
         "setSwapFeePercentage(uint256)": "0x9ece5ed53c8547cc53b3f118eb0f4eeda2744827f0b128b6007ac28c3ff5fc06",
         "setTargets(uint256,uint256)": "0x913ac1c232c89aeaa0021e2344973cb498de977a10e2038e67cdc9e74674ef13",
         "unpause()": "0x4b11bfc905756d063392a926d9089f9f44694030a746d780cb78ac07d19c4c46"
-      }
-    }
-  },
-  "20221124-authorizer-adaptor-entrypoint": {
-    "AuthorizerAdaptorEntrypoint": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0x86de7f38b01b0cb905a3ac31f25891f3ba5a50f5074181ac37bfbd28a4e31f16"
       }
     }
   },

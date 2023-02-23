@@ -58,14 +58,6 @@
       }
     }
   },
-  "20220325-authorizer-adaptor": {
-    "AuthorizerAdaptor": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xc04f5846b82301fafb719d6ec3ed20e109163bfc25b65b683a0b0b6d309a369c"
-      }
-    }
-  },
   "20220517-protocol-fee-withdrawer": {
     "ProtocolFeesWithdrawer": {
       "useAdaptor": false,
@@ -169,14 +161,6 @@
         "addPoolFactory(address)": "0x90ce8036a67bbe2451d4f50ab7353343339db901728ae2de09928006819ee686",
         "enableRecoveryMode(address)": "0xd803b6aadd1ec41e42e680b246ebc3f68425ee6cfba1883b53b8fd01e7f37c6b",
         "removePoolFactory(address)": "0x25cbdd96392463c2c0b1e5a2db364a18327ef561b6ceeb4a444b694dbf2c7890"
-      }
-    }
-  },
-  "20221124-authorizer-adaptor-entrypoint": {
-    "AuthorizerAdaptorEntrypoint": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xc04f5846b82301fafb719d6ec3ed20e109163bfc25b65b683a0b0b6d309a369c"
       }
     }
   },

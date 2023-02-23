@@ -109,14 +109,6 @@
       }
     }
   },
-  "20220325-authorizer-adaptor": {
-    "AuthorizerAdaptor": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xb15b30df9532a604d270b606ff7a0ca41e2976166bfa5ce9e1f823a88d69a9d9"
-      }
-    }
-  },
   "20220413-child-chain-gauge-factory": {
     "RewardsOnlyGauge": {
       "useAdaptor": true,
@@ -324,14 +316,6 @@
         "addPoolFactory(address)": "0x9e87510ecbff1f510fd37073c7c39868559afdb91e4876854c8b6b0e3d2cb6fb",
         "enableRecoveryMode(address)": "0xe8bba8219634110ef69d6d15bfc74c5b482c9ff60d90dcdda3fe59eb24d5fdae",
         "removePoolFactory(address)": "0x4c27b95c60e628aa279735e55e6480657fc5766bb0b6b583b8ecccbc07930c1d"
-      }
-    }
-  },
-  "20221124-authorizer-adaptor-entrypoint": {
-    "AuthorizerAdaptorEntrypoint": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xb15b30df9532a604d270b606ff7a0ca41e2976166bfa5ce9e1f823a88d69a9d9"
       }
     }
   },

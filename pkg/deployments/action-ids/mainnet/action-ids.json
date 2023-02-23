@@ -295,14 +295,6 @@
       }
     }
   },
-  "20220325-authorizer-adaptor": {
-    "AuthorizerAdaptor": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xb15b30df9532a604d270b606ff7a0ca41e2976166bfa5ce9e1f823a88d69a9d9"
-      }
-    }
-  },
   "20220325-bal-token-holder-factory": {
     "BALTokenHolderFactory": {
       "useAdaptor": true,
@@ -910,14 +902,6 @@
         "addPoolFactory(address)": "0xbc33dd383590d6f85727901da00e6971ba3af5561e93a485f41a82a94137cf47",
         "enableRecoveryMode(address)": "0x7004ffafae71ebf8ca75d0161b7818dd31e726c2d57bfa02b045adf08e9f8a06",
         "removePoolFactory(address)": "0x2ee7ebfa3c3d2e030256ae85768e5434350a58e9284ac5bec2d6b7efa01819e3"
-      }
-    }
-  },
-  "20221124-authorizer-adaptor-entrypoint": {
-    "AuthorizerAdaptorEntrypoint": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xb15b30df9532a604d270b606ff7a0ca41e2976166bfa5ce9e1f823a88d69a9d9"
       }
     }
   },
