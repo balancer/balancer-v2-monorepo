@@ -25,6 +25,9 @@ if (process.env.CI) {
       "bsc": {
         "url": "${process.env.BINANCE_RPC_ENDPOINT}"
       },
+      "avalanche": {
+        "url": "${process.env.AVALANCHE_RPC_ENDPOINT}"
+      },
       "goerli": {
         "url": "${process.env.GOERLI_RPC_ENDPOINT}"
       }
