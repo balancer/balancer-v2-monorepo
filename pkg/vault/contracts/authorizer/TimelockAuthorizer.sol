@@ -95,13 +95,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     // solhint-disable var-name-mixedcase
-    bytes32 public immutable GRANT_ACTION_ID;
     bytes32 public immutable REVOKE_ACTION_ID;
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
     // These action ids do not need to be used by external actors as the action ids above do.
     // Instead they're saved just for gas savings so we can keep them private.
-    bytes32 private immutable _GENERAL_GRANT_ACTION_ID;
     bytes32 private immutable _GENERAL_REVOKE_ACTION_ID;
 
     TimelockExecutor private immutable _executor;
@@ -200,21 +198,16 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
 
-        bytes32 grantActionId = getActionId(TimelockAuthorizer.grantPermissions.selector);
         bytes32 revokeActionId = getActionId(TimelockAuthorizer.revokePermissions.selector);
-        bytes32 generalGrantActionId = getExtendedActionId(grantActionId, GENERAL_PERMISSION_SPECIFIER);
         bytes32 generalRevokeActionId = getExtendedActionId(revokeActionId, GENERAL_PERMISSION_SPECIFIER);
 
         // These don't technically need to be granted, as `initialRoot` is the new root, and can grant these permissions
         // directly to itself. But granting here improves ergonomics, especially in testing, as `initialRoot` is now
         // ready to grant any permission.
-        _grantPermission(generalGrantActionId, initialRoot, EVERYWHERE);
         _grantPermission(generalRevokeActionId, initialRoot, EVERYWHERE);
 
-        GRANT_ACTION_ID = grantActionId;
         REVOKE_ACTION_ID = revokeActionId;
         SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
-        _GENERAL_GRANT_ACTION_ID = generalGrantActionId;
         _GENERAL_REVOKE_ACTION_ID = generalRevokeActionId;
     }
 
@@ -272,13 +265,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     function getActionId(bytes4 selector) public view override returns (bytes32) {
         return keccak256(abi.encodePacked(bytes32(uint256(address(this))), selector));
-    }
-
-    /**
-     * @notice Returns the action ID for granting a permission for action `actionId`.
-     */
-    function getGrantPermissionActionId(bytes32 actionId) public view returns (bytes32) {
-        return getExtendedActionId(GRANT_ACTION_ID, actionId);
     }
 
     /**
@@ -485,11 +471,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(msg.sender == pendingRoot, "SENDER_IS_NOT_PENDING_ROOT");
 
         // Grant powers to new root to grant or revoke any permission over any contract.
-        _grantPermission(_GENERAL_GRANT_ACTION_ID, pendingRoot, EVERYWHERE);
         _grantPermission(_GENERAL_REVOKE_ACTION_ID, pendingRoot, EVERYWHERE);
 
         // Revoke these powers from the outgoing root.
-        _revokePermission(_GENERAL_GRANT_ACTION_ID, currentRoot, EVERYWHERE);
         _revokePermission(_GENERAL_REVOKE_ACTION_ID, currentRoot, EVERYWHERE);
 
         // Complete the root transfer and reset the pending root.
@@ -739,9 +723,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
+
+        uint256 delay = _grantDelays[actionId];
+        require(delay > 0, "ACTION_HAS_NO_GRANT_DELAY");
+
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
-        bytes32 grantPermissionId = getGrantPermissionActionId(actionId);
-        return _schedule(grantPermissionId, address(this), data, executors);
+        return _scheduleWithDelay(0x0, address(this), data, delay, executors);
     }
 
     /**
