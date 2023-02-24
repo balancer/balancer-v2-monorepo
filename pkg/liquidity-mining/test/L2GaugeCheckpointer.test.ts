@@ -66,7 +66,7 @@ describe('L2GaugeCheckpointer', () => {
 
     // Gauge adder & add factories to gauge adder.
     gaugeAdder = await deploy('GaugeAdder', {
-      args: [gaugeController.address, ZERO_ADDRESS, adaptorEntrypoint.address],
+      args: [gaugeController.address, adaptorEntrypoint.address],
     });
     const action = await actionId(gaugeAdder, 'addGaugeFactory');
     await vault.grantPermissionsGlobally([action], admin);
@@ -118,7 +118,7 @@ describe('L2GaugeCheckpointer', () => {
       });
 
       it('reverts getting gauge at index', async () => {
-        await expect(L2GaugeCheckpointer.getGaugeAt(gaugeType, 0)).to.be.revertedWith(REVERT_MSG);
+        await expect(L2GaugeCheckpointer.getGaugeAtIndex(gaugeType, 0)).to.be.revertedWith(REVERT_MSG);
       });
     });
   }
@@ -282,7 +282,7 @@ describe('L2GaugeCheckpointer', () => {
   async function expectGaugesAt(gaugeType: GaugeType, gauges: string[]) {
     expect(await L2GaugeCheckpointer.getTotalGauges(gaugeType)).to.be.eq(gauges.length);
     for (let i = 0; i < gauges.length; i++) {
-      expect(await L2GaugeCheckpointer.getGaugeAt(gaugeType, i)).to.be.eq(gauges[i]);
+      expect(await L2GaugeCheckpointer.getGaugeAtIndex(gaugeType, i)).to.be.eq(gauges[i]);
     }
   }
 

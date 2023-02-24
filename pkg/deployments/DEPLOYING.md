@@ -11,7 +11,8 @@ A task is made up of multiple components:
 - one or multiple build information JSON files, located in the `build-info` directory.
 - an `input.ts` file, containing information on dependencies and deployment parameters (which might differ across networks).
 - an `index.ts` file, with the instructions for the actual deployment.
-- the `output`, `abi` and `bytecode` directories, with JSON files containing the deployment addresses of the tasks' contracts in each network as well as additional information.
+- the `artifact` directory, with JSON files extracted from the build information containing contracts' ABI, bytecode, and metadata.
+- the `output` directory, with JSON files containing the deployment addresses of the tasks' contracts on each network.
 - optional fork tests in the `test` directory.
 
 ### Why `build-info`
@@ -25,19 +26,19 @@ As part of our development process, we frequently alter the source code of contr
 To create a new task, these are the recommended steps:
 - Create a new directory named after the task ID in the `tasks` directory
 - Add an entry in the README file with the new task
-- Write appropiate `input.ts` and `index.ts` files, which specify deployment arguments and steps respectively 
+- Write appropriate `input.ts` and `index.ts` files, which specify deployment arguments and steps respectively 
 - Populate `build-info` directory with compiled contracts data (see [Generating build info](#generating-build-info) section)
-- Generate `abi` and `bytecode` artifacts from build info files (see [Generating ABI and bytecode files](#generating-abi-and-bytecode-files) section)
+- Generate artifacts with ABI and bytecode from build info files (see [Generating ABI and bytecode files](#generating-artifact-files-with-abi-and-bytecode) section)
 
 
 Inputs and task instructions are plain TypeScript files that call appropriate functions - there's no DSL. The recommended way to write them is to copy the structure from the `input.ts` and `index.ts` files from a similar task, and then edit those as needed.
-The `output`, `abi` and `bytecode` directories will be automatically generated and populated.
+The `output` and `artifact` directories will be automatically generated and populated.
 
 ### Generating build info
 
 The build information should be generated on a clean commit, so that it can be verified by other parties. On the project directory, delete the `artifacts` directory and run `yarn hardhat compile` for a clean compilation. The file will then be located at `artifacts/build-info`, and it'll contain the data for all the contracts in the workspace.
 
-### Generating ABI and bytecode files
+### Generating artifact files with ABI and bytecode
 
 To generate the artifacts from build info files:
 - Copy the generated build info `json` inside `<repo-root>/pkg/<workspace>/artifacts/build-info` to the new `<repo-root>/pkg/deployments/tasks/<task-id>/build-info` directory.
@@ -47,7 +48,7 @@ To generate the artifacts from build info files:
 yarn extract-artifacts --id 20221021-managed-pool --name ManagedPool --file ManagedPoolFactory
 ```
 
-The `abi` and `bytecode` folders should have been populated with the created artifacts at this point.
+The `artifact` folder should have been populated with the created artifacts at this point.
 
 ### Vyper Compilation
 

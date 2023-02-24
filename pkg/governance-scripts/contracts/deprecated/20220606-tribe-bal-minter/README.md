@@ -13,4 +13,4 @@ This contract mints the amount of BAL which would be claimable by the Tribe's [V
 
 ## Deployment
 
-[Deployment task here](../../deployments/tasks/20220606-tribe-bal-minter-coordinator)
+[Deployment task here](../../../../deployments/tasks/scripts/20220606-tribe-bal-minter-coordinator)

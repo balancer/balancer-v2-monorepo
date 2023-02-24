@@ -34,6 +34,15 @@ interface IRecoveryModeHelper {
      *
      * The Pool is assumed to be a Composable Pool that uses ComposablePoolLib, meaning BPT will be its first token. It
      * is also assumed that there is no 'managed' balance for BPT.
+
+     * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
+     * via reentrancy. See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
+     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
+     * function before calling `calcComposableRecoveryAmountsOut`. That will make the transaction revert in an unsafe
+     * context.
+     *
+     * (See `VaultReentrancyLib.ensureNotInVaultContext`).
      */
     function calcComposableRecoveryAmountsOut(
         bytes32 poolId,
