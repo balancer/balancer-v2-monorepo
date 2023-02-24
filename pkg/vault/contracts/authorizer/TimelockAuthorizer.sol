@@ -735,6 +735,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(delay > 0, "ACTION_HAS_NO_GRANT_DELAY");
 
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
+
+        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
         return _scheduleWithDelay(0x0, address(this), data, delay, executors);
     }
 
