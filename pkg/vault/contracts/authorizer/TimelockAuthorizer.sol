@@ -117,6 +117,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     // scheduled execution id => account => is executor
     mapping(uint256 => mapping(address => bool)) private _isExecutor;
 
+    // action id => account => where => is granter
+    mapping(bytes32 => mapping(address => mapping(address => bool))) private _isGranter;
+    // action id => delay
+    mapping(bytes32 => uint256) private _grantDelays;
+
     // External permissions
     mapping(bytes32 => bool) private _isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
@@ -132,6 +137,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * @notice Emitted when an executor is created for a scheduled execution `scheduledExecutionId`.
      */
     event ExecutorCreated(uint256 indexed scheduledExecutionId, address indexed executor);
+
+    event GranterAdded(bytes32 indexed actionId, address indexed account, address indexed where);
+    event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
 
     /**
      * @notice Emitted when an execution `scheduledExecutionId` is executed.
@@ -350,7 +358,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address account,
         address where
     ) public view returns (bool) {
-        return _hasPermissionSpecificallyOrGenerally(GRANT_ACTION_ID, account, where, actionId);
+        return _isGranter[actionId][where][account] || _isGranter[actionId][EVERYWHERE][account] || isRoot(account);
     }
 
     /**
@@ -400,7 +408,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address account,
         address where
     ) public view returns (bool) {
-        return _canPerformSpecificallyOrGenerally(GRANT_ACTION_ID, account, where, actionId);
+        return _grantDelays[actionId] > 0 ? account == address(_executor) : isGranter(actionId, account, where);
     }
 
     /**
@@ -655,8 +663,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     ) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
-        bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
-        _grantPermission(grantPermissionsActionId, account, where);
+        require(!isGranter(actionId, account, where), "ACCOUNT_IS_ALREADY_GRANTER");
+        // Note that it is possible for `account` to be a granter for the same `actionId` in some specific `where`, and
+        // then be granted permission over `EVERYWHERE`, resulting in 'duplicate' permissions. This is not an issue per
+        // se, but removing this granter status will require undoing these actions in inverse order.
+        // To avoid these issues, it is recommended to revoke any prior granter status over specific contracts before
+        // making an account a global granter.
+
+        _isGranter[actionId][where][account] = true;
+        emit GranterAdded(actionId, account, where);
     }
 
     /**
@@ -678,8 +693,20 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     ) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
-        bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
-        _revokePermission(grantPermissionsActionId, account, where);
+        require(isGranter(actionId, account, where), "ACCOUNT_IS_NOT_GRANTER");
+
+        require(!isRoot(account), "CANNOT_REMOVE_ROOT_GRANTER");
+
+        // On top of requiring that the account is currently a granter, we prevent attempts to revoke permission over a
+        // single contract from global granters. As mentioned in `addGranter`, it is possible for an account to have
+        // both global and specific permissions over a given contract: in this case, the global permission must be
+        // removed before the specific ones can be addressed.
+        if (_isGranter[actionId][account][EVERYWHERE]) {
+            require(where == EVERYWHERE, "GRANTER_IS_GLOBAL");
+        }
+
+        _isGranter[actionId][where][account] = false;
+        emit GranterRemoved(actionId, account, where);
     }
 
     /**
