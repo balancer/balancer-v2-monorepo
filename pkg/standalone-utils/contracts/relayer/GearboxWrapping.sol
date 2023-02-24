@@ -42,6 +42,7 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
         if (_isChainedReference(mainAmount)) {
             mainAmount = _getChainedReferenceValue(mainAmount);
         }
+
         IGearboxVault gearboxVault = IGearboxVault(wrappedToken.owner());
         IERC20 underlying = IERC20(gearboxVault.underlyingToken());
 
@@ -52,7 +53,9 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlying, mainAmount);
         }
 
+        // Main Tokens are not deposited in the dieselToken address. Instead, they're deposited in a gearbox vault
         underlying.safeApprove(address(gearboxVault), mainAmount);
+        // The third argument of addLiquidity is a referral code, which will be always 0 for the relayer (no referee)
         gearboxVault.addLiquidity(mainAmount, recipient, 0);
 
         if (_isChainedReference(outputReference)) {
@@ -78,6 +81,8 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
             _pullToken(sender, IERC20(address(wrappedToken)), dieselAmount);
         }
 
+        // Main Tokens are not deposited in the dieselToken address. Instead, they're deposited in a gearbox vault.
+        // Therefore, to remove liquidity, we withdraw tokens from the vault, and not from the wrapped token.
         IGearboxVault gearboxVault = IGearboxVault(wrappedToken.owner());
         gearboxVault.removeLiquidity(dieselAmount, recipient);
 

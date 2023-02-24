@@ -56,7 +56,7 @@ export function inIndirectReceipt(
   } else {
     expect(expectedEvents.length).to.equal(
       amount,
-      `${expectedEvents.length} '${eventName}' events found, but no event with amount ${amount}`
+      `${expectedEvents.length} '${eventName}' events found; expected ${amount}`
     );
   }
 

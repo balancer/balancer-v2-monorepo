@@ -17,31 +17,32 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IGearboxDieselToken.sol";
-import "./MockGearboxDieselToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
+
+import "./MockGearboxDieselToken.sol";
 
 contract MockGearboxVault is IGearboxVault {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
     uint256 private immutable _rate = 1e27;
-    address private _dieselTokenAddress;
-    address private immutable _underlyingToken;
+    MockGearboxDieselToken private _dieselToken;
+    IERC20 private immutable _underlyingToken;
 
     constructor(
         address underlyingTokenAddress
     ) {
-        _underlyingToken = underlyingTokenAddress;
+        _underlyingToken = IERC20(underlyingTokenAddress);
     }
 
     function setDieselToken(address dieselTokenAddress) external {
-        _dieselTokenAddress = dieselTokenAddress;
+        _dieselToken = MockGearboxDieselToken(dieselTokenAddress);
     }
 
-    function underlyingToken() external view override returns (address) {
+    function underlyingToken() external view override returns (IERC20) {
         return _underlyingToken;
     }
 
@@ -51,11 +52,11 @@ contract MockGearboxVault is IGearboxVault {
     }
 
     function fromDiesel(uint256 amountDiesel) external view override returns (uint256) {
-        return amountDiesel.mulDown(_rate) / 10**9;
+        return _fromDiesel(amountDiesel);
     }
 
     function toDiesel(uint256 amountUnderlying) external view override returns (uint256) {
-        return (amountUnderlying * 10**9).divDown(_rate);
+        return _toDiesel(amountUnderlying);
     }
 
     function addLiquidity(
@@ -63,15 +64,22 @@ contract MockGearboxVault is IGearboxVault {
         address onBehalfOf,
         uint256
     ) external override {
-        IERC20(_underlyingToken).safeTransferFrom(msg.sender, address(this), amount);
-        uint256 wrappedAmount = this.toDiesel(amount);
-        MockGearboxDieselToken(_dieselTokenAddress).mint(onBehalfOf, wrappedAmount);
+        _underlyingToken.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 wrappedAmount = _toDiesel(amount);
+        _dieselToken.mint(onBehalfOf, wrappedAmount);
     }
 
     function removeLiquidity(uint256 wrappedAmount, address to) external override {
-        MockGearboxDieselToken(_dieselTokenAddress).burn(msg.sender, wrappedAmount);
-        uint256 mainAmount = this.fromDiesel(wrappedAmount);
-        IERC20(_underlyingToken).safeApprove(address(this), mainAmount);
-        IERC20(_underlyingToken).safeTransferFrom(address(this), to, mainAmount);
+        _dieselToken.burn(msg.sender, wrappedAmount);
+        uint256 mainAmount = _fromDiesel(wrappedAmount);
+        _underlyingToken.safeTransfer(to, mainAmount);
+    }
+
+    function _fromDiesel(uint256 amountDiesel) private view returns (uint256) {
+        return amountDiesel.mulDown(_rate) / 10**9;
+    }
+
+    function _toDiesel(uint256 amountUnderlying) private view returns (uint256) {
+        return (amountUnderlying * 10**9).divDown(_rate);
     }
 }
