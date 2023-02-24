@@ -236,10 +236,12 @@ export default class Task {
 
   artifact(contractName: string, fileName?: string): Artifact {
     const buildInfoDir = this._dirAt(this.dir(), 'build-info');
+    fileName = fileName ?? contractName;
+
     const builds: {
       [sourceName: string]: { [contractName: string]: CompilerOutputContract };
-    } = this._existsFile(path.join(buildInfoDir, `${fileName || contractName}.json`))
-      ? this.buildInfo(contractName).output.contracts
+    } = this._existsFile(path.join(buildInfoDir, `${fileName}.json`))
+      ? this.buildInfo(fileName).output.contracts
       : this.buildInfos().reduce((result, info: BuildInfo) => ({ ...result, ...info.output.contracts }), {});
 
     const sourceName = Object.keys(builds).find((sourceName) =>

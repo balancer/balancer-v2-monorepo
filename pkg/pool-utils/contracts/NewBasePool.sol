@@ -83,6 +83,7 @@ abstract contract NewBasePool is
         BalancerPoolToken(name, symbol, vault)
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+        RecoveryMode(vault)
     {
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;

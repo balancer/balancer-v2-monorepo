@@ -15,6 +15,8 @@
     "queryExit(bytes32,address,address,uint256[],uint256,uint256,bytes)",
     "queryJoin(bytes32,address,address,uint256[],uint256,uint256,bytes)",
     "onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)",
-    "onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)"
+    "onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)",
+    "performAction(address,bytes)",
+    "multicall(bytes[])"
   ]
 }

@@ -341,26 +341,6 @@
       "useAdaptor": true
     }
   ],
-  "0x3f1c6da046c01fb8c9201a73d729522abd0f2e2fd48e8e1b0691925c37c6dec5": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BalancerRelayer",
-      "signature": "multicall(bytes[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BalancerRelayer",
-      "signature": "multicall(bytes[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "2022xxxx-batch-relayer-v3",
-      "contractName": "BalancerRelayer",
-      "signature": "multicall(bytes[])",
-      "useAdaptor": true
-    }
-  ],
   "0xc656e762de524a52243bd0ad98fe0208a4b763e5b3406a525dd47ba8814c5e88": [
     {
       "taskId": "20211208-aave-linear-pool",
@@ -437,20 +417,6 @@
       "useAdaptor": true
     }
   ],
-  "0x86de7f38b01b0cb905a3ac31f25891f3ba5a50f5074181ac37bfbd28a4e31f16": [
-    {
-      "taskId": "20220325-authorizer-adaptor",
-      "contractName": "AuthorizerAdaptor",
-      "signature": "performAction(address,bytes)",
-      "useAdaptor": false
-    },
-    {
-      "taskId": "20221124-authorizer-adaptor-entrypoint",
-      "contractName": "AuthorizerAdaptorEntrypoint",
-      "signature": "performAction(address,bytes)",
-      "useAdaptor": false
-    }
-  ],
   "0x7f4b0536efcbd917495f0d8e7a96852c08739243c797e73f00d32999233f8d5d": [
     {
       "taskId": "20220325-gauge-controller",
@@ -473,6 +439,12 @@
     {
       "taskId": "20220714-fee-distributor-v2",
       "contractName": "FeeDistributor",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
       "signature": "checkpoint()",
       "useAdaptor": true
     }
@@ -679,6 +651,12 @@
       "contractName": "LiquidityGaugeV5",
       "signature": "killGauge()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
     }
   ],
   "0x75f03d945d74639aa78784e5071604aa86c170a9f4c32bdf428231d560be70b7": [
@@ -731,6 +709,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
       "signature": "unkillGauge()",
       "useAdaptor": true
     }
@@ -1036,6 +1020,20 @@
       "taskId": "20220714-fee-distributor-v2",
       "contractName": "FeeDistributor",
       "signature": "depositTokens(address[],uint256[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x53ded5c23d686756f2cc6a8feb053e1a98ea78534f788670216e0617a9cf7101": [
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
+      "signature": "setRelativeWeightCap(uint256)",
       "useAdaptor": true
     }
   ]
