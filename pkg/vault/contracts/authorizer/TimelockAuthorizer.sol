@@ -136,7 +136,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     event ExecutorCreated(uint256 indexed scheduledExecutionId, address indexed executor);
 
+    /**
+     * @notice Emitted when a granter is added for `actionId` in `where`.
+     */
     event GranterAdded(bytes32 indexed actionId, address indexed account, address indexed where);
+
+    /**
+     * @notice Emitted when a granter is removed for `actionId` in `where`.
+     */
     event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
 
     /**
