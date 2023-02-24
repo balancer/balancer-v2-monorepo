@@ -635,31 +635,51 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants or revokes granter status to `account` for action `actionId` in target `where`.
-     * @dev Only the root can add and remove granters.
+     * @notice Grants granter status to `account` for action `actionId` in target `where`.
+     * @dev Only the root can add granters.
      *
-     * Note that there are no delays associated with adding or removing granters. This is based on the assumption that
-     * any action which a malicous user could exploit to damage the protocol will have a sufficiently long delay
-     * associated with either granting permission for or exercising that permission such that the root will be able to
-     * reestablish control and cancel either the granting or associated action before it can be executed, and then
-     * remove the granter.
+     * Note that there are no delays associated with adding granters. This is based on the assumption that any action
+     * which a malicous user could exploit to damage the protocol will have a sufficiently long delay associated with
+     * granting permissions for or exercising that permission such that the root will be able to reestablish control and
+     * cancel either the granting or associated action before it can be executed, and then remove the granter.
      *
      * A malicious granter may also attempt to use their granter status to grant permission to multiple accounts, but
      * they cannot create new granters. Therefore, the danger posed by a malicious granter is limited and self-
      * contained. Root can mitigate the situation simply and completely by revoking first their granter status,
      * and then any permissions granted by that account, knowing there cannot be any more.
      */
-    function manageGranter(
+    function addGranter(
         bytes32 actionId,
         address account,
-        address where,
-        bool allowed
+        address where
     ) external {
-        // Root may grant or revoke granter status from any address.
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
-        (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
+        _grantPermission(grantPermissionsActionId, account, where);
+    }
+
+    /**
+     * @notice Revokes granter status from `account` for action `actionId` in target `where`.
+     * @dev Only the root can remove granters.
+     *
+     * Note that there are no delays associated with removing granters. The only instance in which one might be useful
+     * is if we had contracts that were granters, and this was depended upon for operation of the system. This however
+     * doesn't seem like it will ever be required - granters are typically subDAOs.
+     *
+     * After removing a malicious granter, care should be taken to review their actions and remove any permissions
+     * granted by them, or cancel scheduled grants. This should be done *after* removing the granter, at which point
+     * they won't be able to create any more of these.
+     */
+    function removeGranter(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external {
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+
+        bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
+        _revokePermission(grantPermissionsActionId, account, where);
     }
 
     /**
