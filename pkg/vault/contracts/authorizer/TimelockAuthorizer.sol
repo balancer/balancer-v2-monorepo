@@ -467,7 +467,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
-        return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
+        return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors, msg.sender);
     }
 
     /**
@@ -554,7 +554,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
-        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
+        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors, msg.sender);
     }
 
     /**
@@ -687,10 +687,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * @notice Grants granter status to `account` for action `actionId` in target `where`.
      * @dev Only the root can add granters.
      *
-     * Note that there are no delays associated with adding granters. This is based on the assumption that any action
-     * which a malicous user could exploit to damage the protocol will have a sufficiently long delay associated with
-     * granting permissions for or exercising that permission. Then, the root will be able to reestablish control and
-     * cancel either the granting or associated action before it can be executed, and finally remove the granter.
+     * Note that there are no delays associated with adding or removing granters. This is based on the assumption that
+     * any action which a malicious user could exploit to damage the protocol will have a sufficiently long delay
+     * associated with either granting permission for or exercising that permission such that the root will be able to
+     * reestablish control and cancel either the granting or associated action before it can be executed, and then
+     * remove the granter.
      *
      * A malicious granter may also attempt to use their granter status to grant permission to multiple accounts, but
      * they cannot create new granters. Therefore, the danger posed by a malicious granter is limited and self-
@@ -908,7 +909,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     ) private returns (uint256 scheduledExecutionId) {
         uint256 delay = _delaysPerActionId[actionId];
         require(delay > 0, "CANNOT_SCHEDULE_ACTION");
-        return _scheduleWithDelay(actionId, where, data, delay, executors);
+        return _scheduleWithDelay(actionId, where, data, delay, executors, msg.sender);
     }
 
     function _scheduleWithDelay(
@@ -916,7 +917,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         bytes memory data,
         uint256 delay,
-        address[] memory executors
+        address[] memory executors,
+        address sender
     ) private returns (uint256 scheduledExecutionId) {
         scheduledExecutionId = _scheduledExecutions.length;
         emit ExecutionScheduled(actionId, scheduledExecutionId);
@@ -940,6 +942,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // Note that we allow for repeated executors - this is not an issue
             _isExecutor[scheduledExecutionId][executors[i]] = true;
             emit ExecutorCreated(scheduledExecutionId, executors[i]);
+        }
+
+        // if the scheduler doesn't have a permission to cancel the scheduled action then grant it
+        if (!isCanceler(scheduledExecutionId, sender)) {
+            _createCanceler(scheduledExecutionId, sender);
         }
     }
 
