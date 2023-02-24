@@ -246,12 +246,6 @@
         "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)": "0xd97e985113b0adf0a61a16b7bbbb50f9bc8efb16235f3bb8881db59c61127cf2",
         "wrapStETH(address,address,uint256,uint256)": "0x7adacb41fadeda1310655dd5b02f5b15b3805c325657b6b2ccde3ee3e5971ba2"
       }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0xc39cf075301d1b05cef3fc32c6b1797e285eef17806fad46628c0cfcee1396de"
-      }
     }
   },
   "20211208-aave-linear-pool": {
@@ -292,14 +286,6 @@
         "stopAmplificationParameterUpdate()": "0x4f37434f57ce76a752b6a952570d046ec875f494e05243dab1f3c92f673d0cb2",
         "updateCachedProtocolSwapFeePercentage()": "0xc48a17424b6d527a0b4f030e4df5e7eff52b4aae6f76a306b55f91c27cccc1c2",
         "updateTokenRateCache(address)": "0x1cb934b52b3cf6cb3594cc25b72e1d6861cd41e4fc12bb5f10bfa52b10fa170e"
-      }
-    }
-  },
-  "20220325-authorizer-adaptor": {
-    "AuthorizerAdaptor": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xb15b30df9532a604d270b606ff7a0ca41e2976166bfa5ce9e1f823a88d69a9d9"
       }
     }
   },
@@ -714,12 +700,6 @@
         "wrapStETH(address,address,uint256,uint256)": "0x7adacb41fadeda1310655dd5b02f5b15b3805c325657b6b2ccde3ee3e5971ba2",
         "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x3e5d1134e52635f3935c7a91e97354b0c6fc62049775883d345f055420d97280"
       }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0xc39cf075301d1b05cef3fc32c6b1797e285eef17806fad46628c0cfcee1396de"
-      }
     }
   },
   "20220725-protocol-fee-percentages-provider": {
@@ -910,14 +890,6 @@
         "addPoolFactory(address)": "0xbc33dd383590d6f85727901da00e6971ba3af5561e93a485f41a82a94137cf47",
         "enableRecoveryMode(address)": "0x7004ffafae71ebf8ca75d0161b7818dd31e726c2d57bfa02b045adf08e9f8a06",
         "removePoolFactory(address)": "0x2ee7ebfa3c3d2e030256ae85768e5434350a58e9284ac5bec2d6b7efa01819e3"
-      }
-    }
-  },
-  "20221124-authorizer-adaptor-entrypoint": {
-    "AuthorizerAdaptorEntrypoint": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xb15b30df9532a604d270b606ff7a0ca41e2976166bfa5ce9e1f823a88d69a9d9"
       }
     }
   },
