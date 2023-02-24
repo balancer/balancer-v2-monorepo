@@ -24,7 +24,7 @@ import {
   toChainedReference,
 } from './helpers/chainedReferences';
 
-describe.only('GearboxWrapping', function () {
+describe('GearboxWrapping', function () {
   let DAI: Token, dDAI: Token;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;

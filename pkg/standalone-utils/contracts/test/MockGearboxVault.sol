@@ -42,8 +42,8 @@ contract MockGearboxVault is IGearboxVault {
         _dieselToken = MockGearboxDieselToken(dieselTokenAddress);
     }
 
-    function underlyingToken() external view override returns (IERC20) {
-        return _underlyingToken;
+    function underlyingToken() external view override returns (address) {
+        return address(_underlyingToken);
     }
 
     // solhint-disable-next-line func-name-mixedcase
