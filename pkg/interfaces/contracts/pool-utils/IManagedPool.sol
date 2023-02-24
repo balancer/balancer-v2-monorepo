@@ -54,7 +54,7 @@ interface IManagedPool is IBasePool {
      * they will effectively be included in any Pool operation that involves BPT.
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
-     * 
+     *
      * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
      * via reentrancy. See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
@@ -228,12 +228,12 @@ interface IManagedPool is IBasePool {
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically
      * whenever the supply changes (e.g., joins and exits, add and remove token), and before the fee
      * percentage is changed by the manager, to prevent fees from being applied retroactively.
-     * 
+     *
      * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
      * the pool during execution of a Vault hook.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
-     * 
+     *
      * @return The amount of BPT minted to the manager.
      */
     function collectAumManagementFees() external returns (uint256);
@@ -243,12 +243,12 @@ interface IManagedPool is IBasePool {
      * @dev Attempting to collect AUM fees in excess of the maximum permitted percentage will revert.
      * To avoid retroactive fee increases, we force collection at the current fee percentage before processing
      * the update. Emits the ManagementAumFeePercentageChanged event. This is a permissioned function.
-     * 
+     *
      * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
      * the pool during execution of a Vault hook.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
-     * 
+     *
      * @param managementAumFeePercentage - The new management AUM fee percentage.
      * @return amount - The amount of BPT minted to the manager before the update, if any.
      */
@@ -317,7 +317,7 @@ interface IManagedPool is IBasePool {
      * the pool during execution of a Vault hook.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
-     * 
+     *
      * @param tokenToAdd - The ERC20 token to be added to the Pool.
      * @param assetManager - The Asset Manager for the token.
      * @param tokenToAddNormalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
