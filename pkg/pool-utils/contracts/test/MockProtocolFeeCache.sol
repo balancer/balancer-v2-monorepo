@@ -21,10 +21,11 @@ import "./MockRecoveryModeStorage.sol";
 contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
     // We make the caller the owner and make all functions owner only, letting the deployer perform all permissioned
     // actions.
-    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs)
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs)
         Authentication(bytes32(uint256(address(this))))
         BasePoolAuthorization(msg.sender)
         ProtocolFeeCache(protocolFeeProvider, providerFeeIDs)
+        MockRecoveryModeStorage(vault)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -45,6 +46,10 @@ contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
 
     function _getAuthorizer() internal pure override returns (IAuthorizer) {
         return IAuthorizer(address(0));
+    }
+
+    function vault() external view returns (IVault) {
+        return _getVault();
     }
 
     function _doRecoveryModeExit(

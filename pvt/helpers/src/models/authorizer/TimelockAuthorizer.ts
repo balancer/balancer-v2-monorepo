@@ -251,7 +251,7 @@ export default class TimelockAuthorizer {
     return this.with(params).renouncePermissions(this.toList(actions), wheres);
   }
 
-  async setDelay(action: string, delay: number, params?: TxParams): Promise<void> {
+  async scheduleAndExecuteDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
     const id = await this.scheduleDelayChange(action, delay, [], params);
     await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
     await this.execute(id);

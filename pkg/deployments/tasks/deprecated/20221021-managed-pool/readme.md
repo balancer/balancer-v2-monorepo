@@ -22,3 +22,5 @@ A Managed Pool is a Weighted Pool with mutable tokens and weights, designed to b
 - [Optimism addresses](./output/optimism.json)
 - [`ManagedPool` artifact](./artifact/ManagedPool.json)
 - [`ManagedPoolFactory` artifact](./artifact/ManagedPoolFactory.json)
+- [`ManagedPoolAddRemoveTokenLib` artifact](./artifact/ManagedPoolAddRemoveTokenLib.json)
+- [`CircuitBreakerLib` artifact](./artifact/CircuitBreakerLib.json)

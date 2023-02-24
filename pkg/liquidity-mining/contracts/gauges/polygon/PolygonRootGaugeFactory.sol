@@ -15,8 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
-
 import "../BaseGaugeFactory.sol";
 import "./PolygonRootGauge.sol";
 
@@ -37,7 +35,7 @@ contract PolygonRootGaugeFactory is BaseGaugeFactory {
      * @param relativeWeightCap The relative weight cap for the created gauge
      * @return The address of the deployed gauge
      */
-    function create(address recipient, uint256 relativeWeightCap) external override returns (address) {
+    function create(address recipient, uint256 relativeWeightCap) external returns (address) {
         address gauge = _create();
         PolygonRootGauge(gauge).initialize(recipient, relativeWeightCap);
         return gauge;
