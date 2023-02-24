@@ -6,6 +6,7 @@ import { BigNumberish } from '../../numbers';
 export type RawVaultDeployment = {
   mocked?: boolean;
   admin?: SignerWithAddress;
+  nextAdmin?: string;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   maxYieldValue?: BigNumberish;
@@ -20,6 +21,7 @@ export type VaultDeployment = {
   maxYieldValue: BigNumberish;
   maxAUMValue: BigNumberish;
   admin?: SignerWithAddress;
+  nextAdmin: string;
   from?: SignerWithAddress;
 };
 
