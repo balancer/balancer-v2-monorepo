@@ -2,7 +2,7 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
-> This relayer has been deprecated in favor of an [updated version](../../20220720-batch-relayer-v3) with more features.
+> This relayer was superseded by an [updated version (also now deprecated)](../20220720-batch-relayer-v3) with more features.
 
 Deployment of the first `BalancerRelayer` using `BatchRelayerLibrary`, for combining multiple operations (swaps, joins, etc.) in a single transaction.
 
@@ -11,5 +11,4 @@ Deployment of the first `BalancerRelayer` using `BatchRelayerLibrary`, for combi
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Polygon addresses](./output/polygon.json)
-- [`BalancerRelayer` artifact](./artifact/BalancerRelayer.json)
 - [`BatchRelayerLibrary` artifact](./artifact/BatchRelayerLibrary.json)

@@ -32,6 +32,9 @@ export default {
   bsc: {
     InitialDeniedTokens: [],
   },
+  avalanche: {
+    InitialDeniedTokens: [],
+  },
   goerli: {
     InitialDeniedTokens: [],
   },

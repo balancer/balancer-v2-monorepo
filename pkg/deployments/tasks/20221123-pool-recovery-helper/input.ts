@@ -54,4 +54,7 @@ export default {
       WeightedPoolFactoryTask.output({ network: 'gnosis' }).WeightedPoolFactory,
     ],
   },
+  avalanche: {
+    InitialFactories: [],
+  },
 };

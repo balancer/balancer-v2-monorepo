@@ -28,6 +28,7 @@ contract MockRecoveryRateProviderPool is IRateProviderPool, BasePoolAuthorizatio
     constructor(IVault vault, IRateProvider[] memory rateProviders)
         Authentication(bytes32(uint256(address(this))))
         BasePoolAuthorization(_DELEGATE_OWNER)
+        RecoveryMode(vault)
     {
         _vault = vault;
         _rateProviders = rateProviders;
