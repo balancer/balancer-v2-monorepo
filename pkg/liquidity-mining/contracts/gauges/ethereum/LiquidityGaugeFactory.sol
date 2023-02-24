@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBaseGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidityGauge.sol";
 
 import "../BaseGaugeFactory.sol";
@@ -38,7 +37,7 @@ contract LiquidityGaugeFactory is BaseGaugeFactory {
      * @param relativeWeightCap The relative weight cap for the created gauge
      * @return The address of the deployed gauge
      */
-    function create(address pool, uint256 relativeWeightCap) external override returns (address) {
+    function create(address pool, uint256 relativeWeightCap) external returns (address) {
         address gauge = _create();
         IStakingLiquidityGauge(gauge).initialize(pool, relativeWeightCap);
         return gauge;
