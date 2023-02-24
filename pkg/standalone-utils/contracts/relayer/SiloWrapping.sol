@@ -15,8 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/ISilo.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IShareToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ISilo.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IShareToken.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";

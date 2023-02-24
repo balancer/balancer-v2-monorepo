@@ -15,9 +15,11 @@
 pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
+import "../solidity-utils/openzeppelin/IERC20.sol";
+
 import "./IShareToken.sol";
 
-interface IBaseSilo {
+interface IBaseSilo is IERC20 {
     /// Storage struct that holds all required data for a single token market
     struct AssetStorage {
         // Token that represents a share in totalDeposits of Silo
