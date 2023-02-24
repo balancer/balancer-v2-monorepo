@@ -14,9 +14,11 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+import "../solidity-utils/openzeppelin/IERC20.sol";
+
 import "./ISilo.sol";
 
-interface IShareToken {
+interface IShareToken is IERC20 {
     /**
      * @dev returns the underlying asset
      */

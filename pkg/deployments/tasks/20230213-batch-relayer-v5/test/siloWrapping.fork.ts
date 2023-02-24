@@ -18,7 +18,7 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
   const sUSDC = '0x416DE9AD46C53AAAb2352F91120952393946d2ac';
   const USDC_SILO = '0xfccc27aabd0ab7a0b2ad2b7760037b1eab61616b';
 
-  let usdcToken: Contract, silo: Contract;
+  let usdcToken: Contract, shareToken: Contract, silo: Contract;
   let sender: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = 100e6;
@@ -54,6 +54,7 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
 
   before(async () => {
     usdcToken = await task.instanceAt('IERC20', USDC);
+    shareToken = await task.instanceAt('IShareToken', sUSDC);
     silo = await task.instanceAt('ISilo', USDC_SILO);
     sender = await impersonate(USDC_HOLDER);
 
@@ -63,7 +64,7 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
   it('should wrap successfully', async () => {
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfWrappedBefore = await silo.balanceOf(relayer.address);
+    const balanceOfWrappedBefore = await shareToken.balanceOf(relayer.address);
 
     expect(balanceOfWrappedBefore).to.be.equal(0);
 
@@ -83,9 +84,9 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfWrappedAfter = await silo.balanceOf(relayer.address);
+    const balanceOfWrappedAfter = await shareToken.balanceOf(relayer.address);
 
-    const estimatedRate = await siloExchangeRate(silo, USDC, silo);
+    const estimatedRate = await siloExchangeRate(silo, USDC, shareToken);
 
     const expectedBalanceOfWrappedAfter = await bn(estimatedRate).mul(amountToWrap);
 
@@ -94,9 +95,9 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
   });
 
   it('should unwrap successfully', async () => {
-    const estimatedRate = await siloExchangeRate(silo, USDC, silo);
+    const estimatedRate = await siloExchangeRate(silo, USDC, shareToken);
     const wrappedRate = Math.floor(1e6 / estimatedRate);
-    const amountToWithdraw = Math.floor((wrappedRate * (await silo.balanceOf(relayer.address))) / 1e6);
+    const amountToWithdraw = Math.floor((wrappedRate * (await shareToken.balanceOf(relayer.address))) / 1e6);
 
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
@@ -113,7 +114,7 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfWrappedAfter = await silo.balanceOf(relayer.address);
+    const balanceOfWrappedAfter = await shareToken.balanceOf(relayer.address);
 
     expect(balanceOfWrappedAfter).to.be.almostEqual(amountToWrap - amountToWithdraw, 0.01);
     expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.almostEqual(amountToWithdraw);
