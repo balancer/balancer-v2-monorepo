@@ -16,7 +16,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IGearboxDieselToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IGearboxDieselToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";

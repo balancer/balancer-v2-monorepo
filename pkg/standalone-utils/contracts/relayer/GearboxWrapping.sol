@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IGearboxDieselToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IGearboxDieselToken.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";

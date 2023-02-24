@@ -14,7 +14,9 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-interface IGearboxDieselToken {
+import "../solidity-utils/openzeppelin/IERC20.sol";
+
+interface IGearboxDieselToken is IERC20 {
     /**
      * @dev returns the address of the vault
      */
