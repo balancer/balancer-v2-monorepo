@@ -718,26 +718,42 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants or revokes revoker status to `account` for action `actionId` in target `where`.
-     * @dev Only the root can add and remove revokers.
+     * @notice Grants revoker status to `account` for action `actionId` in target `where`.
+     * @dev Only the root can add revokers.
      *
-     * Note that there are no delays associated with adding or removing revokers. This is based on the assumption that
-     * any permissions for which revocation from key addresses would be dangerous (e.g. preventing the BalancerMinter
-     * from minting BAL) have sufficiently long delays associated with revoking them that the root will be able to
+     * Note that there are no delays associated with adding revokers. This is based on the assumption that any
+     * permissions for which revocation from key addresses would be dangerous (e.g. preventing the BalancerMinter from
+     * minting BAL) have sufficiently long delays associated with revoking them that the root will be able to
      * reestablish control and cancel the revocation before the scheduled revocation can be executed.
-     *
-     * A malicious revoker cannot create new revokers, so root can simply revoke their status once.
      */
-    function manageRevoker(
+    function addRevoker(
         bytes32 actionId,
         address account,
-        address where,
-        bool allowed
+        address where
     ) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         bytes32 revokePermissionsActionId = getRevokePermissionActionId(actionId);
-        (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
+        _grantPermission(revokePermissionsActionId, account, where);
+    }
+
+    /**
+     * @notice Removes revoker status from `account` for action `actionId` in target `where`.
+     * @dev Only the root can remove revokers.
+     *
+     * Note that there are no delays associated with removing revokers.  The only instance in which one might be useful
+     * is if we had contracts that were revoker, and this was depended upon for operation of the system. This however
+     * doesn't seem like it will ever be required - revokers are typically subDAOs.
+     */
+    function removeRevoker(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external {
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+
+        bytes32 revokePermissionsActionId = getRevokePermissionActionId(actionId);
+        _revokePermission(revokePermissionsActionId, account, where);
     }
 
     /**

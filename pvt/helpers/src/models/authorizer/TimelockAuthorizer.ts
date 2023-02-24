@@ -190,7 +190,7 @@ export default class TimelockAuthorizer {
   }
 
   async addRevoker(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(where), true);
+    return this.with(params).addRevoker(action, this.toAddress(account), this.toAddress(where));
   }
 
   async removeRevoker(
@@ -199,7 +199,7 @@ export default class TimelockAuthorizer {
     wheres: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(wheres), false);
+    return this.with(params).removeRevoker(action, this.toAddress(account), this.toAddress(wheres));
   }
 
   async grantPermissions(
