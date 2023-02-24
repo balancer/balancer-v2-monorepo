@@ -721,20 +721,33 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     }
 
     function _doRecoveryModeExit(
-        uint256[] memory balances,
+        uint256[] memory,
         uint256 totalSupply,
         bytes memory userData
-    ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
+    ) internal view override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        // As this is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
         // total supply to correctly distribute Pool assets proportionally.
-        // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
+        // We must also ensure that we do not pay out a proportional fraction of the BPT held in the Vault, otherwise
         // this would allow a user to recursively exit the pool using BPT they received from the previous exit.
 
+        IVault vault = getVault();
+        bytes32 poolId = getPoolId();
+        (IERC20[] memory registeredTokens, , ) = vault.getPoolTokens(poolId);
+
+        // Use cash balances only, in case there are managed balances.
+        // The owner contract might also be an asset manager.
+        uint256[] memory cashBalances = new uint256[](registeredTokens.length);
+        for (uint256 i = 0; i < registeredTokens.length; ++i) {
+            (uint256 cash, , , ) = vault.getPoolTokenInfo(poolId, registeredTokens[i]);
+            cashBalances[i] = cash;
+        }
+
         uint256 virtualSupply;
-        (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
+        (virtualSupply, cashBalances) = ComposablePoolLib.dropBptFromBalances(totalSupply, cashBalances);
 
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, virtualSupply, bptAmountIn);
+
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(cashBalances, virtualSupply, bptAmountIn);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
