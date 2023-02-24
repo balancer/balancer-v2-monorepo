@@ -367,7 +367,7 @@ describe('TimelockAuthorizer', () => {
         });
       });
 
-      context('when revoking permission', () => {
+      context('when destroying a granter', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.removeGranter(actionId, grantee, where, { from })).to.be.revertedWith(
