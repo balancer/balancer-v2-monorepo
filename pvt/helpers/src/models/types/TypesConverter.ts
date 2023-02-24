@@ -33,14 +33,15 @@ export function computeDecimalsFromIndex(i: number): number {
 
 export default {
   toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
-    let { mocked, admin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue } = params;
+    let { mocked, admin, nextAdmin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue } = params;
     if (!mocked) mocked = false;
     if (!admin) admin = params.from;
+    if (!nextAdmin) nextAdmin = ZERO_ADDRESS;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!maxYieldValue) maxYieldValue = FP_100_PCT;
     if (!maxAUMValue) maxAUMValue = FP_100_PCT;
-    return { mocked, admin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue };
+    return { mocked, admin, nextAdmin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue };
   },
 
   toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
