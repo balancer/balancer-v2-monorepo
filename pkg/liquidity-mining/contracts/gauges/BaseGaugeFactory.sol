@@ -14,12 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBaseGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
-abstract contract BaseGaugeFactory is IBaseGaugeFactory {
+abstract contract BaseGaugeFactory is ILiquidityGaugeFactory {
     ILiquidityGauge private _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;

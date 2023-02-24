@@ -2,6 +2,7 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
+> Superseded by [Aave Linear Pool V4](../../20230206-aave-rebalanced-linear-pool-v4/), which fixes the reentrancy issue described in this [forum post](https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345).
 
 Deployment of the `AaveLinearPoolFactory`, for Linear Pools with a wrapped aToken. This new deployment includes:
 
@@ -19,6 +20,4 @@ This is version 3 because it is the third generation of Aave Linear Pools, the o
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`AaveLinearPool` artifact](./artifact/AaveLinearPool.json)
 - [`AaveLinearPoolFactory` artifact](./artifact/AaveLinearPoolFactory.json)
-- [`AaveLinearPoolRebalancer` artifact](./artifact/AaveLinearPoolRebalancer.json)

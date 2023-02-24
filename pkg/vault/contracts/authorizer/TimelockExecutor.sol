@@ -27,7 +27,7 @@ contract TimelockExecutor is ReentrancyGuard {
     }
 
     function execute(address target, bytes memory data) external nonReentrant returns (bytes memory result) {
-        require(msg.sender == address(authorizer), "ERR_SENDER_NOT_AUTHORIZER");
+        require(msg.sender == address(authorizer), "SENDER_IS_NOT_AUTHORIZER");
         return Address.functionCall(target, data);
     }
 }

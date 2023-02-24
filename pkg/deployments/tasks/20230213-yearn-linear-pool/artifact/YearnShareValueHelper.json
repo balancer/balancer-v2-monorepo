@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "YearnShareValueHelper",
+  "sourceName": "contracts/yearn-linear-pool/YearnShareValueHelper.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212203618cfe1b9194bd14b72f379bd87b402f00e2f55bd10b2b871b921a079c65cf664736f6c63430007010033",
+  "deployedBytecode": "0x6080604052600080fdfea26469706673582212203618cfe1b9194bd14b72f379bd87b402f00e2f55bd10b2b871b921a079c65cf664736f6c63430007010033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

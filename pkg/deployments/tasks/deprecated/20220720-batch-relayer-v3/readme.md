@@ -14,5 +14,4 @@ This new version adds support for Liquidity Gauge interactions, including stakin
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
-- [`BalancerRelayer` artifact](./artifact/BalancerRelayer.json)
 - [`BatchRelayerLibrary` artifact](./artifact/BatchRelayerLibrary.json)
