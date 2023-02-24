@@ -16,7 +16,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IYearnTokenVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IYearnTokenVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -27,7 +27,7 @@ contract MockYearnTokenVault is IYearnTokenVault, TestToken {
     using FixedPoint for uint256;
 
     uint256 private _rate = 1e18;
-    address private immutable _underlyingToken;
+    IERC20 private immutable _underlyingToken;
 
     constructor (
         string memory name,
@@ -35,28 +35,27 @@ contract MockYearnTokenVault is IYearnTokenVault, TestToken {
         uint8 decimals,
         IERC20 underlyingAsset
     ) TestToken(name, symbol, decimals) {
-        _underlyingToken = address(underlyingAsset);
+        _underlyingToken = underlyingAsset;
     }
 
     function token() external view override returns (address) {
-        return _underlyingToken;
+        return address(_underlyingToken);
     }
 
     function deposit(
         uint256 amount,
         address recipient
     ) external override returns (uint256) {
-        IERC20(_underlyingToken).safeTransferFrom(msg.sender, address(this), amount);
-        uint256 wrappedAmount = this.toYearn(amount);
+        _underlyingToken.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 wrappedAmount = _toYearn(amount);
         this.mint(recipient, wrappedAmount);
         return wrappedAmount;
     }
 
     function withdraw(uint256 wrappedAmount, address recipient) external override returns (uint256) {
         this.burn(msg.sender, wrappedAmount);
-        uint256 mainAmount = this.fromYearn(wrappedAmount);
-        IERC20(_underlyingToken).safeApprove(address(this), mainAmount);
-        IERC20(_underlyingToken).safeTransferFrom(address(this), recipient, mainAmount);
+        uint256 mainAmount = _fromYearn(wrappedAmount);
+        _underlyingToken.safeTransfer(recipient, mainAmount);
         return mainAmount;
     }
 
@@ -69,10 +68,18 @@ contract MockYearnTokenVault is IYearnTokenVault, TestToken {
     }
 
     function fromYearn(uint256 wrappedAmount) external view returns (uint256) {
-        return wrappedAmount.divDown(_rate);
+        return _fromYearn(wrappedAmount);
     }
 
     function toYearn(uint256 mainAmount) external view returns (uint256) {
+        return _toYearn(mainAmount);
+    }
+
+    function _fromYearn(uint256 wrappedAmount) private view returns (uint256) {
+        return wrappedAmount.divDown(_rate);
+    }
+
+    function _toYearn(uint256 mainAmount) private view returns (uint256) {
         return mainAmount.mulDown(_rate);
     }
 }

@@ -17,7 +17,7 @@ describeForkTest('YearnWrapping', 'optimism', 38556442, function () {
   const USDC_HOLDER = '0xf390830df829cf22c53c8840554b98eafc5dcbc2';
   const yvUSDC = '0x4c8b1958b09b3bde714f68864bcc3a74eaf1a23d';
 
-  let usdcToken: Contract, wrappedToken: Contract, yearnVault: Contract;
+  let usdcToken: Contract, yearnVault: Contract;
   let sender: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = 100e6;
@@ -53,7 +53,6 @@ describeForkTest('YearnWrapping', 'optimism', 38556442, function () {
 
   before(async () => {
     usdcToken = await task.instanceAt('IERC20', USDC);
-    wrappedToken = await task.instanceAt('IERC20', yvUSDC);
     yearnVault = await task.instanceAt('IYearnTokenVault', yvUSDC);
     sender = await impersonate(USDC_HOLDER);
 
@@ -63,7 +62,7 @@ describeForkTest('YearnWrapping', 'optimism', 38556442, function () {
   it('should wrap successfully', async () => {
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfYearnBefore = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfYearnBefore = await yearnVault.balanceOf(relayer.address);
     const expectedBalanceOfYearnAfter = Math.floor(1e6 / (await yearnVault.pricePerShare()) * amountToWrap);
     expect(balanceOfYearnBefore).to.be.equal(0);
 
@@ -83,7 +82,7 @@ describeForkTest('YearnWrapping', 'optimism', 38556442, function () {
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfYearnAfter = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfYearnAfter = await yearnVault.balanceOf(relayer.address);
 
     expect(balanceOfUSDCBefore - balanceOfUSDCAfter).to.be.equal(amountToWrap);
     expect(balanceOfYearnAfter).to.be.almostEqual(expectedBalanceOfYearnAfter, 0.0001);
@@ -91,12 +90,12 @@ describeForkTest('YearnWrapping', 'optimism', 38556442, function () {
 
 
   it('should unwrap successfully', async () => {
-    const yearnBalance = await wrappedToken.balanceOf(relayer.address);
+    const yearnBalance = await yearnVault.balanceOf(relayer.address);
     const yearnAmountToWithdraw = Math.floor(yearnBalance * (await yearnVault.pricePerShare()) / 1e6);
 
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfYearnBefore = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfYearnBefore = await yearnVault.balanceOf(relayer.address);
 
     expect(balanceOfYearnBefore).to.be.almostEqual(yearnAmountToWithdraw, 0.01);
 
@@ -112,7 +111,7 @@ describeForkTest('YearnWrapping', 'optimism', 38556442, function () {
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfYearnAfter = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfYearnAfter = await yearnVault.balanceOf(relayer.address);
 
     expect(balanceOfYearnAfter).to.be.equal(0);
     expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.almostEqual(amountToWrap, 0.000001);

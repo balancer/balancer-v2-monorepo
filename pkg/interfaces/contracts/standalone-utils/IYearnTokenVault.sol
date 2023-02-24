@@ -14,7 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-interface IYearnTokenVault {
+import "../solidity-utils/openzeppelin/IERC20.sol";
+
+interface IYearnTokenVault is IERC20 {
     /**
      * @dev returns the address of the vault's underlying asset (mainToken)
      */
