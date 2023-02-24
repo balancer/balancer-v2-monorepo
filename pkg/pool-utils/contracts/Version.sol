@@ -23,10 +23,17 @@ contract Version is IVersion {
     string private _version;
 
     constructor(string memory version) {
-        _version = version;
+        _setVersion(version);
     }
 
     function version() external view override returns (string memory) {
         return _version;
+    }
+
+    /**
+     * @dev Internal setter that allows this contract to be used in proxies.
+     */
+    function _setVersion(string memory newVersion) internal {
+        _version = newVersion;
     }
 }
