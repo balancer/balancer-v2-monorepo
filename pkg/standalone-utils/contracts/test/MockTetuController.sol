@@ -14,9 +14,9 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuController.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuController.sol";
 
-contract MockTetuStrategy is ITetuController {
+contract MockTetuController is ITetuController {
     function changeWhiteListStatus(address[] memory /*_targets*/, bool /*status*/) external override {
     }
 }

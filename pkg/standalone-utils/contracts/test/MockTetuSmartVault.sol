@@ -14,7 +14,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuSmartVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuSmartVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
@@ -70,7 +70,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
 
     function deposit(uint256 amount) external override {
         IERC20(underlyingAsset).safeTransferFrom(msg.sender, address(this), amount);
-        uint256 wrappedAmount = this.toTetuAmount(amount, this);
+        uint256 wrappedAmount = _toTetuAmount(amount, this);
         this.mint(msg.sender, wrappedAmount);
         // Since rate calculation depends on totalSupply, we need to recalculate parameters
         // that are base to rate calculation.
@@ -86,9 +86,8 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
         // Since rate calculation depends on totalSupply, we need to recalculate parameters
         // that are base to rate calculation.
         setRate(_desiredRate);
-        uint256 mainAmount = this.fromTetuAmount(numberOfShares, this);
-        IERC20(underlyingAsset).safeApprove(address(this), mainAmount);
-        IERC20(underlyingAsset).safeTransferFrom(address(this), msg.sender, mainAmount);
+        uint256 mainAmount = _fromTetuAmount(numberOfShares, this);
+        IERC20(underlyingAsset).safeTransfer(msg.sender, mainAmount);
     }
 
     function transferUnderlying(uint256 amount, address to) public {}
@@ -106,26 +105,36 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
     }
 
     // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
-    function fromTetuAmount(uint256 wrappedAmount, ITetuSmartVault _wrappedToken) external view returns (uint256) {
-        uint256 rate = _getWrappedTokenRate(_wrappedToken);
+    function fromTetuAmount(uint256 wrappedAmount, ITetuSmartVault wrappedToken) external view returns (uint256) {
+        return _fromTetuAmount(wrappedAmount, wrappedToken);
+    }
+
+    // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
+    function toTetuAmount(uint256 mainAmount, ITetuSmartVault wrappedToken) external view returns (uint256) {
+        return _toTetuAmount(mainAmount, wrappedToken);
+    }
+
+    // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
+    function _fromTetuAmount(uint256 wrappedAmount, ITetuSmartVault wrappedToken) private view returns (uint256) {
+        uint256 rate = _getWrappedTokenRate(wrappedToken);
         return wrappedAmount.divDown(rate);
     }
 
     // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
-    function toTetuAmount(uint256 mainAmount, ITetuSmartVault _wrappedToken) external view returns (uint256) {
-        uint256 rate = _getWrappedTokenRate(_wrappedToken);
+    function _toTetuAmount(uint256 mainAmount, ITetuSmartVault wrappedToken) private view returns (uint256) {
+        uint256 rate = _getWrappedTokenRate(wrappedToken);
         return rate.mulDown(mainAmount);
     }
 
-    function _getWrappedTokenRate(ITetuSmartVault _wrappedToken) private view returns (uint256) {
-        uint256 wrappedTotalSupply = IERC20(address(_wrappedToken)).totalSupply();
+    function _getWrappedTokenRate(ITetuSmartVault wrappedToken) private view returns (uint256) {
+        uint256 wrappedTotalSupply = IERC20(address(wrappedToken)).totalSupply();
         if (wrappedTotalSupply == 0) {
             return 0;
         }
         // We couldn't use tetuVault.getPricePerFullShare function, since it introduces rounding issues in tokens
         // with a small number of decimals. Therefore, we're calculating the rate using balance and suply
-        uint256 underlyingBalance = _wrappedToken.underlyingBalanceInVault();
-        address tetuStrategyAddress = ITetuSmartVault(address(_wrappedToken)).strategy();
+        uint256 underlyingBalance = wrappedToken.underlyingBalanceInVault();
+        address tetuStrategyAddress = ITetuSmartVault(address(wrappedToken)).strategy();
         if (address(tetuStrategyAddress) == address(0)) {
             return (10**18 * underlyingBalance/ wrappedTotalSupply) + 1;
         }

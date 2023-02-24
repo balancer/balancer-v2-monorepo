@@ -14,7 +14,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuStrategy.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuStrategy.sol";
 
 contract MockTetuStrategy is ITetuStrategy {
     uint256 private _investedUnderlyingBalance = 0;

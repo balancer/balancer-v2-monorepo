@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuSmartVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuSmartVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
@@ -55,6 +55,8 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlying, amount);
         }
 
+        // TODO Review this logic: Susceptible to reentrancy attack
+        // Not using rate function of Tetu, since it's precision is low (not too many decimals)
         underlying.safeApprove(address(wrappedToken), amount);
         IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
         uint256 wrappedAmountBefore = wrappedTokenErc20.balanceOf(address(this));

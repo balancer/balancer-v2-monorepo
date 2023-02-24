@@ -20,7 +20,7 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
   const TETU_GOVERNANCE = '0xcc16d636dD05b52FF1D8B9CE09B09BC62b11412B';
   const TETU_CONTROLLER = '0x6678814c273d5088114B6E40cC49C8DB04F9bC29';
 
-  let usdtToken: Contract, wrappedToken: Contract, tetuVault: Contract;
+  let usdtToken: Contract, tetuVault: Contract;
   let sender: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = 100e6;
@@ -56,7 +56,6 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
 
   before(async () => {
     usdtToken = await task.instanceAt('IERC20', USDT);
-    wrappedToken = await task.instanceAt('IERC20', xUSDT);
     tetuVault = await task.instanceAt('ITetuSmartVault', xUSDT);
     sender = await impersonate(USDT_HOLDER);
 
@@ -71,7 +70,7 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
   it('should wrap successfully', async () => {
     const balanceOfUSDTBefore = await usdtToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfTetuBefore = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfTetuBefore = await tetuVault.balanceOf(relayer.address);
     const expectedBalanceOfTetuAfter = Math.floor((1e6 / (await tetuVault.getPricePerFullShare())) * amountToWrap);
 
     expect(balanceOfTetuBefore).to.be.equal(0);
@@ -92,14 +91,14 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
 
     const balanceOfUSDTAfter = await usdtToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfTetuAfter = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfTetuAfter = await tetuVault.balanceOf(relayer.address);
 
     expect(balanceOfUSDTBefore - balanceOfUSDTAfter).to.be.equal(amountToWrap);
     expect(balanceOfTetuAfter).to.be.almostEqual(expectedBalanceOfTetuAfter, 0.000001);
   });
 
   it('should unwrap successfully', async () => {
-    const tetuBalance = await wrappedToken.balanceOf(relayer.address);
+    const tetuBalance = await tetuVault.balanceOf(relayer.address);
     const tetuAmountToWithdraw = Math.floor((tetuBalance * (await tetuVault.getPricePerFullShare())) / 1e6);
 
     const balanceOfUSDTBefore = await usdtToken.balanceOf(sender.address);
@@ -117,7 +116,7 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
 
     const balanceOfUSDTAfter = await usdtToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfTetuAfter = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfTetuAfter = await tetuVault.balanceOf(relayer.address);
 
     expect(balanceOfTetuAfter).to.be.equal(0);
     expect(balanceOfUSDTAfter - balanceOfUSDTBefore).to.be.almostEqual(tetuAmountToWithdraw, 0.0001);
