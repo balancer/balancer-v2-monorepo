@@ -64,7 +64,7 @@ describe('TimelockAuthorizer', () => {
         await authorizer.removeGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: root });
       });
 
-      context('when creating a granter', () => {
+      context('when adding a granter', () => {
         context('for a specific action', () => {
           const actionId = ACTION_1;
 
@@ -169,7 +169,7 @@ describe('TimelockAuthorizer', () => {
         });
       });
 
-      context('when destroying a granter', () => {
+      context('when removing a granter', () => {
         context('for a specific action', () => {
           const actionId = ACTION_1;
 
@@ -285,7 +285,7 @@ describe('TimelockAuthorizer', () => {
         from = other;
       });
 
-      context('when creating a granter', () => {
+      context('when adding a granter', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.addGranter(actionId, grantee, where, { from })).to.be.revertedWith(
@@ -367,7 +367,7 @@ describe('TimelockAuthorizer', () => {
         });
       });
 
-      context('when destroying a granter', () => {
+      context('when removing a granter', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.removeGranter(actionId, grantee, where, { from })).to.be.revertedWith(
@@ -424,7 +424,7 @@ describe('TimelockAuthorizer', () => {
         await authorizer.removeRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: root });
       });
 
-      context('when creating a revoker', () => {
+      context('when adding a revoker', () => {
         context('for a specific action', () => {
           const actionId = ACTION_1;
 
@@ -529,7 +529,7 @@ describe('TimelockAuthorizer', () => {
         });
       });
 
-      context('when destroying a revoker', () => {
+      context('when removing a revoker', () => {
         context('for a specific action', () => {
           const actionId = ACTION_1;
 
@@ -645,7 +645,7 @@ describe('TimelockAuthorizer', () => {
         from = other;
       });
 
-      context('when creating a revoker', () => {
+      context('when adding a revoker', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.addRevoker(actionId, grantee, where, { from })).to.be.revertedWith(
@@ -687,7 +687,7 @@ describe('TimelockAuthorizer', () => {
         });
       });
 
-      context('when destroying a revoker', () => {
+      context('when removing a revoker', () => {
         const itReverts = (actionId: string, where: string) => {
           it('reverts', async () => {
             await expect(authorizer.removeRevoker(actionId, grantee, where, { from })).to.be.revertedWith(
