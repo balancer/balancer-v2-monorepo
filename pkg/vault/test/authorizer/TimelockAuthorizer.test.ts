@@ -1718,6 +1718,12 @@ describe('TimelockAuthorizer', () => {
                   await authorizer.execute(id);
                   await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
                 });
+
+                it('receives canceler status', async () => {
+                  const id = await schedule();
+
+                  expect(await authorizer.isCanceler(id, grantee)).to.be.true;
+                });
               });
 
               context('when an executor is specified', () => {
