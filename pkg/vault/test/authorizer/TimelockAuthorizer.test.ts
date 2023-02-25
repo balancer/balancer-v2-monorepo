@@ -7,9 +7,10 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('TimelockAuthorizer', () => {
@@ -23,6 +24,8 @@ describe('TimelockAuthorizer', () => {
   before('setup signers', async () => {
     [, root, nextRoot, grantee, other] = await ethers.getSigners();
   });
+
+  const GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = MAX_UINT256;
 
   const ACTION_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ACTION_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
@@ -671,6 +674,192 @@ describe('TimelockAuthorizer', () => {
             itReverts(actionId, where);
           });
         });
+      });
+    });
+  });
+
+  describe('createCanceler', () => {
+    context('when the sender is the root', () => {
+      let scheduledId = bn(0);
+      beforeEach('set sender', async () => {
+        from = root;
+      });
+
+      context('when creating canceler', () => {
+        context('for a specific scheduled execution id', () => {
+          it('can create canceler for a specific execution id', async () => {
+            expect(await authorizer.isCanceler(scheduledId, other)).to.be.false;
+
+            await authorizer.createCanceler(scheduledId, other, { from });
+
+            expect(await authorizer.isCanceler(scheduledId, other)).to.be.true;
+          });
+
+          it('emits an event', async () => {
+            const receipt = await authorizer.createCanceler(scheduledId, other, { from });
+
+            expectEvent.inReceipt(await receipt.wait(), 'CancelerCreated', { scheduledExecutionId: scheduledId });
+          });
+
+          it('cannot be created twice', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+
+            await expect(authorizer.createCanceler(scheduledId, other, { from })).to.be.revertedWith(
+              'ACCOUNT_IS_ALREADY_CANCELER'
+            );
+          });
+        });
+
+        context('for any scheduled execution id', () => {
+          beforeEach('set schedule id', async () => {
+            scheduledId = GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID;
+          });
+
+          it('can create canceler for any execution id', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+
+            expect(await authorizer.isCanceler(scheduledId, other)).to.be.true;
+          });
+
+          it('emits an event', async () => {
+            const receipt = await authorizer.createCanceler(scheduledId, other, { from });
+
+            expectEvent.inReceipt(await receipt.wait(), 'CancelerCreated', { scheduledExecutionId: scheduledId });
+          });
+
+          it('cannot be created twice', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+
+            await expect(authorizer.createCanceler(scheduledId, other, { from })).to.be.revertedWith(
+              'ACCOUNT_IS_ALREADY_CANCELER'
+            );
+          });
+        });
+      });
+    });
+
+    context('when the sender is not the root', () => {
+      const scheduledId = 0;
+      beforeEach('set sender', async () => {
+        from = other;
+      });
+
+      it('reverts', async () => {
+        await expect(authorizer.createCanceler(scheduledId, other, { from })).to.be.revertedWith('SENDER_IS_NOT_ROOT');
+      });
+    });
+  });
+
+  describe('destroyCanceler', () => {
+    context('when the sender is the root', () => {
+      let scheduledId = bn(0);
+      beforeEach('set sender', async () => {
+        from = root;
+      });
+
+      context('when destroying canceler', () => {
+        context('for a specific scheduled execution id', () => {
+          it('can destroy canceler for a specific execution id', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+            await authorizer.destroyCanceler(scheduledId, other, { from });
+
+            expect(await authorizer.isCanceler(scheduledId, other)).to.be.false;
+          });
+
+          it('emits an event', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+            const receipt = await authorizer.destroyCanceler(scheduledId, other, { from });
+
+            expectEvent.inReceipt(await receipt.wait(), 'CancelerDestroyed', {
+              scheduledExecutionId: scheduledId,
+              canceler: other.address,
+            });
+          });
+
+          it('cannot destroy if not canceler', async () => {
+            await expect(authorizer.destroyCanceler(scheduledId, other, { from })).to.be.revertedWith(
+              'ACCOUNT_IS_NOT_CANCELER'
+            );
+          });
+
+          it('cannot destroy root', async () => {
+            await expect(authorizer.destroyCanceler(scheduledId, root, { from })).to.be.revertedWith(
+              'CANNOT_DESTROY_ROOT_CANCELER'
+            );
+          });
+
+          it('cannot destroy global canceler for a specific execution id', async () => {
+            await authorizer.createCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, other, { from });
+            await expect(authorizer.destroyCanceler(scheduledId, other, { from })).to.be.revertedWith(
+              'ACCOUNT_IS_GLOBAL_CANCELER'
+            );
+          });
+
+          it('cannot be destroyed twice', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+            await authorizer.destroyCanceler(scheduledId, other, { from });
+
+            await expect(authorizer.destroyCanceler(scheduledId, other, { from })).to.be.revertedWith(
+              'ACCOUNT_IS_NOT_CANCELER'
+            );
+          });
+        });
+
+        context('for any scheduled execution id', () => {
+          beforeEach('set schedule id', async () => {
+            scheduledId = GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID;
+          });
+
+          it('can destroy canceler for any execution id', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+
+            await authorizer.destroyCanceler(scheduledId, other, { from });
+
+            expect(await authorizer.isCanceler(scheduledId, other)).to.be.false;
+          });
+
+          it('emits an event', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+            const receipt = await authorizer.destroyCanceler(scheduledId, other, { from });
+
+            expectEvent.inReceipt(await receipt.wait(), 'CancelerDestroyed', {
+              scheduledExecutionId: scheduledId,
+              canceler: other.address,
+            });
+          });
+
+          it('cannot destroy if not canceler', async () => {
+            await expect(authorizer.destroyCanceler(scheduledId, other, { from })).to.be.revertedWith(
+              'ACCOUNT_IS_NOT_CANCELER'
+            );
+          });
+
+          it('cannot destroy root', async () => {
+            await expect(authorizer.destroyCanceler(scheduledId, root, { from })).to.be.revertedWith(
+              'CANNOT_DESTROY_ROOT_CANCELER'
+            );
+          });
+
+          it('cannot be destroyed twice', async () => {
+            await authorizer.createCanceler(scheduledId, other, { from });
+            await authorizer.destroyCanceler(scheduledId, other, { from });
+
+            await expect(authorizer.destroyCanceler(scheduledId, other, { from })).to.be.revertedWith(
+              'ACCOUNT_IS_NOT_CANCELER'
+            );
+          });
+        });
+      });
+    });
+
+    context('when the sender is not the root', () => {
+      const scheduledId = 0;
+      beforeEach('set sender', async () => {
+        from = other;
+      });
+
+      it('reverts', async () => {
+        await expect(authorizer.destroyCanceler(scheduledId, other, { from })).to.be.revertedWith('SENDER_IS_NOT_ROOT');
       });
     });
   });
