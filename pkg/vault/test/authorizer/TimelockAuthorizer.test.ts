@@ -50,7 +50,7 @@ describe('TimelockAuthorizer', () => {
     authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault.address] });
   });
 
-  describe.only('granters', () => {
+  describe('granters', () => {
     describe('addGranter', () => {
       context('in a specific contract', () => {
         it('grantee can grant permission for that action only in that contract', async () => {
