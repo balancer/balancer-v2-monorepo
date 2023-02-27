@@ -79,7 +79,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     address public constant EVERYWHERE = address(-1);
 
     /**
-     * @notice A constant value for `scheduledExecutionId` that will match any execution Id
+     * @notice A constant value for `scheduledExecutionId` that will match any execution Id. Cancelers assigned to this Id
+     * will be able to cancel *any* scheduled action, which is very useful for e.g. emergency response dedicated
+     * teams that analyze these.
      */
     uint256 public constant GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
 
