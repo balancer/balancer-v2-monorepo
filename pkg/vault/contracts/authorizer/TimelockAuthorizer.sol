@@ -667,7 +667,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // they can still cancel it because they have global permission.
             // There's an edge case in which an account could have both specific and global cancel privilege, and still
             // be able to cancel some scheduled executions after losing global privilege. This is considered an unlikely
-            // scenario, and would require manual destruction of the specific canceler privileges even after destruction
+            // scenario, and would require manual removal of the specific canceler privileges even after removal
             // of the global one.
             require(scheduledExecutionId == GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, "ACCOUNT_IS_GLOBAL_CANCELER");
         } else {
