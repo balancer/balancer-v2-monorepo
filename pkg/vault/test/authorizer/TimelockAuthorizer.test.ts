@@ -1724,6 +1724,12 @@ describe('TimelockAuthorizer', () => {
 
                   expect(await authorizer.isCanceler(id, grantee)).to.be.true;
                 });
+
+                it('can cancel the action immediately', async () => {
+                  const id = await schedule();
+                  // should not revert
+                  await expect(authorizer.cancel(id, { from: grantee })).not.to.reverted;
+                });
               });
 
               context('when an executor is specified', () => {
