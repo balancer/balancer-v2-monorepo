@@ -164,19 +164,53 @@ describe('TimelockAuthorizer', () => {
     });
 
     describe('removeGranter', () => {
-      context('for a specific contract', () => {
-        it('grantee cannot grant permission for that action in that contract only', async () => {
+      context('in a specific contract', () => {
+        it('revokee cannot grant permission for that action anywhere', async () => {
           await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
           await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
           expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
         });
 
-        it('grantee cannot grant permission for any other action', async () => {
+        it('revokee cannot grant permission for any other action', async () => {
           await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
           expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+        });
+
+        it('emits a GranterRemoved event', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+
+          const receipt = await (await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'GranterRemoved', {
+            actionId: ACTION_1,
+            account: grantee.address,
+            where: WHERE_1,
+          });
+        });
+
+        it('reverts if the revokee is not a granter', async () => {
+          await expect(authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_NOT_GRANTER'
+          );
+        });
+
+        it('reverts if the revokee is a global granter', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+          await expect(authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+            'GRANTER_IS_GLOBAL'
+          );
+        });
+
+        it('reverts if the revokee is root', async () => {
+          await expect(authorizer.removeGranter(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
+            'CANNOT_REMOVE_ROOT_GRANTER'
+          );
         });
 
         it('reverts if the caller is not root', async () => {
@@ -187,20 +221,69 @@ describe('TimelockAuthorizer', () => {
         });
       });
 
-      context('for a any contract', () => {
-        it('grantee cannot grant permission for that action on any contract', async () => {
+      context('in any contract', () => {
+        it('revokee cannot grant permission for that action on any contract', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+          await authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+        });
+
+        it('revokee cannot grant permission for that any other action anywhere', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+          await authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+        });
+
+        it('emits a GranterRemoved event', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+
+          const receipt = await (await authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'GranterRemoved', {
+            actionId: ACTION_1,
+            account: grantee.address,
+            where: EVERYWHERE,
+          });
+        });
+
+        it('reverts if the revokee is not a global granter', async () => {
+          await expect(authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_NOT_GRANTER'
+          );
+        });
+
+        it('reverts if the revokee is a granter in a specific contract', async () => {
           await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await expect(authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_NOT_GRANTER'
+          );
+        });
+
+        it('preserves granter status if revokee was granter over both a specific contract and globally', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.true;
+
+          await authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+
           await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
           expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
           expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
         });
 
-        it('grantee cannot grant permission for that any other action anywhere', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
-
-          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+        it('reverts if the revokee is root', async () => {
+          await expect(authorizer.removeGranter(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'CANNOT_REMOVE_ROOT_GRANTER'
+          );
         });
 
         it('reverts if the caller is not root', async () => {
