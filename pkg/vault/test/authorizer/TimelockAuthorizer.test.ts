@@ -716,6 +716,10 @@ describe('TimelockAuthorizer', () => {
             await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
 
             expect(await authorizer.isCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler)).to.be.true;
+            // check that the canceler can cancel any action
+            expect(await authorizer.isCanceler(0, canceler)).to.be.true;
+            expect(await authorizer.isCanceler(1, canceler)).to.be.true;
+            expect(await authorizer.isCanceler(2, canceler)).to.be.true;
           });
 
           it('emits an event', async () => {
