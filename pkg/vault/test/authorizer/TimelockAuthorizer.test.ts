@@ -706,6 +706,14 @@ describe('TimelockAuthorizer', () => {
             scheduledId = GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID;
           });
 
+          it('root is a canceler', async () => {
+            expect(await authorizer.isCanceler(scheduledId, root)).to.be.true;
+          });
+
+          it('cannot add root as a canceler', async () => {
+            expect(await authorizer.addCanceler(scheduledId, root, { from: root })).to.be.revertedWith('ACCOUNT_IS_ALREADY_CANCELER');
+          });
+
           it('can add canceler for any execution id', async () => {
             await authorizer.addCanceler(scheduledId, canceler, { from: root });
 
