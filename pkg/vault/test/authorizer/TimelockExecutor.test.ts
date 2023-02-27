@@ -40,7 +40,7 @@ describe('TimelockExecutor', () => {
     context('when the sender is not the authorizer', () => {
       it('reverts', async () => {
         await expect(executor.connect(other).execute(token.address, data)).to.be.revertedWith(
-          'ERR_SENDER_NOT_AUTHORIZER'
+          'SENDER_IS_NOT_AUTHORIZER'
         );
       });
     });

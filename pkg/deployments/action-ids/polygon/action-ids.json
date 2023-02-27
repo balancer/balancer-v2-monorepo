@@ -33,13 +33,6 @@
         "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1aff"
       }
     },
-    "BalancerHelpers": {
-      "useAdaptor": true,
-      "actionIds": {
-        "queryExit(bytes32,address,address,(address[],uint256[],bytes,bool))": "0x0313bb1a3149fe1424620a53d57b0feb6af3611431f950d54803939e35a7eb69",
-        "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))": "0x1e3de69841347eebaf114db7484cb6c8215d9233ebdb25b1603c4fc1308dc273"
-      }
-    },
     "ProtocolFeesCollector": {
       "useAdaptor": false,
       "actionIds": {
@@ -215,12 +208,6 @@
         "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)": "0x2d09a22fbe9c7d158e7987034d52ddbb9cc91614360aebee2b7672dfb8df50be",
         "wrapStETH(address,address,uint256,uint256)": "0x312291dc2ab61f228f04827afccdb688df88526f6e687fb057f1a4ea94814e63"
       }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0xc0821b38b909d4450a0639d4a7e4922284925325006a23c1ae2fa1e729c9b781"
-      }
     }
   },
   "20211208-aave-linear-pool": {
@@ -295,20 +282,6 @@
         "wrapERC4626(address,address,address,uint256,uint256)": "0xbe28e94386fc7c9c960f7d2609c42ff770438c8fe1728f22eb6060907a029fc3",
         "wrapStETH(address,address,uint256,uint256)": "0x312291dc2ab61f228f04827afccdb688df88526f6e687fb057f1a4ea94814e63",
         "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x7808579855c199a6e3403f9de0a8365f49bae414686efc25cf17a54492246927"
-      }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0xc0821b38b909d4450a0639d4a7e4922284925325006a23c1ae2fa1e729c9b781"
-      }
-    }
-  },
-  "20220325-authorizer-adaptor": {
-    "AuthorizerAdaptor": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xaa84887ab3d5dc36e15c6c5207e74abbaaf48c3ef86dc273a5952acab745e203"
       }
     }
   },
@@ -424,12 +397,6 @@
         "wrapStETH(address,address,uint256,uint256)": "0x312291dc2ab61f228f04827afccdb688df88526f6e687fb057f1a4ea94814e63",
         "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x7808579855c199a6e3403f9de0a8365f49bae414686efc25cf17a54492246927"
       }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0xc0821b38b909d4450a0639d4a7e4922284925325006a23c1ae2fa1e729c9b781"
-      }
     }
   },
   "20220725-protocol-fee-percentages-provider": {
@@ -519,14 +486,6 @@
         "addPoolFactory(address)": "0xf8c9fae4bc5fe8eb74e5f0fb4987c5acea8dc1f798738132ea5a3ac3e5018eeb",
         "enableRecoveryMode(address)": "0x95d96e954bec90700258ac46bca2b29cba9dcd5222fa2f23c664587a2c6326c6",
         "removePoolFactory(address)": "0xea0664145ce82f191154e8809da2fda36a9dcb1175dea294fc0e712e6f1ea6ad"
-      }
-    }
-  },
-  "20221124-authorizer-adaptor-entrypoint": {
-    "AuthorizerAdaptorEntrypoint": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0xaa84887ab3d5dc36e15c6c5207e74abbaaf48c3ef86dc273a5952acab745e203"
       }
     }
   },
@@ -633,6 +592,72 @@
         "unpause()": "0x808edf9cb9aa28bbe24707f82ac290679fc55ecdcf35ccddda77130f24781607",
         "updateProtocolFeePercentageCache()": "0x7eac9d5fa2945ee22f160a4c04a86a408cb903868e206211207336ac5fac0620",
         "updateTokenRateCache(address)": "0xade7055deebb6b22c267d265d1705ef0ac92207b74b405de6fe239b63380341d"
+      }
+    }
+  },
+  "20230206-aave-rebalanced-linear-pool-v4": {
+    "AaveLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0xb8b4b0c483a7df7565a5eb477ce3a197fe00c08f3f77e069e3e21cc176ae389f",
+        "disable()": "0x06efe7e891755c060de5033e398e2d4d9f1bc713591717209ef84b7e021bd154"
+      }
+    },
+    "AaveLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x11884dA90FB4221b3aa288a7741C51eC4Fc43B2f",
+      "actionIds": {
+        "disableRecoveryMode()": "0xd12b97e317782dac10c3547fc977708cf0a2ebe3621f880b6f89236e760278ee",
+        "enableRecoveryMode()": "0x63670b08ab971b7445722753ef5c4b1ddc64376a631cdb48e3c6eae5a5dfc951",
+        "initialize()": "0x85c408f18c02ca57e9c77ee2dc325adefcd36bae3773b5f6cc2f3c0cbfd8a964",
+        "pause()": "0x51530e1d909caf846c8075a98e41431ffe7e18eabf84b1f3ebade86b84547d30",
+        "setSwapFeePercentage(uint256)": "0x6e1c8947d790e79a7f8b6b195b2ec3231b6b9bd27a74f04b192aacd8e93f3660",
+        "setTargets(uint256,uint256)": "0xb78893595b75c70259cbe387580b752c333e0a52d40fb98d6bcdf4b54b0cef91",
+        "unpause()": "0x1c32f073a3a5d59bedde5824d20e95a52159bb8c4ef8e49dd1af982c91fa5e10"
+      }
+    }
+  },
+  "20230206-erc4626-linear-pool-v3": {
+    "ERC4626LinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xf984eb2B8a7eF780245a797A2fCcd82f346409ca",
+      "actionIds": {
+        "disableRecoveryMode()": "0x541412e0bfa3ff92e78aaa6272dc265e37356c9a06ea99c41e507b841cbdaf39",
+        "enableRecoveryMode()": "0x1af047704bcfd3e1466e6f18e52a32f872a6efd426a13675bc2513e447b0238d",
+        "initialize()": "0x1e783661023b1e72d6a5ee068eefcb0b8dd5b23151336636e6a0e413f2203ad8",
+        "pause()": "0x343468c5eda28b04bd0d752d84a11bd0ba70d76ed5fc481e15de7f36b4937787",
+        "setSwapFeePercentage(uint256)": "0x4e369965828f3a76cdcb37d24a69a3ddf1f0bbfa9110f9978e25d804504b279f",
+        "setTargets(uint256,uint256)": "0x342f10e709ad2a053a4e5035c4b3b703fea94c19f458d3887a6323472f0e42cd",
+        "unpause()": "0x88750d9fe81cc28abdc1c823f271c75e76cbd232145d0e83e405ce7810dd187f"
+      }
+    },
+    "ERC4626LinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x98933eeecdc70ae1fe94f3986354960201f8e848e98bfaf2f496681643c38541",
+        "disable()": "0x5ec883ecf16774e6b304f1e06322669694ffb90c13167afeac8ed7b68ab0869e"
+      }
+    }
+  },
+  "20230213-yearn-linear-pool": {
+    "YearnLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x3bf7b6c22bd9527c849c18005dbfef17350cd3b198d882f3bb5d758455da7ed6",
+        "disable()": "0x6b623ee459a550297f0b0660446eef4dbf89e9d7e9d29addbbe907763506089b"
+      }
+    },
+    "YearnLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x0320c1c5b6df19a194d48882aaec1c72940081d9",
+      "actionIds": {
+        "disableRecoveryMode()": "0x5f70a9fc7662de583295b84f0825dd4069a34c0ae1a6568e07a9bddb702da2fa",
+        "enableRecoveryMode()": "0xe5346592e9128cab4378e32315f1836824e56d46f901b9e6bafa554e72c9585a",
+        "initialize()": "0x1db8c8c23dbd96a8f1cd763d9ac5c31c85eef4fc2dd2ada5ff783d4bea302466",
+        "pause()": "0x2e3db35aff883a61c66722429d09c6fa8afb1b3fd23a906453a02c3ad7a5156c",
+        "setSwapFeePercentage(uint256)": "0xe2034e57b6e5473c618804022a6b6a56a83df1c39435869038988698f9137b73",
+        "setTargets(uint256,uint256)": "0x2342e50fb8143fdbef50d38a2b88596172ad4e0c57a39fdbf27bc56c02d3bba3",
+        "unpause()": "0xdbb204a60732a4043f722f29ca252ecf3d51f45ebc288cb852295d6c184ad304"
       }
     }
   }

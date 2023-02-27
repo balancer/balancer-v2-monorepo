@@ -49,14 +49,6 @@
       }
     }
   },
-  "20220325-authorizer-adaptor": {
-    "AuthorizerAdaptor": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0x6fef9a8dcafc0cebe8ac27f7da400eca76b1550c0c7b475c9a6ce1334f4cd1b3"
-      }
-    }
-  },
   "20220517-protocol-fee-withdrawer": {
     "ProtocolFeesWithdrawer": {
       "useAdaptor": false,
@@ -117,20 +109,6 @@
         "wrapReaperVaultToken(address,address,address,uint256,uint256)": "0xc90e51726c51526e90d73620145365669f007bec7b0e3821bfbdb0520a5c118f",
         "wrapStETH(address,address,uint256,uint256)": "0x5161bd7d2bb7c1ca32df99e222692073ced616bc0ebcfacb82e49f251cfcc263",
         "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x1788a4448d746681dc29939260f2db801b68ab6dde7d8d519b14811a4bdcba36"
-      }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0x7185383e43f020ab904662da44f16100098c51050788ead1d7709e241f4cace5"
-      }
-    }
-  },
-  "20221124-authorizer-adaptor-entrypoint": {
-    "AuthorizerAdaptorEntrypoint": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0x6fef9a8dcafc0cebe8ac27f7da400eca76b1550c0c7b475c9a6ce1334f4cd1b3"
       }
     }
   },
@@ -281,6 +259,73 @@
         "unpause()": "0xa4f38ba3cf0b1b3ea8bc7b3022ecc6976c184fbbe48d5bebcde37f1c03640b19",
         "updateProtocolFeePercentageCache()": "0xff4395d1455f4a2bcb2fde056e750f2af69c000d9897ff5a0cbd87622db503d1",
         "updateTokenRateCache(address)": "0xf1af6ce6368dfbb2b08fdf1c7b6ac9eb97f5a7df881c5193406c74c2e8a760ef"
+      }
+    }
+  },
+  "20230206-aave-rebalanced-linear-pool-v4": {
+    "AaveLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x4ced0ffacf01dd754c6fb3dc32076ae0d36a588714792b909e8a58faa254bcd8",
+        "disable()": "0xf27a3cfffd6082308886cb5ef66425202d4b3180e84c6852d7d8109b4228a5ec"
+      }
+    },
+    "AaveLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x225E0047671939A8d78e08EBd692788Abe63f15c",
+      "actionIds": {
+        "disableRecoveryMode()": "0x9445e55417916b0075c7d42cc8d936bf87a2e04096fe6e29f17d1e2f80eb4123",
+        "enableRecoveryMode()": "0x55183eaafc9e607c22ca713ce26b115fe0e7e47216af41fcec2f0fff0d6f622a",
+        "initialize()": "0x61249c1cc033f0419e0b4556153f3f145175693c37ecd48224e031665842bb4f",
+        "pause()": "0x9fca6ce6b2733f09e22be866cbbfc8b9b4b6822e7ff1e1c9b5c10895e2bbb6b0",
+        "setSwapFeePercentage(uint256)": "0x2ae3adc781b5bd1b6741f6a0d64c69c177a309fa771c818a298f437b11e338a9",
+        "setTargets(uint256,uint256)": "0xc4f7c40d1a1c9c1b1f2c156f3cff7d927a45ed28ae5b64d1fb81ea8ca888ee95",
+        "unpause()": "0xdf74aa35ca13699649afd09db6086f7d5c7c8f820ce90357c4825b982a2cbafa"
+      }
+    }
+  },
+  "20220413-child-chain-gauge-factory": {
+    "RewardsOnlyGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "claim_rewards()": "0xcf0b2b6798f0926a93b908e27f332cfe675625416f0bb92ba5eba0210e8862ad",
+        "claim_rewards(address)": "0x148bace62efe321c95bf0889b402b31e98d5fdcc6ab4cb39b8098228a82d5c7f",
+        "claim_rewards(address,address)": "0x94551b28e4224ffdc70c9e7178f6ee9e48764fb50cf5635edd9bcf09d2df64c3",
+        "claimable_reward_write(address,address)": "0xfc679314994f093e3443cbe466b4000351be4d017dde5b9ee2f976d75895dd84",
+        "deposit(uint256)": "0xebd01fda981e6a2ce9baed03021c6bffe3678acf18bd69a03e20b91a8a7ea0f4",
+        "deposit(uint256,address)": "0x9b9e09750c8ed7d83806572801ddf623057c7e95ec15c1ea36c0670827095bed",
+        "deposit(uint256,address,bool)": "0xa7a296781ddbbfeee4f9ce8663551468770c83f65d153c064f9dbfeb70f02548",
+        "initialize(address,address,bytes32)": "0x160d6c7f4356bb088dfced82b71d12011d070259698cdaf9e8e3dc54a16d8f16",
+        "set_rewards(address,bytes32,address[8])": "0x04427096606d82eb0bae4dae90ee6092c33092524a75e0a2a806438943457a83",
+        "set_rewards_receiver(address)": "0x3b7c2782c806c66b41a98e6f998aa0056451d31e41d0f7d04238e0ed97a4350b",
+        "withdraw(uint256)": "0x2fbeeab59a2e8b7f4a4bb0d5b80177b8aef087f0063d317953cc3b9b3512136e",
+        "withdraw(uint256,bool)": "0x994c5c9162060c36fbbe4385f912f952d59113ec2bae61eed98052872009e2ed"
+      }
+    },
+    "ChildChainStreamer": {
+      "useAdaptor": true,
+      "actionIds": {
+        "add_reward(address,address,uint256)": "0x1b89af5fd70d90b47a73a66d5c4b0f73ca01ea21b5a9c30d783f222b1452e562",
+        "get_reward()": "0x87643eb119a19e1654fb9d119137d30aad0d2132f799205e66c18d41476c3a2a",
+        "initialize(address)": "0x2b460a731f9534cd88c1e413cdbc71cdc845a51dfcb8d26d48bb7b70df49bb90",
+        "notify_reward_amount(address)": "0xf139842955587e7816c90b6d72792f2b7e6014d560464517094450df28164bc8",
+        "remove_reward(address,address)": "0x1da39327dd83225169af7d55dd9b3feb33fc61ab0a25ca6b8919596f356cbf94",
+        "set_reward_distributor(address,address)": "0x9d575f62420250ec382e1e8e262ddae46d0d6817fab9fde48f9c6efd068e5844",
+        "set_reward_duration(address,uint256)": "0x8437b3a9baec9691032f2656bf1874cdd89f3fbd8682005ca84f336686c7d48c"
+      }
+    },
+    "ChildChainLiquidityGaugeFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(address)": "0x9b9ebe5b6e53727fbefa2541e629822e72cd8c63c1e2911094b42bab112590a0"
+      }
+    }
+  },
+  "20220527-child-chain-gauge-token-adder": {
+    "ChildChainGaugeTokenAdder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addTokenToGauge(address,address,address)": "0x1ff8dca7a9af725b8fde69703b657ae58c04e9a7153ef1025379deb0dda4f926"
       }
     }
   }

@@ -7,5 +7,7 @@ Deployment of the Child Chain Gauge Token Adder, which is used to add reward tok
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
+- [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`ChildChainGaugeTokenAdder` artifact](./artifact/ChildChainGaugeTokenAdder.json)
