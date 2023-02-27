@@ -52,26 +52,31 @@ describe('TimelockAuthorizer', () => {
 
   describe.only('granters', () => {
     describe('addGranter', () => {
-      context('for a specific contract', () => {
-        it('grantee can grant permission for that action in that contract only', async () => {
+      context('in a specific contract', () => {
+        it('grantee can grant permission for that action only in that contract', async () => {
           await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
           expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.true;
           expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
+
+          expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_2)).to.be.false;
+
+          expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
         });
 
-        it('grantee cannot grant permission for any other action', async () => {
+        it('grantee cannot grant permission for any other action anywhere', async () => {
           await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
           expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-
           expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+
+          expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_2)).to.be.false;
+
+          expect(await authorizer.canGrant(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
         });
 
         it('reverts if the caller is not root', async () => {
@@ -81,14 +86,17 @@ describe('TimelockAuthorizer', () => {
         });
       });
 
-      context('for any contract', () => {
-        it('grantee can grant permission for that action on any contract', async () => {
+      context('in any contract', () => {
+        it('grantee can grant permission for that action in any contract', async () => {
           await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
 
           expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.true;
-          expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-
           expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
+
+          expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_2)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_2)).to.be.true;
+
+          expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.true;
           expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.true;
         });
 
@@ -96,8 +104,13 @@ describe('TimelockAuthorizer', () => {
           await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
 
           expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
+
+          expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_2)).to.be.false;
+
           expect(await authorizer.canGrant(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
         });
 
         it('reverts if the caller is not root', async () => {
@@ -122,14 +135,10 @@ describe('TimelockAuthorizer', () => {
           await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
           expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
           expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
 
           expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
           expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
         });
 
         it('reverts if the caller is not root', async () => {
@@ -157,11 +166,9 @@ describe('TimelockAuthorizer', () => {
 
           expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
           expect(await authorizer.canGrant(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
 
           expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
           expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
         });
 
         it('reverts if the caller is not root', async () => {
