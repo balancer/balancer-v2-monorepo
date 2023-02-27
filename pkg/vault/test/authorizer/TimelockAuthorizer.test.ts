@@ -711,7 +711,7 @@ describe('TimelockAuthorizer', () => {
           });
 
           it('cannot add root as a canceler', async () => {
-            expect(await authorizer.addCanceler(scheduledId, root, { from: root })).to.be.revertedWith('ACCOUNT_IS_ALREADY_CANCELER');
+            await expect(authorizer.addCanceler(scheduledId, root, { from: root })).to.be.revertedWith('ACCOUNT_IS_ALREADY_CANCELER');
           });
 
           it('can add canceler for any execution id', async () => {
