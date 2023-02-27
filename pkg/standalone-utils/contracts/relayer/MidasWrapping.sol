@@ -26,8 +26,8 @@ import "@balancer-labs/v2-interfaces/contracts/pool-linear/ICToken.sol";
 import "./IBaseRelayerLibrary.sol";
 
 /**
- * @title EulerWrapping
- * @notice Allows users to wrap and unwrap Euler tokens
+ * @title MidasWrapping
+ * @notice Allows users to wrap and unwrap MidasCTokens tokens
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract MidasWrapping is IBaseRelayerLibrary {
