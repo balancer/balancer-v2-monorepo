@@ -702,36 +702,38 @@ describe('TimelockAuthorizer', () => {
         });
 
         context('for any scheduled execution id', () => {
-          beforeEach('set schedule id', async () => {
-            scheduledId = GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID;
-          });
-
           it('root is a canceler', async () => {
-            expect(await authorizer.isCanceler(scheduledId, root)).to.be.true;
+            expect(await authorizer.isCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, root)).to.be.true;
           });
 
           it('cannot add root as a canceler', async () => {
-            await expect(authorizer.addCanceler(scheduledId, root, { from: root })).to.be.revertedWith('ACCOUNT_IS_ALREADY_CANCELER');
+            await expect(
+              authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, root, { from: root })
+            ).to.be.revertedWith('ACCOUNT_IS_ALREADY_CANCELER');
           });
 
           it('can add canceler for any execution id', async () => {
-            await authorizer.addCanceler(scheduledId, canceler, { from: root });
+            await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
 
-            expect(await authorizer.isCanceler(scheduledId, canceler)).to.be.true;
+            expect(await authorizer.isCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler)).to.be.true;
           });
 
           it('emits an event', async () => {
-            const receipt = await authorizer.addCanceler(scheduledId, canceler, { from: root });
+            const receipt = await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, {
+              from: root,
+            });
 
-            expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', { scheduledExecutionId: scheduledId });
+            expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', {
+              scheduledExecutionId: GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID,
+            });
           });
 
           it('cannot be added twice', async () => {
-            await authorizer.addCanceler(scheduledId, canceler, { from: root });
+            await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
 
-            await expect(authorizer.addCanceler(scheduledId, canceler, { from: root })).to.be.revertedWith(
-              'ACCOUNT_IS_ALREADY_CANCELER'
-            );
+            await expect(
+              authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root })
+            ).to.be.revertedWith('ACCOUNT_IS_ALREADY_CANCELER');
           });
         });
       });
