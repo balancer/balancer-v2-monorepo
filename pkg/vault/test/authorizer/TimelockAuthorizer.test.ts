@@ -18,11 +18,12 @@ describe('TimelockAuthorizer', () => {
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
     grantee: SignerWithAddress,
+    canceler: SignerWithAddress,
     other: SignerWithAddress,
     from: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, root, nextRoot, grantee, other] = await ethers.getSigners();
+    [, root, nextRoot, grantee, canceler, other] = await ethers.getSigners();
   });
 
   const GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = MAX_UINT256;
@@ -676,25 +677,25 @@ describe('TimelockAuthorizer', () => {
       context('when adding canceler', () => {
         context('for a specific scheduled execution id', () => {
           it('can add canceler for a specific execution id', async () => {
-            expect(await authorizer.isCanceler(scheduledId, other)).to.be.false;
+            expect(await authorizer.isCanceler(scheduledId, canceler)).to.be.false;
 
-            await authorizer.addCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
 
-            expect(await authorizer.isCanceler(scheduledId, other)).to.be.true;
-            // test that other has only a specific permission
-            expect(await authorizer.isCanceler(scheduledId.add(1), other)).to.be.false;
+            expect(await authorizer.isCanceler(scheduledId, canceler)).to.be.true;
+            // test that canceler has only a specific permission
+            expect(await authorizer.isCanceler(scheduledId.add(1), canceler)).to.be.false;
           });
 
           it('emits an event', async () => {
-            const receipt = await authorizer.addCanceler(scheduledId, other, { from: root });
+            const receipt = await authorizer.addCanceler(scheduledId, canceler, { from: root });
 
             expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', { scheduledExecutionId: scheduledId });
           });
 
           it('cannot be added twice', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
 
-            await expect(authorizer.addCanceler(scheduledId, other, { from: root })).to.be.revertedWith(
+            await expect(authorizer.addCanceler(scheduledId, canceler, { from: root })).to.be.revertedWith(
               'ACCOUNT_IS_ALREADY_CANCELER'
             );
           });
@@ -706,21 +707,21 @@ describe('TimelockAuthorizer', () => {
           });
 
           it('can add canceler for any execution id', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
 
-            expect(await authorizer.isCanceler(scheduledId, other)).to.be.true;
+            expect(await authorizer.isCanceler(scheduledId, canceler)).to.be.true;
           });
 
           it('emits an event', async () => {
-            const receipt = await authorizer.addCanceler(scheduledId, other, { from: root });
+            const receipt = await authorizer.addCanceler(scheduledId, canceler, { from: root });
 
             expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', { scheduledExecutionId: scheduledId });
           });
 
           it('cannot be added twice', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
 
-            await expect(authorizer.addCanceler(scheduledId, other, { from: root })).to.be.revertedWith(
+            await expect(authorizer.addCanceler(scheduledId, canceler, { from: root })).to.be.revertedWith(
               'ACCOUNT_IS_ALREADY_CANCELER'
             );
           });
@@ -732,7 +733,7 @@ describe('TimelockAuthorizer', () => {
       const scheduledId = 0;
 
       it('reverts', async () => {
-        await expect(authorizer.addCanceler(scheduledId, other, { from: other })).to.be.revertedWith(
+        await expect(authorizer.addCanceler(scheduledId, canceler, { from: canceler })).to.be.revertedWith(
           'SENDER_IS_NOT_ROOT'
         );
       });
@@ -746,24 +747,24 @@ describe('TimelockAuthorizer', () => {
       context('when removing canceler', () => {
         context('for a specific scheduled execution id', () => {
           it('can remove canceler for a specific execution id', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
-            await authorizer.removeCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
+            await authorizer.removeCanceler(scheduledId, canceler, { from: root });
 
-            expect(await authorizer.isCanceler(scheduledId, other)).to.be.false;
+            expect(await authorizer.isCanceler(scheduledId, canceler)).to.be.false;
           });
 
           it('emits an event', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
-            const receipt = await authorizer.removeCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
+            const receipt = await authorizer.removeCanceler(scheduledId, canceler, { from: root });
 
             expectEvent.inReceipt(await receipt.wait(), 'CancelerRemoved', {
               scheduledExecutionId: scheduledId,
-              canceler: other.address,
+              canceler: canceler.address,
             });
           });
 
           it('cannot remove if not canceler', async () => {
-            await expect(authorizer.removeCanceler(scheduledId, other, { from: root })).to.be.revertedWith(
+            await expect(authorizer.removeCanceler(scheduledId, canceler, { from: root })).to.be.revertedWith(
               'ACCOUNT_IS_NOT_CANCELER'
             );
           });
@@ -775,17 +776,17 @@ describe('TimelockAuthorizer', () => {
           });
 
           it('cannot remove global canceler for a specific execution id', async () => {
-            await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, other, { from: root });
-            await expect(authorizer.removeCanceler(scheduledId, other, { from: root })).to.be.revertedWith(
+            await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
+            await expect(authorizer.removeCanceler(scheduledId, canceler, { from: root })).to.be.revertedWith(
               'ACCOUNT_IS_GLOBAL_CANCELER'
             );
           });
 
           it('cannot be removed twice', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
-            await authorizer.removeCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
+            await authorizer.removeCanceler(scheduledId, canceler, { from: root });
 
-            await expect(authorizer.removeCanceler(scheduledId, other, { from: root })).to.be.revertedWith(
+            await expect(authorizer.removeCanceler(scheduledId, canceler, { from: root })).to.be.revertedWith(
               'ACCOUNT_IS_NOT_CANCELER'
             );
           });
@@ -797,25 +798,25 @@ describe('TimelockAuthorizer', () => {
           });
 
           it('can remove canceler for any execution id', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
 
-            await authorizer.removeCanceler(scheduledId, other, { from: root });
+            await authorizer.removeCanceler(scheduledId, canceler, { from: root });
 
-            expect(await authorizer.isCanceler(scheduledId, other)).to.be.false;
+            expect(await authorizer.isCanceler(scheduledId, canceler)).to.be.false;
           });
 
           it('emits an event', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
-            const receipt = await authorizer.removeCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
+            const receipt = await authorizer.removeCanceler(scheduledId, canceler, { from: root });
 
             expectEvent.inReceipt(await receipt.wait(), 'CancelerRemoved', {
               scheduledExecutionId: scheduledId,
-              canceler: other.address,
+              canceler: canceler.address,
             });
           });
 
           it('cannot remove', async () => {
-            await expect(authorizer.removeCanceler(scheduledId, other, { from: root })).to.be.revertedWith(
+            await expect(authorizer.removeCanceler(scheduledId, canceler, { from: root })).to.be.revertedWith(
               'ACCOUNT_IS_NOT_CANCELER'
             );
           });
@@ -827,10 +828,10 @@ describe('TimelockAuthorizer', () => {
           });
 
           it('cannot be removed twice', async () => {
-            await authorizer.addCanceler(scheduledId, other, { from: root });
-            await authorizer.removeCanceler(scheduledId, other, { from: root });
+            await authorizer.addCanceler(scheduledId, canceler, { from: root });
+            await authorizer.removeCanceler(scheduledId, canceler, { from: root });
 
-            await expect(authorizer.removeCanceler(scheduledId, other, { from: root })).to.be.revertedWith(
+            await expect(authorizer.removeCanceler(scheduledId, canceler, { from: root })).to.be.revertedWith(
               'ACCOUNT_IS_NOT_CANCELER'
             );
           });
@@ -842,7 +843,7 @@ describe('TimelockAuthorizer', () => {
       const scheduledId = 0;
 
       it('reverts', async () => {
-        await expect(authorizer.removeCanceler(scheduledId, other, { from: other })).to.be.revertedWith(
+        await expect(authorizer.removeCanceler(scheduledId, canceler, { from: canceler })).to.be.revertedWith(
           'SENDER_IS_NOT_ROOT'
         );
       });
