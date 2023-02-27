@@ -139,9 +139,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
 
     /**
-     * @notice Emitted when an executor is created for a scheduled execution `scheduledExecutionId`.
+     * @notice Emitted when an executor is added for a scheduled execution `scheduledExecutionId`.
      */
-    event ExecutorCreated(uint256 indexed scheduledExecutionId, address indexed executor);
+    event ExecutorAdded(uint256 indexed scheduledExecutionId, address indexed executor);
 
     /**
      * @notice Emitted when an account is added as a granter for `actionId` in `where`.
@@ -154,14 +154,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
 
     /**
-     * @notice Emitted when a canceler is created for a scheduled execution `scheduledExecutionId`.
+     * @notice Emitted when a canceler is added for a scheduled execution `scheduledExecutionId`.
      */
-    event CancelerCreated(uint256 indexed scheduledExecutionId, address indexed canceler);
+    event CancelerAdded(uint256 indexed scheduledExecutionId, address indexed canceler);
 
     /**
-     * @notice Emitted when a canceler is destroyed for a scheduled execution `scheduledExecutionId`.
+     * @notice Emitted when a canceler is removed for a scheduled execution `scheduledExecutionId`.
      */
-    event CancelerDestroyed(uint256 indexed scheduledExecutionId, address indexed canceler);
+    event CancelerRemoved(uint256 indexed scheduledExecutionId, address indexed canceler);
 
     /**
      * @notice Emitted when an execution `scheduledExecutionId` is executed.
@@ -650,16 +650,16 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             isRoot(account);
     }
 
-    function createCanceler(uint256 scheduledExecutionId, address account) external {
+    function addCanceler(uint256 scheduledExecutionId, address account) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
-        _createCanceler(scheduledExecutionId, account);
+        _addCanceler(scheduledExecutionId, account);
     }
 
-    function destroyCanceler(uint256 scheduledExecutionId, address account) external {
+    function removeCanceler(uint256 scheduledExecutionId, address account) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         // The root account is always a canceler, and this cannot be revoked.
-        require(!isRoot(account), "CANNOT_DESTROY_ROOT_CANCELER");
+        require(!isRoot(account), "CANNOT_REMOVE_ROOT_CANCELER");
 
         if (_isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID][account]) {
             // If an account is a global canceler, then it must explicitly lose this global privilege. This prevents
@@ -676,14 +676,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         }
 
         _isCanceler[scheduledExecutionId][account] = false;
-        emit CancelerDestroyed(scheduledExecutionId, account);
+        emit CancelerRemoved(scheduledExecutionId, account);
     }
 
-    function _createCanceler(uint256 scheduledExecutionId, address account) private {
+    function _addCanceler(uint256 scheduledExecutionId, address account) private {
         require(!isCanceler(scheduledExecutionId, account), "ACCOUNT_IS_ALREADY_CANCELER");
 
         _isCanceler[scheduledExecutionId][account] = true;
-        emit CancelerCreated(scheduledExecutionId, account);
+        emit CancelerAdded(scheduledExecutionId, account);
     }
 
     /**
@@ -697,7 +697,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * remove the granter.
      *
      * A malicious granter may also attempt to use their granter status to grant permission to multiple accounts, but
-     * they cannot create new granters. Therefore, the danger posed by a malicious granter is limited and self-
+     * they cannot add new granters. Therefore, the danger posed by a malicious granter is limited and self-
      * contained. Root can mitigate the situation simply and completely by revoking first their granter status,
      * and then any permissions granted by that account, knowing there cannot be any more.
      */
@@ -802,6 +802,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * permissions for which revocation from key addresses would be dangerous (e.g. preventing the BalancerMinter from
      * minting BAL) have sufficiently long delays associated with revoking them that the root will be able to
      * reestablish control and cancel the revocation before the scheduled revocation can be executed.
+     *
+     * A malicious revoker cannot add new revokers, so root can simply revoke their status once.
      */
     function addRevoker(
         bytes32 actionId,
@@ -944,12 +946,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         for (uint256 i = 0; i < executors.length; i++) {
             // Note that we allow for repeated executors - this is not an issue
             _isExecutor[scheduledExecutionId][executors[i]] = true;
-            emit ExecutorCreated(scheduledExecutionId, executors[i]);
+            emit ExecutorAdded(scheduledExecutionId, executors[i]);
         }
 
         // if the scheduler doesn't have a permission to cancel the scheduled action then grant it
         if (!isCanceler(scheduledExecutionId, sender)) {
-            _createCanceler(scheduledExecutionId, sender);
+            _addCanceler(scheduledExecutionId, sender);
         }
     }
 

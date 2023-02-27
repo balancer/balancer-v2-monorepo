@@ -180,20 +180,20 @@ export default class TimelockAuthorizer {
     return this.with(params).cancel(id);
   }
 
-  async createCanceler(
+  async addCanceler(
     scheduledExecutionId: BigNumberish,
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).createCanceler(scheduledExecutionId, this.toAddress(account));
+    return this.with(params).addCanceler(scheduledExecutionId, this.toAddress(account));
   }
 
-  async destroyCanceler(
+  async removeCanceler(
     scheduledExecutionId: BigNumberish,
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).destroyCanceler(scheduledExecutionId, this.toAddress(account));
+    return this.with(params).removeCanceler(scheduledExecutionId, this.toAddress(account));
   }
 
   async addGranter(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
