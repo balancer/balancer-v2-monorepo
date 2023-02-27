@@ -581,5 +581,14 @@
         "unpause()": "0xf9e3ecfb789b73003be5d7a16198362f67a321fceb87e62f5d9649474aa5ffa3"
       }
     }
+  },
+  "20230223-protocol-id-registry": {
+    "ProtocolIdRegistry": {
+      "useAdaptor": false,
+      "actionIds": {
+        "registerProtocolId(uint256,string)": "0xfed0eb6041728fc141bad70d04446ff0e9c8289a4f53cc060addc832c914b44f",
+        "renameProtocolId(uint256,string)": "0xdc8681b640b547e98ee6f4d708df559b807526d976644c3aca24bc12c4f839c3"
+      }
+    }
   }
 }
