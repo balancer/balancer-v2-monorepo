@@ -681,6 +681,8 @@ describe('TimelockAuthorizer', () => {
             await authorizer.addCanceler(scheduledId, other, { from: root });
 
             expect(await authorizer.isCanceler(scheduledId, other)).to.be.true;
+            // test that other has only a specific permission
+            expect(await authorizer.isCanceler(scheduledId.add(1), other)).to.be.false;
           });
 
           it('emits an event', async () => {
