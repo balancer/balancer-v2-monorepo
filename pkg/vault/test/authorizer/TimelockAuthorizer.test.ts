@@ -834,7 +834,7 @@ describe('TimelockAuthorizer', () => {
             );
           });
 
-          it('cannot Removed', async () => {
+          it('cannot remove', async () => {
             await expect(authorizer.removeCanceler(scheduledId, root, { from })).to.be.revertedWith(
               'CANNOT_REMOVE_ROOT_CANCELER'
             );
