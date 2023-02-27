@@ -137,12 +137,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event ExecutorCreated(uint256 indexed scheduledExecutionId, address indexed executor);
 
     /**
-     * @notice Emitted when a granter is added for `actionId` in `where`.
+     * @notice Emitted when an account is added as a granter for `actionId` in `where`.
      */
     event GranterAdded(bytes32 indexed actionId, address indexed account, address indexed where);
 
     /**
-     * @notice Emitted when a granter is removed for `actionId` in `where`.
+     * @notice Emitted when an account is removed as a granter `actionId` in `where`.
      */
     event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
 
@@ -639,8 +639,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      *
      * Note that there are no delays associated with adding granters. This is based on the assumption that any action
      * which a malicous user could exploit to damage the protocol will have a sufficiently long delay associated with
-     * granting permissions for or exercising that permission such that the root will be able to reestablish control and
-     * cancel either the granting or associated action before it can be executed, and then remove the granter.
+     * granting permissions for or exercising that permission. Then, the root will be able to reestablish control and
+     * cancel either the granting or associated action before it can be executed, and finally remove the granter.
      *
      * A malicious granter may also attempt to use their granter status to grant permission to multiple accounts, but
      * they cannot create new granters. Therefore, the danger posed by a malicious granter is limited and self-
