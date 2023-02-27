@@ -69,6 +69,35 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
         });
 
+        it('emits a GranterAdded event', async () => {
+          const receipt = await (await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'GranterAdded', {
+            actionId: ACTION_1,
+            account: grantee.address,
+            where: WHERE_1,
+          });
+        });
+
+        it('reverts if the grantee is already a granter', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await expect(authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_GRANTER'
+          );
+        });
+
+        it('reverts if the grantee is already a global granter', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+          await expect(authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_GRANTER'
+          );
+        });
+
+        it('reverts if the grantee is root', async () => {
+          await expect(authorizer.addGranter(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_GRANTER'
+          );
+        });
+
         it('reverts if the caller is not root', async () => {
           await expect(authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
@@ -91,6 +120,39 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
           expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_2)).to.be.false;
           expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+        });
+
+        it('emits a GranterAdded event', async () => {
+          const receipt = await (await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'GranterAdded', {
+            actionId: ACTION_1,
+            account: grantee.address,
+            where: EVERYWHERE,
+          });
+        });
+
+        it('does not revert if the grantee is already a granter in a specific contract', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+
+          const receipt = await (await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'GranterAdded', {
+            actionId: ACTION_1,
+            account: grantee.address,
+            where: EVERYWHERE,
+          });
+        });
+
+        it('reverts if the grantee is already a global granter', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+          await expect(authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_GRANTER'
+          );
+        });
+
+        it('reverts if the grantee is root', async () => {
+          await expect(authorizer.addGranter(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_GRANTER'
+          );
         });
 
         it('reverts if the caller is not root', async () => {
