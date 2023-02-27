@@ -351,7 +351,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address account,
         address where
     ) public view returns (bool) {
-        return _isGranter[actionId][where][account] || _isGranter[actionId][EVERYWHERE][account] || isRoot(account);
+        return _isGranter[actionId][account][where] || _isGranter[actionId][account][EVERYWHERE] || isRoot(account);
     }
 
     /**
@@ -661,7 +661,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // To avoid these issues, it is recommended to revoke any prior granter status over specific contracts before
         // making an account a global granter.
 
-        _isGranter[actionId][where][account] = true;
+        _isGranter[actionId][account][where] = true;
         emit GranterAdded(actionId, account, where);
     }
 
@@ -696,7 +696,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             require(where == EVERYWHERE, "GRANTER_IS_GLOBAL");
         }
 
-        _isGranter[actionId][where][account] = false;
+        _isGranter[actionId][account][where] = false;
         emit GranterRemoved(actionId, account, where);
     }
 
