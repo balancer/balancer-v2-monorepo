@@ -52,143 +52,123 @@ describe('TimelockAuthorizer', () => {
 
   describe.only('granters', () => {
     describe('addGranter', () => {
-      context('for a specific action', () => {
-        const actionId = ACTION_1;
+      context('for a specific contract', () => {
+        it('grantee can grant permission for that action in that contract only', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
-        context('for a specific contract', () => {
-          const where = WHERE_1;
-
-          it('grantee can grant permission for that action in that contract only', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
-
-            expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
-          });
-
-          it('grantee cannot grant permission for any other action', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
-
-            expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-
-            expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-          });
-
-          it('reverts if the caller is not root', async () => {
-            await expect(authorizer.addGranter(actionId, grantee, where, { from: other })).to.be.revertedWith(
-              'SENDER_IS_NOT_ROOT'
-            );
-          });
+          expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
         });
 
-        context('for a any contract', () => {
-          const where = EVERYWHERE;
+        it('grantee cannot grant permission for any other action', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
-          it('grantee can grant permission for that action on any contract', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
+          expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
 
-            expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+        });
 
-            expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-          });
+        it('reverts if the caller is not root', async () => {
+          await expect(authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
+          );
+        });
+      });
 
-          it('grantee cannot grant permission for that any other action anywhere', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
+      context('for any contract', () => {
+        it('grantee can grant permission for that action on any contract', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
 
-            expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canGrant(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.true;
+          expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.true;
 
-            expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-          });
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.true;
+        });
 
-          it('reverts if the caller is not root', async () => {
-            await expect(authorizer.addGranter(actionId, grantee, EVERYWHERE, { from: other })).to.be.revertedWith(
-              'SENDER_IS_NOT_ROOT'
-            );
-          });
+        it('grantee cannot grant permission for any other action anywhere', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+
+          expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.canGrant(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+        });
+
+        it('reverts if the caller is not root', async () => {
+          await expect(authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
+          );
         });
       });
     });
 
     describe('removeGranter', () => {
-      context('for a specific action', () => {
-        const actionId = ACTION_1;
+      context('for a specific contract', () => {
+        it('grantee cannot grant permission for that action in that contract only', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
-        context('for a specific contract', () => {
-          const where = WHERE_1;
-
-          it('grantee cannot grant permission for that action in that contract only', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
-            await authorizer.removeGranter(actionId, grantee, where, { from: root });
-
-            expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
-          });
-
-          it('grantee cannot grant permission for any other action', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
-
-            expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-
-            expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-          });
-
-          it('reverts if the caller is not root', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
-            await expect(authorizer.removeGranter(actionId, grantee, where, { from: other })).to.be.revertedWith(
-              'SENDER_IS_NOT_ROOT'
-            );
-          });
+          expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
         });
 
-        context('for a any contract', () => {
-          const where = EVERYWHERE;
+        it('grantee cannot grant permission for any other action', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
-          it('grantee cannot grant permission for that action on any contract', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
-            await authorizer.removeGranter(actionId, grantee, where, { from: root });
+          expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
 
-            expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+        });
 
-            expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          });
+        it('reverts if the caller is not root', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await expect(authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
+          );
+        });
+      });
 
-          it('grantee cannot grant permission for that any other action anywhere', async () => {
-            await authorizer.addGranter(actionId, grantee, where, { from: root });
+      context('for a any contract', () => {
+        it('grantee cannot grant permission for that action on any contract', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root });
 
-            expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canGrant(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canGrant(ACTION_1, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.canGrant(ACTION_1, grantee, EVERYWHERE)).to.be.false;
 
-            expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-          });
+          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+        });
 
-          it('reverts if the caller is not root', async () => {
-            await authorizer.addGranter(actionId, grantee, EVERYWHERE, { from: root });
-            await expect(authorizer.removeGranter(actionId, grantee, EVERYWHERE, { from: other })).to.be.revertedWith(
-              'SENDER_IS_NOT_ROOT'
-            );
-          });
+        it('grantee cannot grant permission for that any other action anywhere', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+
+          expect(await authorizer.canGrant(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.canGrant(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+
+          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+        });
+
+        it('reverts if the caller is not root', async () => {
+          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+          await expect(authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
+          );
         });
       });
     });
