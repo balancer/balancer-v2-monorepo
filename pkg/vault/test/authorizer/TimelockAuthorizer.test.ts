@@ -701,7 +701,7 @@ describe('TimelockAuthorizer', () => {
             expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', { scheduledExecutionId: scheduledId });
           });
 
-          it('cannot be add twice', async () => {
+          it('cannot be added twice', async () => {
             await authorizer.addCanceler(scheduledId, other, { from });
 
             await expect(authorizer.addCanceler(scheduledId, other, { from })).to.be.revertedWith(
