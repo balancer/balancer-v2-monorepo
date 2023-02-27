@@ -229,8 +229,8 @@ interface IManagedPool is IBasePool {
      * whenever the supply changes (e.g., joins and exits, add and remove token), and before the fee
      * percentage is changed by the manager, to prevent fees from being applied retroactively.
      *
-     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook.
+     * Correct behavior depends on the current supply, which is potentially manipulable if the pool
+     * is reentered during execution of a Vault hook.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
@@ -244,8 +244,9 @@ interface IManagedPool is IBasePool {
      * To avoid retroactive fee increases, we force collection at the current fee percentage before processing
      * the update. Emits the ManagementAumFeePercentageChanged event. This is a permissioned function.
      *
-     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook.
+     * To prevent changing management fees retroactively, this triggers payment of protocol fees before applying
+     * the change. Correct behavior depends on the current supply, which is potentially manipulable if the pool
+     * is reentered during execution of a Vault hook.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
