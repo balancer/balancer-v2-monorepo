@@ -470,7 +470,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
-        return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors, msg.sender);
+        return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
     }
 
     /**
@@ -557,7 +557,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
-        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors, msg.sender);
+        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
     }
 
     /**
@@ -590,7 +590,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
         require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
-        return _schedule(actionId, where, data, executors);
+
+        uint256 id = _schedule(actionId, where, data, executors);
+        // accounts that schedule actions are automatically made cancelers for them, so that they can manage their
+        // action. we check that they are not already a canceler since e.g. root may schedule actions (and root is
+        // always a global canceler).
+        if (!isCanceler(id, msg.sender)) {
+            _addCanceler(id, msg.sender);
+        }
+        return id;
     }
 
     /**
@@ -791,7 +799,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
 
         // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
-        return _scheduleWithDelay(0x0, address(this), data, delay, executors);
+        uint256 id =_scheduleWithDelay(0x0, address(this), data, delay, executors);
+        // accounts that schedule actions are automatically made cancelers for them, so that they can manage their
+        // action. we check that they are not already a canceler since e.g. root may schedule actions (and root is
+        // always a global canceler).
+        if (!isCanceler(id, msg.sender)) {
+            _addCanceler(id, msg.sender);
+        }
+        return id;
     }
 
     /**
@@ -867,7 +882,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(isRevoker(actionId, msg.sender, where), "SENDER_IS_NOT_REVOKER");
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
         bytes32 revokePermissionId = getRevokePermissionActionId(actionId);
-        return _schedule(revokePermissionId, address(this), data, executors);
+        uint256 id = _schedule(revokePermissionId, address(this), data, executors);
+        // accounts that schedule actions are automatically made cancelers for them, so that they can manage their
+        // action. we check that they are not already a canceler since e.g. root may schedule actions (and root is
+        // always a global canceler).
+        if (!isCanceler(id, msg.sender)) {
+            _addCanceler(id, msg.sender);
+        }
+        return id;
     }
 
     /**
@@ -914,7 +936,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     ) private returns (uint256 scheduledExecutionId) {
         uint256 delay = _delaysPerActionId[actionId];
         require(delay > 0, "CANNOT_SCHEDULE_ACTION");
-        return _scheduleWithDelay(actionId, where, data, delay, executors, msg.sender);
+        return _scheduleWithDelay(actionId, where, data, delay, executors);
     }
 
     function _scheduleWithDelay(
@@ -922,8 +944,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         bytes memory data,
         uint256 delay,
-        address[] memory executors,
-        address sender
+        address[] memory executors
     ) private returns (uint256 scheduledExecutionId) {
         scheduledExecutionId = _scheduledExecutions.length;
         emit ExecutionScheduled(actionId, scheduledExecutionId);
@@ -947,11 +968,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // Note that we allow for repeated executors - this is not an issue
             _isExecutor[scheduledExecutionId][executors[i]] = true;
             emit ExecutorAdded(scheduledExecutionId, executors[i]);
-        }
-
-        // if the scheduler doesn't have a permission to cancel the scheduled action then grant it
-        if (!isCanceler(scheduledExecutionId, sender)) {
-            _addCanceler(scheduledExecutionId, sender);
         }
     }
 
