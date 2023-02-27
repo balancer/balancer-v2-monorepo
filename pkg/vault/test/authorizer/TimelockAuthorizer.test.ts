@@ -839,6 +839,24 @@ describe('TimelockAuthorizer', () => {
               authorizer.removeCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root })
             ).to.be.revertedWith('ACCOUNT_IS_NOT_CANCELER');
           });
+
+          it('can remove canceler for any execution id', async () => {
+            await authorizer.addCanceler(0, canceler, { from: root });
+            await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
+
+            expect(await authorizer.isCanceler(0, canceler)).to.be.true;
+            expect(await authorizer.isCanceler(1, canceler)).to.be.true;
+
+            await authorizer.removeCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
+
+            expect(await authorizer.isCanceler(0, canceler)).to.be.true;
+            expect(await authorizer.isCanceler(1, canceler)).to.be.false;
+
+            await authorizer.removeCanceler(0, canceler, { from: root });
+
+            expect(await authorizer.isCanceler(0, canceler)).to.be.false;
+            expect(await authorizer.isCanceler(1, canceler)).to.be.false;
+          });
         });
       });
     });
