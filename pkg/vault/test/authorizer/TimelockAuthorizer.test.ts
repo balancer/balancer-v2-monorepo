@@ -795,7 +795,7 @@ describe('TimelockAuthorizer', () => {
             );
           });
 
-          it('cannot be remove twice', async () => {
+          it('cannot be removed twice', async () => {
             await authorizer.addCanceler(scheduledId, other, { from });
             await authorizer.removeCanceler(scheduledId, other, { from });
 
