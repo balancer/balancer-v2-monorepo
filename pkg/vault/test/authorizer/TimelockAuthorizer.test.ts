@@ -685,7 +685,7 @@ describe('TimelockAuthorizer', () => {
         from = root;
       });
 
-      context('when creating canceler', () => {
+      context('when adding canceler', () => {
         context('for a specific scheduled execution id', () => {
           it('can add canceler for a specific execution id', async () => {
             expect(await authorizer.isCanceler(scheduledId, other)).to.be.false;
