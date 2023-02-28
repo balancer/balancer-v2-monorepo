@@ -7,7 +7,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
