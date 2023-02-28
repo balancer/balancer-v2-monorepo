@@ -378,5 +378,17 @@
   "0x813E3fE1761f714c502d1d2d3a7CCEB33f37F59D": {
     "task": "20221207-aave-rebalanced-linear-pool-v3",
     "name": "MockAaveLinearPool"
+  },
+  "0x2a18B396829bc29F66a1E59fAdd7a0269A6605E8": {
+    "task": "20230217-gnosis-root-gauge-factory",
+    "name": "GnosisRootGaugeFactory"
+  },
+  "0x05277CE7D1e365d660624612d8b8b9B55bFD4518": {
+    "task": "20230217-gnosis-root-gauge-factory",
+    "name": "GnosisRootGauge"
+  },
+  "0xc3ccacE87f6d3A81724075ADcb5ddd85a8A1bB68": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
   }
 }

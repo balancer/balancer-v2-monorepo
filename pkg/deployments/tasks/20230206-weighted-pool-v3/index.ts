@@ -79,6 +79,14 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       .sub(mockPoolArgs.pauseWindowDuration);
 
     // We are now ready to verify the Pool
-    await task.verify('WeightedPool', mockPool.address, [mockPoolArgs]);
+    await task.verify('WeightedPool', mockPool.address, [
+      mockPoolArgs.params,
+      mockPoolArgs.vault,
+      mockPoolArgs.protocolFeeProvider,
+      mockPoolArgs.pauseWindowDuration,
+      mockPoolArgs.bufferPeriodDuration,
+      mockPoolArgs.owner,
+      mockPoolArgs.version,
+    ]);
   }
 };

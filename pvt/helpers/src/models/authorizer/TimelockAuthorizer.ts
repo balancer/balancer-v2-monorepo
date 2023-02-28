@@ -177,7 +177,7 @@ export default class TimelockAuthorizer {
   }
 
   async addGranter(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).manageGranter(action, this.toAddress(account), this.toAddress(where), true);
+    return this.with(params).addGranter(action, this.toAddress(account), this.toAddress(where));
   }
 
   async removeGranter(
@@ -186,11 +186,11 @@ export default class TimelockAuthorizer {
     wheres: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).manageGranter(action, this.toAddress(account), this.toAddress(wheres), false);
+    return this.with(params).removeGranter(action, this.toAddress(account), this.toAddress(wheres));
   }
 
   async addRevoker(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(where), true);
+    return this.with(params).addRevoker(action, this.toAddress(account), this.toAddress(where));
   }
 
   async removeRevoker(
@@ -199,7 +199,7 @@ export default class TimelockAuthorizer {
     wheres: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(wheres), false);
+    return this.with(params).removeRevoker(action, this.toAddress(account), this.toAddress(wheres));
   }
 
   async grantPermissions(
@@ -251,7 +251,7 @@ export default class TimelockAuthorizer {
     return this.with(params).renouncePermissions(this.toList(actions), wheres);
   }
 
-  async setDelay(action: string, delay: number, params?: TxParams): Promise<void> {
+  async scheduleAndExecuteDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
     const id = await this.scheduleDelayChange(action, delay, [], params);
     await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
     await this.execute(id);

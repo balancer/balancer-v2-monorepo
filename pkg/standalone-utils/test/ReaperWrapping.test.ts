@@ -32,7 +32,7 @@ describe('ReaperWrapping', function () {
 
   sharedBeforeEach('Deploy tokens and reaper vaults', async () => {
     dai = await Token.create({ name: 'DAI', symbol: 'DAI', decimals: 18 });
-    rfDAI = await deploy('v2-pool-linear/MockReaperVault', {
+    rfDAI = await deploy('MockReaperVault', {
       args: ['yvDAI', 'yvDAI', 18, dai.address, yvDaiRate],
     });
   });

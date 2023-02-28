@@ -90,5 +90,29 @@
   "0x581Ec1f5e7CeD12B186deaE32256AdB53BDd5B08": {
     "task": "20221207-aave-rebalanced-linear-pool-v3",
     "name": "MockAaveLinearPool"
+  },
+  "0x45fFd460cC6642B8D8Fb12373DFd77Ceb0f4932B": {
+    "task": "20220413-child-chain-gauge-factory",
+    "name": "RewardsOnlyGauge"
+  },
+  "0x230a59F4d9ADc147480f03B0D3fFfeCd56c3289a": {
+    "task": "20220413-child-chain-gauge-factory",
+    "name": "ChildChainStreamer"
+  },
+  "0x809B79b53F18E9bc08A961ED4678B901aC93213a": {
+    "task": "20220413-child-chain-gauge-factory",
+    "name": "ChildChainLiquidityGaugeFactory"
+  },
+  "0x1802953277FD955f9a254B80Aa0582f193cF1d77": {
+    "task": "20220527-child-chain-gauge-token-adder",
+    "name": "ChildChainGaugeTokenAdder"
+  },
+  "0xf7D5DcE55E6D47852F054697BAB6A1B48A00ddbd": {
+    "task": "20220812-child-chain-reward-helper",
+    "name": "ChildChainGaugeRewardHelper"
+  },
+  "0x6B5dA774890Db7B7b96C6f44e6a4b0F657399E2e": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
   }
 }

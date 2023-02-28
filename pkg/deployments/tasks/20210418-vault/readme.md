@@ -14,5 +14,7 @@ Aditionally, the `WETH` argument may represent different things in different net
 - [Optimism mainnet addresses](./output/optimism.json)
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`Vault` artifact](./artifact/Vault.json)
+- [`BalancerHelpers` artifact](./artifact/BalancerHelpers.json)

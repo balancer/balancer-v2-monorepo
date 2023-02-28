@@ -11,4 +11,4 @@ Deployment of the `StablePhantomPoolFactory`, for Meta Stable Pools with premint
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
-- [`StablePhantomPool` artifact](./artifact/StablePhantomPool.json)
+- [`StablePhantomPoolFactory` artifact](./artifact/StablePhantomPoolFactory.json)

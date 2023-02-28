@@ -12,6 +12,6 @@ This new version provides quality of life improvements, like read-only chained r
 - [Optimism mainnet addresses](./output/optimism.json)
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`BalancerRelayer` artifact](./artifact/BalancerRelayer.json)
 - [`BatchRelayerLibrary` artifact](./artifact/BatchRelayerLibrary.json)

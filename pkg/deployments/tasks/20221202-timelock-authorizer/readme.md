@@ -7,5 +7,5 @@ This Authorizer implementation allows defining a delay per action identifier. Us
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`TimelockAuthorizer` ABI](./abi/TimelockAuthorizer.json)
-- [`TimelockAuthorizerMigrator` ABI](./abi/TimelockAuthorizerMigrator.json)
+- [`TimelockAuthorizer` artifact](./artifact/TimelockAuthorizer.json)
+- [`TimelockAuthorizerMigrator` artifact](./artifact/TimelockAuthorizerMigrator.json)
