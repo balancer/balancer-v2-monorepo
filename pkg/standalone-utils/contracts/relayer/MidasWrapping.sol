@@ -15,13 +15,13 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICFuseToken.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
-
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/ICToken.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -40,7 +40,7 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
      *@notice pulls tokens from sender to relayer and calls mint? on a CToken.
      */
     function wrapMidas(
-        ICToken wrappedToken,
+        ICFuseToken wrappedToken,
         address sender,
         address recipient,
         uint256 amount,
@@ -62,8 +62,7 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
         underlying.safeApprove(address(wrappedToken), amount);
 
         // calculated balances of the wrappedToken in the Relayer
-        IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
-        uint256 wrappedAmountBefore = wrappedTokenErc20.balanceOf(address(this));
+        uint256 wrappedAmountBefore = wrappedToken.balanceOf(address(this));
 
         // The mint function transfers an asset into the Midas protocol, which begins accumulating interest
         // based on the current Supply Rate for the asset. The user receives a quantity of cTokens
@@ -71,12 +70,14 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
         uint256 sent = wrappedToken.mint(amount);
         require(sent == 0, "failed to deposit into midas market");
 
-        uint256 wrappedAmountAfter = wrappedTokenErc20.balanceOf(address(this));
+        uint256 wrappedAmountAfter = wrappedToken.balanceOf(address(this));
         uint256 withdrawnWrappedAmount = wrappedAmountAfter - wrappedAmountBefore;
 
         if (recipient != address(this)) {
-            wrappedTokenErc20.safeApprove(address(this), withdrawnWrappedAmount);
-            wrappedTokenErc20.safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
+            // in order to use safeApprovvals and -Transfers
+            // typecast the wrappedToken here
+            IERC20(wrappedToken).safeApprove(address(this), withdrawnWrappedAmount);
+            IERC20(wrappedToken).safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
         }
 
         if (_isChainedReference(outputReference)) {
@@ -85,7 +86,7 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
     }
 
     function unwrapMidas(
-        ICToken wrappedToken,
+        ICFuseToken wrappedToken,
         address sender,
         address recipient,
         uint256 amount,

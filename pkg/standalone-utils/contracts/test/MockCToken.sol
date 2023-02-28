@@ -14,11 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/ICToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICFuseToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
-contract MockCToken is TestToken, ICToken {
+contract MockCToken is TestToken, ICFuseToken {
     address public immutable override underlying;
     uint256 private _exchangeRate;
     uint256 private _temp;
@@ -99,9 +99,37 @@ contract MockCToken is TestToken, ICToken {
         _exchangeRate = newExchangeRate;
     }
 
-    function accrueInterest() external override returns (uint256) {
+    function accrueInterest() external returns (uint256) {
         _temp = 1;
 
         return 0;
+    }
+
+    function accrualBlockNumber() external pure override returns (uint256) {
+        return 100000;
+    }
+
+    function initialExchangeRateMantissa() external pure override returns (uint256) {
+        return 2e17;
+    }
+
+    function reserveFactorMantissa() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function totalAdminFees() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function totalFuseFees() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function totalBorrows() external pure override returns (uint256) {
+        return 1e18;
+    }
+
+    function totalReserves() external pure override returns (uint256) {
+        return 2e18;
     }
 }

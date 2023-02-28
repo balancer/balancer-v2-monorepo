@@ -14,7 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-interface ICToken {
+// Interface for MidasCapital. An open interest protocol based on
+// modified Fuse contracts. Anyone can create an deploy isolated
+// lending and borrowing pools with custom parameters.
+
+import "../solidity-utils/openzeppelin/IERC20.sol";
+interface ICFuseToken is IERC20 {
     /**
      * @dev Underlying asset for this CToken
      */
@@ -73,11 +78,6 @@ interface ICToken {
      * @notice Total amount of reserves of the underlying held in this market
      */
     function totalReserves() external view returns (uint256);
-
-    /**
-     * @notice Total number of tokens in circulation
-     */
-    function totalSupply() external view returns (uint256);
 
     /**
      * @notice Total admin fees
