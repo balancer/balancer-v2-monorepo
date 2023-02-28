@@ -12,10 +12,6 @@ implements: ERC20
 interface ERC20Extended:
     def symbol() -> String[26]: view
 
-interface Factory:
-    def owner() -> address: view
-    def voting_escrow() -> address: view
-
 interface Minter:
     def minted(_user: address, _gauge: address) -> uint256: view
 
@@ -24,6 +20,10 @@ interface ERC1271:
 
 interface AuthorizerAdaptor:
     def getVault() -> address: view
+
+interface VotingEscrowBoostProxy:
+    def totalSupply() -> uint256: view
+    def adjustedBalanceOf(_account: address) -> uint256: view
 
 
 event Approval:
@@ -67,7 +67,6 @@ ERC1271_MAGIC_VAL: constant(bytes32) = 0x1626ba7e0000000000000000000000000000000
 MAX_REWARDS: constant(uint256) = 8
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 WEEK: constant(uint256) = 86400 * 7
-VERSION: constant(String[8]) = "v0.1.0"
 
 
 BAL: immutable(address)
@@ -86,6 +85,7 @@ balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
 
 lp_token: public(address)
+version: public(String[128])
 
 voting_escrow: public(address)
 working_balances: public(HashMap[address, uint256])
@@ -115,8 +115,9 @@ inflation_rate: public(HashMap[uint256, uint256])
 
 
 @external
-def __init__(_bal_token: address, _factory: address, _authorizer_adaptor: address):
+def __init__(_bal_token: address, _factory: address, _authorizer_adaptor: address, _version: String[128]):
     self.lp_token = 0x000000000000000000000000000000000000dEaD
+    self.version = _version
 
     BAL = _bal_token
     FACTORY = _factory
@@ -184,9 +185,10 @@ def _update_liquidity_limit(_user: address, _user_balance: uint256, _total_suppl
 
     ve: address = self.voting_escrow
     if ve != ZERO_ADDRESS:
-        ve_ts: uint256 = ERC20(ve).totalSupply()
+        ve_ts: uint256 = VotingEscrowBoostProxy(ve).totalSupply()
         if ve_ts != 0:
-            working_balance += _total_supply * ERC20(ve).balanceOf(_user) / ve_ts * (100 - TOKENLESS_PRODUCTION) / 100
+            ve_user_balance: uint256 = VotingEscrowBoostProxy(ve).adjustedBalanceOf(_user)
+            working_balance += _total_supply * ve_user_balance / ve_ts * (100 - TOKENLESS_PRODUCTION) / 100
             working_balance = min(_user_balance, working_balance)
 
     old_working_balance: uint256 = self.working_balances[_user]
@@ -630,13 +632,6 @@ def deposit_reward_token(_reward_token: address, _amount: uint256):
     self.reward_data[_reward_token].last_update = block.timestamp
     self.reward_data[_reward_token].period_finish = block.timestamp + WEEK
 
-@external
-def update_voting_escrow():
-    """
-    @notice Update the voting escrow contract in storage
-    """
-    self.voting_escrow = Factory(FACTORY).voting_escrow()
-
 
 @external
 def killGauge():
@@ -682,12 +677,6 @@ def integrate_checkpoint() -> uint256:
 
 @view
 @external
-def version() -> String[8]:
-    return VERSION
-
-
-@view
-@external
 def factory() -> address:
     return FACTORY
 
@@ -701,12 +690,12 @@ def authorizer_adaptor() -> address:
 
 
 @external
-def initialize(_lp_token: address):
+def initialize(_lp_token: address, _voting_escrow: address, _version: String[128]):
     assert self.lp_token == ZERO_ADDRESS  # dev: already initialzed
 
     self.lp_token = _lp_token
-
-    self.voting_escrow = Factory(msg.sender).voting_escrow()
+    self.voting_escrow = _voting_escrow
+    self.version = _version
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()
     name: String[64] = concat("Balancer ", symbol, " Gauge Deposit")
@@ -719,7 +708,7 @@ def initialize(_lp_token: address):
         _abi_encode(
             DOMAIN_TYPE_HASH,
             keccak256(name),
-            keccak256(VERSION),
+            keccak256(self.version),
             chain.id,
             self
         )

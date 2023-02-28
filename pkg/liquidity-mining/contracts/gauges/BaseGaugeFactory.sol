@@ -20,20 +20,20 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 abstract contract BaseGaugeFactory is ILiquidityGaugeFactory {
-    ILiquidityGauge private _gaugeImplementation;
+    address private _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
 
     event GaugeCreated(address indexed gauge);
 
-    constructor(ILiquidityGauge gaugeImplementation) {
+    constructor(address gaugeImplementation) {
         _gaugeImplementation = gaugeImplementation;
     }
 
     /**
      * @notice Returns the address of the implementation used for gauge deployments.
      */
-    function getGaugeImplementation() public view returns (ILiquidityGauge) {
+    function getGaugeImplementation() public view returns (address) {
         return _gaugeImplementation;
     }
 
@@ -50,7 +50,7 @@ abstract contract BaseGaugeFactory is ILiquidityGaugeFactory {
      * @return The address of the deployed gauge
      */
     function _create() internal returns (address) {
-        address gauge = Clones.clone(address(_gaugeImplementation));
+        address gauge = Clones.clone(_gaugeImplementation);
 
         _isGaugeFromFactory[gauge] = true;
         emit GaugeCreated(gauge);
