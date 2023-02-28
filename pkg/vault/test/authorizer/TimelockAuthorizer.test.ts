@@ -445,7 +445,7 @@ describe('TimelockAuthorizer', () => {
           });
         });
 
-        it('reverts if it is not a revoker', async () => {
+        it('reverts if the subject is not a revoker', async () => {
           await expect(authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_REVOKER'
           );
@@ -471,7 +471,78 @@ describe('TimelockAuthorizer', () => {
           );
         });
       });
-      context('in any contract', () => {});
+      context('in any contract', () => {
+        it('cannot grant permission for that action on any contract', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+          await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.false;
+          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
+        });
+
+        it('cannot grant permission for that any other action anywhere', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+          await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
+          expect(await authorizer.isRevoker(ACTION_2, revoker, EVERYWHERE)).to.be.false;
+        });
+
+        it('emits a GranterRemoved event', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+
+          const receipt = await (await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'RevokerRemoved', {
+            actionId: ACTION_1,
+            account: revoker.address,
+            where: EVERYWHERE,
+          });
+        });
+
+        it('reverts if the subject is not a global revoker', async () => {
+          await expect(authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_NOT_REVOKER'
+          );
+        });
+
+        it('reverts if the subject is a revoker in a specific contract', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+          await expect(authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_NOT_REVOKER'
+          );
+        });
+
+        it('preserves revoker status if it was received over both a specific contract and globally', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.true;
+
+          await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
+
+          await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.false;
+          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
+        });
+
+        it('reverts if the subject is root', async () => {
+          await expect(authorizer.removeRevoker(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'CANNOT_REMOVE_ROOT_REVOKER'
+          );
+        });
+
+        it('reverts if the caller is not root', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+          await expect(authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
+          );
+        });
+      });
     });
   });
 
