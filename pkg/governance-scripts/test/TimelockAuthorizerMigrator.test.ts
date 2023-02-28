@@ -175,7 +175,8 @@ describe('TimelockAuthorizerMigrator', () => {
         }
       });
 
-      it('sets up granter delays properly', async () => {
+      // TODO: this feature was removed in PR #2294, restore this test when the feature is added back
+      it.skip('sets up granter delays properly', async () => {
         await migrator.executeDelays();
 
         for (const delayData of grantDelaysData) {
