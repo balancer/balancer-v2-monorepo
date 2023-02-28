@@ -826,13 +826,13 @@ describe('TimelockAuthorizer', () => {
             });
           });
 
-          it('cannot remove', async () => {
+          it('cannot remove if not a canceler', async () => {
             await expect(
-              authorizer.removeCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root })
+              authorizer.removeCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, other, { from: root })
             ).to.be.revertedWith('ACCOUNT_IS_NOT_CANCELER');
           });
 
-          it('cannot remove', async () => {
+          it('cannot remove the root', async () => {
             await expect(
               authorizer.removeCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, root, { from: root })
             ).to.be.revertedWith('CANNOT_REMOVE_ROOT_CANCELER');
