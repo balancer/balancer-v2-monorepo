@@ -887,8 +887,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
         bytes32 revokePermissionId = getRevokePermissionActionId(actionId);
         uint256 id = _schedule(revokePermissionId, address(this), data, executors);
-        // accounts that schedule actions are automatically made cancelers for them, so that they can manage their
-        // action. we check that they are not already a canceler since e.g. root may schedule actions (and root is
+        // Revokers that schedule actions are automatically made cancelers for them, so that they can manage their
+        // action. We check that they are not already a canceler since e.g. root may schedule revokes (and root is
         // always a global canceler).
         if (!isCanceler(id, msg.sender)) {
             _addCanceler(id, msg.sender);
