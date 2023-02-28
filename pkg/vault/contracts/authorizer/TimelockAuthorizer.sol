@@ -802,7 +802,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
         uint256 id = _scheduleWithDelay(0x0, address(this), data, delay, executors);
-        // accounts that schedule actions are automatically made cancelers for them, so that they can manage their
+        // Granters that schedule actions are automatically made cancelers for them, so that they can manage their
+        // action. We check that they are not already a canceler since e.g. root may schedule grants (and root is
+        // always a global canceler).
         // action. we check that they are not already a canceler since e.g. root may schedule actions (and root is
         // always a global canceler).
         if (!isCanceler(id, msg.sender)) {
