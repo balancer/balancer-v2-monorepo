@@ -750,7 +750,7 @@ describe('TimelockAuthorizer', () => {
 
     context('when the sender is not the root', () => {
       it('reverts', async () => {
-        await expect(authorizer.addCanceler(0, canceler, { from: canceler })).to.be.revertedWith('SENDER_IS_NOT_ROOT');
+        await expect(authorizer.addCanceler(0, canceler, { from: other })).to.be.revertedWith('SENDER_IS_NOT_ROOT');
       });
     });
   });
