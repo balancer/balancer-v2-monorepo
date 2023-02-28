@@ -19,11 +19,12 @@ describe('TimelockAuthorizer', () => {
     nextRoot: SignerWithAddress,
     grantee: SignerWithAddress,
     canceler: SignerWithAddress,
+    revoker: SignerWithAddress,
     other: SignerWithAddress,
     from: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, root, nextRoot, grantee, canceler, other] = await ethers.getSigners();
+    [, root, nextRoot, grantee, canceler, revoker, other] = await ethers.getSigners();
   });
 
   const GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = MAX_UINT256;
@@ -297,6 +298,125 @@ describe('TimelockAuthorizer', () => {
           );
         });
       });
+    });
+  });
+
+  describe('revokers', () => {
+    describe('addRevoker', () => {
+      context('in a specific contract', () => {
+        it('can revoke permission for that action only in that contract', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_2)).to.be.false;
+          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
+        });
+
+        it('cannot revoke permission for any other action anywhere', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
+          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_2)).to.be.false;
+          expect(await authorizer.isRevoker(ACTION_2, revoker, EVERYWHERE)).to.be.false;
+        });
+
+        it('emits a RevokerAdded event', async () => {
+          const receipt = await (await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'RevokerAdded', {
+            actionId: ACTION_1,
+            account: revoker.address,
+            where: WHERE_1,
+          });
+        });
+
+        it('reverts if already is a revoker', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+          await expect(authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_REVOKER'
+          );
+        });
+
+        it('reverts if already is a global revoker', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+          await expect(authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_REVOKER'
+          );
+        });
+
+        it('reverts if the revoker is root', async () => {
+          await expect(authorizer.addRevoker(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_REVOKER'
+          );
+        });
+
+        it('reverts if the caller is not root', async () => {
+          await expect(authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
+          );
+        });
+      });
+
+      context('in any contract', () => {
+        it('can grant permission for that action in any contract', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_2)).to.be.true;
+          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.true;
+        });
+
+        it('cannot grant permission for any other action anywhere', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+
+          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
+          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_2)).to.be.false;
+          expect(await authorizer.isRevoker(ACTION_2, revoker, EVERYWHERE)).to.be.false;
+        });
+
+        it('emits a RevokerAdded event', async () => {
+          const receipt = await (await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'RevokerAdded', {
+            actionId: ACTION_1,
+            account: revoker.address,
+            where: EVERYWHERE,
+          });
+        });
+
+        it('does not revert if already a revoker in a specific contract', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+
+          const receipt = await (await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).wait();
+          expectEvent.inReceipt(receipt, 'RevokerAdded', {
+            actionId: ACTION_1,
+            account: revoker.address,
+            where: EVERYWHERE,
+          });
+        });
+
+        it('reverts if is already a global revoker', async () => {
+          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+          await expect(authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_REVOKER'
+          );
+        });
+
+        it('reverts if the revoker is root', async () => {
+          await expect(authorizer.addRevoker(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
+            'ACCOUNT_IS_ALREADY_REVOKER'
+          );
+        });
+
+        it('reverts if the caller is not root', async () => {
+          await expect(authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
+          );
+        });
+      });
+    });
+
+    describe('removeRevoker', () => {
+      context('in a specific contract', () => {});
+      context('in any contract', () => {});
     });
   });
 
