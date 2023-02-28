@@ -174,7 +174,7 @@ describe('TimelockAuthorizer', () => {
         context('for any action', () => {
           const actionId = GENERAL_PERMISSION_SPECIFIER;
 
-          context('for specific contract', () => {
+          context('for a specific contract', () => {
             const where = WHERE_1;
 
             it('grantee cannot grant permission for any action in that contract only', async () => {
@@ -721,6 +721,20 @@ describe('TimelockAuthorizer', () => {
             expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', {
               scheduledExecutionId: GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID,
             });
+          });
+
+          it('can add specific canceler and then a global', async () => {
+            let receipt = await authorizer.addCanceler(0, canceler, { from: root });
+            expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', {
+              scheduledExecutionId: 0,
+            });
+            receipt = await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
+            expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', {
+              scheduledExecutionId: GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID,
+            });
+
+            expect(await authorizer.isCanceler(0, canceler)).to.be.true;
+            expect(await authorizer.isCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler)).to.be.true;
           });
 
           it('cannot be added twice', async () => {
