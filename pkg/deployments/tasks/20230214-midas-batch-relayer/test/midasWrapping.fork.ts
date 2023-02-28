@@ -25,7 +25,7 @@ describeForkTest('MidasWrapping', 'bsc', 26028991, function () {
   const WBNB_HOLDER = '0xd7D069493685A581d27824Fc46EdA46B7EfC0063';
   const cWBNB = '0x92897f3De21E2FFa8dd8b3a48D1Edf29B5fCef0e';
 
-  let wbnbToken: Contract, cToken: Contract, cTokenERC20: Contract;
+  let wbnbToken: Contract, cToken: Contract;
   let sender: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = bn(1e18);
@@ -61,8 +61,7 @@ describeForkTest('MidasWrapping', 'bsc', 26028991, function () {
 
   before(async () => {
     wbnbToken = await task.instanceAt('IERC20', WBNB);
-    cToken = await task.instanceAt('ICToken', cWBNB);
-    cTokenERC20 = await task.instanceAt('IERC20', cWBNB);
+    cToken = await task.instanceAt('ICFuseToken', cWBNB);
     sender = await impersonate(WBNB_HOLDER);
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
@@ -71,7 +70,7 @@ describeForkTest('MidasWrapping', 'bsc', 26028991, function () {
   it('should wrap successfully', async () => {
     const balanceOfwbnbBefore = await wbnbToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfcwbnbBefore = await cTokenERC20.balanceOf(relayer.address);
+    const balanceOfcwbnbBefore = await cToken.balanceOf(relayer.address);
 
     expect(balanceOfcwbnbBefore).to.be.equal(0);
 
@@ -91,7 +90,7 @@ describeForkTest('MidasWrapping', 'bsc', 26028991, function () {
 
     const balanceOfwbnbAfter = await wbnbToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfcwbnbAfter = await cTokenERC20.balanceOf(relayer.address);
+    const balanceOfcwbnbAfter = await cToken.balanceOf(relayer.address);
 
     expect(balanceOfwbnbBefore.sub(balanceOfwbnbAfter)).to.be.equal(amountToWrap);
     const expectedBalanceOfcwbnbAfter = amountToWrap.div(await cToken.exchangeRateStored()).mul(bn(1e18));
@@ -101,8 +100,8 @@ describeForkTest('MidasWrapping', 'bsc', 26028991, function () {
   it('should unwrap successfully', async () => {
     const balanceOfwbnbBefore = await wbnbToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const cwbnbAmountToWithdraw = await cTokenERC20.balanceOf(relayer.address);
-    const balanceOfcwbnbBefore = await cTokenERC20.balanceOf(relayer.address);
+    const cwbnbAmountToWithdraw = await cToken.balanceOf(relayer.address);
+    const balanceOfcwbnbBefore = await cToken.balanceOf(relayer.address);
 
     expect(balanceOfcwbnbBefore).to.be.equal(cwbnbAmountToWithdraw);
 
@@ -118,7 +117,7 @@ describeForkTest('MidasWrapping', 'bsc', 26028991, function () {
 
     const balanceOfwbnbAfter = await wbnbToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfcwbnbAfter = await cTokenERC20.balanceOf(relayer.address);
+    const balanceOfcwbnbAfter = await cToken.balanceOf(relayer.address);
 
     expect(balanceOfcwbnbAfter).to.be.equal(0);
     expect(balanceOfwbnbAfter.sub(balanceOfwbnbBefore)).to.be.almostEqual(amountToWrap, 0.01);
