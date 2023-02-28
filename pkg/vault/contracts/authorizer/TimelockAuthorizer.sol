@@ -79,9 +79,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     address public constant EVERYWHERE = address(-1);
 
     /**
-     * @notice A constant value for `scheduledExecutionId` that will match any execution Id. Cancelers assigned to this Id
-     * will be able to cancel *any* scheduled action, which is very useful for e.g. emergency response dedicated
-     * teams that analyze these.
+     * @notice A constant value for `scheduledExecutionId` that will match any execution Id.
+     * Cancelers assigned to this Id will be able to cancel *any* scheduled action,
+     * which is very useful for e.g. emergency response dedicated teams that analyze these.
      */
     uint256 public constant GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
 
@@ -801,7 +801,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
 
         // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
-        uint256 id =_scheduleWithDelay(0x0, address(this), data, delay, executors);
+        uint256 id = _scheduleWithDelay(0x0, address(this), data, delay, executors);
         // accounts that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. we check that they are not already a canceler since e.g. root may schedule actions (and root is
         // always a global canceler).
