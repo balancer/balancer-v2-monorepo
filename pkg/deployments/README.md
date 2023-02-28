@@ -109,6 +109,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Single Recipient Stakeless Gauges V2                    | [`20230215-single-recipient-gauge-factory`](./tasks/20230215-single-recipient-gauge-factory-v2)      |
 | Gnosis Root Gauge, for veBAL voting                     | [`20230217-gnosis-root-gauge-factory`](./tasks/20230217-gnosis-root-gauge-factory)                   |
 | Merkle Orchard Distributor V2                           | [`20230222-merkle-orchard-v2`](./tasks/20230222-merkle-orchard-v2)                                   |
+| Protocol ID registry                                    | [`20230223-protocol-id-registry`](./tasks/20230223-protocol-id-registry)                             |
 
 ## Scripts
 

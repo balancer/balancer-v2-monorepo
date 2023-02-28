@@ -12,5 +12,6 @@ The adaptor may then be the admin for these systems and acts as a proxy forwardi
 - [Optimism mainnet addresses](./output/optimism.json)
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`AuthorizerAdaptor` artifact](./artifact/AuthorizerAdaptor.json)

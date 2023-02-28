@@ -84,21 +84,11 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _grantersData.length; i++) {
             // There's no concept of a "granter" on the old Authorizer so we cannot verify these onchain.
             // We must manually verify that these permissions are set sensibly.
-            _newAuthorizer.manageGranter(
-                _grantersData[i].role,
-                _grantersData[i].grantee,
-                _grantersData[i].target,
-                true
-            );
+            _newAuthorizer.addGranter(_grantersData[i].role, _grantersData[i].grantee, _grantersData[i].target);
         }
         for (uint256 i = 0; i < _revokersData.length; i++) {
             // Similarly to granters, we must manually verify that these permissions are set sensibly.
-            _newAuthorizer.manageRevoker(
-                _revokersData[i].role,
-                _revokersData[i].grantee,
-                _revokersData[i].target,
-                true
-            );
+            _newAuthorizer.addRevoker(_revokersData[i].role, _revokersData[i].grantee, _revokersData[i].target);
         }
 
         // We're going to schedule multiple actions, and we want to make sure we later execute them all. However, since
@@ -120,11 +110,15 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _grantDelaysData.length; i++) {
             // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
             require(_grantDelaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
-            lastScheduledExecutionId = _newAuthorizer.scheduleDelayChange(
-                _newAuthorizer.getGrantPermissionActionId(_grantDelaysData[i].actionId),
-                _grantDelaysData[i].newDelay,
-                _arr(address(this))
-            );
+
+            // TODO:
+            // PR #2294 removed the ability to schedule grant delay changes, restore this when that comes back online
+
+            //lastScheduledExecutionId = _newAuthorizer.scheduleDelayChange(
+            //    _newAuthorizer.getGrantPermissionActionId(_grantDelaysData[i].actionId),
+            //    _grantDelaysData[i].newDelay,
+            //    _arr(address(this))
+            //);
         }
 
         _lastScheduledExecutionId = lastScheduledExecutionId;
