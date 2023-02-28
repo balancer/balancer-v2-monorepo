@@ -70,7 +70,7 @@ WEEK: constant(uint256) = 86400 * 7
 
 
 BAL: immutable(address)
-FACTORY: immutable(address)
+BAL_PSEUDO_MINTER: immutable(address)
 BAL_VAULT: immutable(address)
 AUTHORIZER_ADAPTOR: immutable(address)
 
@@ -110,17 +110,16 @@ reward_integral_for: public(HashMap[address, HashMap[address, uint256]])
 # user -> token -> [uint128 claimable amount][uint128 claimed amount]
 claim_data: HashMap[address, HashMap[address, uint256]]
 
-is_killed: public(bool)
 inflation_rate: public(HashMap[uint256, uint256])
 
 
 @external
-def __init__(_bal_token: address, _factory: address, _authorizer_adaptor: address, _version: String[128]):
+def __init__(_bal_token: address, _bal_pseudo_minter: address, _authorizer_adaptor: address, _version: String[128]):
     self.lp_token = 0x000000000000000000000000000000000000dEaD
     self.version = _version
 
     BAL = _bal_token
-    FACTORY = _factory
+    BAL_PSEUDO_MINTER = _bal_pseudo_minter
     AUTHORIZER_ADAPTOR = _authorizer_adaptor
     BAL_VAULT = AuthorizerAdaptor(_authorizer_adaptor).getVault()
 
@@ -160,7 +159,7 @@ def _checkpoint(_user: address):
     if bal_balance != 0:
         current_week: uint256 = block.timestamp / WEEK
         self.inflation_rate[current_week] += bal_balance / ((current_week + 1) * WEEK - block.timestamp)
-        ERC20(BAL).transfer(FACTORY, bal_balance)
+        ERC20(BAL).transfer(BAL_PSEUDO_MINTER, bal_balance)
 
     period += 1
     self.period = period
@@ -498,7 +497,7 @@ def user_checkpoint(addr: address) -> bool:
     @param addr User address
     @return bool success
     """
-    assert msg.sender in [addr, FACTORY]  # dev: unauthorized
+    assert msg.sender in [addr, BAL_PSEUDO_MINTER]  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
@@ -512,7 +511,7 @@ def claimable_tokens(addr: address) -> uint256:
     @return uint256 number of claimable tokens per user
     """
     self._checkpoint(addr)
-    return self.integrate_fraction[addr] - Minter(FACTORY).minted(addr, self)
+    return self.integrate_fraction[addr] - Minter(BAL_PSEUDO_MINTER).minted(addr, self)
 
 
 @view
@@ -633,25 +632,6 @@ def deposit_reward_token(_reward_token: address, _amount: uint256):
     self.reward_data[_reward_token].period_finish = block.timestamp + WEEK
 
 
-@external
-def killGauge():
-    """
-    @notice Kills the gauge so it always yields a rate of 0 and so cannot mint BAL
-    """
-    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
-
-    self.is_killed = True
-
-@external
-def unkillGauge():
-    """
-    @notice Unkills the gauge so it can mint BAL again
-    """
-    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
-
-    self.is_killed = False
-
-
 @view
 @external
 def decimals() -> uint256:
@@ -677,8 +657,9 @@ def integrate_checkpoint() -> uint256:
 
 @view
 @external
-def factory() -> address:
-    return FACTORY
+def bal_pseudo_minter() -> address:
+    return BAL_PSEUDO_MINTER
+
 
 @external
 @view
