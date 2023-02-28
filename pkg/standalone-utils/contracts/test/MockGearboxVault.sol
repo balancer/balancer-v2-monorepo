@@ -70,7 +70,7 @@ contract MockGearboxVault is IGearboxVault {
     }
 
     function removeLiquidity(uint256 wrappedAmount, address to) external override {
-        _dieselToken.burn(msg.sender, wrappedAmount);
+        _dieselToken.burnWithoutAllowance(msg.sender, wrappedAmount);
         uint256 mainAmount = _fromDiesel(wrappedAmount);
         _underlyingToken.safeTransfer(to, mainAmount);
     }
