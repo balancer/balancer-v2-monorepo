@@ -594,8 +594,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
 
         uint256 id = _schedule(actionId, where, data, executors);
-        // accounts that schedule actions are automatically made cancelers for them, so that they can manage their
-        // action. we check that they are not already a canceler since e.g. root may schedule actions (and root is
+        // Accounts that schedule actions are automatically made cancelers for them, so that they can manage their
+        // action. We check that they are not already a canceler since e.g. root may schedule actions (and root is
         // always a global canceler).
         if (!isCanceler(id, msg.sender)) {
             _addCanceler(id, msg.sender);
