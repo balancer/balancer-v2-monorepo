@@ -386,5 +386,9 @@
   "0x05277CE7D1e365d660624612d8b8b9B55bFD4518": {
     "task": "20230217-gnosis-root-gauge-factory",
     "name": "GnosisRootGauge"
+  },
+  "0xc3ccacE87f6d3A81724075ADcb5ddd85a8A1bB68": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
   }
 }
