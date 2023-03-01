@@ -192,6 +192,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
                 : userData;
     }
 
+    // Mutates amountsIn, and returns true if any replacements were made
     function _replacedAmounts(uint256[] memory amountsIn) private returns (bool replacedAmounts) {
         for (uint256 i = 0; i < amountsIn.length; ++i) {
             uint256 amount = amountsIn[i];
