@@ -47,7 +47,7 @@ abstract contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EOASignatu
     }
 
     /// @inheritdoc IBalancerMinter
-    function getBalancerToken() external view override returns (IERC20) {
+    function getBalancerToken() public view override returns (IERC20) {
         return _token;
     }
 

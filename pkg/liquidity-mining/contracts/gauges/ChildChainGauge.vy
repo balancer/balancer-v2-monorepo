@@ -87,6 +87,7 @@ totalSupply: public(uint256)
 
 lp_token: public(address)
 version: public(String[128])
+factory: public(address)
 
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
@@ -124,6 +125,7 @@ def __init__(
 ):
     self.lp_token = 0x000000000000000000000000000000000000dEaD
     self.version = _version
+    self.factory = 0x000000000000000000000000000000000000dEaD
 
     BAL = _bal_token
     VOTING_ESCROW = _voting_escrow
@@ -711,6 +713,7 @@ def initialize(_lp_token: address, _version: String[128]):
 
     self.lp_token = _lp_token
     self.version = _version
+    self.factory = msg.sender
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()
     name: String[64] = concat("Balancer ", symbol, " Gauge Deposit")
