@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/VaultHelpers.sol";
@@ -102,7 +103,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         getVault().manageUserBalance{ value: value }(ops);
     }
 
-    enum PoolKind { WEIGHTED }
+    enum PoolKind { WEIGHTED, STABLE }
 
     function joinPool(
         bytes32 poolId,
@@ -140,6 +141,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     {
         if (kind == PoolKind.WEIGHTED) {
             return _doWeightedJoinChainedReferenceReplacements(userData);
+        } else if (kind == PoolKind.STABLE) {
+            return _doStableJoinChainedReferenceReplacements(userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -160,7 +163,36 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     function _doWeightedExactTokensInForBPTOutReplacements(bytes memory userData) private returns (bytes memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = WeightedPoolUserData.exactTokensInForBptOut(userData);
 
-        bool replacedAmounts = false;
+        // Save gas by only re-encoding the data if we actually performed a replacement
+        return
+            _replacedAmounts(amountsIn)
+                ? abi.encode(WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBPTAmountOut)
+                : userData;
+    }
+
+    function _doStableJoinChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        StablePoolUserData.JoinKind kind = StablePoolUserData.joinKind(userData);
+
+        if (kind == StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return _doStableExactTokensInForBPTOutReplacements(userData);
+        } else {
+            // All other join kinds are 'given out' (i.e the parameter is a BPT amount), so we don't do replacements for
+            // those.
+            return userData;
+        }
+    }
+
+    function _doStableExactTokensInForBPTOutReplacements(bytes memory userData) private returns (bytes memory) {
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = StablePoolUserData.exactTokensInForBptOut(userData);
+
+        // Save gas by only re-encoding the data if we actually performed a replacement
+        return
+            _replacedAmounts(amountsIn)
+                ? abi.encode(StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBPTAmountOut)
+                : userData;
+    }
+
+    function _replacedAmounts(uint256[] memory amountsIn) private returns (bool replacedAmounts) {
         for (uint256 i = 0; i < amountsIn.length; ++i) {
             uint256 amount = amountsIn[i];
             if (_isChainedReference(amount)) {
@@ -168,12 +200,6 @@ abstract contract VaultActions is IBaseRelayerLibrary {
                 replacedAmounts = true;
             }
         }
-
-        // Save gas by only re-encoding the data if we actually performed a replacement
-        return
-            replacedAmounts
-                ? abi.encode(WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBPTAmountOut)
-                : userData;
     }
 
     function exitPool(
@@ -238,6 +264,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     {
         if (kind == PoolKind.WEIGHTED) {
             return _doWeightedExitChainedReferenceReplacements(userData);
+        } else if (kind == PoolKind.STABLE) {
+            return _doStableExitChainedReferenceReplacements(userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
@@ -275,6 +303,45 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
             return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+        } else {
+            // Save gas by only re-encoding the data if we actually performed a replacement
+            return userData;
+        }
+    }
+
+
+    function _doStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        StablePoolUserData.ExitKind kind = StablePoolUserData.exitKind(userData);
+
+        if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+            return _doStableExactBptInForOneTokenOutReplacements(userData);
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+            return _doStableExactBptInForTokensOutReplacements(userData);
+        } else {
+            // All other exit kinds are 'given out' (i.e the parameter is a token amount),
+            // so we don't do replacements for those.
+            return userData;
+        }
+    }
+
+    function _doStableExactBptInForOneTokenOutReplacements(bytes memory userData) private returns (bytes memory) {
+        (uint256 bptAmountIn, uint256 tokenIndex) = StablePoolUserData.exactBptInForTokenOut(userData);
+
+        if (_isChainedReference(bptAmountIn)) {
+            bptAmountIn = _getChainedReferenceValue(bptAmountIn);
+            return abi.encode(StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
+        } else {
+            // Save gas by only re-encoding the data if we actually performed a replacement
+            return userData;
+        }
+    }
+
+    function _doStableExactBptInForTokensOutReplacements(bytes memory userData) private returns (bytes memory) {
+        uint256 bptAmountIn = StablePoolUserData.exactBptInForTokensOut(userData);
+
+        if (_isChainedReference(bptAmountIn)) {
+            bptAmountIn = _getChainedReferenceValue(bptAmountIn);
+            return abi.encode(StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, bptAmountIn);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
             return userData;
