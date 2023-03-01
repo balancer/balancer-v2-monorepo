@@ -798,23 +798,18 @@ describe('TimelockAuthorizer', () => {
           });
         });
 
-        context.skip('when there is a delay set to grant permissions', () => {
+        context('when there is a delay set to grant permissions', () => {
           const delay = DAY;
-          let grantActionId: string;
-
-          sharedBeforeEach('set constants', async () => {
-            grantActionId = await authorizer.getGrantPermissionActionId(ACTION_1);
-          });
 
           sharedBeforeEach('set delay', async () => {
             const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-            await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
-            await authorizer.scheduleAndExecuteDelayChange(grantActionId, delay, { from: root });
+            await authorizer.scheduleAndExecuteGrantDelayChange(setAuthorizerAction, delay * 2, { from: root });
+            await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, delay, { from: root });
           });
 
           it('reverts', async () => {
             await expect(authorizer.grantPermissions(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
-              'SENDER_IS_NOT_GRANTER'
+              'GRANT_MUST_BE_SCHEDULED'
             );
           });
 

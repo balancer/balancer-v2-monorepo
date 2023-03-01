@@ -126,6 +126,17 @@ export default class TimelockAuthorizer {
     return event.args.scheduledExecutionId;
   }
 
+  async scheduleGrantDelayChange(
+    action: string,
+    delay: number,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
+    const receipt = await this.with(params).scheduleGrantDelayChange(action, delay, this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
+  }
+
   async schedule(where: Account, data: string, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).schedule(this.toAddress(where), data, this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
@@ -269,6 +280,12 @@ export default class TimelockAuthorizer {
 
   async scheduleAndExecuteDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
     const id = await this.scheduleDelayChange(action, delay, [], params);
+    await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
+    await this.execute(id);
+  }
+
+  async scheduleAndExecuteGrantDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
+    const id = await this.scheduleGrantDelayChange(action, delay, [], params);
     await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
     await this.execute(id);
   }

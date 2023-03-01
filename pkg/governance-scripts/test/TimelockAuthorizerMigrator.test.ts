@@ -175,13 +175,11 @@ describe('TimelockAuthorizerMigrator', () => {
         }
       });
 
-      // TODO: this feature was removed in PR #2294, restore this test when the feature is added back
-      it.skip('sets up granter delays properly', async () => {
+      it('sets up granter delays properly', async () => {
         await migrator.executeDelays();
 
         for (const delayData of grantDelaysData) {
-          const grantActionId = await newAuthorizer.getGrantPermissionActionId(delayData.actionId);
-          expect(await newAuthorizer.getActionIdDelay(grantActionId)).to.be.eq(delayData.newDelay);
+          expect(await newAuthorizer.getActionIdGrantDelay(delayData.actionId)).to.be.eq(delayData.newDelay);
         }
       });
     });
