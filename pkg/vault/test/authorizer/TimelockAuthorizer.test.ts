@@ -357,7 +357,7 @@ describe('TimelockAuthorizer', () => {
       });
 
       context('in any contract', () => {
-        it('can grant permission for that action in any contract', async () => {
+        it('can revoke permission for that action in any contract', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
           expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
@@ -365,7 +365,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.true;
         });
 
-        it('cannot grant permission for any other action anywhere', async () => {
+        it('cannot revoke permission for any other action anywhere', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
           expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
@@ -416,7 +416,7 @@ describe('TimelockAuthorizer', () => {
 
     describe('removeRevoker', () => {
       context('in a specific contract', () => {
-        it('cannot grant permission for that action anywhere', async () => {
+        it('cannot revoke permission for that action anywhere', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
           await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root });
 
@@ -425,7 +425,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
         });
 
-        it('cannot grant permission for any other action', async () => {
+        it('cannot revoke permission for any other action', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
           await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root });
 
@@ -451,7 +451,7 @@ describe('TimelockAuthorizer', () => {
           );
         });
 
-        it('reverts if the revokee is a global granter', async () => {
+        it('reverts if the revokee is a global revoker', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
           await expect(authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'REVOKER_IS_GLOBAL'
@@ -472,7 +472,7 @@ describe('TimelockAuthorizer', () => {
         });
       });
       context('in any contract', () => {
-        it('cannot grant permission for that action on any contract', async () => {
+        it('cannot revoke permission for that action on any contract', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
           await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
@@ -480,7 +480,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
         });
 
-        it('cannot grant permission for that any other action anywhere', async () => {
+        it('cannot revoke permission for that any other action anywhere', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
           await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
@@ -488,7 +488,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_2, revoker, EVERYWHERE)).to.be.false;
         });
 
-        it('emits a GranterRemoved event', async () => {
+        it('emits a RevokerRemoved event', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
           const receipt = await (await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).wait();
