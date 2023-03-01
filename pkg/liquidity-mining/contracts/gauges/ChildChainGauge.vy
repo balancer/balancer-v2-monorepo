@@ -110,6 +110,7 @@ reward_integral_for: public(HashMap[address, HashMap[address, uint256]])
 # user -> token -> [uint128 claimable amount][uint128 claimed amount]
 claim_data: HashMap[address, HashMap[address, uint256]]
 
+is_killed: public(bool)
 inflation_rate: public(HashMap[uint256, uint256])
 
 
@@ -125,8 +126,8 @@ def __init__(
     self.version = _version
 
     BAL = _bal_token
-    BAL_PSEUDO_MINTER = _bal_pseudo_minter
     VOTING_ESCROW = _voting_escrow
+    BAL_PSEUDO_MINTER = _bal_pseudo_minter
     AUTHORIZER_ADAPTOR = _authorizer_adaptor
     BAL_VAULT = AuthorizerAdaptor(_authorizer_adaptor).getVault()
 
@@ -141,7 +142,8 @@ def _checkpoint(_user: address):
     period_time: uint256 = self.period_timestamp[period]
     integrate_inv_supply: uint256 = self.integrate_inv_supply[period]
 
-    if block.timestamp > period_time:
+    # If killed, we skip accumulating inflation in `integrate_inv_supply`
+    if block.timestamp > period_time and not self.is_killed:
 
         working_supply: uint256 = self.working_supply
         prev_week_time: uint256 = period_time
@@ -637,6 +639,26 @@ def deposit_reward_token(_reward_token: address, _amount: uint256):
 
     self.reward_data[_reward_token].last_update = block.timestamp
     self.reward_data[_reward_token].period_finish = block.timestamp + WEEK
+
+
+@external
+def killGauge():
+    """
+    @notice Kills the gauge so it always yields a rate of 0 and so cannot mint BAL
+    """
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+
+    self.is_killed = True
+
+
+@external
+def unkillGauge():
+    """
+    @notice Unkills the gauge so it can mint BAL again
+    """
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+
+    self.is_killed = False
 
 
 @view
