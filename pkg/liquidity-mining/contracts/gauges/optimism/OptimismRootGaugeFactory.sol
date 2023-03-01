@@ -32,7 +32,7 @@ contract OptimismRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory
         address optimismBal,
         uint32 gasLimit
     )
-        BaseGaugeFactory(new OptimismRootGauge(minter, optimismL1StandardBridge, optimismBal))
+        BaseGaugeFactory(address(new OptimismRootGauge(minter, optimismL1StandardBridge, optimismBal)))
         SingletonAuthentication(vault)
     {
         _gasLimit = gasLimit;
