@@ -22,13 +22,10 @@ import "../VotingEscrowDelegationProxy.sol";
 import "./BaseGaugeFactory.sol";
 
 contract ChildChainGaugeFactory is Version, BaseGaugeFactory {
-    address public immutable votingEscrow;
-
     string private _productVersion;
 
     constructor(
         IChildChainGauge gaugeImplementation,
-        VotingEscrowDelegationProxy _votingEscrow, // TODO: make this an interface
         string memory factoryVersion,
         string memory productVersion
     ) Version(factoryVersion) BaseGaugeFactory(address(gaugeImplementation)) {
@@ -37,7 +34,6 @@ contract ChildChainGaugeFactory is Version, BaseGaugeFactory {
             "VERSION_MISMATCH"
         );
         _productVersion = productVersion;
-        votingEscrow = address(_votingEscrow);
     }
 
     /**
@@ -62,7 +58,7 @@ contract ChildChainGaugeFactory is Version, BaseGaugeFactory {
      */
     function create(address pool) external returns (address) {
         address gauge = _create();
-        IChildChainGauge(gauge).initialize(pool, votingEscrow, getProductVersion());
+        IChildChainGauge(gauge).initialize(pool, getProductVersion());
         return gauge;
     }
 }

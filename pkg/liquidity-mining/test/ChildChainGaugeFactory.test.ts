@@ -11,7 +11,6 @@ import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 describe('ChildChainGaugeFactory', () => {
   let gaugeImplementation: Contract;
   let gaugeFactory: Contract;
-  let veDelegationProxy: Contract;
   let lpToken: Contract;
 
   const factoryVersion = JSON.stringify({
@@ -28,24 +27,35 @@ describe('ChildChainGaugeFactory', () => {
   sharedBeforeEach('deploy gauge factory', async () => {
     const vault = await Vault.create();
 
-    gaugeImplementation = await deploy('ChildChainGauge', {
-      args: [ANY_ADDRESS, ANY_ADDRESS, vault.authorizerAdaptor.address, productVersion],
-    });
-
     const mockVE = await deploy('TestBalancerToken', { args: [ANY_ADDRESS, 'Test VE', 'veTST'] });
 
-    veDelegationProxy = await deploy('VotingEscrowDelegationProxy', {
+    const veDelegationProxy = await deploy('VotingEscrowDelegationProxy', {
       args: [vault.address, mockVE.address, ZERO_ADDRESS],
     });
+
+    gaugeImplementation = await deploy('ChildChainGauge', {
+      args: [ANY_ADDRESS, veDelegationProxy.address, ANY_ADDRESS, vault.authorizerAdaptor.address, productVersion],
+    });
+
     gaugeFactory = await deploy('ChildChainGaugeFactory', {
-      args: [gaugeImplementation.address, veDelegationProxy.address, factoryVersion, productVersion],
+      args: [gaugeImplementation.address, factoryVersion, productVersion],
     });
 
     // Mock BPT
     lpToken = await deploy('TestBalancerToken', { args: [ANY_ADDRESS, 'Test', 'TST'] });
   });
 
-  describe('getProductVersion', () => {
+  describe('constructor', () => {
+    it('reverts if constructor argument does not match gauge implementation version', async () => {
+      await expect(
+        deploy('ChildChainGaugeFactory', {
+          args: [gaugeImplementation.address, factoryVersion, 'Wrong gauge version'],
+        })
+      ).to.be.revertedWith('VERSION_MISMATCH');
+    });
+  });
+
+  describe('getters', () => {
     it('returns product version', async () => {
       expect(await gaugeFactory.getProductVersion()).to.be.eq(productVersion);
     });
@@ -62,10 +72,6 @@ describe('ChildChainGaugeFactory', () => {
 
     it('sets LP token', async () => {
       expect(await gauge.lp_token()).to.be.eq(lpToken.address);
-    });
-
-    it('sets voting escrow', async () => {
-      expect(await gauge.voting_escrow()).to.be.eq(veDelegationProxy.address);
     });
 
     it('sets version', async () => {

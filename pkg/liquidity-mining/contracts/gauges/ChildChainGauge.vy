@@ -70,6 +70,7 @@ WEEK: constant(uint256) = 86400 * 7
 
 
 BAL: immutable(address)
+VOTING_ESCROW: immutable(address)
 FACTORY: immutable(address)
 BAL_VAULT: immutable(address)
 AUTHORIZER_ADAPTOR: immutable(address)
@@ -87,7 +88,6 @@ totalSupply: public(uint256)
 lp_token: public(address)
 version: public(String[128])
 
-voting_escrow: public(address)
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
 
@@ -115,11 +115,12 @@ inflation_rate: public(HashMap[uint256, uint256])
 
 
 @external
-def __init__(_bal_token: address, _factory: address, _authorizer_adaptor: address, _version: String[128]):
+def __init__(_bal_token: address, _voting_escrow: address, _factory: address, _authorizer_adaptor: address, _version: String[128]):
     self.lp_token = 0x000000000000000000000000000000000000dEaD
     self.version = _version
 
     BAL = _bal_token
+    VOTING_ESCROW = _voting_escrow
     FACTORY = _factory
     AUTHORIZER_ADAPTOR = _authorizer_adaptor
     BAL_VAULT = AuthorizerAdaptor(_authorizer_adaptor).getVault()
@@ -183,7 +184,7 @@ def _update_liquidity_limit(_user: address, _user_balance: uint256, _total_suppl
     """
     working_balance: uint256 = _user_balance * TOKENLESS_PRODUCTION / 100
 
-    ve: address = self.voting_escrow
+    ve: address = VOTING_ESCROW
     if ve != ZERO_ADDRESS:
         ve_ts: uint256 = VotingEscrowBoostProxy(ve).totalSupply()
         if ve_ts != 0:
@@ -677,8 +678,15 @@ def integrate_checkpoint() -> uint256:
 
 @view
 @external
+def voting_escrow() -> address:
+    return VOTING_ESCROW
+
+
+@view
+@external
 def factory() -> address:
     return FACTORY
+
 
 @external
 @view
@@ -690,11 +698,10 @@ def authorizer_adaptor() -> address:
 
 
 @external
-def initialize(_lp_token: address, _voting_escrow: address, _version: String[128]):
+def initialize(_lp_token: address, _version: String[128]):
     assert self.lp_token == ZERO_ADDRESS  # dev: already initialzed
 
     self.lp_token = _lp_token
-    self.voting_escrow = _voting_escrow
     self.version = _version
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()
