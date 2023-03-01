@@ -30,8 +30,4 @@ contract TestToken is ERC20, ERC20Burnable, ERC20Permit {
     function mint(address recipient, uint256 amount) external {
         _mint(recipient, amount);
     }
-
-    function burn(address sender, uint256 amount) external {
-        _burn(sender, amount);
-    }
 }
