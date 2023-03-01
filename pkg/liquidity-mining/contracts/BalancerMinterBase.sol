@@ -46,76 +46,49 @@ abstract contract BalancerMinterBase is IBalancerMinterBase, ReentrancyGuard, EO
         _token = token;
     }
 
-    /**
-     * @notice Returns the address of the Balancer Governance Token
-     */
+    /// @inheritdoc IBalancerMinterBase
     function getBalancerToken() external view override returns (IERC20) {
         return _token;
     }
 
-    /**
-     * @notice Mint everything which belongs to `msg.sender` and send to them
-     * @param gauge `LiquidityGauge` address to get mintable amount from
-     */
+    /// @inheritdoc IBalancerMinterBase
     function mint(address gauge) external override nonReentrant returns (uint256) {
         return _mintFor(gauge, msg.sender);
     }
 
-    /**
-     * @notice Mint everything which belongs to `msg.sender` across multiple gauges
-     * @param gauges List of `LiquidityGauge` addresses
-     */
+    /// @inheritdoc IBalancerMinterBase
     function mintMany(address[] calldata gauges) external override nonReentrant returns (uint256) {
         return _mintForMany(gauges, msg.sender);
     }
 
-    /**
-     * @notice Mint tokens for `user`
-     * @dev Only possible when `msg.sender` has been approved by `user` to mint on their behalf
-     * @param gauge `LiquidityGauge` address to get mintable amount from
-     * @param user Address to mint to
-     */
+    /// @inheritdoc IBalancerMinterBase
     function mintFor(address gauge, address user) external override nonReentrant returns (uint256) {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
         return _mintFor(gauge, user);
     }
 
-    /**
-     * @notice Mint tokens for `user` across multiple gauges
-     * @dev Only possible when `msg.sender` has been approved by `user` to mint on their behalf
-     * @param gauges List of `LiquidityGauge` addresses
-     * @param user Address to mint to
-     */
+    /// @inheritdoc IBalancerMinterBase
     function mintManyFor(address[] calldata gauges, address user) external override nonReentrant returns (uint256) {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
         return _mintForMany(gauges, user);
     }
 
-    /**
-     * @notice The total number of tokens minted for `user` from `gauge`
-     */
+    /// @inheritdoc IBalancerMinterBase
     function minted(address user, address gauge) public view override returns (uint256) {
         return _minted[user][gauge];
     }
 
-    /**
-     * @notice Whether `minter` is approved to mint tokens for `user`
-     */
+    /// @inheritdoc IBalancerMinterBase
     function getMinterApproval(address minter, address user) external view override returns (bool) {
         return _allowedMinter[minter][user];
     }
 
-    /**
-     * @notice Set whether `minter` is approved to mint tokens on your behalf
-     */
+    /// @inheritdoc IBalancerMinterBase
     function setMinterApproval(address minter, bool approval) public override {
         _setMinterApproval(minter, msg.sender, approval);
     }
 
-    /**
-     * @notice Set whether `minter` is approved to mint tokens on behalf of `user`, who has signed a message authorizing
-     * them.
-     */
+    /// @inheritdoc IBalancerMinterBase
     function setMinterApprovalWithSignature(
         address minter,
         bool approval,
@@ -162,18 +135,12 @@ abstract contract BalancerMinterBase is IBalancerMinterBase, ReentrancyGuard, EO
     // They are included for ABI compatibility with snake_casing as used in vyper contracts.
     // solhint-disable func-name-mixedcase
 
-    /**
-     * @notice Whether `minter` is approved to mint tokens for `user`
-     */
+    /// @inheritdoc IBalancerMinterBase
     function allowed_to_mint_for(address minter, address user) external view override returns (bool) {
         return _allowedMinter[minter][user];
     }
 
-    /**
-     * @notice Mint everything which belongs to `msg.sender` across multiple gauges
-     * @dev This function is not recommended as `mintMany()` is more flexible and gas efficient
-     * @param gauges List of `LiquidityGauge` addresses
-     */
+    /// @inheritdoc IBalancerMinterBase
     function mint_many(address[8] calldata gauges) external override nonReentrant {
         for (uint256 i = 0; i < 8; ++i) {
             if (gauges[i] == address(0)) {
@@ -183,21 +150,14 @@ abstract contract BalancerMinterBase is IBalancerMinterBase, ReentrancyGuard, EO
         }
     }
 
-    /**
-     * @notice Mint tokens for `user`
-     * @dev Only possible when `msg.sender` has been approved by `user` to mint on their behalf
-     * @param gauge `LiquidityGauge` address to get mintable amount from
-     * @param user Address to mint to
-     */
+    /// @inheritdoc IBalancerMinterBase
     function mint_for(address gauge, address user) external override nonReentrant {
         if (_allowedMinter[msg.sender][user]) {
             _mintFor(gauge, user);
         }
     }
 
-    /**
-     * @notice Toggle whether `minter` is approved to mint tokens for `user`
-     */
+    /// @inheritdoc IBalancerMinterBase
     function toggle_approve_mint(address minter) external override {
         setMinterApproval(minter, !_allowedMinter[minter][msg.sender]);
     }

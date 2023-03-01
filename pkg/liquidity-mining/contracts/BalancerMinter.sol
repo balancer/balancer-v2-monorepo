@@ -35,16 +35,12 @@ contract BalancerMinter is IBalancerMinter, BalancerMinterBase {
         _gaugeController = gaugeController;
     }
 
-    /**
-     * @notice Returns the address of the Balancer Token Admin contract
-     */
+    /// @inheritdoc ILMGetters
     function getBalancerTokenAdmin() external view override returns (IBalancerTokenAdmin) {
         return _tokenAdmin;
     }
 
-    /**
-     * @notice Returns the address of the Gauge Controller
-     */
+    /// @inheritdoc ILMGetters
     function getGaugeController() external view override returns (IGaugeController) {
         return _gaugeController;
     }

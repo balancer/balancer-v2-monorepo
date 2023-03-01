@@ -20,4 +20,6 @@ import "./ILMGetters.sol";
 /**
  * @dev Full L1 Balancer minter interface with singleton getters.
  */
-interface IBalancerMinter is IBalancerMinterBase, ILMGetters {}
+interface IBalancerMinter is IBalancerMinterBase, ILMGetters {
+    // solhint-disable-previous-line no-empty-blocks
+}
