@@ -19,12 +19,14 @@ pragma solidity ^0.7.0;
 // to on withdrawl. it needs to pull funds from EulerProtocol
 // and send back to users wallet (the underlying token)
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
-import "../relayer/interfaces/IMockEulerToken.sol";
 import "../relayer/interfaces/IMockEulerProtocol.sol";
 
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IEulerToken.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
+
 
 contract MockEulerToken is IEulerToken, TestToken {
     // from Euler docs:
@@ -34,7 +36,7 @@ contract MockEulerToken is IEulerToken, TestToken {
 
     // solhint-disable-next-line var-name-mixedcase
     address public immutable ASSET;
-    address public immutable EULER_PROTOCOL;
+    IMockEulerProtocol public immutable EULER_PROTOCOL;
 
     uint256 private _onlyForMockStorage;
     address private _mockMsgSender;
@@ -44,7 +46,7 @@ contract MockEulerToken is IEulerToken, TestToken {
         string memory symbol,
         uint8 decimals,
         address asset,
-        address eulerProtocol
+        IMockEulerProtocol eulerProtocol
     ) TestToken(name, symbol, decimals) {
         exchangeRateMultiplier = 1;
         ASSET = asset;
@@ -73,8 +75,8 @@ contract MockEulerToken is IEulerToken, TestToken {
     function deposit(uint256 subAccountId, uint256 amount) external override {
 
         _onlyForMockStorage = subAccountId;
-        // Linear Pool only uses one account. Meaning no subAccountID required
-        // is set to 0 in the LinearPool
+        // Relayer only uses one account. Meaning no subAccountID required
+        // is set to 0 in the Relayer
         // Transfer underlying tokens from sender to the Euler pool, and increase account's eTokens
 
         // assumes Euler protocol has approval to move `amount` from users wallet
@@ -84,7 +86,7 @@ contract MockEulerToken is IEulerToken, TestToken {
 
         _mockMsgSender = msg.sender;
 
-        IMockEulerProtocol(EULER_PROTOCOL).requestUnderlyingFromRelayer(address(ASSET), amount, _mockMsgSender); 
+        EULER_PROTOCOL.requestUnderlyingFromRelayer(address(ASSET), amount, _mockMsgSender); 
 
         _mint(msg.sender, amount);
     }
@@ -101,7 +103,7 @@ contract MockEulerToken is IEulerToken, TestToken {
 
         // request tokens from Euler protocol and send to the Relayer
         _mockMsgSender = msg.sender;
-        IMockEulerProtocol(EULER_PROTOCOL).sendUnderlyingToRelayer(ASSET, amount, _mockMsgSender);
+        EULER_PROTOCOL.sendUnderlyingToRelayer(ASSET, amount, _mockMsgSender);
         _burn(msg.sender, amount);
     }
 }

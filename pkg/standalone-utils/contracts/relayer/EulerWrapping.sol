@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IEulerToken.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
@@ -24,8 +25,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
 
 import "./IBaseRelayerLibrary.sol";
-
-import "./interfaces/IMockEulerToken.sol";
 
 /**
  * @title EulerWrapping
@@ -69,18 +68,15 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
 
         underlying.safeApprove(_eulerProtocol, amount);
 
-        // To calculate balances of the wrappedToken in the Relayer
-        IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
-
         // Deposit MainToken into EulerToken
         // 0 for the Euler primary account
         wrappedToken.deposit(0, amount);
 
-        uint256 withdrawnWrappedAmount = wrappedTokenErc20.balanceOf(address(this));
+        uint256 withdrawnWrappedAmount = wrappedToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
-            wrappedTokenErc20.safeApprove(address(this), withdrawnWrappedAmount);
-            wrappedTokenErc20.safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
+            IERC20(wrappedToken).safeApprove(address(this), withdrawnWrappedAmount);
+            IERC20(wrappedToken).safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
         }
 
         if (_isChainedReference(outputReference)) {
@@ -114,7 +110,7 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
         // When using option 1, the possibility exists to have dust of WrappedToken in the relayer
         // Therefor option 2 is chosen
         // 0 for the Euler primary account
-        wrappedToken.withdraw(0, 2**256 - 1); //MAX_UINT forces option 2
+        wrappedToken.withdraw(0, uint256(-1)); //MAX_UINT forces option 2
 
         uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 

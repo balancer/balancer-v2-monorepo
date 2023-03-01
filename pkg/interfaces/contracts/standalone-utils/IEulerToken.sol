@@ -14,7 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-interface IEulerToken {
+import "../solidity-utils/openzeppelin/IERC20.sol";
+
+interface IEulerToken is IERC20 {
     /**
      * @dev Convert an eToken balance to an underlying amount, taking into account current exchange rate
      * eToken balance, in internal book-keeping units (18 decimals)

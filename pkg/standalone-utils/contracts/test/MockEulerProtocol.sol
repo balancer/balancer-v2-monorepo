@@ -14,26 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-contract MockEulerProtocol is TestToken {
+contract MockEulerProtocol {
     using SafeERC20 for IERC20;
-
-    constructor(
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) 
-    TestToken(name, symbol, decimals) {
-
-    }
-
-    function approveWithdrawl(address underlying, address eToken) public {
-        // eToken is allowed to spend maximum amount of underlying from this contract.
-        IERC20(underlying).approve(eToken, 2**256 - 1);
-    }
 
     function requestUnderlyingFromRelayer(address underlying, uint256 amount, address relayer) public {
         IERC20(underlying).transferFrom(relayer, (address(this)), amount);
