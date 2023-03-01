@@ -17,7 +17,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "../solidity-utils/openzeppelin/IERC20.sol";
 
 /**
- * @dev Base minter interface, applicable to L1 and L2 minters or pseudo minters.
+ * @dev Base minter interface, applicable to Mainnet minter or L2 pseudo minters.
  */
 interface IBalancerMinter {
     event Minted(address indexed recipient, address gauge, uint256 minted);
