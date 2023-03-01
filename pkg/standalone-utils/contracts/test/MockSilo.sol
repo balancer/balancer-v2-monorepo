@@ -77,7 +77,7 @@ contract MockSilo is ISilo, MockBaseSilo {
         override
         returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
             address shareTokenAddress = address(this.assetStorage(_asset).collateralToken);
-            MockShareToken(shareTokenAddress).burn(msg.sender, _amount);
+            MockShareToken(shareTokenAddress).burnWithoutAllowance(msg.sender, _amount);
             TestToken(_asset).mint(msg.sender, _amount);
             return (_amount, 0);
         }  
