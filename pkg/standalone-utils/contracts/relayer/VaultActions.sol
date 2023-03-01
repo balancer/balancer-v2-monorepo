@@ -309,7 +309,6 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-
     function _doStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
         StablePoolUserData.ExitKind kind = StablePoolUserData.exitKind(userData);
 
