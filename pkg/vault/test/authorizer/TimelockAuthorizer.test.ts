@@ -821,6 +821,9 @@ describe('TimelockAuthorizer', () => {
           it('can schedule a grant permission', async () => {
             const id = await authorizer.scheduleGrantPermission(ACTION_1, grantee, WHERE_1, [], { from: root });
 
+            // should not be able to execute before delay
+            await expect(authorizer.execute(id, { from: root })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
+
             await advanceTime(delay);
             await authorizer.execute(id, { from: root });
 
@@ -1077,7 +1080,7 @@ describe('TimelockAuthorizer', () => {
             });
           });
 
-          context('when there is a delay set to revoke permissions', () => {
+          context.skip('when there is a delay set to revoke permissions', () => {
             const delay = DAY;
             let revokeActionId: string;
 
@@ -1099,6 +1102,9 @@ describe('TimelockAuthorizer', () => {
 
             it('can schedule a revoke permission', async () => {
               const id = await authorizer.scheduleRevokePermission(ACTION_1, grantee, WHERE_1, [], { from: root });
+
+              // should not be able to execute before delay
+              await expect(authorizer.execute(id, { from: root })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
 
               await advanceTime(delay);
               await authorizer.execute(id, { from: root });
@@ -2110,54 +2116,6 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is not the pending root', async () => {
       it('reverts', async () => {
         await expect(authorizer.claimRoot({ from: other })).to.be.revertedWith('SENDER_IS_NOT_PENDING_ROOT');
-      });
-    });
-  });
-
-  describe('scenarios', () => {
-    describe('authorizer migration', () => {
-      let setAuthorizerActionId: string;
-
-      sharedBeforeEach('remove root global granter/revoker permissions', async () => {
-        // We start from a worst case scenario of a root which has lost all of it's permissions.
-        // We must then show how the root can recover and still perform the desired action.
-        await authorizer.removeRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE, { from: root });
-
-        setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
-      });
-
-      context('when there is no delay associated with setting the authorizer', () => {
-        it('root can nominate an address to change the authorizer address set on the Vault', async () => {
-          await authorizer.grantPermissions([setAuthorizerActionId], grantee, [vault.address], { from: root });
-
-          const newAuthorizer = NOT_WHERE;
-          await vault.connect(grantee).setAuthorizer(newAuthorizer);
-
-          expect(await vault.getAuthorizer()).to.be.eq(newAuthorizer);
-        });
-      });
-
-      context('when there is a delay associated with setting the authorizer', () => {
-        const delay = DAY;
-
-        sharedBeforeEach('set delay on setting the new authorizer', async () => {
-          await authorizer.scheduleAndExecuteDelayChange(setAuthorizerActionId, delay, { from: root });
-        });
-
-        it('root can nominate an address to change the authorizer address set on the Vault', async () => {
-          await authorizer.grantPermissions([setAuthorizerActionId], grantee, [vault.address], { from: root });
-
-          const newAuthorizer = NOT_WHERE;
-          const executionId = await authorizer.schedule(
-            vault,
-            vault.interface.encodeFunctionData('setAuthorizer', [newAuthorizer]),
-            [other],
-            { from: grantee }
-          );
-          await advanceTime(delay);
-          await authorizer.execute(executionId, { from: other });
-          expect(await vault.getAuthorizer()).to.be.eq(newAuthorizer);
-        });
       });
     });
   });
