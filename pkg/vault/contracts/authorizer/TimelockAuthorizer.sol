@@ -847,8 +847,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         require(!isRevoker(actionId, account, where), "ACCOUNT_IS_ALREADY_REVOKER");
         // Note that it's possible for the `account` to be a revoker for the same `actionId` in a specific `where`, and
-        // later receive permission over `EVERYWHERE`, resulting in 'duplicate' permissions. While this isn't necessarily an issue,
-        // removing the revoker status will require undoing the actions in reverse order.
+        // later receive permission over `EVERYWHERE`, resulting in 'duplicate' permissions. While this isn't
+        // necessarily an issue, removing the revoker status will require undoing the actions in reverse order.
         // To avoid these issues, it's recommended to remove any prior revoker status over specific contracts before
         // granting an account global revoker.
 
