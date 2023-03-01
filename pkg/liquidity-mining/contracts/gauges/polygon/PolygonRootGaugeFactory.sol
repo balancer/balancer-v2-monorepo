@@ -23,7 +23,7 @@ contract PolygonRootGaugeFactory is BaseGaugeFactory {
         IBalancerMinter minter,
         IPolygonRootChainManager polygonRootChainManager,
         address polygonERC20Predicate
-    ) BaseGaugeFactory(new PolygonRootGauge(minter, polygonRootChainManager, polygonERC20Predicate)) {
+    ) BaseGaugeFactory(address(new PolygonRootGauge(minter, polygonRootChainManager, polygonERC20Predicate))) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
