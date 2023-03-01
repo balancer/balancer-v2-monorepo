@@ -194,6 +194,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
 
+    /**
+     * @notice Emitted when a new `delay` is set in order to grant permission to execute action action `actionId`.
+     */
     event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
 
     /**
@@ -338,7 +341,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the execution delay for action `actionId`.
+     * @notice Returns the execution delay for granting permission for action `actionId`.
      */
     function getActionIdGrantDelay(bytes32 actionId) external view returns (uint256) {
         return _grantDelays[actionId];
@@ -525,33 +528,71 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * the TimelockExecutor after after calling `scheduleDelayChange`.
      */
     function setDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
-        bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
-        bool isAllowed = actionId == setAuthorizerActionId || delay <= _delaysPerActionId[setAuthorizerActionId];
-        require(isAllowed, "DELAY_EXCEEDS_SET_AUTHORIZER");
+        // If changing the `setAuthorizer` delay itself, then we don't need to compare it to its current value for
+        // validity.
+        if (actionId != _vault.getActionId(IVault.setAuthorizer.selector)) {
+            require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
+        }
 
         _delaysPerActionId[actionId] = delay;
         emit ActionDelaySet(actionId, delay);
     }
 
     function setGrantDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
-        bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
-        bool isAllowed = actionId == setAuthorizerActionId || delay <= _delaysPerActionId[setAuthorizerActionId];
-        require(isAllowed, "DELAY_EXCEEDS_SET_AUTHORIZER");
+        require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
 
         _grantDelays[actionId] = delay;
         emit GrantDelaySet(actionId, delay);
     }
 
+    function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
+        // No delay can be greater than the current delay for changing the Authorizer itself (`IVault.setAuthorizer`).
+        // Otherwise, it'd be possible to execute the action with a shorter delay by simply replacing the
+        // TimelockAuthorizer with a different contract that didn't enforce these delays.
+        // Note that it is still possible for an action to end up with a delay shorter than `setAuthorizer` if e.g.
+        // `setAuthorizer`'s delay was to ever be decreased, but this is not expected to happen. The following check is
+        // therefore simply a way to try to prevent user error, but is not infallible.
+
+        bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
+        return delay <= _delaysPerActionId[setAuthorizerActionId];
+    }
+
     /**
-     * @notice Schedules an execution to set action `actionId`'s delay to `newDelay`.
+     * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`.
      */
     function scheduleDelayChange(
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
-        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+
+        uint256 executionDelay = _getDelayChangeExecutionDelay(_delaysPerActionId[actionId], newDelay);
+
+        bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
+        bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
+        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
+    }
+
+    /**
+     * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`.
+     */
+    function scheduleGrantDelayChange(
+        bytes32 actionId,
+        uint256 newDelay,
+        address[] memory executors
+    ) external returns (uint256 scheduledExecutionId) {
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+
+        uint256 executionDelay = _getDelayChangeExecutionDelay(_grantDelays[actionId], newDelay);
+
+        bytes memory data = abi.encodeWithSelector(this.setGrantDelay.selector, actionId, newDelay);
+        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
+        return _scheduleWithDelay(0x0, address(this), data, executionDelay, executors);
+    }
+
+    function _getDelayChangeExecutionDelay(uint256 currentDelay, uint256 newDelay) private pure returns (uint256) {
+        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
         // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
         // current delay.
@@ -573,32 +614,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // changes are subject to a minimum execution delay, to allow for proper scrutiny of these potentially
         // dangerous actions.
 
-        uint256 actionDelay = _delaysPerActionId[actionId];
-        uint256 executionDelay = newDelay < actionDelay
-            ? Math.max(actionDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
-            : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
-
-        bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
-        bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
-        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
-    }
-
-    function scheduleGrantDelayChange(
-        bytes32 actionId,
-        uint256 newDelay,
-        address[] memory executors
-    ) external returns (uint256 scheduledExecutionId) {
-        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
-        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
-
-        uint256 actionDelay = _grantDelays[actionId];
-        uint256 executionDelay = newDelay < actionDelay
-            ? Math.max(actionDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
-            : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
-
-        bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
-        bytes memory data = abi.encodeWithSelector(this.setGrantDelay.selector, actionId, newDelay);
-        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
+        return
+            newDelay < currentDelay
+                ? Math.max(currentDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
+                : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
     }
 
     /**

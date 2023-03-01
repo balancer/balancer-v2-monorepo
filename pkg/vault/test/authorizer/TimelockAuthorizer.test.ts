@@ -803,7 +803,7 @@ describe('TimelockAuthorizer', () => {
 
           sharedBeforeEach('set delay', async () => {
             const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-            await authorizer.scheduleAndExecuteGrantDelayChange(setAuthorizerAction, delay * 2, { from: root });
+            await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
             await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, delay, { from: root });
           });
 
@@ -1465,7 +1465,9 @@ describe('TimelockAuthorizer', () => {
         const delay = DAY * 900;
 
         it('reverts', async () => {
-          await expect(authorizer.scheduleDelayChange(action, delay, [])).to.be.revertedWith('DELAY_TOO_LARGE');
+          await expect(authorizer.scheduleDelayChange(action, delay, [], { from: root })).to.be.revertedWith(
+            'DELAY_TOO_LARGE'
+          );
         });
       });
     });
