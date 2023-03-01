@@ -98,10 +98,6 @@ export default class TimelockAuthorizer {
     return this.instance.canPerform(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async canGrant(action: string, account: Account, where: Account): Promise<boolean> {
-    return this.instance.canGrant(action, this.toAddress(account), this.toAddress(where));
-  }
-
   async canRevoke(action: string, account: Account, where: Account): Promise<boolean> {
     return this.instance.canRevoke(action, this.toAddress(account), this.toAddress(where));
   }

@@ -427,17 +427,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns true if `account` can grant permissions for action `actionId` in target `where`.
-     */
-    function canGrant(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view returns (bool) {
-        return _grantDelays[actionId] > 0 ? account == address(_executor) : isGranter(actionId, account, where);
-    }
-
-    /**
      * @notice Returns true if `account` can revoke permissions for action `actionId` in target `where`.
      */
     function canRevoke(
@@ -790,10 +779,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     ) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
         for (uint256 i = 0; i < actionIds.length; i++) {
-            // For permissions that have a delay when granting, `canGrant` will return false. `scheduleGrantPermission`
-            // will succeed as it checks `isGranter` instead.
-            // Note that `canGrant` will return true for the executor if the permission has a delay.
-            require(canGrant(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_GRANTER");
+            if (_grantDelays[actionIds[i]] == 0) {
+                require(isGranter(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_GRANTER");
+            } else {
+                // Some actions may have delays associated with granting them - these permissions cannot be granted
+                // directly, even if the caller is a granter, and must instead be scheduled for future execution via
+                // `scheduleGrantPermission`.
+                require(msg.sender == address(_executor), "GRANT_MUST_BE_SCHEDULED");
+            }
+
             _grantPermission(actionIds[i], account, where[i]);
         }
     }
