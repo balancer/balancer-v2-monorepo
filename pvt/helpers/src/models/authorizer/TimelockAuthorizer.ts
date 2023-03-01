@@ -75,6 +75,10 @@ export default class TimelockAuthorizer {
     return this.instance.isPendingRoot(this.toAddress(account));
   }
 
+  async isCanceler(scheduledExecutionId: BigNumberish, account: Account): Promise<boolean> {
+    return this.instance.isCanceler(scheduledExecutionId, this.toAddress(account));
+  }
+
   async delay(action: string): Promise<BigNumberish> {
     return this.instance.getActionIdDelay(action);
   }
@@ -176,8 +180,24 @@ export default class TimelockAuthorizer {
     return this.with(params).cancel(id);
   }
 
+  async addCanceler(
+    scheduledExecutionId: BigNumberish,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).addCanceler(scheduledExecutionId, this.toAddress(account));
+  }
+
+  async removeCanceler(
+    scheduledExecutionId: BigNumberish,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).removeCanceler(scheduledExecutionId, this.toAddress(account));
+  }
+
   async addGranter(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).manageGranter(action, this.toAddress(account), this.toAddress(where), true);
+    return this.with(params).addGranter(action, this.toAddress(account), this.toAddress(where));
   }
 
   async removeGranter(
@@ -186,11 +206,11 @@ export default class TimelockAuthorizer {
     wheres: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).manageGranter(action, this.toAddress(account), this.toAddress(wheres), false);
+    return this.with(params).removeGranter(action, this.toAddress(account), this.toAddress(wheres));
   }
 
   async addRevoker(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(where), true);
+    return this.with(params).addRevoker(action, this.toAddress(account), this.toAddress(where));
   }
 
   async removeRevoker(
@@ -199,7 +219,7 @@ export default class TimelockAuthorizer {
     wheres: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(wheres), false);
+    return this.with(params).removeRevoker(action, this.toAddress(account), this.toAddress(wheres));
   }
 
   async grantPermissions(
