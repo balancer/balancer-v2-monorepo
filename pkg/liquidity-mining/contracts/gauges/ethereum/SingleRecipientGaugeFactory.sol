@@ -25,7 +25,7 @@ contract SingleRecipientGaugeFactory is Version, BaseGaugeFactory {
         IBalancerMinter minter,
         string memory factoryVersion,
         string memory productVersion
-    ) Version(factoryVersion) BaseGaugeFactory(new SingleRecipientGauge(minter)) {
+    ) Version(factoryVersion) BaseGaugeFactory(address(new SingleRecipientGauge(minter))) {
         _productVersion = productVersion;
     }
 
