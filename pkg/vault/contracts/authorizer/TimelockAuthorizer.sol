@@ -124,10 +124,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     // action id => account => where => is granter
     mapping(bytes32 => mapping(address => mapping(address => bool))) private _isGranter;
+    // action id => delay
+    mapping(bytes32 => uint256) private _grantDelays;
     // action id => account => where => is revoker
     mapping(bytes32 => mapping(address => mapping(address => bool))) private _isRevoker;
     // action id => delay
-    mapping(bytes32 => uint256) private _grantDelays;
+    mapping(bytes32 => uint256) private _revokeDelays;
     // scheduled execution id => account => is canceler
     mapping(uint256 => mapping(address => bool)) private _isCanceler;
 
@@ -443,7 +445,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address account,
         address where
     ) public view returns (bool) {
-        return _canPerformSpecificallyOrGenerally(REVOKE_ACTION_ID, account, where, actionId);
+        return _revokeDelays[actionId] > 0 ? account == address(_executor) : isRevoker(actionId, account, where);
     }
 
     /**
@@ -915,9 +917,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(isRevoker(actionId, msg.sender, where), "SENDER_IS_NOT_REVOKER");
+
+        uint256 delay = _revokeDelays[actionId];
+        require(delay > 0, "ACTION_HAS_NO_GRANT_DELAY");
+
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
-        bytes32 revokePermissionId = getRevokePermissionActionId(actionId);
-        uint256 id = _schedule(revokePermissionId, address(this), data, executors);
+
+        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
+        uint256 id = _scheduleWithDelay(0x0, address(this), data, delay, executors);
         // Revokers that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule revokes (and root is
         // always a global canceler).
