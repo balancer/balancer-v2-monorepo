@@ -14,10 +14,17 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./IBalancerMinterBase.sol";
-import "./ILMGetters.sol";
+import "./IBalancerTokenAdmin.sol";
+import "./IGaugeController.sol";
 
-/**
- * @dev Full L1 Balancer minter interface with singleton getters.
- */
-interface IBalancerMinter is IBalancerMinterBase, ILMGetters {}
+interface ILMGetters {
+    /**
+     * @notice Returns the address of the Balancer Token Admin contract
+     */
+    function getBalancerTokenAdmin() external view returns (IBalancerTokenAdmin);
+
+    /**
+     * @notice Returns the address of the Gauge Controller
+     */
+    function getGaugeController() external view returns (IGaugeController);
+}
