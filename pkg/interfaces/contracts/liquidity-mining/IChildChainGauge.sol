@@ -17,9 +17,5 @@ pragma solidity >=0.7.0 <0.9.0;
 import "../pool-utils/IVersion.sol";
 
 interface IChildChainGauge is IVersion {
-    function initialize(
-        address lpToken,
-        address votingEscrow,
-        string memory version
-    ) external;
+    function initialize(address lpToken, string memory version) external;
 }
