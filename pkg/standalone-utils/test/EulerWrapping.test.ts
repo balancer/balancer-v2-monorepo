@@ -7,7 +7,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
-import { SwapKind, WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
+import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
@@ -17,14 +17,13 @@ import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
-import { Dictionary, values } from 'lodash';
+import { Dictionary } from 'lodash';
 import {
   expectChainedReferenceContents,
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { accountToAddress } from '@balancer-labs/balancer-js/src';
 
 describe('EulerWrapping', function () {
   let DAI: Contract, eDAI: Contract;
@@ -40,7 +39,7 @@ describe('EulerWrapping', function () {
   sharedBeforeEach('deploy Vault', async () => {
     vault = await Vault.create({ admin });
 
-    mockEulerProtocol = await deploy('MockEulerProtocol', { args: ['eulerProtocol', 'EP', 18] });
+    mockEulerProtocol = await deploy('MockEulerProtocol');
 
     DAI = await deploy('v2-solidity-utils/TestToken', { args: ['DAI', 'DAI', 18] });
 

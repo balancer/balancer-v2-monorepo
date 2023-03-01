@@ -17,7 +17,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16636628, function () {
   const USDC_HOLDER = '0x0a59649758aa4d66e25f08dd01271e891fe52199';
   const eUSDC = '0xEb91861f8A4e1C12333F42DCE8fB0Ecdc28dA716'; //proxy
 
-  let usdcToken: Contract, wrappedToken: Contract, eToken: Contract;
+  let usdcToken: Contract, eToken: Contract;
   let sender: SignerWithAddress;
   let chainedReference: BigNumber;
   let chainedReferenceOut: BigNumber;
@@ -55,7 +55,6 @@ describeForkTest('EulerWrapping', 'mainnet', 16636628, function () {
 
   before(async () => {
     usdcToken = await task.instanceAt('IERC20', USDC);
-    wrappedToken = await task.instanceAt('IERC20', eUSDC);
     eToken = await task.instanceAt('IEulerToken', eUSDC);
     sender = await impersonate(USDC_HOLDER);
 
@@ -65,7 +64,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16636628, function () {
   it('should wrap successfully', async () => {
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfeUSDClBefore = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfeUSDClBefore = await eToken.balanceOf(relayer.address);
 
     expect(balanceOfeUSDClBefore).to.be.equal(0);
 
@@ -85,7 +84,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16636628, function () {
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfeUSDCAfter = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfeUSDCAfter = await eToken.balanceOf(relayer.address);
 
     // @param underlyingAmount Amount in underlying units (same decimals as underlying token)
     // @return eToken balance, in internal book-keeping units (18 decimals)
@@ -100,7 +99,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16636628, function () {
     const eAmountToWithdraw = await eToken.convertUnderlyingToBalance(amountToWrap);
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfeUSDCBefore = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfeUSDCBefore = await eToken.balanceOf(relayer.address);
 
     expect(balanceOfeUSDCBefore).to.be.equal(eAmountToWithdraw);
 
@@ -116,7 +115,7 @@ describeForkTest('EulerWrapping', 'mainnet', 16636628, function () {
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfeUSDCAfter = await wrappedToken.balanceOf(relayer.address);
+    const balanceOfeUSDCAfter = await eToken.balanceOf(relayer.address);
 
     expect(balanceOfeUSDCAfter).to.be.equal(0);
     expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.almostEqual(amountToWrap, 0.01);
