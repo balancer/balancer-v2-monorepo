@@ -25,6 +25,7 @@ import "./relayer/UnbuttonWrapping.sol";
 import "./relayer/ReaperWrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
+import "./relayer/YearnWrapping.sol";
 
 /**
  * @title Batch Relayer Library
@@ -40,7 +41,8 @@ contract BatchRelayerLibrary is
     UnbuttonWrapping,
     ReaperWrapping,
     VaultActions,
-    VaultPermit
+    VaultPermit,
+    YearnWrapping
 {
     constructor(
         IVault vault,
