@@ -82,7 +82,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
     }
 
     function withdraw(uint256 numberOfShares) external override {
-        this.burn(msg.sender, numberOfShares);
+        this.burnWithoutAllowance(msg.sender, numberOfShares);
         // Since rate calculation depends on totalSupply, we need to recalculate parameters
         // that are base to rate calculation.
         setRate(_desiredRate);

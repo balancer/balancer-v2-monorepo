@@ -702,6 +702,82 @@ describe('TetuWrapping', function () {
         expect(await xDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
+
+    describe('exitPool', () => {
+      let receipt: ContractReceipt;
+      let BPTBalanceBefore: BigNumber;
+      const amountDAI = fp(1);
+
+      sharedBeforeEach('exit the pool', async () => {
+        const { tokens: allTokens } = await pool.getTokens();
+
+        // First transfer tokens to pool, before testing exit
+        await relayer.connect(senderUser).multicall([
+          encodeWrap(xDAI.address, senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
+          encodeApprove(xDAIToken, MAX_UINT256),
+          encodeJoin({
+            poolId,
+            assets: allTokens,
+            sender: relayer,
+            recipient: senderUser,
+            maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
+            userData: StablePoolEncoder.joinExactTokensInForBPTOut(
+              poolTokens.map((token) => (token === xDAIToken ? toChainedReference(0) : 0)),
+              0
+            ),
+          }),
+        ]);
+
+        const dDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
+          (token: Token) => token.instance.address === xDAIToken.address
+        );
+        const dDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === xDAIToken.address);
+        const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
+        BPTBalanceBefore = await pool.balanceOf(senderUser);
+
+        receipt = await (
+          await relayer.connect(senderUser).multicall([
+            encodeApprove(pool, MAX_UINT256),
+            encodeExit({
+              poolId,
+              assets: allTokens,
+              sender: senderUser,
+              recipient: relayer,
+              minAmountsOut: Array(poolTokens.length + 1).fill(0),
+              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, dDAIIndexWithoutBPT),
+              outputReference,
+            }),
+            encodeUnwrap(xDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + dDAIIndex)),
+          ])
+        ).wait();
+      });
+
+      it('exits the pool', async () => {
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          poolId,
+          liquidityProvider: senderUser.address,
+        });
+
+        // DAI transfered to recipient
+        expectTransferEvent(receipt, { from: xDAI.address, to: relayer.address }, DAIToken);
+        expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAIToken);
+      });
+
+      it('BPT burned from the sender user', async () => {
+        const BPTBalanceAfter = await pool.balanceOf(senderUser);
+        expect(BPTBalanceAfter).to.be.eq(0);
+      });
+
+      it('DAI transfered to recipient user', async () => {
+        const DAIBalanceAfter = await DAIToken.balanceOf(recipientUser);
+        expect(DAIBalanceAfter).to.be.gt(0);
+      });
+
+      it('does not leave dust on the relayer', async () => {
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await xDAIToken.balanceOf(relayer)).to.be.eq(0);
+      });
+    });
   });
 
   function encodeJoin(params: {
@@ -726,6 +802,30 @@ describe('TetuWrapping', function () {
       },
       0,
       params.outputReference ?? 0,
+    ]);
+  }
+
+  function encodeExit(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    minAmountsOut: BigNumberish[];
+    userData: string;
+    outputReference?: { index: number; key: BigNumberish }[];
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('exitPool', [
+      params.poolId,
+      0, // WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        minAmountsOut: params.minAmountsOut,
+        userData: params.userData,
+        toInternalBalance: false,
+      },
+      params.outputReference,
     ]);
   }
 
