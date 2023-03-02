@@ -126,8 +126,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     mapping(bytes32 => mapping(address => mapping(address => bool))) private _isGranter;
     // action id => delay
     mapping(bytes32 => uint256) private _grantDelays;
-    // action id => account => where => is revoker
-    mapping(bytes32 => mapping(address => mapping(address => bool))) private _isRevoker;
+    // account => where => is revoker
+    mapping(address => mapping(address => bool)) private _isRevoker;
     // action id => delay
     mapping(bytes32 => uint256) private _revokeDelays;
     // scheduled execution id => account => is canceler
@@ -160,14 +160,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
 
     /**
-     * @notice Emitted when `account` is added as a revoker for `actionId` in `where`.
+     * @notice Emitted when `account` is added as a revoker in `where`.
      */
-    event RevokerAdded(bytes32 indexed actionId, address indexed account, address indexed where);
+    event RevokerAdded(address indexed account, address indexed where);
 
     /**
-     * @notice Emitted when an account is removed as a revoker `actionId` in `where`.
+     * @notice Emitted when an account is removed as a revoker in `where`.
      */
-    event RevokerRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
+    event RevokerRemoved(address indexed account, address indexed where);
 
     /**
      * @notice Emitted when a canceler is added for a scheduled execution `scheduledExecutionId`.
@@ -388,14 +388,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns true if `account` is allowed to revoke permissions for action `actionId` in target `where`.
+     * @notice Returns true if `account` is allowed to revoke permissions in target `where` for all actions.
      */
     function isRevoker(
-        bytes32 actionId,
         address account,
         address where
     ) public view returns (bool) {
-        return _isRevoker[actionId][account][where] || _isRevoker[actionId][account][EVERYWHERE] || isRoot(account);
+        return _isRevoker[account][where] || _isRevoker[account][EVERYWHERE] || isRoot(account);
     }
 
     /**
@@ -445,7 +444,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address account,
         address where
     ) public view returns (bool) {
-        return _revokeDelays[actionId] > 0 ? account == address(_executor) : isRevoker(actionId, account, where);
+        return _revokeDelays[actionId] > 0 ? account == address(_executor) : isRevoker(account, where);
     }
 
     /**
@@ -828,7 +827,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants revoker status to `account` for action `actionId` in target `where`.
+     * @notice Grants revoker status to `account` in target `where` for all actions.
      * @dev Only the root can add revokers.
      *
      * Note that there are no delays associated with adding revokers. This is based on the assumption that any
@@ -839,25 +838,24 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * A malicious revoker cannot add new revokers, so root can simply revoke their status once.
      */
     function addRevoker(
-        bytes32 actionId,
         address account,
         address where
     ) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
-        require(!isRevoker(actionId, account, where), "ACCOUNT_IS_ALREADY_REVOKER");
-        // Note that it's possible for the `account` to be a revoker for the same `actionId` in a specific `where`, and
+        require(!isRevoker(account, where), "ACCOUNT_IS_ALREADY_REVOKER");
+        // Note that it's possible for the `account` to be a revoker in a specific `where`, and
         // later receive permission over `EVERYWHERE`, resulting in 'duplicate' permissions. While this isn't
         // necessarily an issue, removing the revoker status will require undoing the actions in reverse order.
         // To avoid these issues, it's recommended to remove any prior revoker status over specific contracts before
         // granting an account global revoker.
 
-        _isRevoker[actionId][account][where] = true;
-        emit RevokerAdded(actionId, account, where);
+        _isRevoker[account][where] = true;
+        emit RevokerAdded(account, where);
     }
 
     /**
-     * @notice Removes revoker status from `account` for action `actionId` in target `where`.
+     * @notice Removes revoker status from `account` in target `where`.
      * @dev Only the root can remove revokers.
      *
      * Note that there are no delays associated with removing revokers.  The only instance in which one might be useful
@@ -865,13 +863,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * doesn't seem like it will ever be required - revokers are typically subDAOs.
      */
     function removeRevoker(
-        bytes32 actionId,
         address account,
         address where
     ) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
-        require(isRevoker(actionId, account, where), "ACCOUNT_IS_NOT_REVOKER");
+        require(isRevoker(account, where), "ACCOUNT_IS_NOT_REVOKER");
 
         require(!isRoot(account), "CANNOT_REMOVE_ROOT_REVOKER");
 
@@ -879,12 +876,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // single contract from global revokers. As mentioned in `addRevoker`, it is possible for an account to have
         // both global and specific permissions over a given contract: in this case, the global permission must be
         // removed before the specific ones can be addressed.
-        if (_isRevoker[actionId][account][EVERYWHERE]) {
+        if (_isRevoker[account][EVERYWHERE]) {
             require(where == EVERYWHERE, "REVOKER_IS_GLOBAL");
         }
 
-        _isRevoker[actionId][account][where] = false;
-        emit RevokerRemoved(actionId, account, where);
+        _isRevoker[account][where] = false;
+        emit RevokerRemoved(account, where);
     }
 
     /**
@@ -916,7 +913,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
-        require(isRevoker(actionId, msg.sender, where), "SENDER_IS_NOT_REVOKER");
+        require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
 
         uint256 delay = _revokeDelays[actionId];
         require(delay > 0, "ACTION_HAS_NO_REVOKE_DELAY");
