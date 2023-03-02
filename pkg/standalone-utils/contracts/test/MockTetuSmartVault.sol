@@ -21,13 +21,14 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./MockTetuStrategy.sol";
+import "../relayer/special/TetuShareValueHelper.sol";
 
-contract MockTetuSmartVault is ITetuSmartVault, TestToken {
+contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
     IERC20 public underlyingAsset;
-    uint256 underlyingDecimals;
+    uint256 private immutable _underlyingDecimals;
     uint256 private _underlyingBalanceInVault = 0;
     MockTetuStrategy private immutable _tetuStrategy;
     uint256 _desiredRate;
@@ -40,7 +41,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
         MockTetuStrategy tetuStrategy
     ) TestToken(name, symbol, decimals) {
         underlyingAsset = IERC20(_underlyingAsset);
-        underlyingDecimals = decimals;
+        _underlyingDecimals = decimals;
         _tetuStrategy = tetuStrategy;
     }
 
@@ -50,14 +51,14 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
 
     // Should pass rate with decimals from underlyingToken
     function setRate(uint256 newRate) public {
+        // stores latest rate, so the balances are recalculated after deposit and withdraw
         _desiredRate = newRate;
         uint256 totalSupply = this.totalSupply();
         // arbitrary number, just to make sure that both Vault and Invested values compose the rate.
         uint8 vaultInvestedRatio = 3;
-        _underlyingBalanceInVault = newRate * totalSupply / (vaultInvestedRatio * 10**underlyingDecimals);
-        _tetuStrategy.setInvestedUnderlyingBalance(
-            (vaultInvestedRatio - 1) * newRate * totalSupply / (vaultInvestedRatio * 10**underlyingDecimals)
-        );
+        uint256 totalBalance = (newRate * totalSupply) / 10**_underlyingDecimals;
+        _underlyingBalanceInVault = totalBalance / vaultInvestedRatio;
+        _tetuStrategy.setInvestedUnderlyingBalance(totalBalance - _underlyingBalanceInVault);
     }
 
     function underlyingBalanceInVault() external view override returns (uint256) {
@@ -70,8 +71,10 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
 
     function deposit(uint256 amount) external override {
         IERC20(underlyingAsset).safeTransferFrom(msg.sender, address(this), amount);
+        // Makes sure rate balances are correctly set before calculating wrappedAmount
+        setRate(_desiredRate);
         uint256 wrappedAmount = _toTetuAmount(amount, this);
-        this.mint(msg.sender, wrappedAmount);
+        _mint(msg.sender, wrappedAmount);
         // Since rate calculation depends on totalSupply, we need to recalculate parameters
         // that are base to rate calculation.
         setRate(_desiredRate);
@@ -82,7 +85,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
     }
 
     function withdraw(uint256 numberOfShares) external override {
-        this.burnWithoutAllowance(msg.sender, numberOfShares);
+        _burn(msg.sender, numberOfShares);
         // Since rate calculation depends on totalSupply, we need to recalculate parameters
         // that are base to rate calculation.
         setRate(_desiredRate);
@@ -97,48 +100,10 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
     }
 
     function underlyingUnit() external view override returns (uint256) {
-        return 10**underlyingDecimals;
+        return 10**_underlyingDecimals;
     }
 
     function strategy() external view override returns (address) {
         return address(_tetuStrategy);
-    }
-
-    // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
-    function fromTetuAmount(uint256 wrappedAmount, ITetuSmartVault wrappedToken) external view returns (uint256) {
-        return _fromTetuAmount(wrappedAmount, wrappedToken);
-    }
-
-    // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
-    function toTetuAmount(uint256 mainAmount, ITetuSmartVault wrappedToken) external view returns (uint256) {
-        return _toTetuAmount(mainAmount, wrappedToken);
-    }
-
-    // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
-    function _fromTetuAmount(uint256 wrappedAmount, ITetuSmartVault wrappedToken) private view returns (uint256) {
-        uint256 rate = _getWrappedTokenRate(wrappedToken);
-        return wrappedAmount.divDown(rate);
-    }
-
-    // Exposing these functions to make it easy to calculate rate on tests. Can't be used in production
-    function _toTetuAmount(uint256 mainAmount, ITetuSmartVault wrappedToken) private view returns (uint256) {
-        uint256 rate = _getWrappedTokenRate(wrappedToken);
-        return rate.mulDown(mainAmount);
-    }
-
-    function _getWrappedTokenRate(ITetuSmartVault wrappedToken) private view returns (uint256) {
-        uint256 wrappedTotalSupply = IERC20(address(wrappedToken)).totalSupply();
-        if (wrappedTotalSupply == 0) {
-            return 0;
-        }
-        // We couldn't use tetuVault.getPricePerFullShare function, since it introduces rounding issues in tokens
-        // with a small number of decimals. Therefore, we're calculating the rate using balance and suply
-        uint256 underlyingBalance = wrappedToken.underlyingBalanceInVault();
-        address tetuStrategyAddress = ITetuSmartVault(address(wrappedToken)).strategy();
-        if (address(tetuStrategyAddress) == address(0)) {
-            return (10**18 * underlyingBalance/ wrappedTotalSupply) + 1;
-        }
-        uint256 strategyInvestedUnderlyingBalance = ITetuStrategy(tetuStrategyAddress).investedUnderlyingBalance();
-        return (10**18 * (underlyingBalance + strategyInvestedUnderlyingBalance) / wrappedTotalSupply) + 1;
     }
 }

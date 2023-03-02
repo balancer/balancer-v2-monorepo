@@ -25,13 +25,14 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
 
 import "./IBaseRelayerLibrary.sol";
+import "./special/TetuShareValueHelper.sol";
 
 /**
  * @title TetuWrapping
  * @notice Allows users to wrap and unwrap Tetu tokens
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
-abstract contract TetuWrapping is IBaseRelayerLibrary {
+abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
     using Address for address payable;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
@@ -55,14 +56,12 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlying, amount);
         }
 
-        // TODO Review this logic: Susceptible to reentrancy attack
-        // Not using rate function of Tetu, since it's precision is low (not too many decimals)
+
         underlying.safeApprove(address(wrappedToken), amount);
         IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
-        uint256 wrappedAmountBefore = wrappedTokenErc20.balanceOf(address(this));
         wrappedToken.deposit(amount);
-        uint256 wrappedAmountAfter = wrappedTokenErc20.balanceOf(address(this));
-        uint256 withdrawnWrappedAmount = wrappedAmountAfter - wrappedAmountBefore;
+        // Not using rate function of Tetu (getPricePerFullShare), since it's precision is low (not too many decimals)
+        uint256 withdrawnWrappedAmount = _toTetuAmount(amount, wrappedToken);
 
         if (recipient != address(this)) {
             wrappedTokenErc20.safeApprove(address(this), withdrawnWrappedAmount);
@@ -93,10 +92,9 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         }
 
         IERC20 mainToken = IERC20(wrappedToken.underlying());
-        uint256 mainAmountBefore = mainToken.balanceOf(address(this));
         wrappedToken.withdraw(amount);
-        uint256 mainAmountAfter = mainToken.balanceOf(address(this));
-        uint256 withdrawnMainAmount = mainAmountAfter - mainAmountBefore;
+        // Not using rate function of Tetu (getPricePerFullShare), since it's precision is low (not too many decimals)
+        uint256 withdrawnMainAmount = _fromTetuAmount(amount, wrappedToken);
 
         if (recipient != address(this)) {
             mainToken.safeApprove(address(this), withdrawnMainAmount);
