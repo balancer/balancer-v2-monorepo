@@ -50,10 +50,13 @@ interface IGearboxVault {
      * The Referral code can be 0
      */
     function addLiquidity(
-        uint256 amount,
+        uint256 underlyingAmount,
         address onBehalfOf,
         uint256 referralCode
     ) external;
 
-    function removeLiquidity(uint256 amount, address to) external;
+    /**
+     * @dev Removes liquidity from the pool and sends underlying tokens to the informed address at "to"
+     */
+    function removeLiquidity(uint256 dieselAmount, address to) external;
 }
