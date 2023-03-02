@@ -72,42 +72,6 @@ describe('TetuWrapping', function () {
     await vault.setRelayerApproval(senderUser, relayer, true);
   });
 
-  function encodeApprove(token: Token, amount: BigNumberish): string {
-    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
-  }
-
-  function encodeWrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapTetu', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
-  function encodeUnwrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapTetu', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
   describe('primitives', () => {
     const amount = fp(1);
 
@@ -691,31 +655,6 @@ describe('TetuWrapping', function () {
     });
 
     describe('joinPool', () => {
-      function encodeJoin(params: {
-        poolId: string;
-        sender: Account;
-        recipient: Account;
-        assets: string[];
-        maxAmountsIn: BigNumberish[];
-        userData: string;
-        outputReference?: BigNumberish;
-      }): string {
-        return relayerLibrary.interface.encodeFunctionData('joinPool', [
-          params.poolId,
-          0, // WeightedPool
-          TypesConverter.toAddress(params.sender),
-          TypesConverter.toAddress(params.recipient),
-          {
-            assets: params.assets,
-            maxAmountsIn: params.maxAmountsIn,
-            userData: params.userData,
-            fromInternalBalance: false,
-          },
-          0,
-          params.outputReference ?? 0,
-        ]);
-      }
-
       let receipt: ContractReceipt;
       let senderxDAIBalanceBefore: BigNumber;
       const amount = fp(1);
@@ -764,4 +703,65 @@ describe('TetuWrapping', function () {
       });
     });
   });
+
+  function encodeJoin(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    maxAmountsIn: BigNumberish[];
+    userData: string;
+    outputReference?: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('joinPool', [
+      params.poolId,
+      0, // WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        maxAmountsIn: params.maxAmountsIn,
+        userData: params.userData,
+        fromInternalBalance: false,
+      },
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
+
+  function encodeApprove(token: Token, amount: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
+  }
+
+  function encodeWrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('wrapTetu', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeUnwrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('unwrapTetu', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
 });
