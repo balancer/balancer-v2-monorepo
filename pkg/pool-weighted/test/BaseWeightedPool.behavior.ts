@@ -24,6 +24,7 @@ export function itBehavesAsWeightedPool(
   let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
   let vault: Vault;
   let pool: WeightedPool, allTokens: TokenList, tokens: TokenList;
+  const _poolType = poolType;
 
   const ZEROS = Array(numberOfTokens).fill(bn(0));
   const weights: BigNumberish[] = WEIGHTS.slice(0, numberOfTokens);
@@ -36,6 +37,7 @@ export function itBehavesAsWeightedPool(
       weights,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       poolType,
+      owner: lp, // needed for LBP tests
       ...params,
     });
   }
@@ -150,13 +152,15 @@ export function itBehavesAsWeightedPool(
       });
 
       it('fails if no user data', async () => {
-        await expect(pool.join({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
+        await expect(pool.join({ data: '0x', from: lp })).to.be.revertedWith('Transaction reverted without a reason');
       });
 
       it('fails if wrong user data', async () => {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
-        await expect(pool.join({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
+        await expect(pool.join({ data: wrongUserData, from: lp })).to.be.revertedWith(
+          'Transaction reverted without a reason'
+        );
       });
 
       context('initialization', () => {
@@ -190,7 +194,9 @@ export function itBehavesAsWeightedPool(
 
       context('join exact tokens in for BPT out', () => {
         it('fails if not initialized', async () => {
-          await expect(pool.joinGivenIn({ recipient, amountsIn: initialBalances })).to.be.revertedWith('UNINITIALIZED');
+          await expect(pool.joinGivenIn({ recipient, amountsIn: initialBalances, from: lp })).to.be.revertedWith(
+            'UNINITIALIZED'
+          );
         });
 
         context('once initialized', () => {
@@ -222,7 +228,7 @@ export function itBehavesAsWeightedPool(
           it('can tell how much BPT it will give in return', async () => {
             const minimumBptOut = pct(expectedBptOut, 0.99);
 
-            const result = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
+            const result = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut, from: lp });
 
             expect(result.amountsIn).to.deep.equal(amountsIn);
             expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
@@ -232,7 +238,9 @@ export function itBehavesAsWeightedPool(
             // This call should fail because we are requesting minimum 1% more
             const minimumBptOut = pct(expectedBptOut, 1.01);
 
-            await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
+            await expect(pool.joinGivenIn({ amountsIn, minimumBptOut, from: lp })).to.be.revertedWith(
+              'BPT_OUT_MIN_AMOUNT'
+            );
           });
 
           it('reverts if paused', async () => {
@@ -248,7 +256,7 @@ export function itBehavesAsWeightedPool(
         const bptOut = fp(2);
 
         it('fails if not initialized', async () => {
-          await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('UNINITIALIZED');
+          await expect(pool.joinGivenOut({ bptOut, token, from: lp })).to.be.revertedWith('UNINITIALIZED');
         });
 
         context('once initialized', () => {
@@ -277,7 +285,7 @@ export function itBehavesAsWeightedPool(
           it('can tell what token amounts it will have to receive', async () => {
             const expectedAmountIn = await pool.estimateTokenIn(token, bptOut, initialBalances);
 
-            const result = await pool.queryJoinGivenOut({ bptOut, token });
+            const result = await pool.queryJoinGivenOut({ bptOut, token, from: lp });
 
             expect(result.bptOut).to.be.equal(bptOut);
             expect(result.amountsIn[token]).to.be.equalWithError(expectedAmountIn, 0.001);
@@ -290,7 +298,7 @@ export function itBehavesAsWeightedPool(
             // is more than 3
             const bptOut = (await pool.getMaxInvariantIncrease()).add(10);
 
-            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('MAX_OUT_BPT_FOR_TOKEN_IN');
+            await expect(pool.joinGivenOut({ bptOut, token, from: lp })).to.be.revertedWith('MAX_OUT_BPT_FOR_TOKEN_IN');
           });
 
           it('reverts if paused', async () => {
@@ -303,7 +311,7 @@ export function itBehavesAsWeightedPool(
 
       context('join all tokens in for exact BPT out', () => {
         it('fails if not initialized', async () => {
-          await expect(pool.joinAllGivenOut({ bptOut: fp(2) })).to.be.revertedWith('UNINITIALIZED');
+          await expect(pool.joinAllGivenOut({ bptOut: fp(2), from: lp })).to.be.revertedWith('UNINITIALIZED');
         });
 
         context('once initialized', () => {
@@ -338,7 +346,7 @@ export function itBehavesAsWeightedPool(
             // We want to join for half the initial BPT supply, which will require half the initial balances
             const bptOut = previousBptBalance.div(2);
 
-            const result = await pool.queryJoinAllGivenOut({ bptOut });
+            const result = await pool.queryJoinAllGivenOut({ bptOut, from: lp });
 
             expect(result.bptOut).to.be.equal(bptOut);
 
@@ -567,25 +575,27 @@ export function itBehavesAsWeightedPool(
   describe('onSwap', () => {
     function itSwaps() {
       context('given in', () => {
-        it('reverts if caller is not the vault', async () => {
-          await expect(
-            pool.instance.onSwap(
-              {
-                kind: SwapKind.GivenIn,
-                tokenIn: tokens.first.address,
-                tokenOut: tokens.second.address,
-                amount: 0,
-                poolId: await pool.getPoolId(),
-                lastChangeBlock: 0,
-                from: other.address,
-                to: other.address,
-                userData: '0x',
-              },
-              0,
-              0
-            )
-          ).to.be.revertedWith('CALLER_NOT_VAULT');
-        });
+        if (_poolType != WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL) {
+          it('reverts if caller is not the vault', async () => {
+            await expect(
+              pool.instance.onSwap(
+                {
+                  kind: SwapKind.GivenIn,
+                  tokenIn: tokens.first.address,
+                  tokenOut: tokens.second.address,
+                  amount: 0,
+                  poolId: await pool.getPoolId(),
+                  lastChangeBlock: 0,
+                  from: lp.address,
+                  to: other.address,
+                  userData: '0x',
+                },
+                0,
+                0
+              )
+            ).to.be.revertedWith('CALLER_NOT_VAULT');
+          });
+        }
 
         it('calculates amount out', async () => {
           const amount = fp(0.1);
@@ -635,25 +645,27 @@ export function itBehavesAsWeightedPool(
       });
 
       context('given out', () => {
-        it('reverts if caller is not the vault', async () => {
-          await expect(
-            pool.instance.onSwap(
-              {
-                kind: SwapKind.GivenOut,
-                tokenIn: tokens.first.address,
-                tokenOut: tokens.second.address,
-                amount: 0,
-                poolId: await pool.getPoolId(),
-                lastChangeBlock: 0,
-                from: other.address,
-                to: other.address,
-                userData: '0x',
-              },
-              0,
-              0
-            )
-          ).to.be.revertedWith('CALLER_NOT_VAULT');
-        });
+        if (_poolType != WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL) {
+          it('reverts if caller is not the vault', async () => {
+            await expect(
+              pool.instance.onSwap(
+                {
+                  kind: SwapKind.GivenOut,
+                  tokenIn: tokens.first.address,
+                  tokenOut: tokens.second.address,
+                  amount: 0,
+                  poolId: await pool.getPoolId(),
+                  lastChangeBlock: 0,
+                  from: other.address,
+                  to: other.address,
+                  userData: '0x',
+                },
+                0,
+                0
+              )
+            ).to.be.revertedWith('CALLER_NOT_VAULT');
+          });
+        }
 
         it('calculates amount in', async () => {
           const amount = fp(0.1);
