@@ -75,6 +75,10 @@ export default class TimelockAuthorizer {
     return this.instance.isPendingRoot(this.toAddress(account));
   }
 
+  async isCanceler(scheduledExecutionId: BigNumberish, account: Account): Promise<boolean> {
+    return this.instance.isCanceler(scheduledExecutionId, this.toAddress(account));
+  }
+
   async delay(action: string): Promise<BigNumberish> {
     return this.instance.getActionIdDelay(action);
   }
@@ -174,6 +178,22 @@ export default class TimelockAuthorizer {
 
   async cancel(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     return this.with(params).cancel(id);
+  }
+
+  async addCanceler(
+    scheduledExecutionId: BigNumberish,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).addCanceler(scheduledExecutionId, this.toAddress(account));
+  }
+
+  async removeCanceler(
+    scheduledExecutionId: BigNumberish,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).removeCanceler(scheduledExecutionId, this.toAddress(account));
   }
 
   async addGranter(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
