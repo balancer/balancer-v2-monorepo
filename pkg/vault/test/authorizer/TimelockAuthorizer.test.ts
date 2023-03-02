@@ -17,14 +17,14 @@ describe('TimelockAuthorizer', () => {
   let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
-    grantee: SignerWithAddress,
+    granter: SignerWithAddress,
     canceler: SignerWithAddress,
     revoker: SignerWithAddress,
     other: SignerWithAddress,
     from: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, root, nextRoot, grantee, canceler, revoker, other] = await ethers.getSigners();
+    [, root, nextRoot, granter, canceler, revoker, other] = await ethers.getSigners();
   });
 
   const GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = MAX_UINT256;
@@ -58,110 +58,110 @@ describe('TimelockAuthorizer', () => {
   describe('granters', () => {
     describe('addGranter', () => {
       context('in a specific contract', () => {
-        it('grantee can grant permission for that action only in that contract', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+        it('account is granter for that action only in that contract', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_2)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, EVERYWHERE)).to.be.false;
         });
 
-        it('grantee cannot grant permission for any other action anywhere', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+        it('account is not granter for any other action anywhere', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_2)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
 
         it('emits a GranterAdded event', async () => {
-          const receipt = await (await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root })).wait();
+          const receipt = await (await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'GranterAdded', {
             actionId: ACTION_1,
-            account: grantee.address,
+            account: granter.address,
             where: WHERE_1,
           });
         });
 
-        it('reverts if the grantee is already a granter', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
-          await expect(authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+        it('reverts if the account is already a granter', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
+          await expect(authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_GRANTER'
           );
         });
 
-        it('reverts if the grantee is already a global granter', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
-          await expect(authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+        it('reverts if the account is already a global granter', async () => {
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
+          await expect(authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_GRANTER'
           );
         });
 
-        it('reverts if the grantee is root', async () => {
+        it('reverts if the account is root', async () => {
           await expect(authorizer.addGranter(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_GRANTER'
           );
         });
 
         it('reverts if the caller is not root', async () => {
-          await expect(authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: other })).to.be.revertedWith(
+          await expect(authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
       });
 
       context('in any contract', () => {
-        it('grantee can grant permission for that action in any contract', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+        it('account is granter for that action in any contract', async () => {
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_2)).to.be.true;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_2)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, granter, EVERYWHERE)).to.be.true;
         });
 
-        it('grantee cannot grant permission for any other action anywhere', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+        it('account is not granter for any other action anywhere', async () => {
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_2)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
 
         it('emits a GranterAdded event', async () => {
-          const receipt = await (await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).wait();
+          const receipt = await (await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'GranterAdded', {
             actionId: ACTION_1,
-            account: grantee.address,
+            account: granter.address,
             where: EVERYWHERE,
           });
         });
 
-        it('does not revert if the grantee is already a granter in a specific contract', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+        it('does not revert if the account is already a granter in a specific contract', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
 
-          const receipt = await (await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).wait();
+          const receipt = await (await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'GranterAdded', {
             actionId: ACTION_1,
-            account: grantee.address,
+            account: granter.address,
             where: EVERYWHERE,
           });
         });
 
-        it('reverts if the grantee is already a global granter', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
-          await expect(authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).to.be.revertedWith(
+        it('reverts if the account is already a global granter', async () => {
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
+          await expect(authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_GRANTER'
           );
         });
 
-        it('reverts if the grantee is root', async () => {
+        it('reverts if the account is root', async () => {
           await expect(authorizer.addGranter(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_GRANTER'
           );
         });
 
         it('reverts if the caller is not root', async () => {
-          await expect(authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: other })).to.be.revertedWith(
+          await expect(authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
@@ -170,130 +170,130 @@ describe('TimelockAuthorizer', () => {
 
     describe('removeGranter', () => {
       context('in a specific contract', () => {
-        it('revokee cannot grant permission for that action anywhere', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
-          await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root });
+        it('accoutn is not a granter for that action anywhere', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
+          await authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_2)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, EVERYWHERE)).to.be.false;
         });
 
-        it('revokee cannot grant permission for any other action', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
-          await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root });
+        it('account is not a granter for any other action', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
+          await authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_2)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, WHERE_2)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
 
         it('emits a GranterRemoved event', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
 
-          const receipt = await (await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root })).wait();
+          const receipt = await (await authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'GranterRemoved', {
             actionId: ACTION_1,
-            account: grantee.address,
+            account: granter.address,
             where: WHERE_1,
           });
         });
 
-        it('reverts if the revokee is not a granter', async () => {
-          await expect(authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+        it('reverts if the accoutn is not a granter', async () => {
+          await expect(authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_GRANTER'
           );
         });
 
-        it('reverts if the revokee is a global granter', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
-          await expect(authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+        it('reverts if the accoutn is a global granter', async () => {
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
+          await expect(authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
             'GRANTER_IS_GLOBAL'
           );
         });
 
-        it('reverts if the revokee is root', async () => {
+        it('reverts if the accoutn is root', async () => {
           await expect(authorizer.removeGranter(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
             'CANNOT_REMOVE_ROOT_GRANTER'
           );
         });
 
         it('reverts if the caller is not root', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
-          await expect(authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: other })).to.be.revertedWith(
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
+          await expect(authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
       });
 
       context('in any contract', () => {
-        it('revokee cannot grant permission for that action on any contract', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
-          await authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+        it('account is not a granter for that action on any contract', async () => {
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
+          await authorizer.removeGranter(ACTION_1, granter, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, EVERYWHERE)).to.be.false;
         });
 
-        it('revokee cannot grant permission for that any other action anywhere', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
-          await authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+        it('account is not a granter for that any other action anywhere', async () => {
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
+          await authorizer.removeGranter(ACTION_1, granter, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
 
         it('emits a GranterRemoved event', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
 
-          const receipt = await (await authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).wait();
+          const receipt = await (await authorizer.removeGranter(ACTION_1, granter, EVERYWHERE, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'GranterRemoved', {
             actionId: ACTION_1,
-            account: grantee.address,
+            account: granter.address,
             where: EVERYWHERE,
           });
         });
 
-        it('reverts if the revokee is not a global granter', async () => {
-          await expect(authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).to.be.revertedWith(
+        it('reverts if the account is not a global granter', async () => {
+          await expect(authorizer.removeGranter(ACTION_1, granter, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_GRANTER'
           );
         });
 
-        it('reverts if the revokee is a granter in a specific contract', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
-          await expect(authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root })).to.be.revertedWith(
+        it('reverts if the account is a granter in a specific contract', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
+          await expect(authorizer.removeGranter(ACTION_1, granter, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_GRANTER'
           );
         });
 
-        it('preserves granter status if revokee was granter over both a specific contract and globally', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, WHERE_1, { from: root });
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+        it('preserves granter status if account was granter over both a specific contract and globally', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, granter, EVERYWHERE)).to.be.true;
 
-          await authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
+          await authorizer.removeGranter(ACTION_1, granter, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.true;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_1, granter, EVERYWHERE)).to.be.false;
 
-          await authorizer.removeGranter(ACTION_1, grantee, WHERE_1, { from: root });
+          await authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: root });
 
-          expect(await authorizer.isGranter(ACTION_1, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.isGranter(ACTION_1, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.isGranter(ACTION_1, granter, EVERYWHERE)).to.be.false;
         });
 
-        it('reverts if the revokee is root', async () => {
+        it('reverts if the account is root', async () => {
           await expect(authorizer.removeGranter(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
             'CANNOT_REMOVE_ROOT_GRANTER'
           );
         });
 
         it('reverts if the caller is not root', async () => {
-          await authorizer.addGranter(ACTION_1, grantee, EVERYWHERE, { from: root });
-          await expect(authorizer.removeGranter(ACTION_1, grantee, EVERYWHERE, { from: other })).to.be.revertedWith(
+          await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
+          await expect(authorizer.removeGranter(ACTION_1, granter, EVERYWHERE, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
@@ -304,7 +304,7 @@ describe('TimelockAuthorizer', () => {
   describe('revokers', () => {
     describe('addRevoker', () => {
       context('in a specific contract', () => {
-        it('can revoke permission for that action only in that contract', async () => {
+        it('account is a revoker for that action only in that contract', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
 
           expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
@@ -312,7 +312,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
         });
 
-        it('cannot revoke permission for any other action anywhere', async () => {
+        it('account is not a revoker for any other action anywhere', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
 
           expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
@@ -329,21 +329,21 @@ describe('TimelockAuthorizer', () => {
           });
         });
 
-        it('reverts if already is a revoker', async () => {
+        it('reverts if account is already a revoker', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
           await expect(authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
         });
 
-        it('reverts if already is a global revoker', async () => {
+        it('reverts if account is already a global revoker', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
           await expect(authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
         });
 
-        it('reverts if the revoker is root', async () => {
+        it('reverts if the account is root', async () => {
           await expect(authorizer.addRevoker(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
@@ -357,7 +357,7 @@ describe('TimelockAuthorizer', () => {
       });
 
       context('in any contract', () => {
-        it('can revoke permission for that action in any contract', async () => {
+        it('account is a revoker for that action in any contract', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
           expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
@@ -365,7 +365,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.true;
         });
 
-        it('cannot revoke permission for any other action anywhere', async () => {
+        it('account is not a revoker for any other action anywhere', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
           expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
@@ -382,7 +382,7 @@ describe('TimelockAuthorizer', () => {
           });
         });
 
-        it('does not revert if already a revoker in a specific contract', async () => {
+        it('does not revert if account is already revoker in a specific contract', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
 
           const receipt = await (await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).wait();
@@ -393,14 +393,14 @@ describe('TimelockAuthorizer', () => {
           });
         });
 
-        it('reverts if is already a global revoker', async () => {
+        it('reverts if account already is a global revoker', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
           await expect(authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
         });
 
-        it('reverts if the revoker is root', async () => {
+        it('reverts if the account is root', async () => {
           await expect(authorizer.addRevoker(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
@@ -416,7 +416,7 @@ describe('TimelockAuthorizer', () => {
 
     describe('removeRevoker', () => {
       context('in a specific contract', () => {
-        it('cannot revoke permission for that action anywhere', async () => {
+        it('account is not a revoker for that action anywhere', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
           await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root });
 
@@ -425,7 +425,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
         });
 
-        it('cannot revoke permission for any other action', async () => {
+        it('account is not a revoker for any other action', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
           await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root });
 
@@ -445,20 +445,20 @@ describe('TimelockAuthorizer', () => {
           });
         });
 
-        it('reverts if the subject is not a revoker', async () => {
+        it('reverts if the account is not a revoker', async () => {
           await expect(authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_REVOKER'
           );
         });
 
-        it('reverts if the revokee is a global revoker', async () => {
+        it('reverts if the account is a global revoker', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
           await expect(authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'REVOKER_IS_GLOBAL'
           );
         });
 
-        it('reverts if the revokee is root', async () => {
+        it('reverts if the account is root', async () => {
           await expect(authorizer.removeRevoker(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
             'CANNOT_REMOVE_ROOT_REVOKER'
           );
@@ -472,7 +472,7 @@ describe('TimelockAuthorizer', () => {
         });
       });
       context('in any contract', () => {
-        it('cannot revoke permission for that action on any contract', async () => {
+        it('account is not a revoker for that action on any contract', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
           await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
@@ -480,7 +480,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
         });
 
-        it('cannot revoke permission for that any other action anywhere', async () => {
+        it('account is not a revoker for that any other action anywhere', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
           await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
 
@@ -499,13 +499,13 @@ describe('TimelockAuthorizer', () => {
           });
         });
 
-        it('reverts if the subject is not a global revoker', async () => {
+        it('reverts if the account is not a global revoker', async () => {
           await expect(authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_REVOKER'
           );
         });
 
-        it('reverts if the subject is a revoker in a specific contract', async () => {
+        it('reverts if the account is a revoker in a specific contract', async () => {
           await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
           await expect(authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_REVOKER'
@@ -530,7 +530,7 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
         });
 
-        it('reverts if the subject is root', async () => {
+        it('reverts if the account is root', async () => {
           await expect(authorizer.removeRevoker(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
             'CANNOT_REMOVE_ROOT_REVOKER'
           );
@@ -765,33 +765,33 @@ describe('TimelockAuthorizer', () => {
       context('when the target does not have the permission granted', () => {
         context('when there is no delay set to grant permissions', () => {
           it('grants permission to perform the requested actions for the requested contracts', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
           });
 
           it('does not grant permission to perform the requested actions everywhere', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
           });
 
           it('does not grant permission to perform the requested actions for other contracts', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.false;
           });
 
           it('emits an event', async () => {
-            const receipt = await (await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root })).wait();
+            const receipt = await (await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root })).wait();
 
             ACTIONS.forEach((action, i) => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
                 actionId: action,
-                account: grantee.address,
+                account: granter.address,
                 where: WHERE[i],
               });
             });
@@ -813,13 +813,13 @@ describe('TimelockAuthorizer', () => {
           });
 
           it('reverts', async () => {
-            await expect(authorizer.grantPermissions(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+            await expect(authorizer.grantPermissions(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
               'SENDER_IS_NOT_GRANTER'
             );
           });
 
           it('can schedule a grant permission', async () => {
-            const id = await authorizer.scheduleGrantPermission(ACTION_1, grantee, WHERE_1, [], { from: root });
+            const id = await authorizer.scheduleGrantPermission(ACTION_1, granter, WHERE_1, [], { from: root });
 
             // should not be able to execute before delay
             await expect(authorizer.execute(id, { from: root })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
@@ -827,8 +827,8 @@ describe('TimelockAuthorizer', () => {
             await advanceTime(delay);
             await authorizer.execute(id, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.false;
           });
         });
       });
@@ -836,71 +836,71 @@ describe('TimelockAuthorizer', () => {
       context('when the target has the permission granted', () => {
         context('when the permission was granted for a set of contracts', () => {
           sharedBeforeEach('grant permissions', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
           });
 
           it('ignores the request and can still perform those actions', async () => {
-            await expect(authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root })).not.to.reverted;
+            await expect(authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root })).not.to.reverted;
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
           });
 
           it('does not grant permission to perform the requested actions everywhere', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
           });
 
           it('does not grant permission to perform the requested actions for other contracts', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.false;
           });
 
           it('does not emit an event', async () => {
-            const tx = await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            const tx = await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
             expectEvent.notEmitted(await tx.wait(), 'PermissionGranted');
           });
         });
 
         context('when the permission was granted globally', () => {
           sharedBeforeEach('grant permissions', async () => {
-            await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
           });
 
           it('grants permission to perform the requested actions for the requested contracts', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_2)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
           });
 
           it('still can perform the requested actions everywhere', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.true;
           });
 
           it('still can perform the requested actions for other contracts', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.true;
           });
 
           it('emits an event', async () => {
-            const receipt = await (await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root })).wait();
+            const receipt = await (await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root })).wait();
 
             ACTIONS.forEach((action, i) => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
                 actionId: action,
-                account: grantee.address,
+                account: granter.address,
                 where: WHERE[i],
               });
             });
@@ -911,7 +911,7 @@ describe('TimelockAuthorizer', () => {
 
     context('when the sender is not the root', () => {
       it('reverts', async () => {
-        await expect(authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: grantee })).to.be.revertedWith(
+        await expect(authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: granter })).to.be.revertedWith(
           'SENDER_IS_NOT_GRANTER'
         );
       });
@@ -922,26 +922,26 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', () => {
       context('when the target does not have the permission granted', () => {
         it('grants permission to perform the requested actions everywhere', async () => {
-          await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+          await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-          expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.true;
         });
 
         it('grants permission to perform the requested actions in any specific contract', async () => {
-          await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+          await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.true;
-          expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.true;
         });
 
         it('emits an event', async () => {
-          const receipt = await (await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root })).wait();
+          const receipt = await (await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root })).wait();
 
           for (const action of ACTIONS) {
             expectEvent.inReceipt(receipt, 'PermissionGranted', {
               actionId: action,
-              account: grantee.address,
+              account: granter.address,
               where: TimelockAuthorizer.EVERYWHERE,
             });
           }
@@ -951,32 +951,32 @@ describe('TimelockAuthorizer', () => {
       context('when the target has the permission granted', () => {
         context('when the permission was granted for a set of contracts', () => {
           sharedBeforeEach('grant permissions', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
           });
 
           it('grants permission to perform the requested actions everywhere', async () => {
-            await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.true;
           });
 
           it('still can perform the requested actions for the previously granted contracts', async () => {
-            await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_2)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
           });
 
           it('emits an event', async () => {
-            const receipt = await (await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root })).wait();
+            const receipt = await (await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root })).wait();
 
             for (const action of ACTIONS) {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
                 actionId: action,
-                account: grantee.address,
+                account: granter.address,
                 where: TimelockAuthorizer.EVERYWHERE,
               });
             }
@@ -985,25 +985,25 @@ describe('TimelockAuthorizer', () => {
 
         context('when the permission was granted globally', () => {
           sharedBeforeEach('grant permissions', async () => {
-            await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
           });
 
           it('ignores the request and can still perform the requested actions everywhere', async () => {
-            await expect(authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root })).not.to.be.reverted;
+            await expect(authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root })).not.to.be.reverted;
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.true;
           });
 
           it('ignores the request and can still perform the requested actions in any specific contract', async () => {
-            await expect(authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root })).not.to.be.reverted;
+            await expect(authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root })).not.to.be.reverted;
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.true;
           });
 
           it('does not emit an event', async () => {
-            const tx = await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+            const tx = await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
             expectEvent.notEmitted(await tx.wait(), 'PermissionGrantedGlobally');
           });
         });
@@ -1012,7 +1012,7 @@ describe('TimelockAuthorizer', () => {
 
     context('when the sender is not the root', () => {
       it('reverts', async () => {
-        await expect(authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: grantee })).to.be.revertedWith(
+        await expect(authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: granter })).to.be.revertedWith(
           'SENDER_IS_NOT_GRANTER'
         );
       });
@@ -1023,21 +1023,21 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', () => {
       context('when the target does not have the permission granted', () => {
         it('ignores the request and cannot perform the requested actions everywhere', async () => {
-          await expect(authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from: root })).not.to.be.reverted;
+          await expect(authorizer.revokePermissions(ACTIONS, granter, WHERE, { from: root })).not.to.be.reverted;
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
 
         it('ignores the request and cannot perform the requested actions in any specific contract', async () => {
-          await expect(authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from: root })).not.to.be.reverted;
+          await expect(authorizer.revokePermissions(ACTIONS, granter, WHERE, { from: root })).not.to.be.reverted;
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.false;
         });
 
         it('does not emit an event', async () => {
-          const tx = await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+          const tx = await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
           expectEvent.notEmitted(await tx.wait(), 'PermissionRevoked');
         });
       });
@@ -1045,35 +1045,35 @@ describe('TimelockAuthorizer', () => {
       context('when the target has the permission granted', () => {
         context('when the permission was granted for a set of contracts', () => {
           sharedBeforeEach('grant permissions', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
           });
 
           context('when there is no delay set to revoke permissions', () => {
             it('revokes the requested permission for the requested contracts', async () => {
-              await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from: root });
+              await authorizer.revokePermissions(ACTIONS, granter, WHERE, { from: root });
 
-              expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.false;
-              expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_1)).to.be.false;
-              expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_2)).to.be.false;
-              expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_2, granter, WHERE_1)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_1, granter, WHERE_2)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.false;
             });
 
             it('still cannot perform the requested actions everywhere', async () => {
-              await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from: root });
+              await authorizer.revokePermissions(ACTIONS, granter, WHERE, { from: root });
 
-              expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-              expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
             });
 
             it('emits an event', async () => {
               const receipt = await (
-                await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from: root })
+                await authorizer.revokePermissions(ACTIONS, granter, WHERE, { from: root })
               ).wait();
 
               ACTIONS.forEach((action, i) => {
                 expectEvent.inReceipt(receipt, 'PermissionRevoked', {
                   actionId: action,
-                  account: grantee.address,
+                  account: granter.address,
                   where: WHERE[i],
                 });
               });
@@ -1095,13 +1095,13 @@ describe('TimelockAuthorizer', () => {
             });
 
             it('reverts', async () => {
-              await expect(authorizer.revokePermissions(ACTION_1, grantee, WHERE_1, { from: root })).to.be.revertedWith(
+              await expect(authorizer.revokePermissions(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
                 'SENDER_IS_NOT_REVOKER'
               );
             });
 
             it('can schedule a revoke permission', async () => {
-              const id = await authorizer.scheduleRevokePermission(ACTION_1, grantee, WHERE_1, [], { from: root });
+              const id = await authorizer.scheduleRevokePermission(ACTION_1, granter, WHERE_1, [], { from: root });
 
               // should not be able to execute before delay
               await expect(authorizer.execute(id, { from: root })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
@@ -1109,35 +1109,35 @@ describe('TimelockAuthorizer', () => {
               await advanceTime(delay);
               await authorizer.execute(id, { from: root });
 
-              expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.false;
-              expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+              expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
             });
           });
         });
 
         context('when the permission was granted globally', () => {
           sharedBeforeEach('grant permissions', async () => {
-            await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
           });
 
           it('still can perform the requested actions for the requested contracts', async () => {
-            await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.revokePermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_2)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
           });
 
           it('still can perform the requested actions everywhere', async () => {
-            await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.revokePermissions(ACTIONS, granter, WHERE, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.true;
           });
 
           it('does not emit an event', async () => {
-            const tx = await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            const tx = await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
             expectEvent.notEmitted(await tx.wait(), 'PermissionRevoked');
           });
         });
@@ -1146,7 +1146,7 @@ describe('TimelockAuthorizer', () => {
 
     context('when the sender is not the root', () => {
       it('reverts', async () => {
-        await expect(authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from: grantee })).to.be.revertedWith(
+        await expect(authorizer.revokePermissions(ACTIONS, granter, WHERE, { from: granter })).to.be.revertedWith(
           'SENDER_IS_NOT_REVOKER'
         );
       });
@@ -1157,21 +1157,21 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', () => {
       context('when the sender does not have the permission granted', () => {
         it('ignores the request and cannot perform the requested actions everywhere', async () => {
-          await expect(authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root })).not.to.be.reverted;
+          await expect(authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root })).not.to.be.reverted;
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
 
         it('ignores the request and cannot perform the requested actions in any specific contract', async () => {
-          await expect(authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root })).not.to.be.reverted;
+          await expect(authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root })).not.to.be.reverted;
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.false;
         });
 
         it('does not emit an event', async () => {
-          const tx = await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root });
+          const tx = await authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root });
           expectEvent.notEmitted(await tx.wait(), 'PermissionRevokedGlobally');
         });
       });
@@ -1179,57 +1179,57 @@ describe('TimelockAuthorizer', () => {
       context('when the grantee has the permission granted', () => {
         context('when the permission was granted for a set of contracts', () => {
           sharedBeforeEach('grant permissions', async () => {
-            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+            await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
           });
 
           it('still cannot perform the requested actions everywhere', async () => {
-            await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
           });
 
           it('still can perform the requested actions for the previously granted permissions', async () => {
-            await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
           });
 
           it('does not emit an event', async () => {
-            const tx = await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root });
+            const tx = await authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root });
             expectEvent.notEmitted(await tx.wait(), 'PermissionRevokedGlobally');
           });
         });
 
         context('when the permission was granted globally', () => {
           sharedBeforeEach('grant permissions', async () => {
-            await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
           });
 
           it('revokes the requested global permission and cannot perform the requested actions everywhere', async () => {
-            await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_1)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_2)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_1)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, WHERE_2)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.false;
           });
 
           it('cannot perform the requested actions in any specific contract', async () => {
-            await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root });
+            await authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root });
 
-            expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.false;
           });
 
           it('emits an event', async () => {
-            const receipt = await (await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: root })).wait();
+            const receipt = await (await authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: root })).wait();
 
             for (const action of ACTIONS) {
               expectEvent.inReceipt(receipt, 'PermissionRevoked', {
                 actionId: action,
-                account: grantee.address,
+                account: granter.address,
                 where: TimelockAuthorizer.EVERYWHERE,
               });
             }
@@ -1240,7 +1240,7 @@ describe('TimelockAuthorizer', () => {
 
     context('when the sender is not the root', () => {
       it('reverts', async () => {
-        await expect(authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from: grantee })).to.be.revertedWith(
+        await expect(authorizer.revokePermissionsGlobally(ACTIONS, granter, { from: granter })).to.be.revertedWith(
           'SENDER_IS_NOT_REVOKER'
         );
       });
@@ -1250,62 +1250,62 @@ describe('TimelockAuthorizer', () => {
   describe('renouncePermissions', () => {
     context('when the sender does not have the permission granted', () => {
       it('ignores the request and still cannot perform the requested actions everywhere', async () => {
-        await expect(authorizer.renouncePermissions(ACTIONS, WHERE, { from: grantee })).not.to.be.reverted;
+        await expect(authorizer.renouncePermissions(ACTIONS, WHERE, { from: granter })).not.to.be.reverted;
 
-        expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-        expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
       });
 
       it('ignores the request and still cannot perform the requested actions in any specific contract', async () => {
-        await expect(authorizer.renouncePermissions(ACTIONS, WHERE, { from: grantee })).not.to.be.reverted;
+        await expect(authorizer.renouncePermissions(ACTIONS, WHERE, { from: granter })).not.to.be.reverted;
 
-        expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.false;
-        expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.false;
       });
     });
 
     context('when the sender has the permission granted', () => {
       context('when the sender has the permission granted for a specific contract', () => {
         sharedBeforeEach('grant permissions', async () => {
-          await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+          await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
         });
 
         it('revokes the requested permission for the requested contracts', async () => {
-          await authorizer.renouncePermissions(ACTIONS, WHERE, { from: grantee });
+          await authorizer.renouncePermissions(ACTIONS, WHERE, { from: granter });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_1)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_2)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, WHERE_1)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, WHERE_2)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.false;
         });
 
         it('still cannot perform the requested actions everywhere', async () => {
-          await authorizer.renouncePermissions(ACTIONS, WHERE, { from: grantee });
+          await authorizer.renouncePermissions(ACTIONS, WHERE, { from: granter });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
       });
 
       context('when the sender has the permission granted globally', () => {
         sharedBeforeEach('grant permissions', async () => {
-          await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+          await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
         });
 
         it('still can perform the requested actions for the requested contracts', async () => {
-          await authorizer.renouncePermissions(ACTIONS, WHERE, { from: grantee });
+          await authorizer.renouncePermissions(ACTIONS, WHERE, { from: granter });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-          expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_1)).to.be.true;
-          expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_2)).to.be.true;
-          expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_2, granter, WHERE_1)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_1, granter, WHERE_2)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
         });
 
         it('still can perform the requested actions everywhere', async () => {
-          await authorizer.renouncePermissions(ACTIONS, WHERE, { from: grantee });
+          await authorizer.renouncePermissions(ACTIONS, WHERE, { from: granter });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-          expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.true;
         });
       });
     });
@@ -1314,58 +1314,58 @@ describe('TimelockAuthorizer', () => {
   describe('renouncePermissionsGlobally', () => {
     context('when the sender does not have the permission granted', () => {
       it('ignores the request and still cannot perform the requested actions everywhere', async () => {
-        await expect(authorizer.renouncePermissionsGlobally(ACTIONS, { from: grantee })).not.to.be.reverted;
+        await expect(authorizer.renouncePermissionsGlobally(ACTIONS, { from: granter })).not.to.be.reverted;
 
-        expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-        expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
       });
 
       it('ignores the request and still cannot perform the requested actions in any specific contract', async () => {
-        await expect(authorizer.renouncePermissionsGlobally(ACTIONS, { from: grantee })).not.to.be.reverted;
+        await expect(authorizer.renouncePermissionsGlobally(ACTIONS, { from: granter })).not.to.be.reverted;
 
-        expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.false;
-        expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.false;
       });
     });
 
     context('when the sender has the permission granted', () => {
       context('when the sender has the permission granted for a specific contract', () => {
         sharedBeforeEach('grant permissions', async () => {
-          await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from: root });
+          await authorizer.grantPermissions(ACTIONS, granter, WHERE, { from: root });
         });
 
         it('still can perform the requested actions for the requested contracts', async () => {
-          await authorizer.renouncePermissionsGlobally(ACTIONS, { from: grantee });
+          await authorizer.renouncePermissionsGlobally(ACTIONS, { from: granter });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, WHERE_1)).to.be.true;
-          expect(await authorizer.canPerform(ACTION_2, grantee, WHERE_2)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_2, granter, WHERE_2)).to.be.true;
         });
 
         it('still cannot perform the requested actions everywhere', async () => {
-          await authorizer.renouncePermissionsGlobally(ACTIONS, { from: grantee });
+          await authorizer.renouncePermissionsGlobally(ACTIONS, { from: granter });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
       });
 
       context('when the sender has the permission granted globally', () => {
         sharedBeforeEach('grant permissions', async () => {
-          await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: root });
+          await authorizer.grantPermissionsGlobally(ACTIONS, granter, { from: root });
         });
 
         it('revokes the requested permissions everywhere', async () => {
-          await authorizer.renouncePermissionsGlobally(ACTIONS, { from: grantee });
+          await authorizer.renouncePermissionsGlobally(ACTIONS, { from: granter });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
         });
 
         it('still cannot perform the requested actions in any specific contract', async () => {
-          await authorizer.renouncePermissionsGlobally(ACTIONS, { from: grantee });
+          await authorizer.renouncePermissionsGlobally(ACTIONS, { from: granter });
 
-          expect(await authorizer.canPerform(ACTION_1, grantee, NOT_WHERE)).to.be.false;
-          expect(await authorizer.canPerform(ACTION_2, grantee, NOT_WHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, granter, NOT_WHERE)).to.be.false;
         });
       });
     });
@@ -1480,11 +1480,11 @@ describe('TimelockAuthorizer', () => {
         // We never check that the caller has this permission but if we were to check a permission
         // it would be this one, we then grant it to the caller so we can be sure about why the call is reverting.
         const setDelayActionId = await authorizer.getScheduleDelayActionId(action);
-        await authorizer.grantPermissions(setDelayActionId, grantee, authorizer, { from: root });
+        await authorizer.grantPermissions(setDelayActionId, granter, authorizer, { from: root });
       });
 
       it('reverts', async () => {
-        await expect(authorizer.scheduleDelayChange(action, DAY, [], { from: grantee })).to.be.revertedWith(
+        await expect(authorizer.scheduleDelayChange(action, DAY, [], { from: granter })).to.be.revertedWith(
           'SENDER_IS_NOT_ROOT'
         );
       });
@@ -1510,7 +1510,7 @@ describe('TimelockAuthorizer', () => {
 
     const schedule = async (): Promise<number> => {
       data = authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]);
-      return authorizer.schedule(where, data, executors || [], { from: grantee });
+      return authorizer.schedule(where, data, executors || [], { from: granter });
     };
 
     context('when the target is not the authorizer', () => {
@@ -1526,7 +1526,7 @@ describe('TimelockAuthorizer', () => {
 
           context('when the sender has permission for the requested contract', () => {
             sharedBeforeEach('grant permission', async () => {
-              await authorizer.grantPermissions(action, grantee, authenticatedContract, { from: root });
+              await authorizer.grantPermissions(action, granter, authenticatedContract, { from: root });
             });
 
             context('when there is a delay set', () => {
@@ -1588,13 +1588,13 @@ describe('TimelockAuthorizer', () => {
                 it('receives canceler status', async () => {
                   const id = await schedule();
 
-                  expect(await authorizer.isCanceler(id, grantee)).to.be.true;
+                  expect(await authorizer.isCanceler(id, granter)).to.be.true;
                 });
 
                 it('can cancel the action immediately', async () => {
                   const id = await schedule();
                   // should not revert
-                  const receipt = await authorizer.cancel(id, { from: grantee });
+                  const receipt = await authorizer.cancel(id, { from: granter });
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
                 });
               });
@@ -1616,7 +1616,7 @@ describe('TimelockAuthorizer', () => {
                 });
 
                 it('emits ExecutorAdded events', async () => {
-                  const receipt = await authorizer.instance.connect(grantee).schedule(
+                  const receipt = await authorizer.instance.connect(granter).schedule(
                     where.address,
                     data,
                     executors.map((e) => e.address)
@@ -1638,7 +1638,7 @@ describe('TimelockAuthorizer', () => {
                   const id = await schedule();
                   await advanceTime(delay);
 
-                  await expect(authorizer.execute(id, { from: grantee })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
+                  await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
 
                   const receipt = await authorizer.execute(id, { from: executors[0] });
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
@@ -1677,7 +1677,7 @@ describe('TimelockAuthorizer', () => {
 
           context('when the sender has permissions for another contract', () => {
             sharedBeforeEach('grant permission', async () => {
-              await authorizer.grantPermissions(action, grantee, anotherAuthenticatedContract, { from: root });
+              await authorizer.grantPermissions(action, granter, anotherAuthenticatedContract, { from: root });
             });
 
             it('reverts', async () => {
@@ -1689,7 +1689,7 @@ describe('TimelockAuthorizer', () => {
         context('when the sender has permissions for another action', () => {
           sharedBeforeEach('grant permission', async () => {
             action = await actionId(authenticatedContract, 'secondProtectedFunction');
-            await authorizer.grantPermissions(action, grantee, authenticatedContract, { from: root });
+            await authorizer.grantPermissions(action, granter, authenticatedContract, { from: root });
           });
 
           it('reverts', async () => {
@@ -1738,12 +1738,12 @@ describe('TimelockAuthorizer', () => {
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
       await authorizer.scheduleAndExecuteDelayChange(protectedFunctionAction, delay, { from: root });
-      await authorizer.grantPermissions(protectedFunctionAction, grantee, authenticatedContract, { from: root });
+      await authorizer.grantPermissions(protectedFunctionAction, granter, authenticatedContract, { from: root });
     });
 
     const schedule = async (): Promise<number> => {
       const data = authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]);
-      return authorizer.schedule(authenticatedContract, data, executors || [], { from: grantee });
+      return authorizer.schedule(authenticatedContract, data, executors || [], { from: granter });
     };
 
     context('when the given id is valid', () => {
@@ -1818,7 +1818,7 @@ describe('TimelockAuthorizer', () => {
               context('when the action was cancelled', () => {
                 sharedBeforeEach('schedule and cancel action', async () => {
                   id = await schedule();
-                  await authorizer.cancel(id, { from: grantee });
+                  await authorizer.cancel(id, { from: granter });
                 });
 
                 it('reverts', async () => {
@@ -1834,7 +1834,7 @@ describe('TimelockAuthorizer', () => {
             id = await schedule();
             await advanceTime(delay);
 
-            await expect(authorizer.execute(id, { from: grantee })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
+            await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
           });
         });
       });
@@ -1883,12 +1883,12 @@ describe('TimelockAuthorizer', () => {
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
       await authorizer.scheduleAndExecuteDelayChange(protectedFunctionAction, delay, { from: root });
-      await authorizer.grantPermissions(protectedFunctionAction, grantee, authenticatedContract, { from: root });
+      await authorizer.grantPermissions(protectedFunctionAction, granter, authenticatedContract, { from: root });
     });
 
     const schedule = async (): Promise<number> => {
       const data = authenticatedContract.interface.encodeFunctionData('protectedFunction', ['0x']);
-      return authorizer.schedule(authenticatedContract, data, executors || [], { from: grantee });
+      return authorizer.schedule(authenticatedContract, data, executors || [], { from: granter });
     };
 
     context('when the given id is valid', () => {
@@ -1935,7 +1935,7 @@ describe('TimelockAuthorizer', () => {
 
       context('when the sender has permission for the requested action', () => {
         sharedBeforeEach('set sender', async () => {
-          from = grantee;
+          from = granter;
         });
 
         itCancelsTheScheduledAction();
@@ -1983,7 +1983,7 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', async () => {
       context('when trying to execute it directly', async () => {
         it('reverts', async () => {
-          await expect(authorizer.instance.setPendingRoot(grantee.address)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
+          await expect(authorizer.instance.setPendingRoot(granter.address)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
         });
       });
 
@@ -2030,7 +2030,7 @@ describe('TimelockAuthorizer', () => {
         }
 
         before('set desired pending root', () => {
-          newPendingRoot = grantee;
+          newPendingRoot = granter;
         });
 
         itSetsThePendingRootCorrectly();
@@ -2040,7 +2040,7 @@ describe('TimelockAuthorizer', () => {
           // call `claimRoot` won't result in the Authorizer being unable to transfer root power to a different address.
 
           sharedBeforeEach('initiate a root transfer', async () => {
-            const id = await authorizer.scheduleRootChange(grantee, [], { from: root });
+            const id = await authorizer.scheduleRootChange(granter, [], { from: root });
             await advanceTime(ROOT_CHANGE_DELAY);
             await authorizer.execute(id);
           });
@@ -2056,7 +2056,7 @@ describe('TimelockAuthorizer', () => {
 
     context('when the sender is not the root', async () => {
       it('reverts', async () => {
-        await expect(authorizer.scheduleRootChange(grantee, [], { from: grantee })).to.be.revertedWith(
+        await expect(authorizer.scheduleRootChange(granter, [], { from: granter })).to.be.revertedWith(
           'SENDER_IS_NOT_ROOT'
         );
       });
@@ -2071,44 +2071,44 @@ describe('TimelockAuthorizer', () => {
     });
 
     sharedBeforeEach('initiate a root transfer', async () => {
-      const id = await authorizer.scheduleRootChange(grantee, [], { from: root });
+      const id = await authorizer.scheduleRootChange(granter, [], { from: root });
       await advanceTime(ROOT_CHANGE_DELAY);
       await authorizer.execute(id);
     });
 
     context('when the sender is the pending root', async () => {
       it('transfers root powers from the current to the pending root', async () => {
-        await authorizer.claimRoot({ from: grantee });
+        await authorizer.claimRoot({ from: granter });
         expect(await authorizer.isRoot(root)).to.be.false;
-        expect(await authorizer.isRoot(grantee)).to.be.true;
+        expect(await authorizer.isRoot(granter)).to.be.true;
       });
 
       it('revokes powers to grant and revoke GENERAL_PERMISSION_SPECIFIER on EVERYWHERE from current root', async () => {
         expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
         expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
-        await authorizer.claimRoot({ from: grantee });
+        await authorizer.claimRoot({ from: granter });
         expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.false;
         expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.false;
       });
 
       it('grants powers to grant and revoke GENERAL_PERMISSION_SPECIFIER on EVERYWHERE to the pending root', async () => {
-        expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-        expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
-        await authorizer.claimRoot({ from: grantee });
-        expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.true;
-        expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.true;
+        expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.false;
+        expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.false;
+        await authorizer.claimRoot({ from: granter });
+        expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.true;
+        expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.true;
       });
 
       it('resets the pending root address to the zero address', async () => {
-        await authorizer.claimRoot({ from: grantee });
+        await authorizer.claimRoot({ from: granter });
         expect(await authorizer.isPendingRoot(root)).to.be.false;
-        expect(await authorizer.isPendingRoot(grantee)).to.be.false;
+        expect(await authorizer.isPendingRoot(granter)).to.be.false;
         expect(await authorizer.isPendingRoot(ZERO_ADDRESS)).to.be.true;
       });
 
       it('emits an event', async () => {
-        const receipt = await authorizer.claimRoot({ from: grantee });
-        expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: grantee.address });
+        const receipt = await authorizer.claimRoot({ from: granter });
+        expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: granter.address });
         expectEvent.inReceipt(await receipt.wait(), 'PendingRootSet', { pendingRoot: ZERO_ADDRESS });
       });
     });
