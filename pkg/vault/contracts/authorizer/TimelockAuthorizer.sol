@@ -160,7 +160,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
 
     /**
-     * @notice Emitted when an account is added as a revoker for `actionId` in `where`.
+     * @notice Emitted when `account` is added as a revoker for `actionId` in `where`.
      */
     event RevokerAdded(bytes32 indexed actionId, address indexed account, address indexed where);
 
