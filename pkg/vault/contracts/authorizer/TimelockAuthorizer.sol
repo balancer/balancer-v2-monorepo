@@ -919,7 +919,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(isRevoker(actionId, msg.sender, where), "SENDER_IS_NOT_REVOKER");
 
         uint256 delay = _revokeDelays[actionId];
-        require(delay > 0, "ACTION_HAS_NO_GRANT_DELAY");
+        require(delay > 0, "ACTION_HAS_NO_REVOKE_DELAY");
 
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
 
