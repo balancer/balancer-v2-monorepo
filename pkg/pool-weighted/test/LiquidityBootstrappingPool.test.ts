@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -172,7 +172,14 @@ describe('LiquidityBootstrappingPool', function () {
       it('swaps are not blocked', async () => {
         await pool.init({ from: owner, initialBalances });
 
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
+        const amount = fp(0.1);
+        const swapFee = await pool.getSwapFeePercentage();
+        const amountWithFees = fpMul(amount, swapFee.add(fp(1)));
+        const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: amountWithFees });
+
+        const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
+
+        expect(result.amount).to.equalWithError(expectedAmountOut, 0.01);
       });
 
       it('sets token weights', async () => {
