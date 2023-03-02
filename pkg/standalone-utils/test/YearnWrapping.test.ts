@@ -672,7 +672,10 @@ describe('YearnWrapping', function () {
           }),
         ]);
 
-        const dDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === yvDAIToken.address);
+        const yvDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
+          (token: Token) => token.instance.address === yvDAIToken.address
+        );
+        const yvDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === yvDAIToken.address);
         const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
         BPTBalanceBefore = await pool.balanceOf(senderUser);
 
@@ -685,10 +688,10 @@ describe('YearnWrapping', function () {
               sender: senderUser,
               recipient: relayer,
               minAmountsOut: Array(poolTokens.length + 1).fill(0),
-              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, dDAIIndex),
+              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, yvDAIIndexWithoutBPT),
               outputReference,
             }),
-            encodeUnwrap(yvDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + dDAIIndex)),
+            encodeUnwrap(yvDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + yvDAIIndex)),
           ])
         ).wait();
       });
