@@ -56,7 +56,7 @@ interface IGearboxVault {
     ) external;
 
     /**
-     * @dev Removes liquidity from the pool and sends underlying tokens to the informed address at "to"
+     * @dev Removes liquidity from the pool and sends the underlying tokens to the `to` address
      */
     function removeLiquidity(uint256 dieselAmount, address to) external;
 }
