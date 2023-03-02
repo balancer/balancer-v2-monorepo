@@ -199,20 +199,20 @@ describe('TimelockAuthorizer', () => {
           });
         });
 
-        it('reverts if the accoutn is not a granter', async () => {
+        it('reverts if the account is not a granter', async () => {
           await expect(authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_GRANTER'
           );
         });
 
-        it('reverts if the accoutn is a global granter', async () => {
+        it('reverts if the account is a global granter', async () => {
           await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
           await expect(authorizer.removeGranter(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
             'GRANTER_IS_GLOBAL'
           );
         });
 
-        it('reverts if the accoutn is root', async () => {
+        it('reverts if the account is root', async () => {
           await expect(authorizer.removeGranter(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
             'CANNOT_REMOVE_ROOT_GRANTER'
           );
