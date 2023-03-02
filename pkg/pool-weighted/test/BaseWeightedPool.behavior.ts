@@ -13,10 +13,7 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
-export function itBehavesAsWeightedPool(
-  numberOfTokens: number,
-  poolType: WeightedPoolType = WeightedPoolType.WEIGHTED_POOL
-): void {
+export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: WeightedPoolType): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
