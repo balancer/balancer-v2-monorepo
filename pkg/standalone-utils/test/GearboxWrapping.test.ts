@@ -672,8 +672,10 @@ describe('GearboxWrapping', function () {
           }),
         ]);
 
+        const dDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
+          (token: Token) => token.instance.address === dDAIToken.address
+        );
         const dDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === dDAIToken.address);
-        const poolIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === pool.address);
         const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
         BPTBalanceBefore = await pool.balanceOf(senderUser);
 
@@ -686,7 +688,7 @@ describe('GearboxWrapping', function () {
               sender: senderUser,
               recipient: relayer,
               minAmountsOut: Array(poolTokens.length + 1).fill(0),
-              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, dDAIIndex),
+              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, dDAIIndexWithoutBPT),
               outputReference,
             }),
             encodeUnwrap(dDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + dDAIIndex)),
