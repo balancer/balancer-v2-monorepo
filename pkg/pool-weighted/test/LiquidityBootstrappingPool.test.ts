@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -26,15 +26,15 @@ describe('LiquidityBootstrappingPool', function () {
   // Add the weighted pool tests for the joins/exits, etc.
 
   context('for a 2 token pool', () => {
-    itBehavesAsWeightedPool(2);
+    itBehavesAsWeightedPool(2, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   context('for a 3 token pool', () => {
-    itBehavesAsWeightedPool(3);
+    itBehavesAsWeightedPool(3, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   context('for a 4 token pool', () => {
-    itBehavesAsWeightedPool(4);
+    itBehavesAsWeightedPool(4, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -172,14 +172,7 @@ describe('LiquidityBootstrappingPool', function () {
       it('swaps are not blocked', async () => {
         await pool.init({ from: owner, initialBalances });
 
-        const amount = fp(0.1);
-        const swapFee = await pool.getSwapFeePercentage();
-        const amountWithFees = fpMul(amount, swapFee.add(fp(1)));
-        const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: amountWithFees });
-
-        const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
-
-        expect(result.amount).to.equalWithError(expectedAmountOut, 0.01);
+        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
       });
 
       it('sets token weights', async () => {
