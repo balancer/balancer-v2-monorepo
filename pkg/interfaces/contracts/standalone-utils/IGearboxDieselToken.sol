@@ -46,8 +46,8 @@ interface IGearboxVault {
     function toDiesel(uint256) external view returns (uint256);
 
     /**
-     * @dev Adds liquidity to pool and send diesel (LP) tokens back to liquidity provider
-     * Referral code can be used as 0
+     * @dev Adds liquidity to pool and sends diesel (LP) tokens back to the liquidity provider
+     * The Referral code can be 0
      */
     function addLiquidity(
         uint256 amount,
