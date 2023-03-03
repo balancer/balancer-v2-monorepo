@@ -21,9 +21,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-
-import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
-
 import "./IBaseRelayerLibrary.sol";
 import "./special/TetuShareValueHelper.sol";
 
