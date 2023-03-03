@@ -40,13 +40,13 @@ contract TetuShareValueHelper {
         return _toTetuAmount(mainAmount, wrappedToken);
     }
 
-    function _getTokenRate(address wrappedTokenAddress) internal view returns (uint256) {
-        uint256 wrappedTokenTotalSupply = IERC20(wrappedTokenAddress).totalSupply();
+    function _getTokenRate(ITetuSmartVault wrappedToken) internal view returns (uint256) {
+        uint256 wrappedTokenTotalSupply = wrappedToken.totalSupply();
         if (wrappedTokenTotalSupply == 0) {
             return _defaultRate;
         } else {
-            uint256 underlyingBalanceInVault = ITetuSmartVault(wrappedTokenAddress).underlyingBalanceInVault();
-            uint256 strategyInvestedUnderlyingBalance = _getStrategyInvestedUnderlyingBalance(wrappedTokenAddress);
+            uint256 underlyingBalanceInVault = wrappedToken.underlyingBalanceInVault();
+            uint256 strategyInvestedUnderlyingBalance = _getStrategyInvestedUnderlyingBalance(wrappedToken);
             uint256 balance = underlyingBalanceInVault.add(strategyInvestedUnderlyingBalance);
             // Notice that "balance" and "wrappedTokenTotalSupply" have same amount of decimals. divDown multiplies
             // by FixedPoint.ONE, so _getTokenRate returns 18 decimals
@@ -55,17 +55,17 @@ contract TetuShareValueHelper {
     }
 
     function _fromTetuAmount(uint256 wrappedAmount, ITetuSmartVault wrappedToken) internal view returns (uint256) {
-        uint256 rate = _getTokenRate(address(wrappedToken));
+        uint256 rate = _getTokenRate(wrappedToken);
         return wrappedAmount.mulDown(rate);
     }
 
     function _toTetuAmount(uint256 mainAmount, ITetuSmartVault wrappedToken) internal view returns (uint256) {
-        uint256 rate = _getTokenRate(address(wrappedToken));
+        uint256 rate = _getTokenRate(wrappedToken);
         return mainAmount.divDown(rate);
     }
 
-    function _getStrategyInvestedUnderlyingBalance(address wrappedTokenAddress) private view returns (uint256) {
-        address tetuStrategy = ITetuSmartVault(wrappedTokenAddress).strategy();
+    function _getStrategyInvestedUnderlyingBalance(ITetuSmartVault wrappedToken) private view returns (uint256) {
+        address tetuStrategy = wrappedToken.strategy();
         if (tetuStrategy == address(0)) {
             // strategy address can be 0x00 when not initialized in the token.
             return _defaultRate;
