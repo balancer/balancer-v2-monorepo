@@ -390,10 +390,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     /**
      * @notice Returns true if `account` is allowed to revoke permissions in target `where` for all actions.
      */
-    function isRevoker(
-        address account,
-        address where
-    ) public view returns (bool) {
+    function isRevoker(address account, address where) public view returns (bool) {
         return _isRevoker[account][where] || _isRevoker[account][EVERYWHERE] || isRoot(account);
     }
 
@@ -837,10 +834,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      *
      * A malicious revoker cannot add new revokers, so root can simply revoke their status once.
      */
-    function addRevoker(
-        address account,
-        address where
-    ) external {
+    function addRevoker(address account, address where) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(!isRevoker(account, where), "ACCOUNT_IS_ALREADY_REVOKER");
@@ -862,10 +856,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * is if we had contracts that were revoker, and this was depended upon for operation of the system. This however
      * doesn't seem like it will ever be required - revokers are typically subDAOs.
      */
-    function removeRevoker(
-        address account,
-        address where
-    ) external {
+    function removeRevoker(address account, address where) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(isRevoker(account, where), "ACCOUNT_IS_NOT_REVOKER");
