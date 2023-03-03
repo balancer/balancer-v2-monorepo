@@ -69,19 +69,19 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
         return underlyingAsset.balanceOf(address(this));
     }
 
-    function deposit(uint256 amount) external override {
+    function deposit(uint256) external pure override {
+        revert("Should not call this");
+    }
+
+    function depositFor(uint256 amount, address recipient) external override {
         IERC20(underlyingAsset).safeTransferFrom(msg.sender, address(this), amount);
         // Makes sure rate balances are correctly set before calculating wrappedAmount
         setRate(_desiredRate);
         uint256 wrappedAmount = _toTetuAmount(amount, this);
-        _mint(msg.sender, wrappedAmount);
+        _mint(recipient, wrappedAmount);
         // Since rate calculation depends on totalSupply, we need to recalculate parameters
         // that are base to rate calculation.
         setRate(_desiredRate);
-    }
-
-    function depositFor(uint256, address) external pure override {
-        revert("Should not call this");
     }
 
     function withdraw(uint256 numberOfShares) external override {

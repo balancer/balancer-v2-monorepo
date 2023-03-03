@@ -24,7 +24,7 @@ import {
   toChainedReference,
 } from './helpers/chainedReferences';
 
-describe('TetuWrapping', function () {
+describe.only('TetuWrapping', function () {
   let DAI: Token, xDAI: Token;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
@@ -142,27 +142,15 @@ describe('TetuWrapping', function () {
             DAI
           );
 
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: relayer.address,
+              to: tokenRecipient.address,
               value: expectedTetuAmount,
             },
             xDAI
           );
-          if (!relayerIsRecipient) {
-            expectTransferEvent(
-              receipt,
-              {
-                from: relayer.address,
-                to: tokenRecipient.address,
-                value: expectedTetuAmount,
-              },
-              xDAI
-            );
-          }
         });
 
         it('stores wrap output as chained reference', async () => {
@@ -207,27 +195,15 @@ describe('TetuWrapping', function () {
             DAI
           );
 
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: relayer.address,
+              to: tokenRecipient.address,
               value: expectedWrappedAmount,
             },
             xDAI
           );
-          if (!relayerIsRecipient) {
-            expectTransferEvent(
-              receipt,
-              {
-                from: relayer.address,
-                to: tokenRecipient.address,
-                value: expectedWrappedAmount,
-              },
-              xDAI
-            );
-          }
         });
       }
     });

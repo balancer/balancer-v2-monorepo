@@ -53,7 +53,6 @@ abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
             _pullToken(sender, underlying, amount);
         }
         underlying.safeApprove(address(wrappedToken), amount);
-        IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
         wrappedToken.depositFor(amount, recipient);
         // Not using rate function of Tetu (getPricePerFullShare), since it's precision is low (not too many decimals)
         uint256 withdrawnWrappedAmount = _toTetuAmount(amount, wrappedToken);
