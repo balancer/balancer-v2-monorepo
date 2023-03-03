@@ -87,6 +87,10 @@ export default class TimelockAuthorizer {
     return this.instance.getActionIdDelay(action);
   }
 
+  async getActionIdGrantDelay(actionId: string): Promise<BigNumber> {
+    return this.instance.getActionIdGrantDelay(actionId);
+  }
+
   async getScheduledExecution(id: BigNumberish): Promise<{
     executed: boolean;
     cancelled: boolean;
@@ -137,7 +141,7 @@ export default class TimelockAuthorizer {
 
   async scheduleGrantDelayChange(
     action: string,
-    delay: number,
+    delay: BigNumberish,
     executors: Account[],
     params?: TxParams
   ): Promise<number> {

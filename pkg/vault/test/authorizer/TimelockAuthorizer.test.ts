@@ -41,8 +41,6 @@ describe('TimelockAuthorizer', () => {
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
-  const MINIMUM_EXECUTION_DELAY = 5 * DAY;
-
   sharedBeforeEach('deploy authorizer', async () => {
     let authorizerContract: Contract;
 

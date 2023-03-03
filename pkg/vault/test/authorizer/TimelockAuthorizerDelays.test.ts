@@ -24,7 +24,6 @@ describe('TimelockAuthorizer delays', () => {
   const ACTION_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ACTION_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
 
-  const ACTION_DELAY = DAY;
   const MINIMUM_EXECUTION_DELAY = 5 * DAY;
 
   sharedBeforeEach('deploy authorizer', async () => {
@@ -47,146 +46,327 @@ describe('TimelockAuthorizer delays', () => {
     await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, DAY * 365, { from: root });
   });
 
-  function itSchedulesTheDelayChangeCorrectly(expectedExecutionDelay: number) {
-    it('schedules a delay change', async () => {
-      const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+  describe('scheduleDelayChange', () => {
+    const ACTION_DELAY = DAY;
 
-      const { executed, data, where, executableAt } = await authorizer.getScheduledExecution(id);
-      expect(executed).to.be.false;
-      expect(data).to.be.equal(authorizer.instance.interface.encodeFunctionData('setDelay', [ACTION_1, ACTION_DELAY]));
-      expect(where).to.be.equal(authorizer.address);
-      expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
-    });
+    function itSchedulesTheDelayChangeCorrectly(expectedExecutionDelay: number) {
+      it('schedules a delay change', async () => {
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
 
-    it('execution can be unprotected', async () => {
-      const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
-      const execution = await authorizer.getScheduledExecution(id);
-
-      expect(execution.protected).to.be.false;
-    });
-
-    it('execution can be protected', async () => {
-      const executors = range(4).map(() => ethers.Wallet.createRandom().address);
-      const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, executors, { from: root });
-      const execution = await authorizer.getScheduledExecution(id);
-
-      expect(execution.protected).to.be.true;
-      await Promise.all(
-        executors.map(async (executor) => expect(await authorizer.isExecutor(id, executor)).to.be.true)
-      );
-    });
-
-    it('root can cancel the execution', async () => {
-      const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
-      expect(await authorizer.isCanceler(id, root)).to.be.true;
-
-      const receipt = await authorizer.cancel(id, { from: root });
-      expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
-    });
-
-    it('can be executed after the expected delay', async () => {
-      const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
-
-      await advanceTime(expectedExecutionDelay);
-      const receipt = await authorizer.execute(id);
-      expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
-    });
-
-    it('sets the new action delay when executed', async () => {
-      const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
-
-      await advanceTime(expectedExecutionDelay);
-      await authorizer.execute(id);
-
-      expect(await authorizer.delay(ACTION_1)).to.be.equal(ACTION_DELAY);
-    });
-
-    it('does not set any other action delay when executed', async () => {
-      const previousAction2Delay = await authorizer.delay(ACTION_2);
-
-      const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
-
-      await advanceTime(expectedExecutionDelay);
-      await authorizer.execute(id);
-
-      expect(await authorizer.delay(ACTION_2)).to.be.equal(previousAction2Delay);
-    });
-
-    it('emits an event', async () => {
-      const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
-
-      await advanceTime(expectedExecutionDelay);
-      const receipt = await authorizer.execute(id);
-      expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { actionId: ACTION_1, delay: ACTION_DELAY });
-    });
-  }
-
-  context('when the delay is being increased', () => {
-    // When incrasing the delay, the execution delay should always be the MINIMUM_EXECUTION_DELAY.
-
-    context('when there was no previous delay', () => {
-      itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
-    });
-
-    context('when there was a previous delay set', () => {
-      sharedBeforeEach('set a previous smaller delay', async () => {
-        await authorizer.scheduleAndExecuteDelayChange(ACTION_1, ACTION_DELAY / 2, { from: root });
+        const { executed, data, where, executableAt } = await authorizer.getScheduledExecution(id);
+        expect(executed).to.be.false;
+        expect(data).to.be.equal(
+          authorizer.instance.interface.encodeFunctionData('setDelay', [ACTION_1, ACTION_DELAY])
+        );
+        expect(where).to.be.equal(authorizer.address);
+        expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
       });
 
-      itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
+      it('execution can be unprotected', async () => {
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+        const execution = await authorizer.getScheduledExecution(id);
+
+        expect(execution.protected).to.be.false;
+      });
+
+      it('execution can be protected', async () => {
+        const executors = range(4).map(() => ethers.Wallet.createRandom().address);
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, executors, { from: root });
+        const execution = await authorizer.getScheduledExecution(id);
+
+        expect(execution.protected).to.be.true;
+        await Promise.all(
+          executors.map(async (executor) => expect(await authorizer.isExecutor(id, executor)).to.be.true)
+        );
+      });
+
+      it('root can cancel the execution', async () => {
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+        expect(await authorizer.isCanceler(id, root)).to.be.true;
+
+        const receipt = await authorizer.cancel(id, { from: root });
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+      });
+
+      it('can be executed after the expected delay', async () => {
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        const receipt = await authorizer.execute(id);
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
+      });
+
+      it('sets the new action delay when executed', async () => {
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.delay(ACTION_1)).to.be.equal(ACTION_DELAY);
+      });
+
+      it('does not set any other action delay when executed', async () => {
+        const previousAction2Delay = await authorizer.delay(ACTION_2);
+
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.delay(ACTION_2)).to.be.equal(previousAction2Delay);
+      });
+
+      it('does not set any the grant action delay when executed', async () => {
+        const previousGrantDelay = await authorizer.getActionIdGrantDelay(ACTION_1);
+
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.delay(ACTION_2)).to.be.equal(previousGrantDelay);
+      });
+
+      it('emits an event', async () => {
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        const receipt = await authorizer.execute(id);
+        expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { actionId: ACTION_1, delay: ACTION_DELAY });
+      });
+    }
+
+    context('when the delay is being increased', () => {
+      // When incrasing the delay, the execution delay should always be the MINIMUM_EXECUTION_DELAY.
+
+      context('when there was no previous delay', () => {
+        itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
+      });
+
+      context('when there was a previous delay set', () => {
+        sharedBeforeEach('set a previous smaller delay', async () => {
+          await authorizer.scheduleAndExecuteDelayChange(ACTION_1, ACTION_DELAY / 2, { from: root });
+        });
+
+        itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
+      });
+    });
+
+    context('when the delay is being decreased', () => {
+      // When the delay is decreased, the execution delay should be the larger of the delay difference and
+      // MINIMUM_EXECUTION_DELAY.
+
+      context('when the previous delay was close to the new one', () => {
+        const previousDelay = ACTION_DELAY + DAY;
+
+        sharedBeforeEach(async () => {
+          await authorizer.scheduleAndExecuteDelayChange(ACTION_1, previousDelay, { from: root });
+        });
+
+        itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
+      });
+
+      context('when the previous delay was much larger than the new one', () => {
+        const previousDelay = ACTION_DELAY + MONTH;
+
+        sharedBeforeEach(async () => {
+          await authorizer.scheduleAndExecuteDelayChange(ACTION_1, previousDelay, { from: root });
+        });
+
+        itSchedulesTheDelayChangeCorrectly(previousDelay - ACTION_DELAY);
+      });
+    });
+
+    describe('error scenarios', () => {
+      it('reverts if the sender is not root', async () => {
+        await expect(authorizer.scheduleDelayChange(ACTION_1, DAY, [], { from: other })).to.be.revertedWith(
+          'SENDER_IS_NOT_ROOT'
+        );
+      });
+
+      it('reverts if the new delay is more than 2 years', async () => {
+        await expect(
+          authorizer.scheduleDelayChange(ACTION_1, DAY * 365 * 2 + 1, [], { from: root })
+        ).to.be.revertedWith('DELAY_TOO_LARGE');
+      });
+
+      it('reverts if setDelay is called directly', async () => {
+        await expect(authorizer.instance.setDelay(ACTION_1, DAY)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
+      });
+
+      it('reverts if the delay is greater than the setAuthorizer delay', async () => {
+        const setAuthorizerDelay = await authorizer.delay(await actionId(vault, 'setAuthorizer'));
+        const id = await authorizer.scheduleDelayChange(ACTION_1, setAuthorizerDelay.add(1), [], { from: root });
+
+        // This condition is only tested at the time the delay is actually set (in case e.g. there was a scheduled action
+        // to change setAuthorizer's delay), so we must attempt to execute the action to get the expected revert.
+        await advanceTime(MINIMUM_EXECUTION_DELAY);
+        await expect(authorizer.execute(id)).to.be.revertedWith('DELAY_EXCEEDS_SET_AUTHORIZER');
+      });
     });
   });
 
-  context('when the delay is being decreased', () => {
-    // When the delay is decreased, the execution delay should be the larger of the delay difference and
-    // MINIMUM_EXECUTION_DELAY.
+  describe('scheduleGrantDelayChange', () => {
+    const ACTION_GRANT_DELAY = DAY;
 
-    context('when the previous delay was close to the new one', () => {
-      const previousDelay = ACTION_DELAY + DAY;
+    function itSchedulesTheGrantDelayChangeCorrectly(expectedExecutionDelay: number) {
+      it('schedules a grant delay change', async () => {
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
 
-      sharedBeforeEach(async () => {
-        await authorizer.scheduleAndExecuteDelayChange(ACTION_1, previousDelay, { from: root });
+        const { executed, data, where, executableAt } = await authorizer.getScheduledExecution(id);
+
+        expect(executed).to.be.false;
+        expect(data).to.be.equal(
+          authorizer.instance.interface.encodeFunctionData('setGrantDelay', [ACTION_1, ACTION_GRANT_DELAY])
+        );
+        expect(where).to.be.equal(authorizer.address);
+        expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
       });
 
-      itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
-    });
+      it('execution can be unprotected', async () => {
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+        const execution = await authorizer.getScheduledExecution(id);
 
-    context('when the previous delay was much larger than the new one', () => {
-      const previousDelay = ACTION_DELAY + MONTH;
-
-      sharedBeforeEach(async () => {
-        await authorizer.scheduleAndExecuteDelayChange(ACTION_1, previousDelay, { from: root });
+        expect(execution.protected).to.be.false;
       });
 
-      itSchedulesTheDelayChangeCorrectly(previousDelay - ACTION_DELAY);
+      it('execution can be protected', async () => {
+        const executors = range(4).map(() => ethers.Wallet.createRandom().address);
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, executors, { from: root });
+        const execution = await authorizer.getScheduledExecution(id);
+
+        expect(execution.protected).to.be.true;
+        await Promise.all(
+          executors.map(async (executor) => expect(await authorizer.isExecutor(id, executor)).to.be.true)
+        );
+      });
+
+      it('root can cancel the execution', async () => {
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+        expect(await authorizer.isCanceler(id, root)).to.be.true;
+
+        const receipt = await authorizer.cancel(id, { from: root });
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+      });
+
+      it('can be executed after the expected delay', async () => {
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        const receipt = await authorizer.execute(id);
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
+      });
+
+      it('sets the new grant action delay when executed', async () => {
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.getActionIdGrantDelay(ACTION_1)).to.be.equal(ACTION_GRANT_DELAY);
+      });
+
+      it('does not set any other action grant delay when executed', async () => {
+        const previousAction2GrantDelay = await authorizer.getActionIdGrantDelay(ACTION_2);
+
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.getActionIdGrantDelay(ACTION_2)).to.be.equal(previousAction2GrantDelay);
+      });
+
+      it('does not set the action delay when executed', async () => {
+        const previousActionDelay = await authorizer.delay(ACTION_1);
+
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.delay(ACTION_1)).to.be.equal(previousActionDelay);
+      });
+
+      it('emits an event', async () => {
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        const receipt = await authorizer.execute(id);
+        expectEvent.inReceipt(await receipt.wait(), 'GrantDelaySet', {
+          actionId: ACTION_1,
+          delay: ACTION_GRANT_DELAY,
+        });
+      });
+    }
+
+    context('when the delay is being increased', () => {
+      // When incrasing the delay, the execution delay should always be the MINIMUM_EXECUTION_DELAY.
+
+      context('when there was no previous delay', () => {
+        itSchedulesTheGrantDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
+      });
+
+      context('when there was a previous delay set', () => {
+        sharedBeforeEach('set a previous smaller delay', async () => {
+          await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY / 2, { from: root });
+        });
+
+        itSchedulesTheGrantDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
+      });
     });
-  });
 
-  describe('error scenarios', () => {
-    it('reverts if the sender is not root', async () => {
-      await expect(authorizer.scheduleDelayChange(ACTION_1, DAY, [], { from: other })).to.be.revertedWith(
-        'SENDER_IS_NOT_ROOT'
-      );
+    context('when the delay is being decreased', () => {
+      // When the delay is decreased, the execution delay should be the larger of the delay difference and
+      // MINIMUM_EXECUTION_DELAY.
+
+      context('when the previous delay was close to the new one', () => {
+        const previousDelay = ACTION_GRANT_DELAY + DAY;
+
+        sharedBeforeEach(async () => {
+          await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, previousDelay, { from: root });
+        });
+
+        itSchedulesTheGrantDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
+      });
+
+      context('when the previous delay was much larger than the new one', () => {
+        const previousDelay = ACTION_GRANT_DELAY + MONTH;
+
+        sharedBeforeEach(async () => {
+          await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, previousDelay, { from: root });
+        });
+
+        itSchedulesTheGrantDelayChangeCorrectly(previousDelay - ACTION_GRANT_DELAY);
+      });
     });
 
-    it('reverts if the new delay is more than 2 years', async () => {
-      await expect(authorizer.scheduleDelayChange(ACTION_1, DAY * 365 * 2 + 1, [], { from: root })).to.be.revertedWith(
-        'DELAY_TOO_LARGE'
-      );
-    });
+    describe('error scenarios', () => {
+      it('reverts if the sender is not root', async () => {
+        await expect(authorizer.scheduleGrantDelayChange(ACTION_1, DAY, [], { from: other })).to.be.revertedWith(
+          'SENDER_IS_NOT_ROOT'
+        );
+      });
 
-    it('reverts if setDelay is called directly', async () => {
-      await expect(authorizer.instance.setDelay(ACTION_1, DAY)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
-    });
+      it('reverts if the new delay is more than 2 years', async () => {
+        await expect(
+          authorizer.scheduleGrantDelayChange(ACTION_1, DAY * 365 * 2 + 1, [], { from: root })
+        ).to.be.revertedWith('DELAY_TOO_LARGE');
+      });
 
-    it('reverts if the delay is greater than the setAuthorizer delay', async () => {
-      const setAuthorizerDelay = await authorizer.delay(await actionId(vault, 'setAuthorizer'));
-      const id = await authorizer.scheduleDelayChange(ACTION_1, setAuthorizerDelay.add(1), [], { from: root });
+      it('reverts if setDelay is called directly', async () => {
+        await expect(authorizer.instance.setGrantDelay(ACTION_1, DAY)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
+      });
 
-      // This condition is only tested at the time the delay is actually set (in case e.g. there was a scheduled action
-      // to change setAuthorizer's delay), so we must attempt to execute the action to get the expected revert.
-      await advanceTime(MINIMUM_EXECUTION_DELAY);
-      await expect(authorizer.execute(id)).to.be.revertedWith('DELAY_EXCEEDS_SET_AUTHORIZER');
+      it('reverts if the delay is greater than the setAuthorizer delay', async () => {
+        const setAuthorizerDelay = await authorizer.delay(await actionId(vault, 'setAuthorizer'));
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, setAuthorizerDelay.add(1), [], { from: root });
+
+        // This condition is only tested at the time the delay is actually set (in case e.g. there was a scheduled action
+        // to change setAuthorizer's delay), so we must attempt to execute the action to get the expected revert.
+        await advanceTime(MINIMUM_EXECUTION_DELAY);
+        await expect(authorizer.execute(id)).to.be.revertedWith('DELAY_EXCEEDS_SET_AUTHORIZER');
+      });
     });
   });
 });
