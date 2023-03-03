@@ -480,13 +480,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     /**
      * @notice Schedules an execution to change the root address to `newRoot`.
      */
-    function scheduleRootChange(address newRoot, address[] memory executors)
-        external
-        returns (uint256 scheduledExecutionId)
-    {
+    function scheduleRootChange(address newRoot, address[] memory executors) external returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
+
+        // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
+        // bother creating any new cancelers.
         return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
     }
 
@@ -564,7 +564,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
-    ) external returns (uint256 scheduledExecutionId) {
+    ) external returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
@@ -572,6 +572,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
+
+        // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
+        // bother creating any new cancelers.
         return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
     }
 
@@ -590,6 +593,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         bytes memory data = abi.encodeWithSelector(this.setGrantDelay.selector, actionId, newDelay);
         // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
+
+        // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
+        // bother creating any new cancelers.
         return _scheduleWithDelay(0x0, address(this), data, executionDelay, executors);
     }
 
