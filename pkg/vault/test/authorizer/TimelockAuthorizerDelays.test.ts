@@ -7,7 +7,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime, currentTimestamp, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { range } from 'lodash';
@@ -70,7 +70,7 @@ describe('TimelockAuthorizer delays', () => {
       });
 
       it('execution can be protected', async () => {
-        const executors = range(4).map(() => ethers.Wallet.createRandom().address);
+        const executors = range(4).map(randomAddress);
         const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, executors, { from: root });
         const execution = await authorizer.getScheduledExecution(id);
 
