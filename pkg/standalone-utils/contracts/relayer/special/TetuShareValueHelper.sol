@@ -50,18 +50,18 @@ contract TetuShareValueHelper {
             uint256 balance = underlyingBalanceInVault.add(strategyInvestedUnderlyingBalance);
             // Notice that "balance" and "wrappedTokenTotalSupply" have same amount of decimals. divDown multiplies
             // by FixedPoint.ONE, so _getTokenRate returns 18 decimals
-            return balance.divDown(wrappedTokenTotalSupply);
+            return wrappedTokenTotalSupply.divDown(balance);
         }
     }
 
     function _fromTetuAmount(uint256 wrappedAmount, ITetuSmartVault wrappedToken) internal view returns (uint256) {
         uint256 rate = _getTokenRate(address(wrappedToken));
-        return wrappedAmount.divDown(rate);
+        return wrappedAmount.mulDown(rate);
     }
 
     function _toTetuAmount(uint256 mainAmount, ITetuSmartVault wrappedToken) internal view returns (uint256) {
         uint256 rate = _getTokenRate(address(wrappedToken));
-        return rate.mulDown(mainAmount);
+        return mainAmount.divDown(rate);
     }
 
     function _getStrategyInvestedUnderlyingBalance(address wrappedTokenAddress) private view returns (uint256) {
