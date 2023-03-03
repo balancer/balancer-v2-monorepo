@@ -1638,7 +1638,9 @@ describe('TimelockAuthorizer', () => {
                   const id = await schedule();
                   await advanceTime(delay);
 
-                  await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
+                  await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith(
+                    'SENDER_IS_NOT_EXECUTION_HELPER'
+                  );
 
                   const receipt = await authorizer.execute(id, { from: executors[0] });
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
@@ -1715,13 +1717,13 @@ describe('TimelockAuthorizer', () => {
       });
     });
 
-    context('when the target is the executor', () => {
+    context('when the target is the execution helper', () => {
       sharedBeforeEach('set where', async () => {
-        where = await authorizer.instance.getExecutor();
+        where = await authorizer.instance.getTimelockExecutionHelper();
       });
 
       it('reverts', async () => {
-        await expect(schedule()).to.be.revertedWith('ATTEMPTING_EXECUTOR_REENTRANCY');
+        await expect(schedule()).to.be.revertedWith('ATTEMPTING_EXECUTION_HELPER_REENTRANCY');
       });
     });
   });
@@ -1834,7 +1836,9 @@ describe('TimelockAuthorizer', () => {
             id = await schedule();
             await advanceTime(delay);
 
-            await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
+            await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith(
+              'SENDER_IS_NOT_EXECUTION_HELPER'
+            );
           });
         });
       });

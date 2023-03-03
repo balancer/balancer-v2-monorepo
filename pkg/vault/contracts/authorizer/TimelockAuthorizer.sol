@@ -24,7 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "./TimelockExecutor.sol";
+import "./TimelockExecutionHelper.sol";
 
 /**
  * @title Timelock Authorizer
@@ -109,7 +109,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     // Instead they're saved just for gas savings so we can keep them private.
     bytes32 private immutable _GENERAL_REVOKE_ACTION_ID;
 
-    TimelockExecutor private immutable _executor;
+    TimelockExecutionHelper private immutable _executionHelper;
     IAuthentication private immutable _vault;
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
@@ -214,8 +214,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     event PendingRootSet(address indexed pendingRoot);
 
-    modifier onlyExecutor() {
-        require(msg.sender == address(_executor), "CAN_ONLY_BE_SCHEDULED");
+    /**
+     * @dev Prevents a TimelockAuthorizer function from being called directly, making it only possible to call it by
+     * scheduling a delayed execution.
+     *
+     * Each function that has this modifier applied to it should have an associated function that performs proper
+     * permission validation and then schedules a call.
+     */
+    modifier onlyScheduled() {
+        require(msg.sender == address(_executionHelper), "CAN_ONLY_BE_SCHEDULED");
         _;
     }
 
@@ -235,7 +242,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         _vault = authorizerAdaptorEntrypoint.getVault();
         _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
-        _executor = new TimelockExecutor();
+        _executionHelper = new TimelockExecutionHelper();
         _rootTransferDelay = rootTransferDelay;
 
         bytes32 revokeActionId = getActionId(TimelockAuthorizer.revokePermissions.selector);
@@ -280,10 +287,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the executor address.
+     * @notice Returns the TimelockExecutionHelper address.
      */
-    function getExecutor() external view returns (address) {
-        return address(_executor);
+    function getTimelockExecutionHelper() external view returns (address) {
+        return address(_executionHelper);
     }
 
     /**
@@ -399,9 +406,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns true if `account` can perform action `actionId` in target `where`.
-     * @dev All authentications that require the authorizer adaptor must originate from the authorizer adaptor
-     * entrypoint: requests coming directly from the authorizer adaptor will be rejected.
+     * @notice Returns true if `account` can perform action `actionId` in target `where`. This will return false for
+     * actions that have a delay associated with them, even if `account` has permission over the action, since `account`
+     * cannot perform the action directly - it must instead schedule a future execution of it via `schedule`.
+     *
+     * @dev All authentications that require the AuthorizerAdaptor must originate from the AuthorizerAdaptorEntrypoint:
+     * requests coming directly from the AuthorizerAdaptor will be rejected.
      */
     function canPerform(
         bytes32 actionId,
@@ -409,8 +419,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where
     ) public view override returns (bool) {
         if (msg.sender == address(_authorizerAdaptor)) {
-            // We special case the situation where the caller is the `AuthorizerAdaptor`, as it can be tricked into
-            // passing an incorrect `actionId` value, potentially resulting in escalation of privileges.
+            // We special case the situation where the caller is the `AuthorizerAdaptor`, as due to a bug it can be
+            // tricked into passing an incorrect `actionId` value, potentially resulting in escalation of privileges.
             //
             // To remedy this we force all calls to the `AuthorizerAdaptor` to be made through a singleton entrypoint
             // contract, called the `AuthorizerAdaptorEntrypoint`. This contract correctly checks whether `account` can
@@ -422,8 +432,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             return account == address(_authorizerAdaptorEntrypoint);
         }
 
+        // Actions with no delay can only be performed by accounts that have the associated permission.
+        // Actions with a non-zero delay however cannot be performed by permissioned accounts: they can only be made by
+        // the TimelockAuthorizerExecutionHelper, which works alongisde the TimelockAuthorizer itself to ensure that
+        // said executions have been properly scheduled in advance by an authorized party via the `schedule` function.
         return
-            _delaysPerActionId[actionId] > 0 ? account == address(_executor) : hasPermission(actionId, account, where);
+            _delaysPerActionId[actionId] == 0
+                ? hasPermission(actionId, account, where)
+                : account == address(_executionHelper);
     }
 
     /**
@@ -434,7 +450,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address account,
         address where
     ) public view returns (bool) {
-        return _grantDelays[actionId] > 0 ? account == address(_executor) : isGranter(actionId, account, where);
+        return _grantDelays[actionId] > 0 ? account == address(_executionHelper) : isGranter(actionId, account, where);
     }
 
     /**
@@ -445,7 +461,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address account,
         address where
     ) public view returns (bool) {
-        return _revokeDelays[actionId] > 0 ? account == address(_executor) : isRevoker(actionId, account, where);
+        return _revokeDelays[actionId] > 0 ? account == address(_executionHelper) : isRevoker(actionId, account, where);
     }
 
     /**
@@ -492,11 +508,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     /**
      * @notice Sets the pending root address to `pendingRoot`.
      * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
-     * the TimelockExecutor after after calling `scheduleRootChange`.
+     * the TimelockExecutionHelper after after calling `scheduleRootChange`.
      *
      * Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
      */
-    function setPendingRoot(address pendingRoot) external onlyExecutor {
+    function setPendingRoot(address pendingRoot) external onlyScheduled {
         _setPendingRoot(pendingRoot);
     }
 
@@ -524,9 +540,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     /**
      * @notice Sets a new delay `delay` for action `actionId`.
      * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
-     * the TimelockExecutor after after calling `scheduleDelayChange`.
+     * the TimelockExecutionHelper after after calling `scheduleDelayChange`.
      */
-    function setDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
+    function setDelay(bytes32 actionId, uint256 delay) external onlyScheduled {
         bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
         bool isAllowed = actionId == setAuthorizerActionId || delay <= _delaysPerActionId[setAuthorizerActionId];
         require(isAllowed, "DELAY_EXCEEDS_SET_AUTHORIZER");
@@ -577,13 +593,28 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Schedules an arbitrary execution of `data` in target `where`.
+     * @notice Schedules an arbitrary execution of `data` in target `where`. Returns a scheduledExecutionId that can be
+     * used to call `execute`, `cancel`, and associated getters such as `getScheduledExecution`.
+     *
+     * If `executors` is an empty array, that any account in the network will be able to initiate the scheduled
+     * execution. If not, only accounts in the `executors` array will be able to call `execute`. It is not possible to
+     * change this after scheduling: the list of executors is immutable, and cannot be changed by any account (including
+     * root).
+     *
+     * The caller of the `schedule` function is automatically made a canceler for the scheduled execution, meaning they
+     * can call the `cancel` function for it. Other accounts, such as root, may also have or be granted permission to
+     * cancel any scheduled execution.
+     *
+     * This is the only way to execute actions in external contracts that have a delay associated with them. Calling
+     * said functions directly will cause `canPerform` to return false, even if the caller has permission. An account
+     * that has permission over an action with a delay cannot call it directly, and must intead schedule a delayed
+     * execution by calling this function.
      */
     function schedule(
         address where,
         bytes memory data,
         address[] memory executors
-    ) external returns (uint256 scheduledExecutionId) {
+    ) external returns (uint256) {
         // Allowing scheduling arbitrary calls into the TimelockAuthorizer is dangerous.
         //
         // It is expected that only the `root` account can initiate a root transfer as this condition is enforced
@@ -596,29 +627,45 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // these actions can only be scheduled through specialised functions.
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
 
-        // We also disallow the TimelockExecutor from attempting to call into itself. Otherwise the above protection
-        // could be bypassed by wrapping a call to `setPendingRoot` inside of a call causing the TimelockExecutor to
-        // reenter itself, essentially hiding the fact that `where == address(this)` inside `data`.
+        // We also disallow the TimelockExecutionHelper from attempting to call into itself. Otherwise the above
+        // protection could be bypassed by wrapping a call to `setPendingRoot` inside of a call causing the
+        // TimelockExecutionHelper to reenter itself, essentially hiding the fact that `where == address(this)` inside
+        // `data`.
         //
-        // Note: The TimelockExecutor only accepts calls from the TimelockAuthorizer (i.e. not from itself) so this
-        // scenario should be impossible but this check is cheap so we enforce it here as well anyway.
-        require(where != address(_executor), "ATTEMPTING_EXECUTOR_REENTRANCY");
+        // Note: The TimelockExecutionHelper only accepts calls from the TimelockAuthorizer (i.e. not from itself) so
+        // this scenario should be impossible but this check is cheap so we enforce it here as well anyway.
+        require(where != address(_executionHelper), "ATTEMPTING_EXECUTION_HELPER_REENTRANCY");
 
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
         require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
 
-        uint256 id = _schedule(actionId, where, data, executors);
+        uint256 scheduledExecutionId = _schedule(actionId, where, data, executors);
         // Accounts that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule actions (and root is
         // always a global canceler).
-        if (!isCanceler(id, msg.sender)) {
-            _addCanceler(id, msg.sender);
+        if (!isCanceler(scheduledExecutionId, msg.sender)) {
+            _addCanceler(scheduledExecutionId, msg.sender);
         }
-        return id;
+        return scheduledExecutionId;
     }
 
     /**
-     * @notice Executes a scheduled action `scheduledExecutionId`.
+     * @notice Executes a scheduled action `scheduledExecutionId`. This is used to execute all scheduled executions,
+     * both those that originate from `schedule` but also internal TimelockAuthorizer functions such as
+     * `scheduleRootChange` or `scheduleDelayChange`.
+     *
+     * If any executors were setup when scheduling, `execute` can only be called by them. If none were set, the
+     * scheduled execution is said to be 'unprotected', and can be executed by anyone.
+     *
+     * Once executed, a scheduled execution cannot be executed again. It also cannot be executed if canceled.
+     *
+     * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
+     * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a
+     * scheduled action during the execution of another scheduled action - an unlikely and convoluted scenario that we
+     * knowlingly forbid.
+     *
+     * Note that while `execute` is nonReentrant, other functions are not - indeed, we rely on reentrancy to e.g. call
+     * `setPendingRoot` or `setDelay`.
      */
     function execute(uint256 scheduledExecutionId) external nonReentrant returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
@@ -632,7 +679,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         if (scheduledExecution.protected) {
             // Protected scheduled executions can only be executed by a set of accounts designated by the original
             // scheduler.
-            require(isExecutor(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_EXECUTOR");
+            require(isExecutor(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_EXECUTION_HELPER");
         }
 
         scheduledExecution.executed = true;
@@ -642,17 +689,17 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // completed all state transitions.
         // This results in the scheduled execution being marked as 'executed' during its execution, but that should not
         // be an issue.
-        result = _executor.execute(scheduledExecution.where, scheduledExecution.data);
+        result = _executionHelper.execute(scheduledExecution.where, scheduledExecution.data);
         emit ExecutionExecuted(scheduledExecutionId);
     }
 
     /**
-     * @notice Cancels a scheduled action `scheduledExecutionId`.
-     * @dev The permission to cancel a scheduled action is the same one used to schedule it.
+     * @notice Cancels a scheduled action `scheduledExecutionId`, which prevents execution via `execute`. Canceling is
+     * irreversible. Scheduled executions that have already been executed cannot be canceled. This is the only way to
+     * prevent a scheduled execution from being executed (assuming there are willing executors).
      *
-     * Note that in the case of cancelling a malicious granting or revocation of permissions to an address,
-     * we must assume that the granter/revoker status of all non-malicious addresses will be revoked as calls to
-     * manageGranter/manageRevoker have no delays associated with them.
+     * The caller must be a canceler, a permission which is managed by the `addCanceler` and `removeCanceler` functions.
+     * Note that root is always a canceler for all scheduled executions.
      */
     function cancel(uint256 scheduledExecutionId) external {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
@@ -1058,7 +1105,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // execution)
         bytes32 specificActionId = getExtendedActionId(baseActionId, specifier);
         if (_delaysPerActionId[specificActionId] > 0) {
-            return account == address(_executor);
+            return account == address(_executionHelper);
         }
 
         // If there is no delay, we check if the account has that permission
