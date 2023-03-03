@@ -44,6 +44,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
         }
+        
         IERC20 underlying = IERC20(wrappedToken.underlying());
 
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
