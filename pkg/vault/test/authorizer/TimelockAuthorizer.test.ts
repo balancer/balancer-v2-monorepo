@@ -449,7 +449,7 @@ describe('TimelockAuthorizer', () => {
           );
         });
       });
-  
+
       context('in any contract', () => {
         it('account is not a revoker for any contract', async () => {
           await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
