@@ -142,15 +142,27 @@ describe('TetuWrapping', function () {
             DAI
           );
 
+          const relayerIsReceiver = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: tokenRecipient.address,
+              to: relayer.address,
               value: expectedTetuAmount,
             },
             xDAI
           );
+          if (!relayerIsReceiver) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: relayer.address,
+                to: tokenRecipient.address,
+                value: expectedTetuAmount,
+              },
+              xDAI
+            );
+          }
         });
 
         it('stores wrap output as chained reference', async () => {
@@ -195,15 +207,27 @@ describe('TetuWrapping', function () {
             DAI
           );
 
+          const relayerIsReceiver = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: tokenRecipient.address,
+              to: relayer.address,
               value: expectedWrappedAmount,
             },
             xDAI
           );
+          if (!relayerIsReceiver) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: relayer.address,
+                to: tokenRecipient.address,
+                value: expectedWrappedAmount,
+              },
+              xDAI
+            );
+          }
         });
       }
     });

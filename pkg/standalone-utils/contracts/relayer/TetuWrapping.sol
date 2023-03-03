@@ -29,7 +29,7 @@ import "./special/TetuShareValueHelper.sol";
  * @notice Allows users to wrap and unwrap Tetu tokens
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
-abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
+abstract contract TetuWrapping is IBaseRelayerLibrary {
     using Address for address payable;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
@@ -55,9 +55,12 @@ abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
         }
         
         underlying.safeApprove(address(wrappedToken), amount);
-        wrappedToken.depositFor(amount, recipient);
-        // Not using rate function of Tetu (getPricePerFullShare), since it's precision is low (not too many decimals)
-        uint256 receivedWrappedAmount = _toTetuAmount(amount, wrappedToken);
+        wrappedToken.deposit(amount);
+        uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
+
+        if (recipient != address(this)) {
+            IERC20(address(wrappedToken)).safeTransfer(recipient, receivedWrappedAmount);
+        }
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, receivedWrappedAmount);
@@ -84,8 +87,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
 
         IERC20 mainToken = IERC20(wrappedToken.underlying());
         wrappedToken.withdraw(amount);
-        // Not using rate function of Tetu (getPricePerFullShare), since it's precision is low (not too many decimals)
-        uint256 withdrawnMainAmount = _fromTetuAmount(amount, wrappedToken);
+        uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
             mainToken.safeTransfer(recipient, withdrawnMainAmount);

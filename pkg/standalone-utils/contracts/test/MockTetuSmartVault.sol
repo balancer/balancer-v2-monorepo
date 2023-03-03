@@ -64,14 +64,14 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
         return underlyingAsset.balanceOf(address(this));
     }
 
-    function deposit(uint256) external pure override {
-        revert("Should not call this");
-    }
-
-    function depositFor(uint256 amount, address recipient) external override {
+    function deposit(uint256 amount) external override {
         IERC20(underlyingAsset).safeTransferFrom(msg.sender, address(this), amount);
         uint256 wrappedAmount = _toTetuAmount(amount, this);
-        _mint(recipient, wrappedAmount);
+        _mint(msg.sender, wrappedAmount);
+    }
+
+    function depositFor(uint256 , address) external pure override {
+        revert("Should not call this");
     }
 
     function withdraw(uint256 numberOfShares) external override {
