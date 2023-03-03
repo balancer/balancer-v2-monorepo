@@ -124,7 +124,7 @@ describe('TimelockAuthorizer delays', () => {
         await advanceTime(expectedExecutionDelay);
         await authorizer.execute(id);
 
-        expect(await authorizer.delay(ACTION_1)).to.be.equal(previousGrantDelay);
+        expect(await authorizer.getActionIdGrantDelay(ACTION_1)).to.be.equal(previousGrantDelay);
       });
 
       it('emits an event', async () => {
