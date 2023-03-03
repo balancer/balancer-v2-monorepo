@@ -31,7 +31,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
     uint256 private immutable _underlyingDecimals;
     uint256 private _underlyingBalanceInVault = 0;
     MockTetuStrategy private immutable _tetuStrategy;
-    uint256 _desiredRate;
+    uint256 private _desiredRate;
 
     constructor(
         string memory name,
