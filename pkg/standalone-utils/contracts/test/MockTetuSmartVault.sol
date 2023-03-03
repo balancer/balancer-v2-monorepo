@@ -70,20 +70,12 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
 
     function depositFor(uint256 amount, address recipient) external override {
         IERC20(underlyingAsset).safeTransferFrom(msg.sender, address(this), amount);
-        // Makes sure rate balances are correctly set before calculating wrappedAmount
-        _setRate(_desiredRate);
         uint256 wrappedAmount = _toTetuAmount(amount, this);
         _mint(recipient, wrappedAmount);
-        // Since rate calculation depends on totalSupply, we need to recalculate parameters
-        // that are base to rate calculation.
-        _setRate(_desiredRate);
     }
 
     function withdraw(uint256 numberOfShares) external override {
         _burn(msg.sender, numberOfShares);
-        // Since rate calculation depends on totalSupply, we need to recalculate parameters
-        // that are base to rate calculation.
-        _setRate(_desiredRate);
         uint256 mainAmount = _fromTetuAmount(numberOfShares, this);
         IERC20(underlyingAsset).safeTransfer(msg.sender, mainAmount);
     }
@@ -100,6 +92,20 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
 
     function strategy() external view override returns (address) {
         return address(_tetuStrategy);
+    }
+
+    function _burn(address account, uint256 amount) internal virtual override {
+        super._burn(account, amount);
+        // Since rate calculation depends on totalSupply, we need to recalculate parameters
+        // that are base to rate calculation.
+        _setRate(_desiredRate);
+    }
+
+    function _mint(address account, uint256 amount) internal virtual override {
+        super._mint(account, amount);
+        // Since rate calculation depends on totalSupply, we need to recalculate parameters
+        // that are base to rate calculation.
+        _setRate(_desiredRate);
     }
 
     function _setRate(uint256 newRate) private {
