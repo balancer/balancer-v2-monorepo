@@ -218,8 +218,8 @@ describe('PoolRegistrationLib', function () {
     });
 
     it('registers a new token', async () => {
-      const token = await randomAddress();
-      const assetManager = await randomAddress();
+      const token = randomAddress();
+      const assetManager = randomAddress();
       await lib.registerToken(vault.address, poolId, token, assetManager);
 
       const { tokens: actualTokens } = await vault.getPoolTokens(poolId);
@@ -227,8 +227,8 @@ describe('PoolRegistrationLib', function () {
     });
 
     it('registers the asset manager', async () => {
-      const token = await randomAddress();
-      const assetManager = await randomAddress();
+      const token = randomAddress();
+      const assetManager = randomAddress();
       await lib.registerToken(vault.address, poolId, token, assetManager);
 
       const { assetManager: actualAssetManager } = await vault.getPoolTokenInfo(poolId, token);
