@@ -55,10 +55,10 @@ abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
         underlying.safeApprove(address(wrappedToken), amount);
         wrappedToken.depositFor(amount, recipient);
         // Not using rate function of Tetu (getPricePerFullShare), since it's precision is low (not too many decimals)
-        uint256 withdrawnWrappedAmount = _toTetuAmount(amount, wrappedToken);
+        uint256 receivedWrappedAmount = _toTetuAmount(amount, wrappedToken);
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, withdrawnWrappedAmount);
+            _setChainedReferenceValue(outputReference, receivedWrappedAmount);
         }
     }
 

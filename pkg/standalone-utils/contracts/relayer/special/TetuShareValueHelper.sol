@@ -18,8 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
-
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuSmartVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuStrategy.sol";
 
@@ -43,11 +41,11 @@ contract TetuShareValueHelper {
     }
 
     function _getTokenRate(address wrappedTokenAddress) internal view returns (uint256) {
-        uint256 wrappedTokenTotalSupply = _getWrappedTokenTotalSupply(wrappedTokenAddress);
+        uint256 wrappedTokenTotalSupply = IERC20(wrappedTokenAddress).totalSupply();
         if (wrappedTokenTotalSupply == 0) {
             return _defaultRate;
         } else {
-            uint256 underlyingBalanceInVault = _getUnderlyingBalanceInVault(wrappedTokenAddress);
+            uint256 underlyingBalanceInVault = ITetuSmartVault(wrappedTokenAddress).underlyingBalanceInVault();
             uint256 strategyInvestedUnderlyingBalance = _getStrategyInvestedUnderlyingBalance(wrappedTokenAddress);
             uint256 balance = underlyingBalanceInVault.add(strategyInvestedUnderlyingBalance);
             // Notice that "balance" and "wrappedTokenTotalSupply" have same amount of decimals. divDown multiplies
@@ -66,57 +64,13 @@ contract TetuShareValueHelper {
         return rate.mulDown(mainAmount);
     }
 
-    function _getWrappedTokenTotalSupply(address wrappedTokenAddress) private view returns (uint256) {
-        try IERC20(wrappedTokenAddress).totalSupply() returns (uint256 totalSupply) {
-            return totalSupply;
-        } catch (bytes memory revertData) {
-            // By maliciously reverting here, Yearn (or any other contract in the call stack) could trick the Pool
-            // into reporting invalid data to the query mechanism for swaps/joins/exits.
-            // We then check the revert data to ensure this doesn't occur.
-            ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
-        }
-    }
-
-    function _getUnderlyingBalanceInVault(address wrappedTokenAdddress) private view returns (uint256) {
-        try ITetuSmartVault(wrappedTokenAdddress).underlyingBalanceInVault() returns (
-            uint256 underlyingBalanceInVault
-        ) {
-            return underlyingBalanceInVault;
-        } catch (bytes memory revertData) {
-            // By maliciously reverting here, Yearn (or any other contract in the call stack) could trick the Pool
-            // into reporting invalid data to the query mechanism for swaps/joins/exits.
-            // We then check the revert data to ensure this doesn't occur.
-            ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
-        }
-    }
-
     function _getStrategyInvestedUnderlyingBalance(address wrappedTokenAddress) private view returns (uint256) {
-        address tetuStrategy = _getTetuStrategy(wrappedTokenAddress);
+        address tetuStrategy = ITetuSmartVault(wrappedTokenAddress).strategy();
         if (tetuStrategy == address(0)) {
             // strategy address can be 0x00 when not initialized in the token.
             return _defaultRate;
         } else {
-            try ITetuStrategy(tetuStrategy).investedUnderlyingBalance() returns (
-                uint256 strategyInvestedUnderlyingBalance
-            ) {
-                return strategyInvestedUnderlyingBalance;
-            } catch (bytes memory revertData) {
-                // By maliciously reverting here, Yearn (or any other contract in the call stack) could trick the Pool
-                // into reporting invalid data to the query mechanism for swaps/joins/exits.
-                // We then check the revert data to ensure this doesn't occur.
-                ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
-            }
-        }
-    }
-
-    function _getTetuStrategy(address wrappedTokenAddress) private view returns (address) {
-        try ITetuSmartVault(wrappedTokenAddress).strategy() returns (address strategy) {
-            return strategy;
-        } catch (bytes memory revertData) {
-            // By maliciously reverting here, Yearn (or any other contract in the call stack) could trick the Pool
-            // into reporting invalid data to the query mechanism for swaps/joins/exits.
-            // We then check the revert data to ensure this doesn't occur.
-            ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
+            return ITetuStrategy(tetuStrategy).investedUnderlyingBalance();
         }
     }
 }

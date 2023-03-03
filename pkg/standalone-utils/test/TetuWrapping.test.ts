@@ -24,7 +24,7 @@ import {
   toChainedReference,
 } from './helpers/chainedReferences';
 
-describe.only('TetuWrapping', function () {
+describe('TetuWrapping', function () {
   let DAI: Token, xDAI: Token;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
