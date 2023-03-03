@@ -304,110 +304,91 @@ describe('TimelockAuthorizer', () => {
   describe('revokers', () => {
     describe('addRevoker', () => {
       context('in a specific contract', () => {
-        it('account is a revoker for that action only in that contract', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+        it('account is a revoker only in that contract', async () => {
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
 
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_2)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
-        });
-
-        it('account is not a revoker for any other action anywhere', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
-
-          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_2)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_2, revoker, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(revoker, WHERE_2)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.false;
         });
 
         it('emits a RevokerAdded event', async () => {
-          const receipt = await (await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root })).wait();
+          const receipt = await (await authorizer.addRevoker(revoker, WHERE_1, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'RevokerAdded', {
-            actionId: ACTION_1,
             account: revoker.address,
             where: WHERE_1,
           });
         });
 
         it('reverts if account is already a revoker', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
-          await expect(authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
+          await expect(authorizer.addRevoker(revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
         });
 
         it('reverts if account is already a global revoker', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
-          await expect(authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
+          await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
+          await expect(authorizer.addRevoker(revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
         });
 
         it('reverts if the account is root', async () => {
-          await expect(authorizer.addRevoker(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
+          await expect(authorizer.addRevoker(root, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
         });
 
         it('reverts if the caller is not root', async () => {
-          await expect(authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: other })).to.be.revertedWith(
+          await expect(authorizer.addRevoker(revoker, WHERE_1, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
       });
 
       context('in any contract', () => {
-        it('account is a revoker for that action in any contract', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+        it('account is a revoker in any contract', async () => {
+          await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_2)).to.be.true;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.true;
-        });
-
-        it('account is not a revoker for any other action anywhere', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
-
-          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_2)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_2, revoker, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(revoker, WHERE_2)).to.be.true;
+          expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.true;
         });
 
         it('emits a RevokerAdded event', async () => {
-          const receipt = await (await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).wait();
+          const receipt = await (await authorizer.addRevoker(revoker, EVERYWHERE, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'RevokerAdded', {
-            actionId: ACTION_1,
             account: revoker.address,
             where: EVERYWHERE,
           });
         });
 
         it('does not revert if account is already revoker in a specific contract', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
 
-          const receipt = await (await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).wait();
+          const receipt = await (await authorizer.addRevoker(revoker, EVERYWHERE, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'RevokerAdded', {
-            actionId: ACTION_1,
             account: revoker.address,
             where: EVERYWHERE,
           });
         });
 
         it('reverts if account already is a global revoker', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
-          await expect(authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
+          await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
+          await expect(authorizer.addRevoker(revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
         });
 
         it('reverts if the account is root', async () => {
-          await expect(authorizer.addRevoker(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
+          await expect(authorizer.addRevoker(root, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_REVOKER'
           );
         });
 
         it('reverts if the caller is not root', async () => {
-          await expect(authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: other })).to.be.revertedWith(
+          await expect(authorizer.addRevoker(revoker, EVERYWHERE, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
@@ -416,129 +397,111 @@ describe('TimelockAuthorizer', () => {
 
     describe('removeRevoker', () => {
       context('in a specific contract', () => {
-        it('account is not a revoker for that action anywhere', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
-          await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+        it('account is not a revoker anywhere', async () => {
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
+          await authorizer.removeRevoker(revoker, WHERE_1, { from: root });
 
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_2)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
-        });
-
-        it('account is not a revoker for any other action', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
-          await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root });
-
-          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_2)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_2, revoker, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, WHERE_1)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, WHERE_2)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.false;
         });
 
         it('emits a RevokerRemoved event', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
 
-          const receipt = await (await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root })).wait();
+          const receipt = await (await authorizer.removeRevoker(revoker, WHERE_1, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'RevokerRemoved', {
-            actionId: ACTION_1,
             account: revoker.address,
             where: WHERE_1,
           });
         });
 
         it('reverts if the account is not a revoker', async () => {
-          await expect(authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
+          await expect(authorizer.removeRevoker(revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_REVOKER'
           );
         });
 
         it('reverts if the account is a global revoker', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
-          await expect(authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root })).to.be.revertedWith(
+          await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
+          await expect(authorizer.removeRevoker(revoker, WHERE_1, { from: root })).to.be.revertedWith(
             'REVOKER_IS_GLOBAL'
           );
         });
 
         it('reverts if the account is root', async () => {
-          await expect(authorizer.removeRevoker(ACTION_1, root, WHERE_1, { from: root })).to.be.revertedWith(
+          await expect(authorizer.removeRevoker(root, WHERE_1, { from: root })).to.be.revertedWith(
             'CANNOT_REMOVE_ROOT_REVOKER'
           );
         });
 
         it('reverts if the caller is not root', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
-          await expect(authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: other })).to.be.revertedWith(
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
+          await expect(authorizer.removeRevoker(revoker, WHERE_1, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
       });
+
       context('in any contract', () => {
-        it('account is not a revoker for that action on any contract', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
-          await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+        it('account is not a revoker for any contract', async () => {
+          await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
+          await authorizer.removeRevoker(revoker, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
-        });
-
-        it('account is not a revoker for that any other action anywhere', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
-          await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
-
-          expect(await authorizer.isRevoker(ACTION_2, revoker, WHERE_1)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_2, revoker, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, WHERE_1)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.false;
         });
 
         it('emits a RevokerRemoved event', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+          await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
 
-          const receipt = await (await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).wait();
+          const receipt = await (await authorizer.removeRevoker(revoker, EVERYWHERE, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'RevokerRemoved', {
-            actionId: ACTION_1,
             account: revoker.address,
             where: EVERYWHERE,
           });
         });
 
         it('reverts if the account is not a global revoker', async () => {
-          await expect(authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
+          await expect(authorizer.removeRevoker(revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_REVOKER'
           );
         });
 
         it('reverts if the account is a revoker in a specific contract', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
-          await expect(authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
+          await expect(authorizer.removeRevoker(revoker, EVERYWHERE, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_REVOKER'
           );
         });
 
         it('preserves revoker status if it was received over both a specific contract and globally', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, WHERE_1, { from: root });
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
+          await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.true;
+          expect(await authorizer.isRevoker(revoker, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.true;
 
-          await authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
+          await authorizer.removeRevoker(revoker, EVERYWHERE, { from: root });
 
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.true;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.false;
 
-          await authorizer.removeRevoker(ACTION_1, revoker, WHERE_1, { from: root });
+          await authorizer.removeRevoker(revoker, WHERE_1, { from: root });
 
-          expect(await authorizer.isRevoker(ACTION_1, revoker, WHERE_1)).to.be.false;
-          expect(await authorizer.isRevoker(ACTION_1, revoker, EVERYWHERE)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, WHERE_1)).to.be.false;
+          expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.false;
         });
 
         it('reverts if the account is root', async () => {
-          await expect(authorizer.removeRevoker(ACTION_1, root, EVERYWHERE, { from: root })).to.be.revertedWith(
+          await expect(authorizer.removeRevoker(root, EVERYWHERE, { from: root })).to.be.revertedWith(
             'CANNOT_REMOVE_ROOT_REVOKER'
           );
         });
 
         it('reverts if the caller is not root', async () => {
-          await authorizer.addRevoker(ACTION_1, revoker, EVERYWHERE, { from: root });
-          await expect(authorizer.removeRevoker(ACTION_1, revoker, EVERYWHERE, { from: other })).to.be.revertedWith(
+          await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
+          await expect(authorizer.removeRevoker(revoker, EVERYWHERE, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
@@ -2085,18 +2048,18 @@ describe('TimelockAuthorizer', () => {
 
       it('revokes powers to grant and revoke GENERAL_PERMISSION_SPECIFIER on EVERYWHERE from current root', async () => {
         expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
-        expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
+        expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.true;
         await authorizer.claimRoot({ from: granter });
         expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.false;
-        expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.false;
+        expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.false;
       });
 
       it('grants powers to grant and revoke GENERAL_PERMISSION_SPECIFIER on EVERYWHERE to the pending root', async () => {
         expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.false;
-        expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.false;
+        expect(await authorizer.isRevoker(granter, EVERYWHERE)).to.be.false;
         await authorizer.claimRoot({ from: granter });
         expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.true;
-        expect(await authorizer.isRevoker(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.true;
+        expect(await authorizer.isRevoker(granter, EVERYWHERE)).to.be.true;
       });
 
       it('resets the pending root address to the zero address', async () => {

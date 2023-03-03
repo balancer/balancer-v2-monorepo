@@ -94,24 +94,24 @@ describe('TimelockAuthorizerRoot', () => {
     });
 
     it('can manage other addresses to revoke permissions for a custom contract', async () => {
-      await authorizer.addRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1, { from: root });
+      await authorizer.addRevoker(grantee, WHERE_1, { from: root });
 
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.true;
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
 
-      await authorizer.removeRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1, { from: root });
+      await authorizer.removeRevoker(grantee, WHERE_1, { from: root });
 
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
     });
 
     it('can manage other addresses to revoke permissions everywhere', async () => {
-      await authorizer.addRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE, { from: root });
+      await authorizer.addRevoker(grantee, EVERYWHERE, { from: root });
 
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.true;
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.true;
 
-      await authorizer.removeRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE, { from: root });
+      await authorizer.removeRevoker(grantee, EVERYWHERE, { from: root });
 
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
       expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
