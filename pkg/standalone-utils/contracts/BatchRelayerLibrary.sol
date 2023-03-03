@@ -20,12 +20,14 @@ import "./relayer/BaseRelayerLibrary.sol";
 import "./relayer/AaveWrapping.sol";
 import "./relayer/ERC4626Wrapping.sol";
 import "./relayer/GaugeActions.sol";
+import "./relayer/GearboxWrapping.sol";
 import "./relayer/LidoWrapping.sol";
 import "./relayer/UnbuttonWrapping.sol";
 import "./relayer/ReaperWrapping.sol";
 import "./relayer/TetuWrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
+import "./relayer/YearnWrapping.sol";
 
 /**
  * @title Batch Relayer Library
@@ -37,12 +39,14 @@ contract BatchRelayerLibrary is
     BaseRelayerLibrary,
     ERC4626Wrapping,
     GaugeActions,
+    GearboxWrapping,
     LidoWrapping,
     UnbuttonWrapping,
     ReaperWrapping,
     TetuWrapping,
     VaultActions,
-    VaultPermit
+    VaultPermit,
+    YearnWrapping
 {
     constructor(
         IVault vault,
