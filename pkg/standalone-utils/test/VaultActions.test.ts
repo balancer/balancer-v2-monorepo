@@ -1397,7 +1397,7 @@ describe('VaultActions', function () {
 
           describe('token in for exact bpt out', () => {
             it('joins with immediate amounts', async () => {
-              const bptOut = fp(2);
+              const bptOut = fp(0.2);
               const daiIndex = tokens.indexOf(tokens.DAI);
 
               await expectBalanceChange(
