@@ -53,12 +53,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
     function setRate(uint256 newRate) public {
         // stores latest rate, so the balances are recalculated after deposit and withdraw
         _desiredRate = newRate;
-        uint256 totalSupply = this.totalSupply();
-        // arbitrary number, just to make sure that both Vault and Invested values compose the rate.
-        uint8 vaultInvestedRatio = 3;
-        uint256 totalBalance = (newRate * totalSupply) / 10**_underlyingDecimals;
-        _underlyingBalanceInVault = totalBalance / vaultInvestedRatio;
-        _tetuStrategy.setInvestedUnderlyingBalance(totalBalance - _underlyingBalanceInVault);
+        _setRate(newRate);
     }
 
     function underlyingBalanceInVault() external view override returns (uint256) {
@@ -76,19 +71,19 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
     function depositFor(uint256 amount, address recipient) external override {
         IERC20(underlyingAsset).safeTransferFrom(msg.sender, address(this), amount);
         // Makes sure rate balances are correctly set before calculating wrappedAmount
-        setRate(_desiredRate);
+        _setRate(_desiredRate);
         uint256 wrappedAmount = _toTetuAmount(amount, this);
         _mint(recipient, wrappedAmount);
         // Since rate calculation depends on totalSupply, we need to recalculate parameters
         // that are base to rate calculation.
-        setRate(_desiredRate);
+        _setRate(_desiredRate);
     }
 
     function withdraw(uint256 numberOfShares) external override {
         _burn(msg.sender, numberOfShares);
         // Since rate calculation depends on totalSupply, we need to recalculate parameters
         // that are base to rate calculation.
-        setRate(_desiredRate);
+        _setRate(_desiredRate);
         uint256 mainAmount = _fromTetuAmount(numberOfShares, this);
         IERC20(underlyingAsset).safeTransfer(msg.sender, mainAmount);
     }
@@ -105,5 +100,14 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
 
     function strategy() external view override returns (address) {
         return address(_tetuStrategy);
+    }
+
+    function _setRate(uint256 newRate) private {
+        uint256 totalSupply = this.totalSupply();
+        // arbitrary number, just to make sure that both Vault and Invested values compose the rate.
+        uint8 vaultInvestedRatio = 3;
+        uint256 totalBalance = (newRate * totalSupply) / 10**_underlyingDecimals;
+        _underlyingBalanceInVault = totalBalance / vaultInvestedRatio;
+        _tetuStrategy.setInvestedUnderlyingBalance(totalBalance - _underlyingBalanceInVault);
     }
 }
