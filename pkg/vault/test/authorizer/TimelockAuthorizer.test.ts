@@ -312,13 +312,6 @@ describe('TimelockAuthorizer', () => {
           expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.false;
         });
 
-        it('account is not a revoker for any other contract', async () => {
-          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
-
-          expect(await authorizer.isRevoker(revoker, WHERE_2)).to.be.false;
-          expect(await authorizer.isRevoker(revoker, EVERYWHERE)).to.be.false;
-        });
-
         it('emits a RevokerAdded event', async () => {
           const receipt = await (await authorizer.addRevoker(revoker, WHERE_1, { from: root })).wait();
           expectEvent.inReceipt(receipt, 'RevokerAdded', {
