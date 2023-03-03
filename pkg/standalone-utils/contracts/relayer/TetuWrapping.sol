@@ -86,8 +86,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
         uint256 withdrawnMainAmount = _fromTetuAmount(amount, wrappedToken);
 
         if (recipient != address(this)) {
-            mainToken.safeApprove(address(this), withdrawnMainAmount);
-            mainToken.safeTransferFrom(address(this), recipient, withdrawnMainAmount);
+            mainToken.safeTransfer(recipient, withdrawnMainAmount);
         }
 
         if (_isChainedReference(outputReference)) {
