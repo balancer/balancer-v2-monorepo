@@ -65,7 +65,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
     }
 
     function deposit(uint256 amount) external override {
-        IERC20(underlyingAsset).safeTransferFrom(msg.sender, address(this), amount);
+        underlyingAsset.safeTransferFrom(msg.sender, address(this), amount);
         uint256 wrappedAmount = _toTetuAmount(amount, this);
         _mint(msg.sender, wrappedAmount);
     }
@@ -77,7 +77,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
     function withdraw(uint256 numberOfShares) external override {
         _burn(msg.sender, numberOfShares);
         uint256 mainAmount = _fromTetuAmount(numberOfShares, this);
-        IERC20(underlyingAsset).safeTransfer(msg.sender, mainAmount);
+        underlyingAsset.safeTransfer(msg.sender, mainAmount);
     }
 
     function transferUnderlying(uint256 amount, address to) public {}
