@@ -210,7 +210,7 @@ describe('L2BalancerPseudoMinter', () => {
     });
   });
 
-  describe('mintFor', () => {
+  describe('mintMany', () => {
     const mockCheckpointStep = fp(1);
     let gauges: Contract[];
     let gaugeAddresses: string[];
@@ -290,7 +290,7 @@ describe('L2BalancerPseudoMinter', () => {
     context('when the amount of tokens to transfer is 0', () => {
       let receipt: ContractReceipt;
 
-      sharedBeforeEach('ensure there will be tokens to transfer after next checkpoint', async () => {
+      sharedBeforeEach('ensure there will be no tokens to transfer after next checkpoint', async () => {
         // Accounting on the gauges will not increase after a checkpoint.
         await Promise.all(gauges.map((gauge) => gauge.setMockCheckpointStep(0)));
         receipt = await (await pseudoMinter.connect(user).mintMany(gaugeAddresses)).wait();
