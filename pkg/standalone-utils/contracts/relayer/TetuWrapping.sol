@@ -81,7 +81,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, IERC20(address(wrappedToken)), amount);
+            _pullToken(sender, wrappedToken, amount);
         }
 
         IERC20 mainToken = IERC20(wrappedToken.underlying());
