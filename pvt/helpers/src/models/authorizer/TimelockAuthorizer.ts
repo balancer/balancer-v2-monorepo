@@ -110,8 +110,8 @@ export default class TimelockAuthorizer {
     return this.instance.isGranter(actionId, this.toAddress(account), this.toAddress(where));
   }
 
-  async isRevoker(actionId: string, account: Account, where: Account): Promise<boolean> {
-    return this.instance.isRevoker(actionId, this.toAddress(account), this.toAddress(where));
+  async isRevoker(account: Account, where: Account): Promise<boolean> {
+    return this.instance.isRevoker(this.toAddress(account), this.toAddress(where));
   }
 
   async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
@@ -209,17 +209,12 @@ export default class TimelockAuthorizer {
     return this.with(params).removeGranter(action, this.toAddress(account), this.toAddress(wheres));
   }
 
-  async addRevoker(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).addRevoker(action, this.toAddress(account), this.toAddress(where));
+  async addRevoker(account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).addRevoker(this.toAddress(account), this.toAddress(where));
   }
 
-  async removeRevoker(
-    action: string,
-    account: Account,
-    wheres: Account,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
-    return this.with(params).removeRevoker(action, this.toAddress(account), this.toAddress(wheres));
+  async removeRevoker(account: Account, wheres: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).removeRevoker(this.toAddress(account), this.toAddress(wheres));
   }
 
   async grantPermissions(

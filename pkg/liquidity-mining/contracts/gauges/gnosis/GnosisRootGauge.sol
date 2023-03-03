@@ -30,7 +30,7 @@ contract GnosisRootGauge is StakelessGauge {
     // This value is kept in storage and not made immutable to allow for the recipient to be set during `initialize`
     address private _recipient;
 
-    constructor(IBalancerMinter minter, IGnosisBridge gnosisBridge) StakelessGauge(minter) {
+    constructor(IMainnetBalancerMinter minter, IGnosisBridge gnosisBridge) StakelessGauge(minter) {
         _gnosisBridge = gnosisBridge;
     }
 

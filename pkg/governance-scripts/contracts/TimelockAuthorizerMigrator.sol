@@ -88,7 +88,7 @@ contract TimelockAuthorizerMigrator {
         }
         for (uint256 i = 0; i < _revokersData.length; i++) {
             // Similarly to granters, we must manually verify that these permissions are set sensibly.
-            _newAuthorizer.addRevoker(_revokersData[i].role, _revokersData[i].grantee, _revokersData[i].target);
+            _newAuthorizer.addRevoker(_revokersData[i].grantee, _revokersData[i].target);
         }
 
         // We're going to schedule multiple actions, and we want to make sure we later execute them all. However, since
