@@ -1209,6 +1209,7 @@ describe('VaultActions', function () {
 
   describe('stable pools', () => {
     let poolIdStable: string;
+    let poolIdStable2: string;
 
     sharedBeforeEach('set up pools', async () => {
       tokens = (await TokenList.create(['DAI', 'CDAI'])).sort();
@@ -1221,10 +1222,20 @@ describe('VaultActions', function () {
       });
 
       const bptIndex = await stablePool.getBptIndex();
-      const equalBalances = Array.from({ length: tokensA.length + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1000)));
+      const equalBalances = Array.from({ length: tokens.length + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1000)));
       await stablePool.init({ recipient: user.address, initialBalances: equalBalances, from: user });
 
       poolIdStable = await stablePool.getPoolId();
+
+      // Create a second one with the same tokens, for chaining
+      const stablePool2 = await StablePool.create({
+        tokens,
+        vault,
+      });
+
+      await stablePool2.init({ recipient: user.address, initialBalances: equalBalances, from: user });
+
+      poolIdStable2 = await stablePool2.getPoolId();
     });
 
     describe('join pool', () => {
@@ -1248,8 +1259,9 @@ describe('VaultActions', function () {
 
       context('when caller is authorized', () => {
         context('sender = user', () => {
-          beforeEach(() => {
+          beforeEach(async () => {
             sender = user;
+            await tokens.approve({ to: vault, from: user });
           });
 
           itTestsStableJoin();
@@ -1346,16 +1358,16 @@ describe('VaultActions', function () {
                   () =>
                     relayer.connect(user).multicall([
                       encodeSwap({
-                        poolId: poolIdA,
-                        tokenIn: tokensA.MKR,
-                        tokenOut: tokensA.DAI,
+                        poolId: poolIdStable,
+                        tokenIn: tokens.CDAI,
+                        tokenOut: tokens.DAI,
                         amount: amountInCDAI,
                         outputReference: toChainedReference(0),
                         recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next join.
                       }),
                       encodeJoinPool({
                         poolKind: PoolKind.COMPOSABLE_STABLE,
-                        poolId: poolIdStable,
+                        poolId: poolIdStable2,
                         userData: StablePoolEncoder.joinExactTokensInForBPTOut(
                           getJoinExitAmounts(tokens, { DAI: toChainedReference(0) }),
                           0
@@ -1363,22 +1375,23 @@ describe('VaultActions', function () {
                       }),
                     ]),
                   tokens,
-                  { account: TypesConverter.toAddress(sender), changes: { DAI: amountInDAI.mul(-1) } }
+                  { account: TypesConverter.toAddress(sender), changes: { CDAI: amountInCDAI.mul(-1) } }
                 )
               ).wait();
 
               const {
                 args: { amountOut: amountOutDAI },
-              } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+              } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdStable });
 
               const {
                 args: { deltas },
               } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
-                poolId: poolIdStable,
+                poolId: poolIdStable2,
               });
 
-              expect(deltas[tokens.indexOf(tokens.DAI)]).to.equal(amountOutDAI);
-              expect(deltas[tokens.indexOf(tokens.CDAI)]).to.equal(0);
+              // For a composable pool, indexes need to be adjusted for BPT, as deltas will include it
+              expect(deltas[tokens.indexOf(tokens.DAI) + 1]).to.equal(amountOutDAI);
+              expect(deltas[tokens.indexOf(tokens.CDAI) + 1]).to.equal(0);
             });
           });
 
@@ -1426,7 +1439,7 @@ describe('VaultActions', function () {
                   changes: {
                     // In a balanced pool, BPT should roughly represent the underlying tokens
                     DAI: ['near', bptOut.div(2).mul(-1)],
-                    MKR: ['near', bptOut.div(2).mul(-1)],
+                    CDAI: ['near', bptOut.div(2).mul(-1)],
                   },
                 }
               );
@@ -1461,8 +1474,9 @@ describe('VaultActions', function () {
 
       context('when caller is authorized', () => {
         context('sender = user', () => {
-          beforeEach(() => {
+          beforeEach(async () => {
             sender = user;
+            await tokens.approve({ to: vault, from: user });
           });
 
           itTestsStableExit();
