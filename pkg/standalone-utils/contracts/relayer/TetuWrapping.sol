@@ -58,7 +58,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
-            IERC20(address(wrappedToken)).safeTransfer(recipient, receivedWrappedAmount);
+            IERC20(wrappedToken).safeTransfer(recipient, receivedWrappedAmount);
         }
 
         if (_isChainedReference(outputReference)) {
