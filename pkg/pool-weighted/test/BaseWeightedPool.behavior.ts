@@ -17,11 +17,12 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
+  const MINIMAL_SWAP_INFO_ONSWAP =
+    'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)';
 
   let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
   let vault: Vault;
   let pool: WeightedPool, allTokens: TokenList, tokens: TokenList;
-  const _poolType = poolType;
 
   const ZEROS = Array(numberOfTokens).fill(bn(0));
   const weights: BigNumberish[] = WEIGHTS.slice(0, numberOfTokens);
@@ -572,27 +573,25 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
   describe('onSwap', () => {
     function itSwaps() {
       context('given in', () => {
-        if (_poolType != WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL) {
-          it('reverts if caller is not the vault', async () => {
-            await expect(
-              pool.instance.onSwap(
-                {
-                  kind: SwapKind.GivenIn,
-                  tokenIn: tokens.first.address,
-                  tokenOut: tokens.second.address,
-                  amount: 0,
-                  poolId: await pool.getPoolId(),
-                  lastChangeBlock: 0,
-                  from: lp.address,
-                  to: other.address,
-                  userData: '0x',
-                },
-                0,
-                0
-              )
-            ).to.be.revertedWith('CALLER_NOT_VAULT');
-          });
-        }
+        it('reverts if caller is not the vault', async () => {
+          await expect(
+            pool.instance[MINIMAL_SWAP_INFO_ONSWAP](
+              {
+                kind: SwapKind.GivenIn,
+                tokenIn: tokens.first.address,
+                tokenOut: tokens.second.address,
+                amount: 0,
+                poolId: await pool.getPoolId(),
+                lastChangeBlock: 0,
+                from: lp.address,
+                to: other.address,
+                userData: '0x',
+              },
+              0,
+              0
+            )
+          ).to.be.revertedWith('CALLER_NOT_VAULT');
+        });
 
         it('calculates amount out', async () => {
           const amount = fp(0.1);
@@ -642,27 +641,25 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
       });
 
       context('given out', () => {
-        if (_poolType != WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL) {
-          it('reverts if caller is not the vault', async () => {
-            await expect(
-              pool.instance.onSwap(
-                {
-                  kind: SwapKind.GivenOut,
-                  tokenIn: tokens.first.address,
-                  tokenOut: tokens.second.address,
-                  amount: 0,
-                  poolId: await pool.getPoolId(),
-                  lastChangeBlock: 0,
-                  from: other.address,
-                  to: other.address,
-                  userData: '0x',
-                },
-                0,
-                0
-              )
-            ).to.be.revertedWith('CALLER_NOT_VAULT');
-          });
-        }
+        it('reverts if caller is not the vault', async () => {
+          await expect(
+            pool.instance[MINIMAL_SWAP_INFO_ONSWAP](
+              {
+                kind: SwapKind.GivenOut,
+                tokenIn: tokens.first.address,
+                tokenOut: tokens.second.address,
+                amount: 0,
+                poolId: await pool.getPoolId(),
+                lastChangeBlock: 0,
+                from: other.address,
+                to: other.address,
+                userData: '0x',
+              },
+              0,
+              0
+            )
+          ).to.be.revertedWith('CALLER_NOT_VAULT');
+        });
 
         it('calculates amount in', async () => {
           const amount = fp(0.1);
