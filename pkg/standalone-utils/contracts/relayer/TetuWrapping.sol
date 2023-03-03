@@ -59,14 +59,9 @@ abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
 
         underlying.safeApprove(address(wrappedToken), amount);
         IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
-        wrappedToken.deposit(amount);
+        wrappedToken.depositFor(amount, recipient);
         // Not using rate function of Tetu (getPricePerFullShare), since it's precision is low (not too many decimals)
         uint256 withdrawnWrappedAmount = _toTetuAmount(amount, wrappedToken);
-
-        if (recipient != address(this)) {
-            wrappedTokenErc20.safeApprove(address(this), withdrawnWrappedAmount);
-            wrappedTokenErc20.safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
-        }
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, withdrawnWrappedAmount);
