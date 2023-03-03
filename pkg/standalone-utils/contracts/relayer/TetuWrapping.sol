@@ -52,8 +52,6 @@ abstract contract TetuWrapping is IBaseRelayerLibrary, TetuShareValueHelper {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, underlying, amount);
         }
-
-
         underlying.safeApprove(address(wrappedToken), amount);
         IERC20 wrappedTokenErc20 = IERC20(address(wrappedToken));
         wrappedToken.deposit(amount);
