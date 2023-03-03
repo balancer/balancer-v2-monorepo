@@ -222,6 +222,20 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * permission validation and then schedules a call.
      */
     modifier onlyScheduled() {
+        // Checking that we're being called by the TimelockExecutionHelper is a suffient check, given that:
+        //
+        //  1) The TimelockExecutionHelper can only make external calls (and cause for this modifier to not revert) if
+        //     called by the TimelockAuthorizer.
+        //
+        //  2) The TimelockAuthorizer only makes external non-view calls in a single place: when the `execute` function
+        //    is called by an executor. This is the only possible time it could call the TimelockExecutionHelper.
+        //
+        //  3) `execute` can only be called after scheduling a delayed execution.
+        //
+        //  4) Scheduled delayed executions either target the TimelockAuthorizer directly (such as in
+        //    `scheduleRootChange` or `scheduleDelayChange`), in which this modifier will not revert (as intended, given
+        //    those functions check proper permissions), or explictly forbid targeting the TimelockAuthorizer (in the
+        //    `schedule` function), making it impossible for the TimelockExecutionHelper to call into it.
         require(msg.sender == address(_executionHelper), "CAN_ONLY_BE_SCHEDULED");
         _;
     }
