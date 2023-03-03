@@ -87,6 +87,10 @@ export default class TimelockAuthorizer {
     return this.instance.getActionIdDelay(action);
   }
 
+  async getActionIdRevokeDelay(actionId: string): Promise<BigNumber> {
+    return this.instance.getActionIdRevokeDelay(actionId);
+  }
+
   async getActionIdGrantDelay(actionId: string): Promise<BigNumber> {
     return this.instance.getActionIdGrantDelay(actionId);
   }
@@ -104,10 +108,6 @@ export default class TimelockAuthorizer {
 
   async canPerform(action: string, account: Account, where: Account): Promise<boolean> {
     return this.instance.canPerform(action, this.toAddress(account), this.toAddress(where));
-  }
-
-  async canRevoke(action: string, account: Account, where: Account): Promise<boolean> {
-    return this.instance.canRevoke(action, this.toAddress(account), this.toAddress(where));
   }
 
   async isGranter(actionId: string, account: Account, where: Account): Promise<boolean> {
@@ -146,6 +146,17 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleGrantDelayChange(action, delay, this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
+  }
+
+  async scheduleRevokeDelayChange(
+    action: string,
+    delay: BigNumberish,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
+    const receipt = await this.with(params).scheduleRevokeDelayChange(action, delay, this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
     return event.args.scheduledExecutionId;
   }
@@ -294,6 +305,12 @@ export default class TimelockAuthorizer {
 
   async scheduleAndExecuteGrantDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
     const id = await this.scheduleGrantDelayChange(action, delay, [], params);
+    await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
+    await this.execute(id);
+  }
+
+  async scheduleAndExecuteRevokeDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
+    const id = await this.scheduleRevokeDelayChange(action, delay, [], params);
     await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
     await this.execute(id);
   }
