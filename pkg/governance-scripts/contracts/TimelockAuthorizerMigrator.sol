@@ -111,14 +111,11 @@ contract TimelockAuthorizerMigrator {
             // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
             require(_grantDelaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
 
-            // TODO:
-            // PR #2294 removed the ability to schedule grant delay changes, restore this when that comes back online
-
-            //lastScheduledExecutionId = _newAuthorizer.scheduleDelayChange(
-            //    _newAuthorizer.getGrantPermissionActionId(_grantDelaysData[i].actionId),
-            //    _grantDelaysData[i].newDelay,
-            //    _arr(address(this))
-            //);
+            lastScheduledExecutionId = _newAuthorizer.scheduleGrantDelayChange(
+                _grantDelaysData[i].actionId,
+                _grantDelaysData[i].newDelay,
+                _arr(address(this))
+            );
         }
 
         _lastScheduledExecutionId = lastScheduledExecutionId;
