@@ -195,7 +195,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
 
     /**
-     * @notice Emitted when a new `delay` is set in order to grant permission to execute action action `actionId`.
+     * @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
      */
     event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
 
@@ -549,7 +549,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // No delay can be greater than the current delay for changing the Authorizer itself (`IVault.setAuthorizer`).
         // Otherwise, it'd be possible to execute the action with a shorter delay by simply replacing the
         // TimelockAuthorizer with a different contract that didn't enforce these delays.
-        // Note that it is still possible for an action to end up with a delay shorter than `setAuthorizer` if e.g.
+        // Note that it is still possible for an action to end up with a delay longer than `setAuthorizer` if e.g.
         // `setAuthorizer`'s delay was to ever be decreased, but this is not expected to happen. The following check is
         // therefore simply a way to try to prevent user error, but is not infallible.
 
@@ -566,6 +566,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_delaysPerActionId[actionId], newDelay);
 
@@ -583,6 +584,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_grantDelays[actionId], newDelay);
 
@@ -592,8 +594,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     function _getDelayChangeExecutionDelay(uint256 currentDelay, uint256 newDelay) private pure returns (uint256) {
-        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
-
         // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
         // current delay.
         //
