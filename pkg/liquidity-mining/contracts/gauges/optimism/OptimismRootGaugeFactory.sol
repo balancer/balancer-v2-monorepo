@@ -27,7 +27,7 @@ contract OptimismRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory
 
     constructor(
         IVault vault,
-        IBalancerMinter minter,
+        IMainnetBalancerMinter minter,
         IL1StandardBridge optimismL1StandardBridge,
         address optimismBal,
         uint32 gasLimit
