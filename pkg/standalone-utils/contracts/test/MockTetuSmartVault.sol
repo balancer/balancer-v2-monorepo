@@ -27,7 +27,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
-    IERC20 public underlyingAsset;
+    IERC20 public immutable underlyingAsset;
     uint256 private immutable _underlyingDecimals;
     uint256 private _underlyingBalanceInVault = 0;
     MockTetuStrategy private immutable _tetuStrategy;
