@@ -116,7 +116,7 @@ describe('TimelockAuthorizer delays', () => {
         expect(await authorizer.delay(ACTION_2)).to.be.equal(previousAction2Delay);
       });
 
-      it('does not set any the grant action delay when executed', async () => {
+      it('does not set the grant action delay when executed', async () => {
         const previousGrantDelay = await authorizer.getActionIdGrantDelay(ACTION_1);
 
         const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
