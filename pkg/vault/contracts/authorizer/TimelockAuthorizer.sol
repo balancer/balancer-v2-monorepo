@@ -855,7 +855,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Removes revoker status from `account` in target `where`.
+     * @notice Removes revoker status from `account` in target `where` for all actions.
      * @dev Only the root can remove revokers.
      *
      * Note that there are no delays associated with removing revokers.  The only instance in which one might be useful

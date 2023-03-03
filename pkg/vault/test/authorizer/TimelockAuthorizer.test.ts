@@ -404,7 +404,7 @@ describe('TimelockAuthorizer', () => {
 
     describe('removeRevoker', () => {
       context('in a specific contract', () => {
-        it('account is not a revoker for that action anywhere', async () => {
+        it('account is not a revoker anywhere', async () => {
           await authorizer.addRevoker(revoker, WHERE_1, { from: root });
           await authorizer.removeRevoker(revoker, WHERE_1, { from: root });
 
