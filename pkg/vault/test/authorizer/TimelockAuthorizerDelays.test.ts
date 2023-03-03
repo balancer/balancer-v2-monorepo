@@ -137,7 +137,7 @@ describe('TimelockAuthorizer delays', () => {
     }
 
     context('when the delay is being increased', () => {
-      // When incrasing the delay, the execution delay should always be the MINIMUM_EXECUTION_DELAY.
+      // When increasing the delay, the execution delay should always be the MINIMUM_EXECUTION_DELAY.
 
       context('when there was no previous delay', () => {
         itSchedulesTheDelayChangeCorrectly(MINIMUM_EXECUTION_DELAY);
