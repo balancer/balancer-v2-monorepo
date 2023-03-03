@@ -24,7 +24,6 @@ import "../relayer/interfaces/IMockEulerProtocol.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IEulerToken.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 
