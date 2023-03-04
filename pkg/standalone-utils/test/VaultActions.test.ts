@@ -1843,4 +1843,41 @@ describe('VaultActions', function () {
       });
     });
   });
+
+  describe('unhandled pool types', () => {
+    const INVALID_POOL_KIND = PoolKind.COMPOSABLE_STABLE + 1;
+
+    context('on joins', () => {
+      const bptOut = fp(2);
+
+      it('does not support invalid pool types on joins', async () => {
+        await expect(
+          relayer.connect(user).multicall([
+            await encodeJoinPool({
+              poolKind: INVALID_POOL_KIND,
+              poolId: poolIdA,
+              userData: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(bptOut),
+            }),
+          ])
+        ).to.be.revertedWith('LOW_LEVEL_CALL_FAILED');
+      });
+    });
+
+    context('on exits', () => {
+      const bptIn = fp(2);
+
+      it('does not support invalid pool types on exits', async () => {
+        await expect(
+          relayer.connect(user).multicall([
+            await encodeExitPool({
+              poolKind: INVALID_POOL_KIND,
+              poolId: poolIdA,
+              toInternalBalance: false,
+              userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(bptIn),
+            }),
+          ])
+        ).to.be.revertedWith('LOW_LEVEL_CALL_FAILED');
+      });
+    });
+  });
 });
