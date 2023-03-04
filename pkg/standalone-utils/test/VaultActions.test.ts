@@ -1210,6 +1210,8 @@ describe('VaultActions', function () {
   describe('stable pools', () => {
     let poolIdStable: string;
     let poolIdStable2: string;
+    let bptIndex: number;
+    let bptIndex2: number;
 
     sharedBeforeEach('set up pools', async () => {
       tokens = (await TokenList.create(['DAI', 'CDAI'])).sort();
@@ -1221,19 +1223,20 @@ describe('VaultActions', function () {
         vault,
       });
 
-      const bptIndex = await stablePool.getBptIndex();
+      bptIndex = await stablePool.getBptIndex();
       const equalBalances = Array.from({ length: tokens.length + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1000)));
       await stablePool.init({ recipient: user.address, initialBalances: equalBalances, from: user });
 
       poolIdStable = await stablePool.getPoolId();
-
       // Create a second one with the same tokens, for chaining
       const stablePool2 = await StablePool.create({
         tokens,
         vault,
       });
 
-      await stablePool2.init({ recipient: user.address, initialBalances: equalBalances, from: user });
+      bptIndex2 = await stablePool2.getBptIndex();
+      const equalBalances2 = Array.from({ length: tokens.length + 1 }).map((_, i) => (i == bptIndex2 ? 0 : fp(1000)));
+      await stablePool2.init({ recipient: user.address, initialBalances: equalBalances2, from: user });
 
       poolIdStable2 = await stablePool2.getPoolId();
     });
@@ -1390,8 +1393,11 @@ describe('VaultActions', function () {
               });
 
               // For a composable pool, indexes need to be adjusted for BPT, as deltas will include it
-              expect(deltas[tokens.indexOf(tokens.DAI) + 1]).to.equal(amountOutDAI);
-              expect(deltas[tokens.indexOf(tokens.CDAI) + 1]).to.equal(0);
+              const daiIndex = tokens.indexOf(tokens.DAI);
+              const cdaiIndex = tokens.indexOf(tokens.CDAI);
+
+              expect(deltas[daiIndex < bptIndex2 ? daiIndex : daiIndex + 1]).to.equal(amountOutDAI);
+              expect(deltas[cdaiIndex < bptIndex2 ? cdaiIndex : cdaiIndex + 1]).to.equal(0);
             });
           });
 
@@ -1654,7 +1660,8 @@ describe('VaultActions', function () {
                   args: { amountIn: amountInCDAI },
                 } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdStable });
 
-                expect(deltas[tokens.indexOf(tokens.CDAI)].mul(-1)).to.equal(amountInCDAI);
+                const cdaiIndex = tokens.indexOf(tokens.CDAI);
+                expect(deltas[cdaiIndex < bptIndex ? cdaiIndex : cdaiIndex + 1].mul(-1)).to.equal(amountInCDAI);
               });
             });
 
@@ -1796,7 +1803,8 @@ describe('VaultActions', function () {
                   args: { amountIn: amountInCDAI },
                 } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdStable });
 
-                expect(deltas[tokens.indexOf(tokens.CDAI)].mul(-1)).to.equal(amountInCDAI);
+                const cdaiIndex = tokens.indexOf(tokens.CDAI);
+                expect(deltas[cdaiIndex < bptIndex ? cdaiIndex : cdaiIndex + 1].mul(-1)).to.equal(amountInCDAI);
               });
             });
 
