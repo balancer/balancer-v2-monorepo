@@ -46,16 +46,6 @@ import "./TimelockExecutionHelper.sol";
  *   target contract (where). This identifier is called `permissionId` and is computed as
  *   `keccak256(actionId, account, where)`.
  *
- * Permission granularity:
- *   In addition to the who/what/where of a permission, an extra notion of a "specifier" is introduced to enable more
- *   granular configuration. This concept is used within the Authorizer to provide clarity among four ambiguous actions:
- *   granting/revoking permissions, executing scheduled actions, and setting action delays. For example, in managing
- *   the permission to set action delays, it is desirable to delineate whether an account can set delays for all
- *   actions indiscriminately or only for a specific action ID. In this case, the permission's "baseActionId" is the
- *   action ID for scheduling a delay change, and the "specifier" is the action ID for which the delay will be changed.
- *   The "baseActionId" and "specifier" of a permission are combined into a single "extended" `actionId`
- *   by calling `getExtendedActionId(baseActionId, specifier)`.
- *
  * Note that the TimelockAuthorizer doesn't make use of reentrancy guards on the majority of external functions.
  * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
  * which executes a scheduled execution and so this is the only protected function.

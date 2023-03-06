@@ -37,7 +37,6 @@ describe('TimelockAuthorizer', () => {
   const WHERE_2 = ethers.Wallet.createRandom().address;
   const WHERE = [WHERE_1, WHERE_2];
 
-  const GENERAL_PERMISSION_SPECIFIER = TimelockAuthorizer.GENERAL_PERMISSION_SPECIFIER;
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
