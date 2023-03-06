@@ -13,7 +13,7 @@ import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTr
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
@@ -49,6 +49,7 @@ describe('EulerWrapping', function () {
     eDAI = await deploy('MockEulerToken', {
       args: ['eDAI', 'eDAI', 18, daiAddress, eulerProtocolAddress],
     });
+    eDAI.setExchangeRateMultiplier(bn(5e17));
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
@@ -130,7 +131,7 @@ describe('EulerWrapping', function () {
 
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          const expectedulerAmount = await eDAI.convertBalanceToUnderlying(amount);
+          const expectedulerAmount = await eDAI.convertUnderlyingToBalance(amount);
 
           const receipt = await (
             await relayer.connect(senderUser).multicall([encodeWrap(eDAI.address, tokenSender, tokenRecipient, amount)])
@@ -226,21 +227,21 @@ describe('EulerWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayer),
-              to: ZERO_ADDRESS,
-              value: amount,
+              from: mockEulerProtocol.address,
+              to: TypesConverter.toAddress(relayer),
+              value: await eDAI.convertBalanceToUnderlying(amount),
             },
-            eDAI
+            DAI
           );
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: mockEulerProtocol.address,
-              to: relayer.address,
-              value: unwrappedAmount,
+              from: TypesConverter.toAddress(relayer),
+              to: ZERO_ADDRESS,
+              value: amount,
             },
-            DAI
+            eDAI
           );
           if (!relayerIsRecipient) {
             expectTransferEvent(
@@ -289,22 +290,22 @@ describe('EulerWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayer),
-              to: ZERO_ADDRESS,
-              value: amount,
+              from: mockEulerProtocol.address,
+              to: TypesConverter.toAddress(relayer),
+              value: unwrappedAmount,
             },
-            eDAI
+            DAI
           );
 
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: mockEulerProtocol.address,
-              to: relayer.address,
-              value: unwrappedAmount,
+              from: TypesConverter.toAddress(senderUser),
+              to: TypesConverter.toAddress(relayer),
+              value: amount,
             },
-            DAI
+            eDAI
           );
           if (!relayerIsRecipient) {
             expectTransferEvent(

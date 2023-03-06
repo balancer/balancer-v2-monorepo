@@ -22,8 +22,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
-
 import "./IBaseRelayerLibrary.sol";
 
 /**
@@ -72,15 +70,14 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
         // 0 for the Euler primary account
         wrappedToken.deposit(0, amount);
 
-        uint256 withdrawnWrappedAmount = wrappedToken.balanceOf(address(this));
+        uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
-            IERC20(wrappedToken).safeApprove(address(this), withdrawnWrappedAmount);
-            IERC20(wrappedToken).safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
+            IERC20(wrappedToken).safeTransfer(recipient, receivedWrappedAmount);
         }
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, withdrawnWrappedAmount);
+            _setChainedReferenceValue(outputReference, receivedWrappedAmount);
         }
     }
 
@@ -99,24 +96,22 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, IERC20(address(wrappedToken)), amount);
+            _pullToken(sender, wrappedToken, amount);
         }
 
         IERC20 mainToken = IERC20(wrappedToken.underlyingAsset());
 
-        // Euler offers two ways to withdraw. Either calculate the MainTokenOut via
-        // 1. MainTokenOut = wrappedToken.convertBalanceToUnderlying(WrappedTokenAmount); or
-        // 2. withdraw as Much MainToken as one gets when depositing WrappedTokenAmount back
-        // When using option 1, the possibility exists to have dust of WrappedToken in the relayer
-        // Therefor option 2 is chosen
-        // 0 for the Euler primary account
+        // Euler offers two ways to withdraw:
+        //     1. Calculate mainTokenOut via wrappedToken.convertBalanceToUnderlying(wrappedTokenAmount)
+        //     2. Redeem the account's full balance of wrappedToken for mainToken
+        // Option 1 may leave wrappedToken dust in the relayer, so we choose option 2
+        // The 0 argument is for the Euler primary account
         wrappedToken.withdraw(0, uint256(-1)); //MAX_UINT forces option 2
 
         uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
-            mainToken.safeApprove(address(this), withdrawnMainAmount);
-            mainToken.safeTransferFrom(address(this), recipient, withdrawnMainAmount);
+            mainToken.safeTransfer(recipient, withdrawnMainAmount);
         }
 
         if (_isChainedReference(outputReference)) {

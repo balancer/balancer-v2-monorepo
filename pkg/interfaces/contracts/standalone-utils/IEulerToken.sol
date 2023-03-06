@@ -19,14 +19,11 @@ import "../solidity-utils/openzeppelin/IERC20.sol";
 interface IEulerToken is IERC20 {
     /**
      * @dev Convert an eToken balance to an underlying amount, taking into account current exchange rate
-     * eToken balance, in internal book-keeping units (18 decimals)
-     * amountin underlying units, (same decimals as underlying token)
-     * balance in eToken is scaled by (wrappedTokenDecimals - mainTokenDecimals)
-     * to account for a more precise rate in case the mainToken has lower than 18 decimals
+     * @param balance eToken balance, in internal book-keeping units (18 decimals)
+     * @return Amount in underlying units, (same decimals as underlying token)
      * https://github.com/euler-xyz/euler-contracts/blob/master/contracts/modules/EToken.sol#L104
      */
-    function convertBalanceToUnderlying(uint256) external view returns (uint256);
-
+    function convertBalanceToUnderlying(uint256 balance) external view returns (uint256);
     /**
      * @dev Convert an underlying amount to an eToken balance, taking into account current exchange rate
      * @param underlyingAmount Amount in underlying units (same decimals as underlying token)
