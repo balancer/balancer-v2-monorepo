@@ -232,9 +232,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * permission validation and then schedules a call.
      */
     modifier onlyScheduled() {
-        // Checking that we're being called by the TimelockExecutionHelper is a suffient check, given that:
+        // Checking that we're being called by the TimelockExecutionHelper is a sufficient check, given that:
         //
-        //  1) The TimelockExecutionHelper can only make external calls (and cause for this modifier to not revert) if
+        //  1) The TimelockExecutionHelper can only make external calls (and cause this modifier to not revert) if
         //     called by the TimelockAuthorizer.
         //
         //  2) The TimelockAuthorizer only makes external non-view calls in a single place: when the `execute` function
@@ -243,9 +243,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         //  3) `execute` can only be called after scheduling a delayed execution.
         //
         //  4) Scheduled delayed executions either target the TimelockAuthorizer directly (such as in
-        //    `scheduleRootChange` or `scheduleDelayChange`), in which this modifier will not revert (as intended, given
-        //    those functions check proper permissions), or explictly forbid targeting the TimelockAuthorizer (in the
-        //    `schedule` function), making it impossible for the TimelockExecutionHelper to call into it.
+        //    `scheduleRootChange` or `scheduleDelayChange`), in which case this modifier will not revert (as intended,
+        //    given those functions check proper permissions), or explictly forbid targeting the TimelockAuthorizer
+        //    (in the `schedule` function), making it impossible for the TimelockExecutionHelper to call into it.
         require(msg.sender == address(_executionHelper), "CAN_ONLY_BE_SCHEDULED");
         _;
     }
@@ -467,9 +467,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         }
 
         // Actions with no delay can only be performed by accounts that have the associated permission.
-        // Actions with a non-zero delay however cannot be performed by permissioned accounts: they can only be made by
+        // However, actions with a non-zero delay cannot be performed by permissioned accounts: they can only be made by
         // the TimelockAuthorizerExecutionHelper, which works alongisde the TimelockAuthorizer itself to ensure that
-        // said executions have been properly scheduled in advance by an authorized party via the `schedule` function.
+        // executions have been properly scheduled in advance by an authorized party via the `schedule` function.
         return
             _delaysPerActionId[actionId] == 0
                 ? hasPermission(actionId, account, where)
@@ -708,7 +708,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * @notice Schedules an arbitrary execution of `data` in target `where`. Returns a scheduledExecutionId that can be
      * used to call `execute`, `cancel`, and associated getters such as `getScheduledExecution`.
      *
-     * If `executors` is an empty array, that any account in the network will be able to initiate the scheduled
+     * If `executors` is an empty array, then any account in the network will be able to initiate the scheduled
      * execution. If not, only accounts in the `executors` array will be able to call `execute`. It is not possible to
      * change this after scheduling: the list of executors is immutable, and cannot be changed by any account (including
      * root).
@@ -719,7 +719,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      *
      * This is the only way to execute actions in external contracts that have a delay associated with them. Calling
      * said functions directly will cause `canPerform` to return false, even if the caller has permission. An account
-     * that has permission over an action with a delay cannot call it directly, and must intead schedule a delayed
+     * that has permission over an action with a delay cannot call it directly, and must instead schedule a delayed
      * execution by calling this function.
      */
     function schedule(
@@ -740,12 +740,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
 
         // We also disallow the TimelockExecutionHelper from attempting to call into itself. Otherwise the above
-        // protection could be bypassed by wrapping a call to `setPendingRoot` inside of a call causing the
+        // protection could be bypassed by wrapping a call to `setPendingRoot` inside of a call, causing the
         // TimelockExecutionHelper to reenter itself, essentially hiding the fact that `where == address(this)` inside
         // `data`.
         //
         // Note: The TimelockExecutionHelper only accepts calls from the TimelockAuthorizer (i.e. not from itself) so
-        // this scenario should be impossible but this check is cheap so we enforce it here as well anyway.
+        // this scenario should be impossible: but this check is cheap so we enforce it here as well anyway.
         require(where != address(_executionHelper), "ATTEMPTING_EXECUTION_HELPER_REENTRANCY");
 
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
@@ -763,10 +763,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     /**
      * @notice Executes a scheduled action `scheduledExecutionId`. This is used to execute all scheduled executions,
-     * both those that originate from `schedule` but also internal TimelockAuthorizer functions such as
+     * not only those that originate from `schedule`, but also internal TimelockAuthorizer functions such as
      * `scheduleRootChange` or `scheduleDelayChange`.
      *
-     * If any executors were setup when scheduling, `execute` can only be called by them. If none were set, the
+     * If any executors were set up when scheduling, `execute` can only be called by them. If none were set, the
      * scheduled execution is said to be 'unprotected', and can be executed by anyone.
      *
      * Once executed, a scheduled execution cannot be executed again. It also cannot be executed if canceled.
@@ -774,7 +774,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
      * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a
      * scheduled action during the execution of another scheduled action - an unlikely and convoluted scenario that we
-     * knowlingly forbid.
+     * explicitly forbid.
      *
      * Note that while `execute` is nonReentrant, other functions are not - indeed, we rely on reentrancy to e.g. call
      * `setPendingRoot` or `setDelay`.
