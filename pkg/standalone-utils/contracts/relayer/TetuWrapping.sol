@@ -43,7 +43,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
         }
-        
+
         IERC20 underlying = IERC20(wrappedToken.underlying());
 
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
@@ -52,7 +52,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, underlying, amount);
         }
-        
+
         underlying.safeApprove(address(wrappedToken), amount);
         wrappedToken.deposit(amount);
         uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
