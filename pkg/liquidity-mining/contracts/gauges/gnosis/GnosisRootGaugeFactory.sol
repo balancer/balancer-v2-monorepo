@@ -18,8 +18,8 @@ import "../BaseGaugeFactory.sol";
 import "./GnosisRootGauge.sol";
 
 contract GnosisRootGaugeFactory is BaseGaugeFactory {
-    constructor(IBalancerMinter minter, IGnosisBridge gnosisBridge)
-        BaseGaugeFactory(new GnosisRootGauge(minter, gnosisBridge))
+    constructor(IMainnetBalancerMinter minter, IGnosisBridge gnosisBridge)
+        BaseGaugeFactory(address(new GnosisRootGauge(minter, gnosisBridge)))
     {
         // solhint-disable-previous-line no-empty-blocks
     }

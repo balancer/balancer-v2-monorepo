@@ -19,7 +19,7 @@ import "../gauges/BaseGaugeFactory.sol";
 import "./MockLiquidityGauge.sol";
 
 contract MockLiquidityGaugeFactory is BaseGaugeFactory {
-    constructor(MockLiquidityGauge gaugeImplementation) BaseGaugeFactory(gaugeImplementation) {
+    constructor(MockLiquidityGauge gaugeImplementation) BaseGaugeFactory(address(gaugeImplementation)) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

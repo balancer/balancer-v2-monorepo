@@ -23,7 +23,7 @@ describe('TimelockAuthorizerRoot', () => {
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
 
   describe('root', () => {
-    let GRANT_ACTION_ID: string, REVOKE_ACTION_ID: string;
+    let REVOKE_ACTION_ID: string;
 
     sharedBeforeEach('deploy authorizer', async () => {
       const oldAuthorizer = await TimelockAuthorizer.create({ root });
@@ -37,7 +37,6 @@ describe('TimelockAuthorizerRoot', () => {
     });
 
     sharedBeforeEach('set constants', async () => {
-      GRANT_ACTION_ID = await authorizer.GRANT_ACTION_ID();
       REVOKE_ACTION_ID = await authorizer.REVOKE_ACTION_ID();
     });
 
@@ -46,12 +45,6 @@ describe('TimelockAuthorizerRoot', () => {
     });
 
     it('defines its permissions correctly', async () => {
-      const expectedGrantId = ethers.utils.solidityKeccak256(
-        ['bytes32', 'address', 'address'],
-        [GRANT_ACTION_ID, root.address, EVERYWHERE]
-      );
-      expect(await authorizer.getPermissionId(GRANT_ACTION_ID, root, EVERYWHERE)).to.be.equal(expectedGrantId);
-
       const expectedRevokeId = ethers.utils.solidityKeccak256(
         ['bytes32', 'address', 'address'],
         [REVOKE_ACTION_ID, root.address, EVERYWHERE]
@@ -60,15 +53,15 @@ describe('TimelockAuthorizerRoot', () => {
     });
 
     it('can grant permissions everywhere', async () => {
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, WHERE_1)).to.be.true;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, WHERE_2)).to.be.true;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, WHERE_1)).to.be.true;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, WHERE_2)).to.be.true;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
     });
 
     it('can revoke permissions everywhere', async () => {
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, root, WHERE_1)).to.be.true;
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, root, WHERE_2)).to.be.true;
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
+      expect(await authorizer.isRevoker(root, WHERE_1)).to.be.true;
+      expect(await authorizer.isRevoker(root, WHERE_2)).to.be.true;
+      expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.true;
     });
 
     it('does not hold plain grant permissions', async () => {
@@ -76,57 +69,52 @@ describe('TimelockAuthorizerRoot', () => {
       expect(await authorizer.canPerform(REVOKE_ACTION_ID, root, EVERYWHERE)).to.be.false;
     });
 
-    it('does not hold plain revoke permissions', async () => {
-      expect(await authorizer.canPerform(GRANT_ACTION_ID, root, EVERYWHERE)).to.be.false;
-      expect(await authorizer.canPerform(GRANT_ACTION_ID, root, EVERYWHERE)).to.be.false;
-    });
-
     it('can manage other addresses to grant permissions for a custom contract', async () => {
       await authorizer.addGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1, { from: root });
 
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.true;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.true;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
 
       await authorizer.removeGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1, { from: root });
 
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
     });
 
     it('can manage other addresses to grant permissions everywhere', async () => {
       await authorizer.addGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE, { from: root });
 
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.true;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.true;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.true;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.true;
 
       await authorizer.removeGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE, { from: root });
 
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-      expect(await authorizer.canGrant(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
+      expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
     });
 
     it('can manage other addresses to revoke permissions for a custom contract', async () => {
-      await authorizer.addRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1, { from: root });
+      await authorizer.addRevoker(grantee, WHERE_1, { from: root });
 
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.true;
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.isRevoker(grantee, WHERE_1)).to.be.true;
+      expect(await authorizer.isRevoker(grantee, EVERYWHERE)).to.be.false;
 
-      await authorizer.removeRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1, { from: root });
+      await authorizer.removeRevoker(grantee, WHERE_1, { from: root });
 
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.isRevoker(grantee, WHERE_1)).to.be.false;
+      expect(await authorizer.isRevoker(grantee, EVERYWHERE)).to.be.false;
     });
 
     it('can manage other addresses to revoke permissions everywhere', async () => {
-      await authorizer.addRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE, { from: root });
+      await authorizer.addRevoker(grantee, EVERYWHERE, { from: root });
 
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.true;
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.true;
+      expect(await authorizer.isRevoker(grantee, WHERE_1)).to.be.true;
+      expect(await authorizer.isRevoker(grantee, EVERYWHERE)).to.be.true;
 
-      await authorizer.removeRevoker(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE, { from: root });
+      await authorizer.removeRevoker(grantee, EVERYWHERE, { from: root });
 
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, WHERE_1)).to.be.false;
-      expect(await authorizer.canRevoke(GENERAL_PERMISSION_SPECIFIER, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.isRevoker(grantee, WHERE_1)).to.be.false;
+      expect(await authorizer.isRevoker(grantee, EVERYWHERE)).to.be.false;
     });
   });
 });

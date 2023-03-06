@@ -41,7 +41,7 @@ contract OptimismRootGauge is StakelessGauge {
     address private _recipient;
 
     constructor(
-        IBalancerMinter minter,
+        IMainnetBalancerMinter minter,
         IL1StandardBridge optimismL1StandardBridge,
         address optimismBal
     ) StakelessGauge(minter) {
