@@ -137,7 +137,7 @@ describe('TimelockAuthorizerMigrator', () => {
 
     it('sets up revokers properly', async () => {
       for (const revokerData of revokersData) {
-        expect(await newAuthorizer.isRevoker(revokerData.role, revokerData.grantee, revokerData.target)).to.be.true;
+        expect(await newAuthorizer.isRevoker(revokerData.grantee, revokerData.target)).to.be.true;
       }
     });
 
@@ -179,8 +179,7 @@ describe('TimelockAuthorizerMigrator', () => {
         await migrator.executeDelays();
 
         for (const delayData of grantDelaysData) {
-          const grantActionId = await newAuthorizer.getGrantPermissionActionId(delayData.actionId);
-          expect(await newAuthorizer.getActionIdDelay(grantActionId)).to.be.eq(delayData.newDelay);
+          expect(await newAuthorizer.getActionIdGrantDelay(delayData.actionId)).to.be.eq(delayData.newDelay);
         }
       });
     });

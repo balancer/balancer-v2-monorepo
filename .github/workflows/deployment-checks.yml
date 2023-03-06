@@ -38,6 +38,7 @@ jobs:
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.OPTIMISM_INFURA_ENDPOINT }}
           BINANCE_RPC_ENDPOINT: ${{ secrets.BINANCE_INFURA_ENDPOINT }}
           GNOSIS_RPC_ENDPOINT: ${{ secrets.GNOSIS_INFURA_ENDPOINT }}
+          AVALANCHE_RPC_ENDPOINT: ${{ secrets.AVALANCHE_INFURA_ENDPOINT }}
           GOERLI_RPC_ENDPOINT: ${{ secrets.GOERLI_INFURA_ENDPOINT }}
       - name: Check Deployment Addresses
         run: yarn workspace @balancer-labs/v2-deployments check-deployments
@@ -59,6 +60,7 @@ jobs:
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.OPTIMISM_INFURA_ENDPOINT }}
           BINANCE_RPC_ENDPOINT: ${{ secrets.BINANCE_INFURA_ENDPOINT }}
           GNOSIS_RPC_ENDPOINT: ${{ secrets.GNOSIS_INFURA_ENDPOINT }}
+          AVALANCHE_RPC_ENDPOINT: ${{ secrets.AVALANCHE_INFURA_ENDPOINT }}
           GOERLI_RPC_ENDPOINT: ${{ secrets.GOERLI_INFURA_ENDPOINT }}
       - name: Check Action IDs
         run: yarn workspace @balancer-labs/v2-deployments check-action-ids

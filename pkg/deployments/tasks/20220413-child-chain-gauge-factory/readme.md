@@ -8,6 +8,7 @@ Deployment of the `ChildChainLiquidityGaugeFactory`, for liquidity gauges to be 
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`ChildChainStreamer` artifact](./artifact/ChildChainStreamer.json)
 - [`RewardsOnlyGauge` artifact](./artifact/RewardsOnlyGauge.json)

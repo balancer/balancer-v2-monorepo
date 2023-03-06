@@ -318,5 +318,9 @@
   "0xf93F6382913d1dE6Bdf683A94be8349751af8d59": {
     "task": "20221207-aave-rebalanced-linear-pool-v3",
     "name": "MockAaveLinearPool"
+  },
+  "0x4fb47126Fa83A8734991E41B942Ac29A3266C968": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
   }
 }

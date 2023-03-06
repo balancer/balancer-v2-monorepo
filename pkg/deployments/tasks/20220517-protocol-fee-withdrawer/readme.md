@@ -12,5 +12,6 @@ See [the Double Entrypoint Fix Relayer](../20220513-double-entrypoint-fix-relaye
 - [Optimism mainnet addresses](./output/optimism.json)
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`ProtocolFeesWithdrawer` artifact](./artifact/ProtocolFeesWithdrawer.json)
