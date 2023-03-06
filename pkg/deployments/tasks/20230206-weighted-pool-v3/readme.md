@@ -11,6 +11,7 @@ Supersedes `20220908-weighted-pool-v2`, fixing the reentrancy issue described in
 - [Optimism mainnet addresses](./output/optimism.json)
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`WeightedPool` artifact](./artifact/WeightedPool.json)
 - [`WeightedPoolFactory` artifact](./artifact/WeightedPoolFactory.json)

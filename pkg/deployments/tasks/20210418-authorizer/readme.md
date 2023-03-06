@@ -12,5 +12,6 @@ This contract is expected to be eventually replaced by one with a) native suppor
 - [Optimism mainnet addresses](./output/optimism.json)
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`Authorizer` artifact](./artifact/Authorizer.json)
