@@ -135,7 +135,9 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'DelayChangeScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'DelayChangeScheduled', {
+      actionId: action,
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -146,7 +148,9 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleGrantDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'GrantDelayChangeScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'GrantDelayChangeScheduled', {
+      actionId: action,
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -157,7 +161,9 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleRevokeDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'RevokeDelayChangeScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RevokeDelayChangeScheduled', {
+      actionId: action,
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -181,7 +187,9 @@ export default class TimelockAuthorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'GrantPermissionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'GrantPermissionScheduled', {
+      actionId: action,
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -199,7 +207,9 @@ export default class TimelockAuthorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'RevokePermissionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RevokePermissionScheduled', {
+      actionId: action,
+    });
     return event.args.scheduledExecutionId;
   }
 

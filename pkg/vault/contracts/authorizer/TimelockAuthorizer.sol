@@ -103,7 +103,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     // solhint-disable var-name-mixedcase
     bytes32 public immutable REVOKE_ACTION_ID;
-    bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
     // These action ids do not need to be used by external actors as the action ids above do.
     // Instead they're saved just for gas savings so we can keep them private.
@@ -308,7 +307,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         _grantPermission(generalRevokeActionId, initialRoot, EVERYWHERE);
 
         REVOKE_ACTION_ID = revokeActionId;
-        SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
         _GENERAL_REVOKE_ACTION_ID = generalRevokeActionId;
     }
 
@@ -373,13 +371,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     function getRevokePermissionActionId(bytes32 actionId) public view returns (bytes32) {
         return getExtendedActionId(REVOKE_ACTION_ID, actionId);
-    }
-
-    /**
-     * @notice Returns the action ID for scheduling setting a new delay for action `actionId`.
-     */
-    function getScheduleDelayActionId(bytes32 actionId) public view returns (bytes32) {
-        return getExtendedActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
     }
 
     /**
@@ -659,13 +650,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_delaysPerActionId[actionId], newDelay);
 
-        bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
 
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, executionDelay, executors);
-        emit DelayChangeScheduled(scheduleDelayActionId, scheduledExecutionId);
+        emit DelayChangeScheduled(actionId, scheduledExecutionId);
         return scheduledExecutionId;
     }
 
