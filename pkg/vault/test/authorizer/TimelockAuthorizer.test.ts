@@ -1036,23 +1036,20 @@ describe('TimelockAuthorizer', () => {
             });
           });
 
-          context.skip('when there is a delay set to revoke permissions', () => {
+          context('when there is a delay set to revoke permissions', () => {
             const delay = DAY;
-            let revokeActionId: string;
-
-            sharedBeforeEach('set constants', async () => {
-              revokeActionId = await authorizer.getRevokePermissionActionId(ACTION_1);
-            });
 
             sharedBeforeEach('set delay', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
               await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
-              await authorizer.scheduleAndExecuteDelayChange(revokeActionId, delay, { from: root });
+              await authorizer.scheduleAndExecuteRevokeDelayChange(ACTION_1, delay, { from: root });
+              await authorizer.grantPermissions(ACTION_1, granter, authenticatedContract, { from: root });
+              await authorizer.grantPermissions(ACTION_2, granter, authenticatedContract, { from: root });
             });
 
             it('reverts', async () => {
               await expect(authorizer.revokePermissions(ACTION_1, granter, WHERE_1, { from: root })).to.be.revertedWith(
-                'SENDER_IS_NOT_REVOKER'
+                'REVOKE_MUST_BE_SCHEDULED'
               );
             });
 
