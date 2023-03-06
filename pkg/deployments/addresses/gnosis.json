@@ -110,5 +110,9 @@
   "0xf7D5DcE55E6D47852F054697BAB6A1B48A00ddbd": {
     "task": "20220812-child-chain-reward-helper",
     "name": "ChildChainGaugeRewardHelper"
+  },
+  "0x6B5dA774890Db7B7b96C6f44e6a4b0F657399E2e": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
   }
 }

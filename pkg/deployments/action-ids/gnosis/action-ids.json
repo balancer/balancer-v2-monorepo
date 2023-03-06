@@ -49,14 +49,6 @@
       }
     }
   },
-  "20220325-authorizer-adaptor": {
-    "AuthorizerAdaptor": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0x6fef9a8dcafc0cebe8ac27f7da400eca76b1550c0c7b475c9a6ce1334f4cd1b3"
-      }
-    }
-  },
   "20220517-protocol-fee-withdrawer": {
     "ProtocolFeesWithdrawer": {
       "useAdaptor": false,
@@ -117,20 +109,6 @@
         "wrapReaperVaultToken(address,address,address,uint256,uint256)": "0xc90e51726c51526e90d73620145365669f007bec7b0e3821bfbdb0520a5c118f",
         "wrapStETH(address,address,uint256,uint256)": "0x5161bd7d2bb7c1ca32df99e222692073ced616bc0ebcfacb82e49f251cfcc263",
         "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x1788a4448d746681dc29939260f2db801b68ab6dde7d8d519b14811a4bdcba36"
-      }
-    },
-    "BalancerRelayer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "multicall(bytes[])": "0x7185383e43f020ab904662da44f16100098c51050788ead1d7709e241f4cace5"
-      }
-    }
-  },
-  "20221124-authorizer-adaptor-entrypoint": {
-    "AuthorizerAdaptorEntrypoint": {
-      "useAdaptor": false,
-      "actionIds": {
-        "performAction(address,bytes)": "0x6fef9a8dcafc0cebe8ac27f7da400eca76b1550c0c7b475c9a6ce1334f4cd1b3"
       }
     }
   },
@@ -348,6 +326,15 @@
       "useAdaptor": false,
       "actionIds": {
         "addTokenToGauge(address,address,address)": "0x1ff8dca7a9af725b8fde69703b657ae58c04e9a7153ef1025379deb0dda4f926"
+      }
+    }
+  },
+  "20230223-protocol-id-registry": {
+    "ProtocolIdRegistry": {
+      "useAdaptor": false,
+      "actionIds": {
+        "registerProtocolId(uint256,string)": "0x0ed00e8835e2d2867dcdf863354062a805ff3fe1dabf44c0b68378c84c52616e",
+        "renameProtocolId(uint256,string)": "0xfb760772d39ec169b9e7cd49bccd8858c635114d103dea72a7a694d094e8930c"
       }
     }
   }
