@@ -56,6 +56,11 @@ describe('TimelockAuthorizer', () => {
   describe('granters', () => {
     describe('addGranter', () => {
       context('in a specific contract', () => {
+        it('root is already a granter', async () => {
+          expect(await authorizer.isGranter(ACTION_1, root, WHERE_1)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_2, root, WHERE_1)).to.be.true;
+        });
+
         it('account is granter for that action only in that contract', async () => {
           await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
 
@@ -109,6 +114,11 @@ describe('TimelockAuthorizer', () => {
       });
 
       context('in any contract', () => {
+        it('root is already a granter', async () => {
+          expect(await authorizer.isGranter(ACTION_1, root, EVERYWHERE)).to.be.true;
+          expect(await authorizer.isGranter(ACTION_2, root, EVERYWHERE)).to.be.true;
+        });
+
         it('account is granter for that action in any contract', async () => {
           await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
 
@@ -302,6 +312,11 @@ describe('TimelockAuthorizer', () => {
   describe('revokers', () => {
     describe('addRevoker', () => {
       context('in a specific contract', () => {
+        it('root is already a revoker', async () => {
+          expect(await authorizer.isRevoker(root, WHERE_1)).to.be.true;
+          expect(await authorizer.isRevoker(root, WHERE_2)).to.be.true;
+        });
+
         it('account is a revoker only in that contract', async () => {
           await authorizer.addRevoker(revoker, WHERE_1, { from: root });
 
@@ -346,6 +361,11 @@ describe('TimelockAuthorizer', () => {
       });
 
       context('in any contract', () => {
+        it('root is already a revoker', async () => {
+          expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.true;
+          expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.true;
+        });
+
         it('account is a revoker in any contract', async () => {
           await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
 
@@ -511,26 +531,33 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', () => {
       context('when adding canceler', () => {
         context('for a specific scheduled execution id', () => {
+          const executionId = 0;
+          const otherExecutionId = 1;
+
+          it('root is a canceler', async () => {
+            expect(await authorizer.isCanceler(executionId, root)).to.be.true;
+          });
+
           it('can add canceler for a specific execution id', async () => {
-            expect(await authorizer.isCanceler(0, canceler)).to.be.false;
+            expect(await authorizer.isCanceler(executionId, canceler)).to.be.false;
 
-            await authorizer.addCanceler(0, canceler, { from: root });
+            await authorizer.addCanceler(executionId, canceler, { from: root });
 
-            expect(await authorizer.isCanceler(0, canceler)).to.be.true;
+            expect(await authorizer.isCanceler(executionId, canceler)).to.be.true;
             // test that canceler has only a specific permission
-            expect(await authorizer.isCanceler(1, canceler)).to.be.false;
+            expect(await authorizer.isCanceler(otherExecutionId, canceler)).to.be.false;
           });
 
           it('emits an event', async () => {
-            const receipt = await authorizer.addCanceler(0, canceler, { from: root });
+            const receipt = await authorizer.addCanceler(executionId, canceler, { from: root });
 
-            expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', { scheduledExecutionId: 0 });
+            expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', { scheduledExecutionId: executionId });
           });
 
           it('cannot be added twice', async () => {
-            await authorizer.addCanceler(0, canceler, { from: root });
+            await authorizer.addCanceler(executionId, canceler, { from: root });
 
-            await expect(authorizer.addCanceler(0, canceler, { from: root })).to.be.revertedWith(
+            await expect(authorizer.addCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
               'ACCOUNT_IS_ALREADY_CANCELER'
             );
           });
@@ -1918,22 +1945,6 @@ describe('TimelockAuthorizer', () => {
         await authorizer.claimRoot({ from: granter });
         expect(await authorizer.isRoot(root)).to.be.false;
         expect(await authorizer.isRoot(granter)).to.be.true;
-      });
-
-      it('revokes powers to grant and revoke GENERAL_PERMISSION_SPECIFIER on EVERYWHERE from current root', async () => {
-        expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.true;
-        expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.true;
-        await authorizer.claimRoot({ from: granter });
-        expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, root, EVERYWHERE)).to.be.false;
-        expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.false;
-      });
-
-      it('grants powers to grant and revoke GENERAL_PERMISSION_SPECIFIER on EVERYWHERE to the pending root', async () => {
-        expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.false;
-        expect(await authorizer.isRevoker(granter, EVERYWHERE)).to.be.false;
-        await authorizer.claimRoot({ from: granter });
-        expect(await authorizer.isGranter(GENERAL_PERMISSION_SPECIFIER, granter, EVERYWHERE)).to.be.true;
-        expect(await authorizer.isRevoker(granter, EVERYWHERE)).to.be.true;
       });
 
       it('resets the pending root address to the zero address', async () => {
