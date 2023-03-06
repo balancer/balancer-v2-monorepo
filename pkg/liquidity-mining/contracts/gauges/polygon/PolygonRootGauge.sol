@@ -36,7 +36,7 @@ contract PolygonRootGauge is StakelessGauge {
     address private _recipient;
 
     constructor(
-        IBalancerMinter minter,
+        IMainnetBalancerMinter minter,
         IPolygonRootChainManager polygonRootChainManager,
         address polygonERC20Predicate
     ) StakelessGauge(minter) {

@@ -1149,5 +1149,14 @@
         "unkillGauge()": "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea"
       }
     }
+  },
+  "20230223-protocol-id-registry": {
+    "ProtocolIdRegistry": {
+      "useAdaptor": false,
+      "actionIds": {
+        "registerProtocolId(uint256,string)": "0x09a880cf3d54a213316bf4d92d60e72ba0ab61a639fce84378eefb9a63d6abd5",
+        "renameProtocolId(uint256,string)": "0x4f3dee5b767f91b4faa9979f01808dd2490fde931a9eb355d5f8e0187826dade"
+      }
+    }
   }
 }
