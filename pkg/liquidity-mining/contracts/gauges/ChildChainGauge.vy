@@ -302,7 +302,7 @@ def _transfer(_from: address, _to: address, _value: uint256):
     for addr in [_from, _to]:
         self._checkpoint(addr)
         # We need to checkpoint all of the rewards before affecting the gauge token balance for a user,
-        # It is safe to do so as long as `_claim` is set to false (i.e. no external calls).
+        # but to do it safely we need to skip making external calls. Therefore, we set _claim to False.
         self._checkpoint_rewards(addr, total_supply, False, ZERO_ADDRESS, [])
 
     new_balance: uint256 = self.balanceOf[_from] - _value
