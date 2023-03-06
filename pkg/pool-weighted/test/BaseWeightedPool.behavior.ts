@@ -651,7 +651,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
                 amount: 0,
                 poolId: await pool.getPoolId(),
                 lastChangeBlock: 0,
-                from: other.address,
+                from: lp.address,
                 to: other.address,
                 userData: '0x',
               },
