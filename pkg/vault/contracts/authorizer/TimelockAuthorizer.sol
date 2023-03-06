@@ -751,7 +751,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
         require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
 
-        uint256 scheduledExecutionId = _schedule(actionId, where, data, executors);
+        uint256 delay = _delaysPerActionId[actionId];
+        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
+        uint256 scheduledExecutionId = _scheduleWithDelay(actionId, where, data, delay, executors);
+
         // Accounts that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule actions (and root is
         // always a global canceler).
@@ -1128,17 +1131,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             _isPermissionGranted[permission] = false;
             emit PermissionRevoked(actionId, account, where);
         }
-    }
-
-    function _schedule(
-        bytes32 actionId,
-        address where,
-        bytes memory data,
-        address[] memory executors
-    ) private returns (uint256 scheduledExecutionId) {
-        uint256 delay = _delaysPerActionId[actionId];
-        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
-        return _scheduleWithDelay(actionId, where, data, delay, executors);
     }
 
     function _scheduleWithDelay(
