@@ -19,7 +19,11 @@ import "../openzeppelin/ERC20Permit.sol";
 import "../openzeppelin/ERC20.sol";
 
 contract TestToken is ERC20, ERC20Burnable, ERC20Permit {
-    constructor(string memory name, string memory symbol, uint8 decimals) ERC20(name, symbol) ERC20Permit(name) {
+    constructor(
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) ERC20(name, symbol) ERC20Permit(name) {
         _setupDecimals(decimals);
     }
 

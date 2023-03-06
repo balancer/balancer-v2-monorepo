@@ -56,10 +56,10 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlyingToken, amount);
         }
 
-        // the collateralOnly param is set to false because we want to receive interest bearing shareTokens
         underlyingToken.safeApprove(address(silo), amount);
 
-        (uint256 result, ) = silo.depositFor(address(underlyingToken), recipient, amount, false);
+        // the collateralOnly param is set to false because we want to receive interest bearing shareTokens
+        (, uint256 result) = silo.depositFor(address(underlyingToken), recipient, amount, false);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);
@@ -76,7 +76,7 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
         }
-        // Initialize the token we will be wrapping (underlying asset of shareToken)
+        // Initialize the token we will be withdrawing
         IERC20 underlyingToken = IERC20(wrappedToken.asset());
         // Initialize the corresponding Silo (Liquidity Pool)
         ISilo silo = wrappedToken.silo();
@@ -85,13 +85,18 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
         // to be sourced from outside the relayer, we must first them pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, IERC20(address(wrappedToken)), amount);
+            _pullToken(sender, wrappedToken, amount);
         }
 
-        // No approval is needed here, as the  shareTokens are burned directly from the relayer's account
-        (uint256 result, ) = silo.withdraw(address(underlyingToken), amount, false);
+        // No approval is needed here, as the shareTokens are burned directly from the relayer's account.
+        // Setting the amount to uint256(-1) informs Silo that we'd like to redeem all the relayer's shares.
+        // Ignore the return value which cannot be trusted. It does not include any fees assessed.
+        silo.withdraw(address(underlyingToken), uint256(-1), false);
 
-        underlyingToken.safeTransfer(recipient, result);
+        uint256 result = underlyingToken.balanceOf(address(this));
+        if (recipient != address(this)) {
+            underlyingToken.safeTransfer(recipient, result);
+        }
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);

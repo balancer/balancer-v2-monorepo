@@ -22,7 +22,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 contract MockShareToken is TestToken, IShareToken {
     ISilo private immutable _silo;
     address private immutable _asset;
-    uint256 public supply;
 
     /**
      * @dev Token is always deployed for specific Silo and asset
@@ -34,9 +33,9 @@ contract MockShareToken is TestToken, IShareToken {
     constructor(
         string memory name,
         string memory symbol,
+        uint8 decimals,
         address silo,
-        address asset,
-        uint8 decimals
+        address asset
     ) TestToken(name, symbol, decimals) {
         _silo = ISilo(silo);
         _asset = asset;

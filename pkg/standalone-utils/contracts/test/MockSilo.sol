@@ -21,7 +21,7 @@ import "./MockShareToken.sol";
 
 contract MockBaseSilo is IBaseSilo {
     address private immutable _siloAsset;
-    mapping(address => AssetStorage) private _assetStorage;
+    mapping(address => AssetStorage) internal _assetStorage;
 
     constructor(address siloAsset) {
         _siloAsset = siloAsset;
@@ -67,18 +67,18 @@ contract MockSilo is ISilo, MockBaseSilo {
         bool /*_collateralOnly*/
     ) external override returns (uint256 collateralAmount, uint256 collateralShare) {
         IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount);
-        address shareTokenAddress = address(this.assetStorage(_asset).collateralToken);
+        address shareTokenAddress = address(_assetStorage[_asset].collateralToken);
         MockShareToken(shareTokenAddress).mint(_depositor, _amount);
-        return (_amount, 0);
+        return (_amount, _amount);
     }
 
     function withdraw(address _asset, uint256 _amount, bool /*_collateralOnly*/)
         external
         override
         returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
-            address shareTokenAddress = address(this.assetStorage(_asset).collateralToken);
+            address shareTokenAddress = address(_assetStorage[_asset].collateralToken);
             MockShareToken(shareTokenAddress).burnWithoutAllowance(msg.sender, _amount);
-            TestToken(_asset).mint(msg.sender, _amount);
-            return (_amount, 0);
+            IERC20(_asset).safeTransfer(msg.sender, _amount);
+            return (_amount, _amount);
         }  
 }
