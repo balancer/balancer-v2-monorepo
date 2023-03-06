@@ -130,15 +130,25 @@ describe('L2BalancerPseudoMinter', () => {
       expect(await pseudoMinter.minted(user.address, gauge.address)).to.be.eq(0);
     });
 
-    it('reverts with valid gauge from invalid factory', async () => {
-      await gauge.setMockFactory(ANY_ADDRESS);
-      await expect(pseudoMinter.connect(user).mint(gauge.address)).to.be.revertedWith('INVALID_GAUGE_FACTORY');
-    });
+    context('when gauge address is invalid', () => {
+      it('reverts with valid gauge from invalid factory', async () => {
+        await gauge.setMockFactory(ANY_ADDRESS);
+        await expect(pseudoMinter.connect(user).mint(gauge.address)).to.be.revertedWith('INVALID_GAUGE_FACTORY');
+      });
 
-    it('reverts with malicious gauge prentending to come from a valid factory', async () => {
-      const maliciousGauge = await deploy('MockChildChainGauge', { args: ['test'] });
-      await maliciousGauge.setMockFactory(gaugeFactory.address);
-      await expect(pseudoMinter.connect(user).mint(maliciousGauge.address)).to.be.revertedWith('INVALID_GAUGE');
+      it('reverts with malicious gauge prentending to come from a valid factory', async () => {
+        const maliciousGauge = await deploy('MockChildChainGauge', { args: ['test'] });
+        await maliciousGauge.setMockFactory(gaugeFactory.address);
+        await expect(pseudoMinter.connect(user).mint(maliciousGauge.address)).to.be.revertedWith('INVALID_GAUGE');
+      });
+
+      it('reverts when the gauge address is an EOA', async () => {
+        await expect(pseudoMinter.connect(user).mint(other.address)).to.be.reverted;
+      });
+
+      it('reverts when the gauge address is a contract without factory() method', async () => {
+        await expect(pseudoMinter.connect(user).mint(vault.address)).to.be.reverted;
+      });
     });
 
     context('when the amount of tokens to transfer is greater than 0', () => {
@@ -228,16 +238,28 @@ describe('L2BalancerPseudoMinter', () => {
       gaugeAddresses = gauges.map((gauge) => gauge.address);
     });
 
-    it('reverts with valid gauge from invalid factory', async () => {
-      await gauges[0].setMockFactory(ANY_ADDRESS);
-      await expect(pseudoMinter.connect(user).mintMany(gaugeAddresses)).to.be.revertedWith('INVALID_GAUGE_FACTORY');
-    });
+    context('when one of the gauge addresses is invalid', () => {
+      it('reverts with valid gauge from invalid factory', async () => {
+        await gauges[0].setMockFactory(ANY_ADDRESS);
+        await expect(pseudoMinter.connect(user).mintMany(gaugeAddresses)).to.be.revertedWith('INVALID_GAUGE_FACTORY');
+      });
 
-    it('reverts with malicious gauge prentending to come from a valid factory', async () => {
-      const maliciousGauge = await deploy('MockChildChainGauge', { args: ['test'] });
-      await maliciousGauge.setMockFactory(gaugeFactory.address);
-      const gaugesWithMalicious = [...gaugeAddresses, maliciousGauge.address];
-      await expect(pseudoMinter.connect(user).mintMany(gaugesWithMalicious)).to.be.revertedWith('INVALID_GAUGE');
+      it('reverts with malicious gauge prentending to come from a valid factory', async () => {
+        const maliciousGauge = await deploy('MockChildChainGauge', { args: ['test'] });
+        await maliciousGauge.setMockFactory(gaugeFactory.address);
+        const gaugesWithMalicious = [...gaugeAddresses, maliciousGauge.address];
+        await expect(pseudoMinter.connect(user).mintMany(gaugesWithMalicious)).to.be.revertedWith('INVALID_GAUGE');
+      });
+
+      it('reverts when a gauge address is an EOA', async () => {
+        const gaugesWithEOA = [...gaugeAddresses, other.address];
+        await expect(pseudoMinter.connect(user).mintMany(gaugesWithEOA)).to.be.reverted;
+      });
+
+      it('reverts when the gauge address is a contract without factory() method', async () => {
+        const gaugesWithNoFactory = [...gaugeAddresses, vault.address];
+        await expect(pseudoMinter.connect(user).mintMany(gaugesWithNoFactory)).to.be.reverted;
+      });
     });
 
     context('when the amount of tokens to transfer is greater than 0', () => {
@@ -265,24 +287,20 @@ describe('L2BalancerPseudoMinter', () => {
       });
 
       it('emits an event per gauge', async () => {
-        await Promise.all(
-          gauges.map((gauge) =>
-            expectEvent.inReceipt(receipt, 'Minted', {
-              recipient: user.address,
-              gauge: gauge.address,
-              minted: mockCheckpointStep,
-            })
-          )
+        gauges.map((gauge) =>
+          expectEvent.inReceipt(receipt, 'Minted', {
+            recipient: user.address,
+            gauge: gauge.address,
+            minted: mockCheckpointStep,
+          })
         );
       });
 
       it('calls gauge user checkpoint for every gauge', async () => {
-        await Promise.all(
-          gauges.map((gauge) =>
-            expectEvent.inIndirectReceipt(receipt, gauge.interface, 'UserCheckpoint', {
-              user: user.address,
-            })
-          )
+        gauges.map((gauge) =>
+          expectEvent.inIndirectReceipt(receipt, gauge.interface, 'UserCheckpoint', {
+            user: user.address,
+          })
         );
       });
     });
