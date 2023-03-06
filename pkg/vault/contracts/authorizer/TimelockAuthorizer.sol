@@ -195,6 +195,16 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
 
     /**
+     * @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
+     */
+    event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
+
+    /**
+     * @notice Emitted when a new `delay` is set in order to revoke permission to execute action `actionId`.
+     */
+    event RevokeDelaySet(bytes32 indexed actionId, uint256 delay);
+
+    /**
      * @notice Emitted when `account` is granted permission to perform action `actionId` in target `where`.
      */
     event PermissionGranted(bytes32 indexed actionId, address indexed account, address indexed where);
@@ -336,6 +346,20 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
+     * @notice Returns the execution delay for granting permission for action `actionId`.
+     */
+    function getActionIdGrantDelay(bytes32 actionId) external view returns (uint256) {
+        return _grantDelays[actionId];
+    }
+
+    /**
+     * @notice Returns the execution delay for revoking permission for action `actionId`.
+     */
+    function getActionIdRevokeDelay(bytes32 actionId) external view returns (uint256) {
+        return _revokeDelays[actionId];
+    }
+
+    /**
      * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
      */
     function getPermissionId(
@@ -423,28 +447,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns true if `account` can grant permissions for action `actionId` in target `where`.
-     */
-    function canGrant(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view returns (bool) {
-        return _grantDelays[actionId] > 0 ? account == address(_executor) : isGranter(actionId, account, where);
-    }
-
-    /**
-     * @notice Returns true if `account` can revoke permissions for action `actionId` in target `where`.
-     */
-    function canRevoke(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view returns (bool) {
-        return _revokeDelays[actionId] > 0 ? account == address(_executor) : isRevoker(account, where);
-    }
-
-    /**
      * @notice Returns the scheduled execution `scheduledExecutionId`.
      */
     function getScheduledExecution(uint256 scheduledExecutionId) external view returns (ScheduledExecution memory) {
@@ -475,13 +477,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     /**
      * @notice Schedules an execution to change the root address to `newRoot`.
      */
-    function scheduleRootChange(address newRoot, address[] memory executors)
-        external
-        returns (uint256 scheduledExecutionId)
-    {
+    function scheduleRootChange(address newRoot, address[] memory executors) external returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
+
+        // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
+        // bother creating any new cancelers.
         return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
     }
 
@@ -523,25 +525,118 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * the TimelockExecutor after after calling `scheduleDelayChange`.
      */
     function setDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
-        bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
-        bool isAllowed = actionId == setAuthorizerActionId || delay <= _delaysPerActionId[setAuthorizerActionId];
-        require(isAllowed, "DELAY_EXCEEDS_SET_AUTHORIZER");
+        // If changing the `setAuthorizer` delay itself, then we don't need to compare it to its current value for
+        // validity.
+        if (actionId != _vault.getActionId(IVault.setAuthorizer.selector)) {
+            require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
+        }
 
         _delaysPerActionId[actionId] = delay;
         emit ActionDelaySet(actionId, delay);
     }
 
     /**
-     * @notice Schedules an execution to set action `actionId`'s delay to `newDelay`.
+     * @notice Sets a new grant action delay `delay` for action `actionId`
+     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
+     * the TimelockExecutor after after calling `scheduleGrantDelayChange`.
+     * Delay has to be shorter than the Authorizer delay.
+     */
+    function setGrantDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
+        require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
+
+        _grantDelays[actionId] = delay;
+        emit GrantDelaySet(actionId, delay);
+    }
+
+    /**
+     * @notice Sets a new revoke action delay `delay` for action `actionId`
+     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
+     * the TimelockExecutor after after calling `scheduleRevokeDelayChange`.
+     * Delay has to be shorter than the Authorizer delay.
+     */
+    function setRevokeDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
+        require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
+
+        _revokeDelays[actionId] = delay;
+        emit RevokeDelaySet(actionId, delay);
+    }
+
+    function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
+        // No delay can be greater than the current delay for changing the Authorizer itself (`IVault.setAuthorizer`).
+        // Otherwise, it'd be possible to execute the action with a shorter delay by simply replacing the
+        // TimelockAuthorizer with a different contract that didn't enforce these delays.
+        // Note that it is still possible for an action to end up with a delay longer than `setAuthorizer` if e.g.
+        // `setAuthorizer`'s delay was to ever be decreased, but this is not expected to happen. The following check is
+        // therefore simply a way to try to prevent user error, but is not infallible.
+
+        bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
+        return delay <= _delaysPerActionId[setAuthorizerActionId];
+    }
+
+    /**
+     * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`.
      */
     function scheduleDelayChange(
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
-    ) external returns (uint256 scheduledExecutionId) {
-        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
+    ) external returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
+        uint256 executionDelay = _getDelayChangeExecutionDelay(_delaysPerActionId[actionId], newDelay);
+
+        bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
+        bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
+
+        // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
+        // bother creating any new cancelers.
+        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
+    }
+
+    /**
+     * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`.
+     */
+    function scheduleGrantDelayChange(
+        bytes32 actionId,
+        uint256 newDelay,
+        address[] memory executors
+    ) external returns (uint256 scheduledExecutionId) {
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
+
+        uint256 executionDelay = _getDelayChangeExecutionDelay(_grantDelays[actionId], newDelay);
+
+        bytes memory data = abi.encodeWithSelector(this.setGrantDelay.selector, actionId, newDelay);
+        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
+
+        // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
+        // bother creating any new cancelers.
+        return _scheduleWithDelay(0x0, address(this), data, executionDelay, executors);
+    }
+
+    /**
+     * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`.
+     */
+    function scheduleRevokeDelayChange(
+        bytes32 actionId,
+        uint256 newDelay,
+        address[] memory executors
+    ) external returns (uint256 scheduledExecutionId) {
+        require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
+        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
+
+        uint256 executionDelay = _getDelayChangeExecutionDelay(_revokeDelays[actionId], newDelay);
+
+        bytes memory data = abi.encodeWithSelector(this.setRevokeDelay.selector, actionId, newDelay);
+        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
+
+        // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
+        // bother creating any new cancelers.
+        return _scheduleWithDelay(0x0, address(this), data, executionDelay, executors);
+    }
+
+    function _getDelayChangeExecutionDelay(uint256 currentDelay, uint256 newDelay) private pure returns (uint256) {
         // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
         // current delay.
         //
@@ -562,14 +657,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         // changes are subject to a minimum execution delay, to allow for proper scrutiny of these potentially
         // dangerous actions.
 
-        uint256 actionDelay = _delaysPerActionId[actionId];
-        uint256 executionDelay = newDelay < actionDelay
-            ? Math.max(actionDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
-            : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
-
-        bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
-        bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
-        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
+        return
+            newDelay < currentDelay
+                ? Math.max(currentDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
+                : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
     }
 
     /**
@@ -786,10 +877,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     ) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
         for (uint256 i = 0; i < actionIds.length; i++) {
-            // For permissions that have a delay when granting, `canGrant` will return false. `scheduleGrantPermission`
-            // will succeed as it checks `isGranter` instead.
-            // Note that `canGrant` will return true for the executor if the permission has a delay.
-            require(canGrant(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_GRANTER");
+            if (_grantDelays[actionIds[i]] == 0) {
+                require(isGranter(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_GRANTER");
+            } else {
+                // Some actions may have delays associated with granting them - these permissions cannot be granted
+                // directly, even if the caller is a granter, and must instead be scheduled for future execution via
+                // `scheduleGrantPermission`.
+                require(msg.sender == address(_executor), "GRANT_MUST_BE_SCHEDULED");
+            }
+
             _grantPermission(actionIds[i], account, where[i]);
         }
     }
@@ -887,10 +983,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     ) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
         for (uint256 i = 0; i < actionIds.length; i++) {
-            // For permissions that have a delay when granting, `canRevoke` will return false.
-            // `scheduleRevokePermission` will succeed as it checks `isRevoker` instead.
-            // Note that `canRevoke` will return true for the executor if the permission has a delay.
-            require(canRevoke(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_REVOKER");
+            if (_revokeDelays[actionIds[i]] == 0) {
+                require(isRevoker(msg.sender, where[i]), "SENDER_IS_NOT_REVOKER");
+            } else {
+                // Some actions may have delays associated with revoking them - these permissions cannot be revoked
+                // directly, even if the caller is a revoker, and must instead be scheduled for future execution via
+                // `scheduleRevokePermission`.
+                require(msg.sender == address(_executor), "REVOKE_MUST_BE_SCHEDULED");
+            }
             _revokePermission(actionIds[i], account, where[i]);
         }
     }

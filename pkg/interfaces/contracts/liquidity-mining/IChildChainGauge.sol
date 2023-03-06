@@ -15,7 +15,37 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "../pool-utils/IVersion.sol";
+import "./ILiquidityGaugeFactory.sol";
+
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
+// solhint-disable func-param-name-mixedcase
 
 interface IChildChainGauge is IVersion {
+    /**
+     * @notice Proxy constructor.
+     * @param lpToken Pool allowed to stake in this gauge.
+     * @param version Gauge version string identifier.
+     */
     function initialize(address lpToken, string memory version) external;
+
+    /**
+     * @notice Returns BAL liquidity emissions calculated during checkpoints for the given user.
+     * @param user User address.
+     * @return uint256 BAL amount to issue for the address.
+     */
+    function integrate_fraction(address user) external view returns (uint256);
+
+    /**
+     * @notice Records a checkpoint for a given user.
+     * @param user User address.
+     * @return bool Always true.
+     */
+    function user_checkpoint(address user) external returns (bool);
+
+    /**
+     * @notice Returns gauge factory address.
+     */
+    function factory() external view returns (ILiquidityGaugeFactory);
 }
