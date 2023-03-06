@@ -299,6 +299,17 @@ describe('TimelockAuthorizer delays', () => {
         expect(await authorizer.delay(ACTION_1)).to.be.equal(previousActionDelay);
       });
 
+      it('does not set the revoke action delay when executed', async () => {
+        const previousActionDelay = await authorizer.getActionIdRevokeDelay(ACTION_1);
+
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.getActionIdRevokeDelay(ACTION_1)).to.be.equal(previousActionDelay);
+      });
+
       it('emits an event', async () => {
         const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
 
@@ -461,6 +472,17 @@ describe('TimelockAuthorizer delays', () => {
         await authorizer.execute(id);
 
         expect(await authorizer.delay(ACTION_1)).to.be.equal(previousActionDelay);
+      });
+
+      it('does not set the grant action delay when executed', async () => {
+        const previousActionDelay = await authorizer.getActionIdGrantDelay(ACTION_1);
+
+        const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, ACTION_REVOKE_DELAY, [], { from: root });
+
+        await advanceTime(expectedExecutionDelay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.getActionIdGrantDelay(ACTION_1)).to.be.equal(previousActionDelay);
       });
 
       it('emits an event', async () => {
