@@ -120,7 +120,7 @@ export default class TimelockAuthorizer {
 
   async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).scheduleRootChange(this.toAddress(root), this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RootChangeScheduled');
     return event.args.scheduledExecutionId;
   }
 
@@ -135,7 +135,7 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'DelayChangeScheduled');
     return event.args.scheduledExecutionId;
   }
 
@@ -146,7 +146,7 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleGrantDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'GrantDelayChangeScheduled');
     return event.args.scheduledExecutionId;
   }
 
@@ -157,7 +157,7 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleRevokeDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RevokeDelayChangeScheduled');
     return event.args.scheduledExecutionId;
   }
 
@@ -181,7 +181,7 @@ export default class TimelockAuthorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'GrantPermissionScheduled');
     return event.args.scheduledExecutionId;
   }
 
@@ -199,7 +199,7 @@ export default class TimelockAuthorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RevokePermissionScheduled');
     return event.args.scheduledExecutionId;
   }
 
