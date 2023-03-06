@@ -50,7 +50,7 @@ describe('GaugeRelativeWeightCap', () => {
 
   sharedBeforeEach('deploy gauge implementation and factory', async () => {
     const balTokenAdmin = await deploy('MockBalancerTokenAdmin', { args: [vault.address, BAL.address] });
-    const balMinter = await deploy('BalancerMinter', { args: [balTokenAdmin.address, gaugeController.address] });
+    const balMinter = await deploy('MainnetBalancerMinter', { args: [balTokenAdmin.address, gaugeController.address] });
     const adaptor = vault.authorizerAdaptor;
 
     // We won't be using the code that requires the VotingEscrowDelegationProxy so we just use any address, since we
