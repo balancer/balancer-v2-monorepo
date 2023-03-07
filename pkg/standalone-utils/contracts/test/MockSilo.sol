@@ -86,6 +86,7 @@ contract MockSilo is ISilo, MockBaseSilo {
     ) external override returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
         address shareTokenAddress = address(_assetStorage[_asset].collateralToken);
         uint256 burnedShare;
+        // If _amount is set to the max value of a uint256 the whole deposited balance of a user is withdrawn
         if (_amount == type(uint256).max) {
             burnedShare = IShareToken(shareTokenAddress).balanceOf(msg.sender);
             _amount = sharesToUnderlying(burnedShare);
