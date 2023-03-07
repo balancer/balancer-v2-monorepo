@@ -135,6 +135,10 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
+    /**
+     * @dev Compute the final userData for a join, depending on the PoolKind, performing replacements for chained
+     * references as necessary.
+     */
     function _doJoinPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
         private
         returns (bytes memory)
@@ -174,15 +178,14 @@ abstract contract VaultActions is IBaseRelayerLibrary {
                 : userData;
     }
 
-    /**
-     * @dev All versions of stable pool have the same enum and processing for EXACT_TOKENS_IN_FOR_BPT_OUT, so we can
-     * just use the current one. If proportional join is supported, it's a "given out" (parameter is a BPT amount), so
-     * there would be no replacements, and it can be passed through directly to the pool.
-     *
-     * All versions are identical for joins, except the latest ComposableStable appends a proportional join. If you
-     * tried to do a proportional join on any legacy pool, the pool would revert.
-     */
     function _doStableJoinChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        // The only 'given in' join (in which the parameters are the amounts in) is EXACT_TOKENS_IN_FOR_BPT_OUT,
+        // so that is the only one where we do replacements. Luckily all versions of Stable Pool share the same
+        // enum value for it, so we can treat them all the same, and just use the latest version.
+
+        // Note that ComposableStablePool v3 supports a proportional join kind which some previous versions did not.
+        // While it is not rejected here, if passed to the Pool it will revert.
+
         StablePoolUserData.JoinKind kind = StablePoolUserData.joinKind(userData);
 
         if (kind == StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -275,6 +278,10 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
+    /**
+     * @dev Compute the final userData for an exit, depending on the PoolKind, performing replacements for chained
+     * references as necessary.
+     */
     function _doExitPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
         private
         returns (bytes memory)
