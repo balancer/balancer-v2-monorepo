@@ -716,6 +716,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
 
         uint256 delay = _delaysPerActionId[actionId];
         require(delay > 0, "CANNOT_SCHEDULE_ACTION");
+
         uint256 scheduledExecutionId = _scheduleWithDelay(where, data, delay, executors);
 
         emit ExecutionScheduled(actionId, scheduledExecutionId);
