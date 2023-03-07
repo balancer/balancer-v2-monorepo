@@ -57,7 +57,7 @@ describe('EulerWrapping', function () {
     await DAI.connect(senderUser).approve(vault.address, fp(100));
 
     await eDAI.mint(senderUser.address, fp(100));
-    await eDAI.connect(senderUser).approve(eDAI.address, fp(100));
+    await eDAI.connect(senderUser).approve(vault.address, fp(100));
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -142,8 +142,8 @@ describe('EulerWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: tokenSender.address,
-                to: relayer.address,
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
               DAI
@@ -152,8 +152,8 @@ describe('EulerWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayer.address,
-              to: mockEulerProtocol.address,
+              from: TypesConverter.toAddress(relayer),
+              to: TypesConverter.toAddress(mockEulerProtocol),
               value: amount,
             },
             DAI
@@ -164,7 +164,7 @@ describe('EulerWrapping', function () {
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: relayer.address,
+              to: TypesConverter.toAddress(relayer),
               value: expectedulerAmount,
             },
             eDAI
@@ -173,8 +173,8 @@ describe('EulerWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
                 value: expectedulerAmount,
               },
               eDAI
@@ -195,7 +195,6 @@ describe('EulerWrapping', function () {
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          await eDAI.connect(senderUser).approve(vault.address, fp(100));
           tokenSender = senderUser;
           tokenRecipient = relayer;
         });
@@ -227,9 +226,9 @@ describe('EulerWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: mockEulerProtocol.address,
+              from: TypesConverter.toAddress(mockEulerProtocol),
               to: TypesConverter.toAddress(relayer),
-              value: await eDAI.convertBalanceToUnderlying(amount),
+              value: unwrappedAmount,
             },
             DAI
           );
@@ -247,8 +246,8 @@ describe('EulerWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
                 value: unwrappedAmount,
               },
               DAI
@@ -290,7 +289,7 @@ describe('EulerWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: mockEulerProtocol.address,
+              from: TypesConverter.toAddress(mockEulerProtocol),
               to: TypesConverter.toAddress(relayer),
               value: unwrappedAmount,
             },
@@ -311,8 +310,8 @@ describe('EulerWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
                 value: unwrappedAmount,
               },
               DAI
