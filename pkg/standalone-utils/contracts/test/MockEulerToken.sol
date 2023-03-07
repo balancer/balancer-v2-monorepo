@@ -40,7 +40,6 @@ contract MockEulerToken is IEulerToken, TestToken {
     IMockEulerProtocol public immutable EULER_PROTOCOL;
 
     address private immutable _underlying;
-    uint256 private _onlyForMockStorage;
 
     constructor(
         string memory name,
@@ -73,8 +72,8 @@ contract MockEulerToken is IEulerToken, TestToken {
         return _underlying;
     }
 
-    function deposit(uint256 subAccountId, uint256 amount) external override {
-        _onlyForMockStorage = subAccountId;
+    function deposit(uint256, uint256 amount) external override {
+
         // Relayer only uses one account. Meaning no subAccountID required
         // is set to 0 in the Relayer
         // Transfer underlying tokens from sender to the Euler pool, and increase account's eTokens
@@ -87,8 +86,7 @@ contract MockEulerToken is IEulerToken, TestToken {
         _mint(msg.sender, convertUnderlyingToBalance(amount));
     }
 
-    function withdraw(uint256 subAccountId, uint256 amount) external override {
-        _onlyForMockStorage = subAccountId;
+    function withdraw(uint256, uint256 amount) external override {
 
         // EulerWrapping will pass MAX_UINT as this allows to exchange all wrappedTokens
         // for maximum amount of mainTokens
