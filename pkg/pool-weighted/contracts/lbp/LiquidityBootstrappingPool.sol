@@ -119,8 +119,8 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-            request.amount = request.amount.mulDown(getSwapFeePercentage());
+            // This returns amount - fee amount, so we round down (favoring a higher fee amount).
+            request.amount = request.amount.mulDown(getSwapFeePercentage().complement());
 
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);

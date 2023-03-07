@@ -37,7 +37,7 @@ describe('PoolRecoveryHelper', function () {
     });
 
     it('stores initial factories', async () => {
-      const factories = await Promise.all(range(5).map(randomAddress));
+      const factories = range(5).map(randomAddress);
       const helper = await deploy('PoolRecoveryHelper', { args: [vault.address, factories] });
       await expectFactories(helper, factories);
     });
@@ -50,7 +50,7 @@ describe('PoolRecoveryHelper', function () {
 
       sharedBeforeEach(async () => {
         helper = await deploy('PoolRecoveryHelper', { args: [vault.address, []] });
-        newFactory = await randomAddress();
+        newFactory = randomAddress();
 
         await vault.grantPermissionsGlobally([await actionId(helper, 'addPoolFactory')], operator);
       });
@@ -76,7 +76,7 @@ describe('PoolRecoveryHelper', function () {
 
       sharedBeforeEach(async () => {
         helper = await deploy('PoolRecoveryHelper', { args: [vault.address, []] });
-        factory = await randomAddress();
+        factory = randomAddress();
 
         await vault.grantPermissionsGlobally([await actionId(helper, 'addPoolFactory')], admin);
         await helper.connect(admin).addPoolFactory(factory);
@@ -124,9 +124,7 @@ describe('PoolRecoveryHelper', function () {
     });
 
     it('reverts if the pool is not from a known factory', async () => {
-      await expect(helper.enableRecoveryMode(await randomAddress())).to.be.revertedWith(
-        'Pool is not from known factory'
-      );
+      await expect(helper.enableRecoveryMode(randomAddress())).to.be.revertedWith('Pool is not from known factory');
     });
 
     it("reverts if none of the pool's rate providers reverts", async () => {

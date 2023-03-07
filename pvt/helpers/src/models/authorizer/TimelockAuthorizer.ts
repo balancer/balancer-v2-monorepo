@@ -75,12 +75,24 @@ export default class TimelockAuthorizer {
     return this.instance.isPendingRoot(this.toAddress(account));
   }
 
+  async isExecutor(scheduledExecutionId: BigNumberish, account: Account): Promise<boolean> {
+    return this.instance.isExecutor(scheduledExecutionId, this.toAddress(account));
+  }
+
   async isCanceler(scheduledExecutionId: BigNumberish, account: Account): Promise<boolean> {
     return this.instance.isCanceler(scheduledExecutionId, this.toAddress(account));
   }
 
-  async delay(action: string): Promise<BigNumberish> {
+  async delay(action: string): Promise<BigNumber> {
     return this.instance.getActionIdDelay(action);
+  }
+
+  async getActionIdRevokeDelay(actionId: string): Promise<BigNumber> {
+    return this.instance.getActionIdRevokeDelay(actionId);
+  }
+
+  async getActionIdGrantDelay(actionId: string): Promise<BigNumber> {
+    return this.instance.getActionIdGrantDelay(actionId);
   }
 
   async getScheduledExecution(id: BigNumberish): Promise<{
@@ -98,20 +110,12 @@ export default class TimelockAuthorizer {
     return this.instance.canPerform(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async canGrant(action: string, account: Account, where: Account): Promise<boolean> {
-    return this.instance.canGrant(action, this.toAddress(account), this.toAddress(where));
-  }
-
-  async canRevoke(action: string, account: Account, where: Account): Promise<boolean> {
-    return this.instance.canRevoke(action, this.toAddress(account), this.toAddress(where));
-  }
-
   async isGranter(actionId: string, account: Account, where: Account): Promise<boolean> {
     return this.instance.isGranter(actionId, this.toAddress(account), this.toAddress(where));
   }
 
-  async isRevoker(actionId: string, account: Account, where: Account): Promise<boolean> {
-    return this.instance.isRevoker(actionId, this.toAddress(account), this.toAddress(where));
+  async isRevoker(account: Account, where: Account): Promise<boolean> {
+    return this.instance.isRevoker(this.toAddress(account), this.toAddress(where));
   }
 
   async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
@@ -124,8 +128,35 @@ export default class TimelockAuthorizer {
     return this.with(params).claimRoot();
   }
 
-  async scheduleDelayChange(action: string, delay: number, executors: Account[], params?: TxParams): Promise<number> {
+  async scheduleDelayChange(
+    action: string,
+    delay: BigNumberish,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
     const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
+  }
+
+  async scheduleGrantDelayChange(
+    action: string,
+    delay: BigNumberish,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
+    const receipt = await this.with(params).scheduleGrantDelayChange(action, delay, this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
+  }
+
+  async scheduleRevokeDelayChange(
+    action: string,
+    delay: BigNumberish,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
+    const receipt = await this.with(params).scheduleRevokeDelayChange(action, delay, this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
     return event.args.scheduledExecutionId;
   }
@@ -209,17 +240,12 @@ export default class TimelockAuthorizer {
     return this.with(params).removeGranter(action, this.toAddress(account), this.toAddress(wheres));
   }
 
-  async addRevoker(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).addRevoker(action, this.toAddress(account), this.toAddress(where));
+  async addRevoker(account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).addRevoker(this.toAddress(account), this.toAddress(where));
   }
 
-  async removeRevoker(
-    action: string,
-    account: Account,
-    wheres: Account,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
-    return this.with(params).removeRevoker(action, this.toAddress(account), this.toAddress(wheres));
+  async removeRevoker(account: Account, wheres: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).removeRevoker(this.toAddress(account), this.toAddress(wheres));
   }
 
   async grantPermissions(
@@ -273,6 +299,18 @@ export default class TimelockAuthorizer {
 
   async scheduleAndExecuteDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
     const id = await this.scheduleDelayChange(action, delay, [], params);
+    await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
+    await this.execute(id);
+  }
+
+  async scheduleAndExecuteGrantDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
+    const id = await this.scheduleGrantDelayChange(action, delay, [], params);
+    await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
+    await this.execute(id);
+  }
+
+  async scheduleAndExecuteRevokeDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
+    const id = await this.scheduleRevokeDelayChange(action, delay, [], params);
     await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
     await this.execute(id);
   }
