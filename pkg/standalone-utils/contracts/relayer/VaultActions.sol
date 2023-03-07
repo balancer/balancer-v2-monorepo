@@ -152,7 +152,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         ) {
             return _doStableJoinChainedReferenceReplacements(userData);
         } else {
-            _revert(Errors.UNHANDLED_JOIN_KIND);
+            revert("UNHANDLED_POOL_KIND");
         }
     }
 
@@ -296,7 +296,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             } else if (kind == PoolKind.COMPOSABLE_STABLE_V3) {
                 return _doComposableStableExitChainedReferenceReplacements(userData);
             } else {
-                _revert(Errors.UNHANDLED_EXIT_KIND);
+                revert("UNHANDLED_POOL_KIND");
             }
         }
     }
