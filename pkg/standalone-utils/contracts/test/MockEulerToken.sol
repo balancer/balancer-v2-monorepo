@@ -86,14 +86,17 @@ contract MockEulerToken is IEulerToken, TestToken {
     }
 
     function withdraw(uint256, uint256 amount) external override {
+        uint256 wrappedAmount;
 
-        // EulerWrapping will pass MAX_UINT as this allows to exchange all wrappedTokens
-        // for maximum amount of mainTokens
-        // this mock transforms the amount to be the balanceOf mockEulerTokens in the relayer
-        // so that the appropriate amount can be transferedFrom via the mockEulerProtocol
-        amount = this.balanceOf(msg.sender);
-
-        EULER_PROTOCOL.sendUnderlyingToRelayer(_underlying, convertBalanceToUnderlying(amount), msg.sender);
-        _burn(msg.sender, amount);
+        if (amount == uint256(-1)) {
+            // MAX_UINT indicates that the sender's full balance of wrappedToken should be redeemed.
+            wrappedAmount = balanceOf(msg.sender);
+            amount = convertBalanceToUnderlying(wrappedAmount);
+        } else {
+            wrappedAmount = convertUnderlyingToBalance(amount);
+        }
+        
+        EULER_PROTOCOL.sendUnderlyingToRelayer(_underlying, amount, msg.sender);
+        _burn(msg.sender, wrappedAmount);
     }
 }
