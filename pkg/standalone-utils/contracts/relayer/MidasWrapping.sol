@@ -61,27 +61,19 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
 
         underlying.safeApprove(address(wrappedToken), amount);
 
-        // calculated balances of the wrappedToken in the Relayer
-        uint256 wrappedAmountBefore = wrappedToken.balanceOf(address(this));
-
         // The mint function transfers an asset into the Midas protocol, which begins accumulating interest
         // based on the current Supply Rate for the asset. The user receives a quantity of cTokens
         // equal to the underlying tokens supplied, divided by the current Exchange Rate.
-        uint256 sent = wrappedToken.mint(amount);
-        require(sent == 0, "failed to deposit into midas market");
+        require(wrappedToken.mint(amount) == 0, "wrapping failed");
 
-        uint256 wrappedAmountAfter = wrappedToken.balanceOf(address(this));
-        uint256 withdrawnWrappedAmount = wrappedAmountAfter - wrappedAmountBefore;
+        uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
-            // in order to use safeApprovvals and -Transfers
-            // typecast the wrappedToken here
-            IERC20(wrappedToken).safeApprove(address(this), withdrawnWrappedAmount);
-            IERC20(wrappedToken).safeTransferFrom(address(this), recipient, withdrawnWrappedAmount);
+            IERC20(wrappedToken).safeTransfer(recipient, receivedWrappedAmount);
         }
 
         if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, withdrawnWrappedAmount);
+            _setChainedReferenceValue(outputReference, receivedWrappedAmount);
         }
     }
 
@@ -104,19 +96,16 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
         }
 
         IERC20 mainToken = IERC20(wrappedToken.underlying());
-        uint256 mainAmountBefore = mainToken.balanceOf(address(this));
 
         // The redeem function converts a specified quantity of cTokens into the underlying asset,
         // and returns them to the user. The amount of underlying tokens received is equal to the
         // quantity of cTokens redeemed, multiplied by the current Exchange Rate. The amount redeemed
         // must be less than the user’s Account Liquidity and the market’s available liquidity.
-        wrappedToken.redeem(amount);
-        uint256 mainAmountAfter = mainToken.balanceOf(address(this));
-        uint256 withdrawnMainAmount = mainAmountAfter - mainAmountBefore;
+        require(wrappedToken.redeem(amount) == 0, "unwrapping failed");
+        uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
-            mainToken.safeApprove(address(this), withdrawnMainAmount);
-            mainToken.safeTransferFrom(address(this), recipient, withdrawnMainAmount);
+            mainToken.safeTransfer(recipient, withdrawnMainAmount);
         }
 
         if (_isChainedReference(outputReference)) {
