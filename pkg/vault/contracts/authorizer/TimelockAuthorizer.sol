@@ -489,6 +489,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, getRootTransferDelay(), executors);
+
         emit RootChangeScheduled(scheduledExecutionId);
         return scheduledExecutionId;
     }
