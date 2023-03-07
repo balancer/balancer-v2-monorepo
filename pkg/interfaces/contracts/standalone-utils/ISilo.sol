@@ -29,8 +29,7 @@ interface IBaseSilo {
         // COLLATERAL: Amount of asset token that has been deposited to Silo with interest earned by depositors.
         // It also includes token amount that has been borrowed.
         uint256 totalDeposits;
-        // COLLATERAL ONLY: Amount of asset token that has been deposited to Silo that can be ONLY used
-        // as collateral. These deposits do NOT earn interest and CANNOT be borrowed.
+        // COLLATERAL ONLY: Amount of asset token that has been deposited to Silo that can ONLY be used
         uint256 collateralOnlyDeposits;
         // DEBT: Amount of asset token that has been borrowed with accrued interest.
         uint256 totalBorrowAmount;

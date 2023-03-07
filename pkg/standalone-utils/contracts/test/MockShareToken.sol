@@ -27,8 +27,8 @@ contract MockShareToken is TestToken, IShareToken {
      * @dev Token is always deployed for specific Silo and asset
      * @param name token name
      * @param symbol token symbol
-     * @param silo Silo address for which tokens was deployed
-     * @param asset asset for which this tokens was deployed
+     * @param silo Silo address at which tokens were deployed
+     * @param asset Asset for which these tokens were deployed
      */
     constructor(
         string memory name,

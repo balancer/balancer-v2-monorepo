@@ -89,7 +89,7 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
         }
 
         // No approval is needed here, as the shareTokens are burned directly from the relayer's account.
-        // Setting the amount to uint256(-1) informs Silo that we'd like to redeem all the relayer's shares.
+        // Setting the amount to type(uint256).max informs Silo that we'd like to redeem all the relayer's shares.
         // Ignore the return value which cannot be trusted. It does not include any fees assessed.
         silo.withdraw(address(underlyingToken), type(uint256).max, false);
 
