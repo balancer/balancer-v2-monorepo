@@ -205,14 +205,18 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     // Mutates amountsIn, and returns true if any replacements were made
-    function _replacedAmounts(uint256[] memory amountsIn) private returns (bool replacedAmounts) {
+    function _replacedAmounts(uint256[] memory amountsIn) private returns (bool) {
+        bool madeReplacements = false;
+
         for (uint256 i = 0; i < amountsIn.length; ++i) {
             uint256 amount = amountsIn[i];
             if (_isChainedReference(amount)) {
                 amountsIn[i] = _getChainedReferenceValue(amount);
-                replacedAmounts = true;
+                madeReplacements = true;
             }
         }
+
+        return madeReplacements;
     }
 
     function exitPool(
