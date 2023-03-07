@@ -61,7 +61,7 @@ describe('SiloWrapping', function () {
     await sDAI.mint(senderUser.address, fp(100));
 
     await DAI.connect(senderUser).approve(vault.address, fp(100));
-    await sDAI.connect(senderUser).approve(sDAI.address, fp(100));
+    await sDAI.connect(senderUser).approve(vault.address, fp(100));
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -212,8 +212,7 @@ describe('SiloWrapping', function () {
 
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          // For these tests we will do a 1:1 wrapping and unwrapping due to no exposed conversion function for Silo
-          const expectedsDAIAmount = amount;
+          const expectedsDAIAmount = await mockSilo.underlyingToShares(amount);
 
           const receipt = await (
             await relayer.connect(senderUser).multicall([encodeWrap(tokenSender, tokenRecipient, amount)])
@@ -242,8 +241,7 @@ describe('SiloWrapping', function () {
         });
 
         it('stores wrap output as chained reference', async () => {
-          // For these tests we will do a 1:1 wrapping and unwrapping due to no exposed conversion function for Silo
-          const expectedsDAIAmount = amount;
+          const expectedsDAIAmount = await mockSilo.underlyingToShares(amount);
 
           await relayer
             .connect(senderUser)
@@ -253,8 +251,7 @@ describe('SiloWrapping', function () {
         });
 
         it('wraps with chained references', async () => {
-          // For these tests we will do a 1:1 wrapping and unwrapping due to no exposed conversion function for Silo
-          const expectedsDAIAmount = amount;
+          const expectedsDAIAmount = await mockSilo.underlyingToShares(amount);
           await setChainedReferenceContents(toChainedReference(0), amount);
 
           const receipt = await (
@@ -292,7 +289,6 @@ describe('SiloWrapping', function () {
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          await sDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = relayer;
         });
@@ -301,7 +297,6 @@ describe('SiloWrapping', function () {
 
       context('sender = senderUser, recipient = senderUser', () => {
         beforeEach(async () => {
-          await sDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = senderUser;
         });
@@ -328,10 +323,13 @@ describe('SiloWrapping', function () {
 
       function testUnwrap(): void {
         beforeEach('Load the liquidity pool with underlying tokens', async () => {
-          await DAI.connect(senderUser).mint(mockSilo.address, amount);
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+          await DAI.connect(senderUser).mint(mockSilo.address, expectedDAIAmount);
         });
 
         it('unwraps with immediate amounts', async () => {
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+
           const receipt = await (
             await relayer.connect(senderUser).multicall([encodeUnwrap(tokenSender, tokenRecipient, amount)])
           ).wait();
@@ -341,7 +339,7 @@ describe('SiloWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: TypesConverter.toAddress(senderUser),
+                from: TypesConverter.toAddress(tokenSender),
                 to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
@@ -362,23 +360,37 @@ describe('SiloWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayerIsRecipient ? mockSilo : relayer),
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : senderUser),
-              value: amount,
+              from: TypesConverter.toAddress(mockSilo),
+              to: TypesConverter.toAddress(relayer),
+              value: expectedDAIAmount,
             },
             DAI
           );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
+                value: expectedDAIAmount,
+              },
+              DAI
+            );
+          }
         });
 
         it('stores unwrap output as chained reference', async () => {
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+
           await relayer
             .connect(senderUser)
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          await expectChainedReferenceContents(relayer, toChainedReference(0), amount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedDAIAmount);
         });
 
         it('unwraps with chained references', async () => {
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
           await setChainedReferenceContents(toChainedReference(0), amount);
 
           const receipt = await (
@@ -413,12 +425,23 @@ describe('SiloWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayerIsRecipient ? mockSilo : relayer),
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : senderUser),
-              value: amount,
+              from: TypesConverter.toAddress(mockSilo),
+              to: TypesConverter.toAddress(relayer),
+              value: expectedDAIAmount,
             },
             DAI
           );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
+                value: expectedDAIAmount,
+              },
+              DAI
+            );
+          }
         });
       }
     });
@@ -536,7 +559,8 @@ describe('SiloWrapping', function () {
 
         sharedBeforeEach('swap WETH for DAI', async () => {
           // Add DAI into the Silo to simulate an already existing liquidity pool
-          await DAI.connect(senderUser).mint(mockSilo.address, amount);
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+          await DAI.connect(senderUser).mint(mockSilo.address, expectedDAIAmount);
 
           receipt = await (
             await relayer.connect(senderUser).multicall([
@@ -652,7 +676,8 @@ describe('SiloWrapping', function () {
 
         sharedBeforeEach('swap WETH for DAI', async () => {
           // Add DAI into the Silo to simulate an already existing liquidity pool
-          await DAI.connect(senderUser).mint(mockSilo.address, amount);
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+          await DAI.connect(senderUser).mint(mockSilo.address, expectedDAIAmount);
 
           receipt = await (
             await relayer.connect(senderUser).multicall([
