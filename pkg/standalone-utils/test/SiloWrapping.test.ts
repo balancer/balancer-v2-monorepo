@@ -41,7 +41,7 @@ describe('SiloWrapping', function () {
     });
 
     sDAI = await deploy('MockShareToken', {
-      args: ['sDAI', 'sDAI', mockSilo.address, DAI.address, 18],
+      args: ['sDAI', 'sDAI', 18, mockSilo.address, DAI.address],
     });
 
     // initalize the asset storage mapping within the Silo for the main token
@@ -114,6 +114,55 @@ describe('SiloWrapping', function () {
       TypesConverter.toAddress(recipient),
       amount,
       outputReference ?? 0,
+    ]);
+  }
+
+  function encodeJoin(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    maxAmountsIn: BigNumberish[];
+    userData: string;
+    outputReference?: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('joinPool', [
+      params.poolId,
+      0, // WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        maxAmountsIn: params.maxAmountsIn,
+        userData: params.userData,
+        fromInternalBalance: false,
+      },
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
+
+  function encodeExit(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    minAmountsOut: BigNumberish[];
+    userData: string;
+    outputReference?: { index: number; key: BigNumberish }[];
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('exitPool', [
+      params.poolId,
+      0, // WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        minAmountsOut: params.minAmountsOut,
+        userData: params.userData,
+        toInternalBalance: false,
+      },
+      params.outputReference,
     ]);
   }
 
@@ -278,27 +327,43 @@ describe('SiloWrapping', function () {
       });
 
       function testUnwrap(): void {
+        beforeEach('Load the liquidity pool with underlying tokens', async () => {
+          await DAI.connect(senderUser).mint(mockSilo.address, amount);
+        });
+
         it('unwraps with immediate amounts', async () => {
           const receipt = await (
             await relayer.connect(senderUser).multicall([encodeUnwrap(tokenSender, tokenRecipient, amount)])
           ).wait();
-
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+
+          if (!relayerIsSender) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(senderUser),
+                to: TypesConverter.toAddress(relayer),
+                value: amount,
+              },
+              sDAI
+            );
+          }
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(tokenSender),
-              to: TypesConverter.toAddress(relayerIsSender ? ZERO_ADDRESS : relayer),
+              from: TypesConverter.toAddress(relayer),
+              to: ZERO_ADDRESS,
               value: amount,
             },
             sDAI
           );
+
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? mockSilo : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : senderUser),
               value: amount,
             },
             DAI
@@ -310,8 +375,7 @@ describe('SiloWrapping', function () {
             .connect(senderUser)
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          const DAIAmount = amount;
-          await expectChainedReferenceContents(relayer, toChainedReference(0), DAIAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), amount);
         });
 
         it('unwraps with chained references', async () => {
@@ -320,25 +384,37 @@ describe('SiloWrapping', function () {
           const receipt = await (
             await relayer
               .connect(senderUser)
-              .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))])
+              .multicall([encodeUnwrap(tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+          if (!relayerIsSender) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
+                value: amount,
+              },
+              sDAI
+            );
+          }
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(tokenSender),
-              to: TypesConverter.toAddress(relayerIsSender ? ZERO_ADDRESS : relayer),
+              from: TypesConverter.toAddress(relayer),
+              to: ZERO_ADDRESS,
               value: amount,
             },
             sDAI
           );
+
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? mockSilo : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : senderUser),
               value: amount,
             },
             DAI
@@ -459,6 +535,9 @@ describe('SiloWrapping', function () {
         const amount = fp(1);
 
         sharedBeforeEach('swap WETH for DAI', async () => {
+          // Add DAI into the Silo to simulate an already existing liquidity pool
+          await DAI.connect(senderUser).mint(mockSilo.address, amount);
+
           receipt = await (
             await relayer.connect(senderUser).multicall([
               encodeSwap({
@@ -572,6 +651,9 @@ describe('SiloWrapping', function () {
         const amount = fp(1);
 
         sharedBeforeEach('swap WETH for DAI', async () => {
+          // Add DAI into the Silo to simulate an already existing liquidity pool
+          await DAI.connect(senderUser).mint(mockSilo.address, amount);
+
           receipt = await (
             await relayer.connect(senderUser).multicall([
               encodeBatchSwap({
@@ -591,6 +673,7 @@ describe('SiloWrapping', function () {
             tokenIn: WETH.address,
             tokenOut: sDAI.address,
           });
+
           expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
         });
 
@@ -608,8 +691,8 @@ describe('SiloWrapping', function () {
 
       sharedBeforeEach('join the pool', async () => {
         const { tokens: allTokens } = await pool.getTokens();
-        sendersDAIBalanceBefore = await sDAIToken.balanceOf(senderUser);
 
+        sendersDAIBalanceBefore = await sDAIToken.balanceOf(senderUser);
         receipt = await (
           await relayer.connect(senderUser).multicall([
             encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
@@ -659,28 +742,25 @@ describe('SiloWrapping', function () {
         const { tokens: allTokens } = await pool.getTokens();
 
         // First transfer tokens to pool, before testing exit
-        receipt = await (
-          await relayer.connect(senderUser).multicall([
-            encodeWrap(senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
-            encodeApprove(sDAIToken, MAX_UINT256),
-            encodeJoin({
-              poolId,
-              assets: allTokens,
-              sender: relayer,
-              recipient: recipientUser,
-              maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
-              userData: StablePoolEncoder.joinExactTokensInForBPTOut(
-                poolTokens.map((token) => (token === sDAIToken ? toChainedReference(0) : 0)),
-                0
-              ),
-            }),
-          ])
-        ).wait();
+        await relayer.connect(senderUser).multicall([
+          encodeWrap(senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
+          encodeApprove(sDAIToken, MAX_UINT256),
+          encodeJoin({
+            poolId,
+            assets: allTokens,
+            sender: relayer,
+            recipient: senderUser,
+            maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
+            userData: StablePoolEncoder.joinExactTokensInForBPTOut(
+              poolTokens.map((token) => (token === sDAIToken ? toChainedReference(0) : 0)),
+              0
+            ),
+          }),
+        ]);
 
         const sDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
           (token: Token) => token.instance.address === sDAIToken.address
         );
-
         const sDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === sDAIToken.address);
         const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
         BPTBalanceBefore = await pool.balanceOf(senderUser);
@@ -697,7 +777,7 @@ describe('SiloWrapping', function () {
               userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, sDAIIndexWithoutBPT),
               outputReference,
             }),
-            encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0 + sDAIIndex)),
+            encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(10 + sDAIIndex)),
           ])
         ).wait();
       });
@@ -709,7 +789,7 @@ describe('SiloWrapping', function () {
         });
 
         // DAI transfered to recipient
-        expectTransferEvent(receipt, { from: sDAI.address, to: recipientUser.address }, DAIToken);
+        expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAIToken);
       });
 
       it('BPT burned from the sender user', async () => {
@@ -728,58 +808,4 @@ describe('SiloWrapping', function () {
       });
     });
   });
-
-  function encodeJoin(params: {
-    poolId: string;
-    sender: Account;
-    recipient: Account;
-    assets: string[];
-    maxAmountsIn: BigNumberish[];
-    userData: string;
-    outputReference?: BigNumberish;
-  }): string {
-    return relayerLibrary.interface.encodeFunctionData('joinPool', [
-      params.poolId,
-      0, // WeightedPool
-      TypesConverter.toAddress(params.sender),
-      TypesConverter.toAddress(params.recipient),
-      {
-        assets: params.assets,
-        maxAmountsIn: params.maxAmountsIn,
-        userData: params.userData,
-        fromInternalBalance: false,
-      },
-      0,
-      params.outputReference ?? 0,
-    ]);
-  }
-
-  function encodeExit(params: {
-    poolId: string;
-    sender: Account;
-    recipient: Account;
-    assets: string[];
-    minAmountsOut: BigNumberish[];
-    userData: string;
-    outputReference?: { index: number; key: BigNumberish }[];
-  }): string {
-    return relayerLibrary.interface.encodeFunctionData('exitPool', [
-      params.poolId,
-      0, // WeightedPool
-      TypesConverter.toAddress(params.sender),
-      TypesConverter.toAddress(params.recipient),
-      {
-        assets: params.assets,
-        minAmountsOut: params.minAmountsOut,
-        userData: params.userData,
-        toInternalBalance: false,
-      },
-      params.outputReference,
-    ]);
-  }
-
-  function encodeApprove(token: Token, amount: BigNumberish): string {
-    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
-  }
-
 });

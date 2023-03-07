@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ISilo.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "./MockShareToken.sol";
+import "hardhat/console.sol";
 
 contract MockBaseSilo is IBaseSilo {
     address private immutable _siloAsset;
@@ -72,13 +73,17 @@ contract MockSilo is ISilo, MockBaseSilo {
         return (_amount, _amount);
     }
 
-    function withdraw(address _asset, uint256 _amount, bool /*_collateralOnly*/)
-        external
-        override
-        returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
-            address shareTokenAddress = address(_assetStorage[_asset].collateralToken);
-            MockShareToken(shareTokenAddress).burnWithoutAllowance(msg.sender, _amount);
-            IERC20(_asset).safeTransfer(msg.sender, _amount);
-            return (_amount, _amount);
-        }  
+    function withdraw(
+        address _asset,
+        uint256 _amount,
+        bool /*_collateralOnly*/
+    ) external override returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
+        address shareTokenAddress = address(_assetStorage[_asset].collateralToken);
+        uint256 burnedShare = (_amount == type(uint256).max)
+            ? IShareToken(shareTokenAddress).balanceOf(msg.sender)
+            : _amount;
+        MockShareToken(shareTokenAddress).burnWithoutAllowance(msg.sender, burnedShare);
+        IERC20(_asset).safeTransfer(msg.sender, burnedShare);
+        return (_amount, burnedShare);
+    }
 }
