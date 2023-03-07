@@ -16,9 +16,11 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ISilo.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+
 import "./MockShareToken.sol";
-import "hardhat/console.sol";
 
 contract MockBaseSilo is IBaseSilo {
     address private immutable _siloAsset;
@@ -56,9 +58,12 @@ contract MockBaseSilo is IBaseSilo {
 
 contract MockSilo is ISilo, MockBaseSilo {
     using SafeERC20 for IERC20;
+    using FixedPoint for uint256;
+
+    uint256 public rate;
 
     constructor(address _siloAsset) MockBaseSilo(_siloAsset) {
-        // No need to set anything for relayer implementation
+        rate = FixedPoint.TWO;
     }
 
     function depositFor(
@@ -69,8 +74,9 @@ contract MockSilo is ISilo, MockBaseSilo {
     ) external override returns (uint256 collateralAmount, uint256 collateralShare) {
         IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount);
         address shareTokenAddress = address(_assetStorage[_asset].collateralToken);
-        MockShareToken(shareTokenAddress).mint(_depositor, _amount);
-        return (_amount, _amount);
+        uint256 shares = underlyingToShares(_amount);
+        MockShareToken(shareTokenAddress).mint(_depositor, shares);
+        return (_amount, shares);
     }
 
     function withdraw(
@@ -79,11 +85,27 @@ contract MockSilo is ISilo, MockBaseSilo {
         bool /*_collateralOnly*/
     ) external override returns (uint256 withdrawnAmount, uint256 withdrawnShare) {
         address shareTokenAddress = address(_assetStorage[_asset].collateralToken);
-        uint256 burnedShare = (_amount == type(uint256).max)
-            ? IShareToken(shareTokenAddress).balanceOf(msg.sender)
-            : _amount;
+        uint256 burnedShare;
+        if (_amount == type(uint256).max) {
+            burnedShare = IShareToken(shareTokenAddress).balanceOf(msg.sender);
+            _amount = sharesToUnderlying(burnedShare);
+        } else {
+            burnedShare = underlyingToShares(_amount);
+        }
         MockShareToken(shareTokenAddress).burnWithoutAllowance(msg.sender, burnedShare);
-        IERC20(_asset).safeTransfer(msg.sender, burnedShare);
+        IERC20(_asset).safeTransfer(msg.sender, _amount);
         return (_amount, burnedShare);
+    }
+
+    function setRate(uint256 _rate) external {
+        rate = _rate;
+    }
+
+    function sharesToUnderlying(uint256 _amount) public view returns (uint256) {
+        return _amount.mulDown(rate);
+    }
+
+    function underlyingToShares(uint256 _amount) public view returns (uint256) {
+        return _amount.divDown(rate);
     }
 }
