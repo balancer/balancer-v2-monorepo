@@ -5,6 +5,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
+import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 describe('BaseWeightedPool', function () {
   context('for a 1 token pool', () => {
@@ -17,11 +18,11 @@ describe('BaseWeightedPool', function () {
   });
 
   context('for a 2 token pool', () => {
-    itBehavesAsWeightedPool(2);
+    itBehavesAsWeightedPool(2, WeightedPoolType.WEIGHTED_POOL);
   });
 
   context('for a 3 token pool', () => {
-    itBehavesAsWeightedPool(3);
+    itBehavesAsWeightedPool(3, WeightedPoolType.WEIGHTED_POOL);
   });
 
   context('for a too-many token pool', () => {
