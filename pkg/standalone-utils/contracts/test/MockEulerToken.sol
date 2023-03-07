@@ -59,7 +59,6 @@ contract MockEulerToken is IEulerToken, TestToken {
     }
 
     function setExchangeRateMultiplier(uint256 _exchangeRateMultiplier) external {
-        require(_exchangeRateMultiplier < 3e18, "Cannot set exchangeRateMultiplier bigger 3e18");
         exchangeRateMultiplier = _exchangeRateMultiplier;
     }
 

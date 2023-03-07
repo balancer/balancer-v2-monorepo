@@ -49,7 +49,7 @@ describe('EulerWrapping', function () {
     eDAI = await deploy('MockEulerToken', {
       args: ['eDAI', 'eDAI', 18, daiAddress, eulerProtocolAddress],
     });
-    eDAI.setExchangeRateMultiplier(bn(5e17));
+    await eDAI.setExchangeRateMultiplier(bn(5e18));
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
