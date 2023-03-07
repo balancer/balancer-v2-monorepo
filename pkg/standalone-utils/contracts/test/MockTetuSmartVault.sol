@@ -21,9 +21,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./MockTetuStrategy.sol";
-import "../relayer/special/TetuShareValueHelper.sol";
+import "./MockTetuShareValueHelper.sol";
 
-contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper {
+contract MockTetuSmartVault is ITetuSmartVault, TestToken, MockTetuShareValueHelper {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
@@ -71,7 +71,7 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken, TetuShareValueHelper 
     }
 
     function depositFor(uint256 , address) external pure override {
-        revert("Should not call this");
+        _revert(Errors.SHOULD_NOT_HAPPEN);
     }
 
     function withdraw(uint256 numberOfShares) external override {

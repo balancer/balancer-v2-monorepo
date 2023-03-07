@@ -21,7 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuSmartVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuStrategy.sol";
 
-contract TetuShareValueHelper {
+contract MockTetuShareValueHelper {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
