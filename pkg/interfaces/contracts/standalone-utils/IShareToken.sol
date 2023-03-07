@@ -12,22 +12,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
-import "./TimelockAuthorizer.sol";
+import "./ISilo.sol";
 
-contract TimelockExecutor is ReentrancyGuard {
-    TimelockAuthorizer public immutable authorizer;
+interface IShareToken is IERC20 {
+    /**
+     * @dev returns the underlying asset
+     */
+    function asset() external view returns (address);
 
-    constructor() {
-        authorizer = TimelockAuthorizer(msg.sender);
-    }
-
-    function execute(address target, bytes memory data) external nonReentrant returns (bytes memory result) {
-        require(msg.sender == address(authorizer), "SENDER_IS_NOT_AUTHORIZER");
-        return Address.functionCall(target, data);
-    }
+    /**
+     * @dev returns the address of the silo
+     */
+    function silo() external view returns (ISilo);
 }
