@@ -300,8 +300,8 @@ describe('EulerWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(senderUser),
-              to: TypesConverter.toAddress(relayer),
+              from: TypesConverter.toAddress(relayer),
+              to: ZERO_ADDRESS,
               value: amount,
             },
             eDAI
