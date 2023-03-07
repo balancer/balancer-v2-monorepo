@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2015, 2016, 2017 Dapphub
-
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -15,25 +13,26 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "../BatchRelayerLibrary.sol";
+interface IMockEulerProtocol {
+    /**
+     * @dev triggers a transferFrom call with `from` being the msg.sender
+     * @notice This mimics the requirement to ensure the euler protocol
+     * is allowed to transfer from msg.sender
+     */
+    function requestUnderlyingFromRelayer(
+        address underlying,
+        uint256 amount,
+        address msgSender
+    ) external;
 
-contract MockBatchRelayerLibrary is BatchRelayerLibrary {
-    event ChainedReferenceValueRead(uint256 value);
-
-    constructor(
-        IVault vault,
-        IERC20 wstETH,
-        IBalancerMinter minter,
-        address eulerProtocol
-    ) BatchRelayerLibrary(vault, wstETH, minter, eulerProtocol) {}
-
-    function setChainedReferenceValue(uint256 ref, uint256 value) public {
-        _setChainedReferenceValue(ref, value);
-    }
-
-    function getChainedReferenceValue(uint256 ref) public {
-        emit ChainedReferenceValueRead(_getChainedReferenceValue(ref));
-    }
+    /**
+     * @dev sends tokens from EulerProtocol to relayer
+     * @notice this is a simple ERC20.transfer
+     */
+    function sendUnderlyingToRelayer(
+        address wrappedToken,
+        uint256 amount,
+        address relayer
+    ) external;
 }

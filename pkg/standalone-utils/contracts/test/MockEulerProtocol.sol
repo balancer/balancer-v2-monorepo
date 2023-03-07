@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2015, 2016, 2017 Dapphub
-
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -15,25 +13,19 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "../BatchRelayerLibrary.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
-contract MockBatchRelayerLibrary is BatchRelayerLibrary {
-    event ChainedReferenceValueRead(uint256 value);
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-    constructor(
-        IVault vault,
-        IERC20 wstETH,
-        IBalancerMinter minter,
-        address eulerProtocol
-    ) BatchRelayerLibrary(vault, wstETH, minter, eulerProtocol) {}
+contract MockEulerProtocol {
+    using SafeERC20 for IERC20;
 
-    function setChainedReferenceValue(uint256 ref, uint256 value) public {
-        _setChainedReferenceValue(ref, value);
+    function requestUnderlyingFromRelayer(address underlying, uint256 amount, address relayer) public {
+        IERC20(underlying).transferFrom(relayer, (address(this)), amount);
     }
 
-    function getChainedReferenceValue(uint256 ref) public {
-        emit ChainedReferenceValueRead(_getChainedReferenceValue(ref));
+    function sendUnderlyingToRelayer(address underlying, uint256 amount, address relayer) public {
+        IERC20(underlying).transfer(relayer, amount);
     }
 }
