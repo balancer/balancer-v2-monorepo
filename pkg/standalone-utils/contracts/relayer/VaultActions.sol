@@ -289,15 +289,12 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         if (kind == PoolKind.WEIGHTED) {
             return _doWeightedExitChainedReferenceReplacements(userData);
         } else {
-            // exitKind just looks at the first value, same for all, so we can use the current library function
-            uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
-
             if (kind == PoolKind.LEGACY_STABLE) {
-                return _doLegacyStableExitChainedReferenceReplacements(userData, exitKind);
+                return _doLegacyStableExitChainedReferenceReplacements(userData);
             } else if (kind == PoolKind.COMPOSABLE_STABLE_V2) {
-                return _doLegacyComposableStableExitChainedReferenceReplacements(userData, exitKind);
+                return _doLegacyComposableStableExitChainedReferenceReplacements(userData);
             } else if (kind == PoolKind.COMPOSABLE_STABLE_V3) {
-                return _doComposableStableExitChainedReferenceReplacements(userData, exitKind);
+                return _doComposableStableExitChainedReferenceReplacements(userData);
             } else {
                 _revert(Errors.UNHANDLED_EXIT_KIND);
             }
@@ -342,10 +339,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    function _doLegacyStableExitChainedReferenceReplacements(bytes memory userData, uint8 exitKind)
-        private
-        returns (bytes memory)
-    {
+    function _doLegacyStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
+
         if (exitKind == uint8(LegacyStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT)) {
             return _doStableExactBptInForOneTokenOutReplacements(userData, exitKind);
         } else if (exitKind == uint8(LegacyStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT)) {
@@ -357,10 +353,12 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    function _doLegacyComposableStableExitChainedReferenceReplacements(bytes memory userData, uint8 exitKind)
+    function _doLegacyComposableStableExitChainedReferenceReplacements(bytes memory userData)
         private
         returns (bytes memory)
     {
+        uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
+
         if (exitKind == uint8(LegacyComposableStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT)) {
             return _doStableExactBptInForOneTokenOutReplacements(userData, exitKind);
         } else {
@@ -371,10 +369,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     // For ComposableStablePool V2 and V3
-    function _doComposableStableExitChainedReferenceReplacements(bytes memory userData, uint8 exitKind)
-        private
-        returns (bytes memory)
-    {
+    function _doComposableStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
+
         if (exitKind == uint8(StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT)) {
             return _doStableExactBptInForOneTokenOutReplacements(userData, exitKind);
         } else if (exitKind == uint8(StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT)) {
