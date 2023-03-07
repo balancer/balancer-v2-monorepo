@@ -103,7 +103,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         getVault().manageUserBalance{ value: value }(ops);
     }
 
-    enum PoolKind { WEIGHTED, LEGACY_STABLE, LEGACY_COMPOSABLE_STABLE, COMPOSABLE_STABLE }
+    enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE_V2, COMPOSABLE_STABLE_V3 }
 
     function joinPool(
         bytes32 poolId,
@@ -143,8 +143,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             return _doWeightedJoinChainedReferenceReplacements(userData);
         } else if (
             kind == PoolKind.LEGACY_STABLE ||
-            kind == PoolKind.LEGACY_COMPOSABLE_STABLE ||
-            kind == PoolKind.COMPOSABLE_STABLE
+            kind == PoolKind.COMPOSABLE_STABLE_V2 ||
+            kind == PoolKind.COMPOSABLE_STABLE_V3
         ) {
             return _doStableJoinChainedReferenceReplacements(userData);
         } else {
@@ -283,9 +283,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
             if (kind == PoolKind.LEGACY_STABLE) {
                 return _doLegacyStableExitChainedReferenceReplacements(userData, exitKind);
-            } else if (kind == PoolKind.LEGACY_COMPOSABLE_STABLE) {
+            } else if (kind == PoolKind.COMPOSABLE_STABLE_V2) {
                 return _doLegacyComposableStableExitChainedReferenceReplacements(userData, exitKind);
-            } else if (kind == PoolKind.COMPOSABLE_STABLE) {
+            } else if (kind == PoolKind.COMPOSABLE_STABLE_V3) {
                 return _doComposableStableExitChainedReferenceReplacements(userData, exitKind);
             } else {
                 _revert(Errors.UNHANDLED_EXIT_KIND);
