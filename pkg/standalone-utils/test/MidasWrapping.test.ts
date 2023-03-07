@@ -169,8 +169,8 @@ describe('MidasWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: tokenSender.address,
-                to: relayer.address,
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
               DAI
@@ -179,8 +179,8 @@ describe('MidasWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayer.address,
-              to: cDAI.address,
+              from: TypesConverter.toAddress(relayer),
+              to: TypesConverter.toAddress(cDAI),
               value: amount,
             },
             DAI
@@ -191,7 +191,7 @@ describe('MidasWrapping', function () {
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: relayer.address,
+              to: TypesConverter.toAddress(relayer),
               value: expectedMidasAmount,
             },
             cDAI
@@ -200,8 +200,8 @@ describe('MidasWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
                 value: expectedMidasAmount,
               },
               cDAI
@@ -234,8 +234,8 @@ describe('MidasWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: tokenSender.address,
-                to: relayer.address,
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
               DAI
@@ -244,8 +244,8 @@ describe('MidasWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayer.address,
-              to: cDAI.address,
+              from: TypesConverter.toAddress(relayer),
+              to: TypesConverter.toAddress(cDAI),
               value: amount,
             },
             DAI
@@ -256,7 +256,7 @@ describe('MidasWrapping', function () {
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: relayer.address,
+              to: TypesConverter.toAddress(relayer),
               value: expectedWrappedAmount,
             },
             cDAI
@@ -265,8 +265,8 @@ describe('MidasWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
                 value: expectedWrappedAmount,
               },
               cDAI
@@ -351,8 +351,8 @@ describe('MidasWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: cDAI.address,
-              to: relayer.address,
+              from: TypesConverter.toAddress(cDAI),
+              to: TypesConverter.toAddress(relayer),
               value: unwrappedAmount,
             },
             DAI
@@ -361,8 +361,8 @@ describe('MidasWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
                 value: unwrappedAmount,
               },
               DAI
