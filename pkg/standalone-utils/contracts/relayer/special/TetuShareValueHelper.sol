@@ -48,7 +48,7 @@ contract TetuShareValueHelper {
             uint256 underlyingBalanceInVault = wrappedToken.underlyingBalanceInVault();
             uint256 strategyInvestedUnderlyingBalance = _getStrategyInvestedUnderlyingBalance(wrappedToken);
             uint256 balance = underlyingBalanceInVault.add(strategyInvestedUnderlyingBalance);
-            // Notice that "balance" and "wrappedTokenTotalSupply" have same amount of decimals. divDown multiplies
+            // Notice that "balance" and "wrappedTokenTotalSupply" have the same value for decimals. divDown multiplies
             // by FixedPoint.ONE, so _getTokenRate returns 18 decimals
             return balance.divDown(wrappedTokenTotalSupply);
         }
