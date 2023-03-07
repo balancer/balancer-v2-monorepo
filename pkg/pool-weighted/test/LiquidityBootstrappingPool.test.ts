@@ -10,6 +10,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/LiquidityBootstrappingPool';
 import { range } from 'lodash';
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
+import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 describe('LiquidityBootstrappingPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
