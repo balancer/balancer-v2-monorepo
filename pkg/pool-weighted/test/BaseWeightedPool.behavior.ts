@@ -17,6 +17,8 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
+  const MINIMAL_SWAP_INFO_ONSWAP =
+    'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)';
 
   let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
   let vault: Vault;
@@ -32,6 +34,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
       tokens,
       weights,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      owner: lp, // needed for LBP tests
       ...params,
     });
   }
@@ -146,13 +149,15 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
       });
 
       it('fails if no user data', async () => {
-        await expect(pool.join({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
+        await expect(pool.join({ data: '0x', from: lp })).to.be.revertedWith('Transaction reverted without a reason');
       });
 
       it('fails if wrong user data', async () => {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
-        await expect(pool.join({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
+        await expect(pool.join({ data: wrongUserData, from: lp })).to.be.revertedWith(
+          'Transaction reverted without a reason'
+        );
       });
 
       context('initialization', () => {
@@ -186,7 +191,9 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
 
       context('join exact tokens in for BPT out', () => {
         it('fails if not initialized', async () => {
-          await expect(pool.joinGivenIn({ recipient, amountsIn: initialBalances })).to.be.revertedWith('UNINITIALIZED');
+          await expect(pool.joinGivenIn({ recipient, amountsIn: initialBalances, from: lp })).to.be.revertedWith(
+            'UNINITIALIZED'
+          );
         });
 
         context('once initialized', () => {
@@ -218,7 +225,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
           it('can tell how much BPT it will give in return', async () => {
             const minimumBptOut = pct(expectedBptOut, 0.99);
 
-            const result = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
+            const result = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut, from: lp });
 
             expect(result.amountsIn).to.deep.equal(amountsIn);
             expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
@@ -228,7 +235,9 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
             // This call should fail because we are requesting minimum 1% more
             const minimumBptOut = pct(expectedBptOut, 1.01);
 
-            await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
+            await expect(pool.joinGivenIn({ amountsIn, minimumBptOut, from: lp })).to.be.revertedWith(
+              'BPT_OUT_MIN_AMOUNT'
+            );
           });
 
           it('reverts if paused', async () => {
@@ -244,7 +253,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
         const bptOut = fp(2);
 
         it('fails if not initialized', async () => {
-          await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('UNINITIALIZED');
+          await expect(pool.joinGivenOut({ bptOut, token, from: lp })).to.be.revertedWith('UNINITIALIZED');
         });
 
         context('once initialized', () => {
@@ -273,7 +282,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
           it('can tell what token amounts it will have to receive', async () => {
             const expectedAmountIn = await pool.estimateTokenIn(token, bptOut, initialBalances);
 
-            const result = await pool.queryJoinGivenOut({ bptOut, token });
+            const result = await pool.queryJoinGivenOut({ bptOut, token, from: lp });
 
             expect(result.bptOut).to.be.equal(bptOut);
             expect(result.amountsIn[token]).to.be.equalWithError(expectedAmountIn, 0.001);
@@ -286,7 +295,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
             // is more than 3
             const bptOut = (await pool.getMaxInvariantIncrease()).add(10);
 
-            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('MAX_OUT_BPT_FOR_TOKEN_IN');
+            await expect(pool.joinGivenOut({ bptOut, token, from: lp })).to.be.revertedWith('MAX_OUT_BPT_FOR_TOKEN_IN');
           });
 
           it('reverts if paused', async () => {
@@ -299,7 +308,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
 
       context('join all tokens in for exact BPT out', () => {
         it('fails if not initialized', async () => {
-          await expect(pool.joinAllGivenOut({ bptOut: fp(2) })).to.be.revertedWith('UNINITIALIZED');
+          await expect(pool.joinAllGivenOut({ bptOut: fp(2), from: lp })).to.be.revertedWith('UNINITIALIZED');
         });
 
         context('once initialized', () => {
@@ -334,7 +343,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
             // We want to join for half the initial BPT supply, which will require half the initial balances
             const bptOut = previousBptBalance.div(2);
 
-            const result = await pool.queryJoinAllGivenOut({ bptOut });
+            const result = await pool.queryJoinAllGivenOut({ bptOut, from: lp });
 
             expect(result.bptOut).to.be.equal(bptOut);
 
@@ -565,7 +574,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
       context('given in', () => {
         it('reverts if caller is not the vault', async () => {
           await expect(
-            pool.instance.onSwap(
+            pool.instance[MINIMAL_SWAP_INFO_ONSWAP](
               {
                 kind: SwapKind.GivenIn,
                 tokenIn: tokens.first.address,
@@ -573,7 +582,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
                 amount: 0,
                 poolId: await pool.getPoolId(),
                 lastChangeBlock: 0,
-                from: other.address,
+                from: lp.address,
                 to: other.address,
                 userData: '0x',
               },
@@ -633,7 +642,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
       context('given out', () => {
         it('reverts if caller is not the vault', async () => {
           await expect(
-            pool.instance.onSwap(
+            pool.instance[MINIMAL_SWAP_INFO_ONSWAP](
               {
                 kind: SwapKind.GivenOut,
                 tokenIn: tokens.first.address,
@@ -641,7 +650,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number): void {
                 amount: 0,
                 poolId: await pool.getPoolId(),
                 lastChangeBlock: 0,
-                from: other.address,
+                from: lp.address,
                 to: other.address,
                 userData: '0x',
               },

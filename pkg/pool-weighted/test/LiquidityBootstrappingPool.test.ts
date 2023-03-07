@@ -25,15 +25,15 @@ describe('LiquidityBootstrappingPool', function () {
   // Add the weighted pool tests for the joins/exits, etc.
 
   context('for a 2 token pool', () => {
-    itBehavesAsWeightedPool(2);
+    itBehavesAsWeightedPool(2, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   context('for a 3 token pool', () => {
-    itBehavesAsWeightedPool(3);
+    itBehavesAsWeightedPool(3, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   context('for a 4 token pool', () => {
-    itBehavesAsWeightedPool(4);
+    itBehavesAsWeightedPool(4, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   sharedBeforeEach('deploy tokens', async () => {
