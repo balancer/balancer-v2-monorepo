@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 
@@ -47,31 +46,14 @@ import "./TimelockExecutionHelper.sol";
  *   target contract (where). This identifier is called `permissionId` and is computed as
  *   `keccak256(actionId, account, where)`.
  *
- * Permission granularity:
- *   In addition to the who/what/where of a permission, an extra notion of a "specifier" is introduced to enable more
- *   granular configuration. This concept is used within the Authorizer to provide clarity among four ambiguous actions:
- *   granting/revoking permissions, executing scheduled actions, and setting action delays. For example, in managing
- *   the permission to set action delays, it is desirable to delineate whether an account can set delays for all
- *   actions indiscriminately or only for a specific action ID. In this case, the permission's "baseActionId" is the
- *   action ID for scheduling a delay change, and the "specifier" is the action ID for which the delay will be changed.
- *   The "baseActionId" and "specifier" of a permission are combined into a single "extended" `actionId`
- *   by calling `getExtendedActionId(baseActionId, specifier)`.
- *
  * Note that the TimelockAuthorizer doesn't make use of reentrancy guards on the majority of external functions.
  * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
  * which executes a scheduled execution and so this is the only protected function.
  * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
  * is necessary in order to be able to call these.
  */
-contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
+contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     using Address for address;
-
-    /**
-     * @notice An action specifier which grants a general permission to perform all variants of the base action.
-     */
-    bytes32
-        public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-    // solhint-disable-previous-line max-line-length
 
     /**
      * @notice A sentinel value for `where` that will match any address.
@@ -100,14 +82,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         bool protected;
         uint256 executableAt;
     }
-
-    // solhint-disable var-name-mixedcase
-    bytes32 public immutable REVOKE_ACTION_ID;
-    bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
-
-    // These action ids do not need to be used by external actors as the action ids above do.
-    // Instead they're saved just for gas savings so we can keep them private.
-    bytes32 private immutable _GENERAL_REVOKE_ACTION_ID;
 
     TimelockExecutionHelper private immutable _executionHelper;
     IAuthentication private immutable _vault;
@@ -268,18 +242,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
         _executionHelper = new TimelockExecutionHelper();
         _rootTransferDelay = rootTransferDelay;
-
-        bytes32 revokeActionId = getActionId(TimelockAuthorizer.revokePermissions.selector);
-        bytes32 generalRevokeActionId = getExtendedActionId(revokeActionId, GENERAL_PERMISSION_SPECIFIER);
-
-        // These don't technically need to be granted, as `initialRoot` is the new root, and can grant these permissions
-        // directly to itself. But granting here improves ergonomics, especially in testing, as `initialRoot` is now
-        // ready to grant any permission.
-        _grantPermission(generalRevokeActionId, initialRoot, EVERYWHERE);
-
-        REVOKE_ACTION_ID = revokeActionId;
-        SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
-        _GENERAL_REVOKE_ACTION_ID = generalRevokeActionId;
     }
 
     /**
@@ -329,34 +291,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     function getPendingRoot() external view returns (address) {
         return _pendingRoot;
-    }
-
-    /**
-     * @notice Returns the action ID for function selector `selector`.
-     */
-    function getActionId(bytes4 selector) public view override returns (bytes32) {
-        return keccak256(abi.encodePacked(bytes32(uint256(address(this))), selector));
-    }
-
-    /**
-     * @notice Returns the action ID for revoking a permission for action `actionId`.
-     */
-    function getRevokePermissionActionId(bytes32 actionId) public view returns (bytes32) {
-        return getExtendedActionId(REVOKE_ACTION_ID, actionId);
-    }
-
-    /**
-     * @notice Returns the action ID for scheduling setting a new delay for action `actionId`.
-     */
-    function getScheduleDelayActionId(bytes32 actionId) public view returns (bytes32) {
-        return getExtendedActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
-    }
-
-    /**
-     * @notice Returns the extended action ID for base action ID `baseActionId` with specific params `specifier`.
-     */
-    function getExtendedActionId(bytes32 baseActionId, bytes32 specifier) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(baseActionId, specifier));
     }
 
     /**
@@ -520,12 +454,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      */
     function scheduleRootChange(address newRoot, address[] memory executors) external returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
-        bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
+
+        // TODO: fix event action id
 
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
-        return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
+        return _scheduleWithDelay(0x0, address(this), data, getRootTransferDelay(), executors);
     }
 
     /**
@@ -545,15 +480,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * To become root, the pending root must call this function to ensure that it's able to interact with this contract.
      */
     function claimRoot() external {
-        address currentRoot = _root;
         address pendingRoot = _pendingRoot;
         require(msg.sender == pendingRoot, "SENDER_IS_NOT_PENDING_ROOT");
-
-        // Grant powers to new root to grant or revoke any permission over any contract.
-        _grantPermission(_GENERAL_REVOKE_ACTION_ID, pendingRoot, EVERYWHERE);
-
-        // Revoke these powers from the outgoing root.
-        _revokePermission(_GENERAL_REVOKE_ACTION_ID, currentRoot, EVERYWHERE);
 
         // Complete the root transfer and reset the pending root.
         _setRoot(pendingRoot);
@@ -627,12 +555,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_delaysPerActionId[actionId], newDelay);
 
-        bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
+        // TODO: add custom event
 
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
-        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
+        return _scheduleWithDelay(0x0, address(this), data, executionDelay, executors);
     }
 
     /**
@@ -1171,64 +1099,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             _isExecutor[scheduledExecutionId][executors[i]] = true;
             emit ExecutorAdded(scheduledExecutionId, executors[i]);
         }
-    }
-
-    /**
-     * @notice Returns if `account` has permission to perform the action `(baseActionId, specifier)` on target `where`.
-     * @dev This function differs from `_canPerformSpecificallyOrGenerally` as it *doesn't* take into account whether
-     * there is a delay for the action associated with the permission being checked.
-     *
-     * The address `account` may have the permission associated with the provided action but that doesn't necessarily
-     * mean that it may perform that action. If there is no delay associated with this action, `account` may perform the
-     * action directly. If there is a delay, then `account` is instead able to schedule that action to be performed
-     * at a later date.
-     *
-     * This function returns true in both cases.
-     */
-    function _hasPermissionSpecificallyOrGenerally(
-        bytes32 baseActionId,
-        address account,
-        address where,
-        bytes32 specifier
-    ) internal view returns (bool) {
-        bytes32 specificActionId = getExtendedActionId(baseActionId, specifier);
-        bytes32 generalActionId = getExtendedActionId(baseActionId, GENERAL_PERMISSION_SPECIFIER);
-        return hasPermission(specificActionId, account, where) || hasPermission(generalActionId, account, where);
-    }
-
-    /**
-     * @notice Returns if `account` can perform the action `(baseActionId, specifier)` on target `where`.
-     * @dev This function differs from `_hasPermissionSpecificallyOrGenerally` as it *does* take into account whether
-     * there is a delay for the action associated with the permission being checked.
-     *
-     * The address `account` may have the permission associated with the provided action but that doesn't necessarily
-     * mean that it may perform that action. If there is no delay associated with this action, `account` may perform the
-     * action directly. If there is a delay, then `account` is instead able to schedule that action to be performed
-     * at a later date.
-     *
-     * This function only returns true only in the first case (except for actions performed by the authorizer timelock).
-     */
-    function _canPerformSpecificallyOrGenerally(
-        bytes32 baseActionId,
-        address account,
-        address where,
-        bytes32 specifier
-    ) internal view returns (bool) {
-        // If there is a delay defined for the specific action ID, then the sender must be the authorizer (scheduled
-        // execution)
-        bytes32 specificActionId = getExtendedActionId(baseActionId, specifier);
-        if (_delaysPerActionId[specificActionId] > 0) {
-            return account == address(_executionHelper);
-        }
-
-        // If there is no delay, we check if the account has that permission
-        if (hasPermission(specificActionId, account, where)) {
-            return true;
-        }
-
-        // If the account doesn't have the explicit permission, we repeat for the general permission
-        bytes32 generalActionId = getExtendedActionId(baseActionId, GENERAL_PERMISSION_SPECIFIER);
-        return canPerform(generalActionId, account, where);
     }
 
     /**
