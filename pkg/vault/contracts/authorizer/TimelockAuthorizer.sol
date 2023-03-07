@@ -946,7 +946,6 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
 
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
 
-        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit GrantPermissionScheduled(actionId, scheduledExecutionId);
         // Granters that schedule actions are automatically made cancelers for them, so that they can manage their
