@@ -71,7 +71,6 @@ describe('CompoundV2Wrapping', function () {
   });
 
   describe('primitives', () => {
-
     describe('wrapCompoundV2', () => {
       const amount = fp(1);
       let tokenSender: Account, tokenRecipient: Account;
