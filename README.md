@@ -33,6 +33,12 @@ Active development occurs in this repository, which means some contracts in it m
 
 The build & test instructions below should work out of the box with Node ^14.18.0. (Please note that it needs Node 14 specifically, and will NOT work with Node 16 or higher. Minor version should be at least 18).
 
+To use the suggested Node version, run:
+
+```bash
+$ nvm use
+```
+
 ## Clone
 
 This repository uses git submodules; use `--recurse-submodules` option when cloning. For example, using https:
