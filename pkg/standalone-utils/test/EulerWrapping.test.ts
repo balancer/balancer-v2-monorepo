@@ -79,42 +79,6 @@ describe('EulerWrapping', function () {
     await vault.setRelayerApproval(senderUser, relayer, true);
   });
 
-  function encodeApprove(token: Token, amount: BigNumberish): string {
-    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
-  }
-
-  function encodeWrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapEuler', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
-  function encodeUnwrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapEuler', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
   describe('primitives', async () => {
     const amount = fp(100);
 
@@ -357,38 +321,6 @@ describe('EulerWrapping', function () {
     });
 
     describe('swap', () => {
-      function encodeSwap(params: {
-        poolId: string;
-        kind: SwapKind;
-        tokenIn: Token;
-        tokenOut: Token;
-        amount: BigNumberish;
-        sender: Account;
-        recipient: Account;
-        outputReference?: BigNumberish;
-      }): string {
-        return relayerLibrary.interface.encodeFunctionData('swap', [
-          {
-            poolId: params.poolId,
-            kind: params.kind,
-            assetIn: params.tokenIn.address,
-            assetOut: params.tokenOut.address,
-            amount: params.amount,
-            userData: '0x',
-          },
-          {
-            sender: TypesConverter.toAddress(params.sender),
-            recipient: TypesConverter.toAddress(params.recipient),
-            fromInternalBalance: false,
-            toInternalBalance: false,
-          },
-          0,
-          MAX_UINT256,
-          0,
-          params.outputReference ?? 0,
-        ]);
-      }
-
       describe('swap using DAI as an input', () => {
         let receipt: ContractReceipt;
         const amount = fp(1);
@@ -583,31 +515,6 @@ describe('EulerWrapping', function () {
     });
 
     describe('joinPool', () => {
-      function encodeJoin(params: {
-        poolId: string;
-        sender: Account;
-        recipient: Account;
-        assets: string[];
-        maxAmountsIn: BigNumberish[];
-        userData: string;
-        outputReference?: BigNumberish;
-      }): string {
-        return relayerLibrary.interface.encodeFunctionData('joinPool', [
-          params.poolId,
-          0, // WeightedPool
-          TypesConverter.toAddress(params.sender),
-          TypesConverter.toAddress(params.recipient),
-          {
-            assets: params.assets,
-            maxAmountsIn: params.maxAmountsIn,
-            userData: params.userData,
-            fromInternalBalance: false,
-          },
-          0,
-          params.outputReference ?? 0,
-        ]);
-      }
-
       let receipt: ContractReceipt;
       let sendereDAIBalanceBefore: BigNumber;
       const amount = fp(1);
@@ -655,5 +562,198 @@ describe('EulerWrapping', function () {
         expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
+
+    describe('exitPool', () => {
+      let receipt: ContractReceipt;
+      let BPTBalanceBefore: BigNumber;
+      const amountDAI = fp(1);
+
+      sharedBeforeEach('exit the pool', async () => {
+        const { tokens: allTokens } = await pool.getTokens();
+
+        // First transfer token to the pool, before testing exit
+        await relayer.connect(senderUser).multicall([
+          encodeWrap(eDAI.address, senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
+          encodeApprove(eDAIToken, MAX_UINT256),
+          encodeJoin({
+            poolId,
+            assets: allTokens,
+            sender: relayer,
+            recipient: senderUser,
+            maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
+            userData: StablePoolEncoder.joinExactTokensInForBPTOut(
+              poolTokens.map((token) => (token === eDAIToken ? toChainedReference(0) : 0)),
+              0
+            ),
+          }),
+        ]);
+
+        const eDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
+          (token: Token) => token.instance.address === eDAIToken.address
+        );
+        const eDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === eDAIToken.address);
+        const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
+        BPTBalanceBefore = await pool.balanceOf(senderUser);
+
+        receipt = await (
+          await relayer.connect(senderUser).multicall([
+            encodeApprove(pool, MAX_UINT256),
+            encodeExit({
+              poolId,
+              assets: allTokens,
+              sender: senderUser,
+              recipient: relayer,
+              minAmountsOut: Array(poolTokens.length + 1).fill(0),
+              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, eDAIIndexWithoutBPT),
+              outputReference,
+            }),
+            encodeUnwrap(eDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + eDAIIndex)),
+          ])
+        ).wait();
+      });
+
+      it('exits the pool', async () => {
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          poolId,
+          liquidityProvider: senderUser.address,
+        });
+
+        // DAI transfered to recipient
+        expectTransferEvent(receipt, { from: mockEulerProtocol.address, to: relayer.address }, DAIToken);
+        expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAIToken);
+      });
+
+      it('BPT burned from the sender user', async () => {
+        const BPTBalanceAfter = await pool.balanceOf(senderUser);
+        expect(BPTBalanceAfter).to.be.eq(0);
+      });
+
+      it('DAI transfered to recipient user', async () => {
+        const DAIBalanceAfter = await DAIToken.balanceOf(recipientUser);
+        expect(DAIBalanceAfter).to.be.gt(0);
+      });
+
+      it('does not leave dust on the relayer', async () => {
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
+      });
+    });
   });
+
+  function encodeApprove(token: Token, amount: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
+  }
+
+  function encodeWrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('wrapEuler', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeUnwrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('unwrapEuler', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeSwap(params: {
+    poolId: string;
+    kind: SwapKind;
+    tokenIn: Token;
+    tokenOut: Token;
+    amount: BigNumberish;
+    sender: Account;
+    recipient: Account;
+    outputReference?: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('swap', [
+      {
+        poolId: params.poolId,
+        kind: params.kind,
+        assetIn: params.tokenIn.address,
+        assetOut: params.tokenOut.address,
+        amount: params.amount,
+        userData: '0x',
+      },
+      {
+        sender: TypesConverter.toAddress(params.sender),
+        recipient: TypesConverter.toAddress(params.recipient),
+        fromInternalBalance: false,
+        toInternalBalance: false,
+      },
+      0,
+      MAX_UINT256,
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
+
+  function encodeJoin(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    maxAmountsIn: BigNumberish[];
+    userData: string;
+    outputReference?: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('joinPool', [
+      params.poolId,
+      0, // WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        maxAmountsIn: params.maxAmountsIn,
+        userData: params.userData,
+        fromInternalBalance: false,
+      },
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
+
+  function encodeExit(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    minAmountsOut: BigNumberish[];
+    userData: string;
+    outputReference?: { index: number; key: BigNumberish }[];
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('exitPool', [
+      params.poolId,
+      0, //WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        minAmountsOut: params.minAmountsOut,
+        userData: params.userData,
+        toInternalBalance: false,
+      },
+      params.outputReference,
+    ]);
+  }
 });
