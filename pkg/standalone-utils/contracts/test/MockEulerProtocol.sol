@@ -26,7 +26,7 @@ contract MockEulerProtocol {
         uint256 amount,
         address relayer
     ) public {
-        IERC20(underlying).transferFrom(relayer, (address(this)), amount);
+        IERC20(underlying).safeTransferFrom(relayer, (address(this)), amount);
     }
 
     function sendUnderlyingToRelayer(
@@ -34,6 +34,6 @@ contract MockEulerProtocol {
         uint256 amount,
         address relayer
     ) public {
-        IERC20(underlying).transfer(relayer, amount);
+        IERC20(underlying).safeTransfer(relayer, amount);
     }
 }
