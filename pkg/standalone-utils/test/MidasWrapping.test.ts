@@ -56,7 +56,7 @@ describe('MidasWrapping', function () {
     await DAI.mint(cDAI.address, fp(10000));
 
     await cDAI.mintCTokens(senderUser.address, fp(100));
-    await cDAI.connect(senderUser).approve(cDAI.address, fp(150));
+    await cDAI.connect(senderUser).approve(vault.address, fp(150));
 
     // Underlying token decimals: Need to run after cDAI tokens are minted
     // await cDAI.setRate(bn(5e18));
@@ -281,7 +281,6 @@ describe('MidasWrapping', function () {
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          await cDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = relayer;
         });
@@ -416,8 +415,8 @@ describe('MidasWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: cDAI.address,
-              to: relayer.address,
+              from: TypesConverter.toAddress(cDAI),
+              to: TypesConverter.toAddress(relayer),
               value: unwrappedAmount,
             },
             DAI
@@ -426,8 +425,8 @@ describe('MidasWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
                 value: unwrappedAmount,
               },
               DAI
