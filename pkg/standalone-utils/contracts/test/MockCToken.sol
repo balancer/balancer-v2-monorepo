@@ -24,7 +24,7 @@ contract MockCToken is TestToken, ICToken {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
-    address public immutable override underlying;
+    address private immutable _underlying;
     uint256 private _exchangeRate;
     uint256 private _temp;
 
@@ -35,8 +35,15 @@ contract MockCToken is TestToken, ICToken {
         address underlyingAsset,
         uint256 exchangeRate
     ) TestToken(name, symbol, decimals) {
-        underlying = underlyingAsset;
+        _underlying = underlyingAsset;
         _exchangeRate = exchangeRate;
+    }
+
+    /**
+     * @dev Underlying asset for this CToken
+     */
+    function underlying() external view override returns (address) {
+        return _underlying;
     }
 
     /**
@@ -48,7 +55,7 @@ contract MockCToken is TestToken, ICToken {
     function mint(uint256 mintAmount) public override returns (uint256) {
         uint256 amountToMint = toCTokenAmount(mintAmount);
 
-        IERC20(underlying).safeTransferFrom(msg.sender, address(this), mintAmount);
+        IERC20(_underlying).safeTransferFrom(msg.sender, address(this), mintAmount);
 
         _mint(msg.sender, amountToMint);
 
@@ -70,7 +77,7 @@ contract MockCToken is TestToken, ICToken {
 
         uint256 amountToReturn = fromCTokenAmount(redeemTokens);
 
-        IERC20(underlying).safeTransfer(msg.sender, amountToReturn);
+        IERC20(_underlying).safeTransfer(msg.sender, amountToReturn);
 
         return 0;
     }
