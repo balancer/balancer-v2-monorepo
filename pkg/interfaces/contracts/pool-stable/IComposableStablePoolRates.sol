@@ -24,8 +24,20 @@ interface IComposableStablePoolRates {
     function updateTokenRateCache(IERC20 token) external;
 
     /**
-     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
+     * @dev Sets a new duration for a token rate cache.
      * Note this function also updates the current cached value.
+     *
+     * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
+     * join or an exit because the state of the pool could be out of sync with the state of the Vault. It is protected
+     * by a call to `VaultReentrancyLib.ensureNotInVaultContext` where overridden in `ComposableStablePoolRates`, and so
+     * is safe to call on ComposableStablePool.
+     *
+     * It will also revert if there was no rate provider set initially.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
      * @param duration Number of seconds until the current token rate is fetched again.
      */
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external;
