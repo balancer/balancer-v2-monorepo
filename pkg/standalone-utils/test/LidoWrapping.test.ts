@@ -56,7 +56,7 @@ describe('LidoWrapping', function () {
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
     relayerLibrary = await deploy('MockBatchRelayerLibrary', {
-      args: [vault.address, wstETH.address, ZERO_ADDRESS, ZERO_ADDRESS],
+      args: [vault.address, wstETH.address, ZERO_ADDRESS],
     });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
