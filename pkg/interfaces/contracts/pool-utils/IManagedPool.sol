@@ -230,7 +230,8 @@ interface IManagedPool is IBasePool {
      * percentage is changed by the manager, to prevent fees from being applied retroactively.
      *
      * Correct behavior depends on the current supply, which is potentially manipulable if the pool
-     * is reentered during execution of a Vault hook.
+     * is reentered during execution of a Vault hook. This is protected where overridden in ManagedPoolSettings,
+     * and so is safe to call on ManagedPool.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
@@ -246,7 +247,8 @@ interface IManagedPool is IBasePool {
      *
      * To prevent changing management fees retroactively, this triggers payment of protocol fees before applying
      * the change. Correct behavior depends on the current supply, which is potentially manipulable if the pool
-     * is reentered during execution of a Vault hook.
+     * is reentered during execution of a Vault hook. This is protected where overridden in ManagedPoolSettings,
+     * and so is safe to call on ManagedPool.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
@@ -315,7 +317,8 @@ interface IManagedPool is IBasePool {
      * Emits the TokenAdded event. This is a permissioned function.
      *
      * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook.
+     * the pool during execution of a Vault hook. This is protected where overridden in ManagedPoolSettings,
+     * and so is safe to call on ManagedPool.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
@@ -341,7 +344,8 @@ interface IManagedPool is IBasePool {
      *
      * Emits the TokenRemoved event. This is a permissioned function.
      * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook.
+     * the pool during execution of a Vault hook. This is protected where overridden in ManagedPoolSettings,
+     * and so is safe to call on ManagedPool.
      *
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
