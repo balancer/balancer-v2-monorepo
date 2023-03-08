@@ -237,53 +237,50 @@ export default class TimelockAuthorizer {
     return this.with(params).removeRevoker(this.toAddress(account), this.toAddress(wheres));
   }
 
-  async grantPermissions(
-    actions: NAry<string>,
+  async grantPermission(
+    action: string,
     account: Account,
-    wheres: NAry<Account>,
+    where: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).grantPermissions(this.toList(actions), this.toAddress(account), this.toAddresses(wheres));
+    return this.with(params).grantPermission(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async revokePermissions(
-    actions: NAry<string>,
+  async revokePermission(
+    action: string,
     account: Account,
-    wheres: NAry<Account>,
+    where: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), this.toAddresses(wheres));
+    return this.with(params).revokePermission(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async renouncePermissions(
-    actions: NAry<string>,
-    wheres: NAry<Account>,
+  async renouncePermission(
+    action: string,
+    where: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).renouncePermissions(this.toList(actions), this.toAddresses(wheres));
+    return this.with(params).renouncePermissions(action, this.toAddress(where));
   }
 
-  async grantPermissionsGlobally(
-    actions: NAry<string>,
-    account: Account,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
-    return this.with(params).grantPermissions(this.toList(actions), this.toAddress(account), wheres);
-  }
-
-  async revokePermissionsGlobally(
-    actions: NAry<string>,
+  async grantPermissionGlobally(
+    action: string,
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
-    return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), wheres);
+    return this.with(params).grantPermission(action, this.toAddress(account), TimelockAuthorizer.EVERYWHERE);
   }
 
-  async renouncePermissionsGlobally(actions: NAry<string>, params: TxParams): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
-    return this.with(params).renouncePermissions(this.toList(actions), wheres);
+  async revokePermissionGlobally(
+    action: string,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).revokePermission(action, this.toAddress(account), TimelockAuthorizer.EVERYWHERE);
+  }
+
+  async renouncePermissionGlobally(action: string, params: TxParams): Promise<ContractTransaction> {
+    return this.with(params).renouncePermissions(action, TimelockAuthorizer.EVERYWHERE);
   }
 
   async scheduleAndExecuteDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {
