@@ -27,16 +27,16 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC2
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-
-
+/**
+ * @notice Allows users to to `deposit` into and `withdraw` from an eToken. The eToken
+ * serves as a receipt Token.
+ */
 contract MockEulerToken is IEulerToken, TestToken {
-    // from Euler docs:
-    // in order to invest an asset to earn interest, you need to `deposit` into an eToken
-
     using FixedPoint for uint256;
 
     uint256 public exchangeRateMultiplier;
 
+    //solhint-disable-next-line var-name-mixedcase
     IMockEulerProtocol public immutable EULER_PROTOCOL;
 
     address private immutable _underlying;
@@ -53,8 +53,8 @@ contract MockEulerToken is IEulerToken, TestToken {
         EULER_PROTOCOL = eulerProtocol;
     }
 
-    // convert eToken Balance to underlying
-    function convertBalanceToUnderlying(uint256 balance) public override view returns (uint256) {
+    /// @inheritdoc IEulerToken
+    function convertBalanceToUnderlying(uint256 balance) public view override returns (uint256) {
         return balance.mulUp(exchangeRateMultiplier);
     }
 
@@ -62,29 +62,31 @@ contract MockEulerToken is IEulerToken, TestToken {
         exchangeRateMultiplier = _exchangeRateMultiplier;
     }
 
-    // convert underlying Balance to eToken
-    function convertUnderlyingToBalance(uint256 balance) public override view returns (uint256) {
+    /// @inheritdoc IEulerToken
+    function convertUnderlyingToBalance(uint256 balance) public view override returns (uint256) {
         return balance.divDown(exchangeRateMultiplier);
     }
 
-    function underlyingAsset() external override view returns (address) {
+    /// @inheritdoc IEulerToken
+    function underlyingAsset() external view override returns (address) {
         return _underlying;
     }
 
+    /// @inheritdoc IEulerToken
     function deposit(uint256, uint256 amount) external override {
-
-        // Relayer only uses one account. Meaning no subAccountID required
-        // is set to 0 in the Relayer
+        // The Relayer only uses one account, so no subAccountID required
+        // The subAccountID is set to zero in the relayer.
         // Transfer underlying tokens from sender to the Euler pool, and increase account's eTokens
 
         // assumes Euler protocol has approval to move `amount` from users wallet
         // mints MockEulerTokens to msg.sender (which is the relayer)
         // the relayer has earlier used `_pullToken` to ensure it is the contract
         // which is calling `deposit` on an eToken.
-        EULER_PROTOCOL.requestUnderlyingFromRelayer(_underlying, amount, msg.sender); 
+        EULER_PROTOCOL.requestUnderlyingFromRelayer(_underlying, amount, msg.sender);
         _mint(msg.sender, convertUnderlyingToBalance(amount));
     }
 
+    /// @inheritdoc IEulerToken
     function withdraw(uint256, uint256 amount) external override {
         uint256 wrappedAmount;
 
@@ -95,7 +97,7 @@ contract MockEulerToken is IEulerToken, TestToken {
         } else {
             wrappedAmount = convertUnderlyingToBalance(amount);
         }
-        
+
         EULER_PROTOCOL.sendUnderlyingToRelayer(_underlying, amount, msg.sender);
         _burn(msg.sender, wrappedAmount);
     }

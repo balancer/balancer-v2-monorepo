@@ -37,7 +37,7 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
     address private immutable _eulerProtocol;
 
     /**
-     * @dev Euler protocol needs to be approved to transer mainToken
+     * @dev Euler protocol needs to be approved to transfer mainToken
      * @param eulerProtocol - the address of the euler protocol
      */
     constructor(address eulerProtocol) {

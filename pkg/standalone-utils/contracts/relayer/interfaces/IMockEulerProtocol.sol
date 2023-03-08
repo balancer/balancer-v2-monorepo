@@ -16,8 +16,8 @@ pragma solidity ^0.7.0;
 
 interface IMockEulerProtocol {
     /**
-     * @dev triggers a transferFrom call with `from` being the msg.sender
-     * @notice This mimics the requirement to ensure the euler protocol
+     * @notice Triggers a transferFrom call `from` msg.sender
+     * @dev This mimics the requirement to ensure the euler protocol
      * is allowed to transfer from msg.sender
      */
     function requestUnderlyingFromRelayer(
@@ -27,8 +27,8 @@ interface IMockEulerProtocol {
     ) external;
 
     /**
-     * @dev sends tokens from EulerProtocol to relayer
-     * @notice this is a simple ERC20.transfer
+     * @notice Sends tokens from EulerProtocol to relayer
+     * @dev This is a simple ERC20.transfer
      */
     function sendUnderlyingToRelayer(
         address wrappedToken,
