@@ -15,10 +15,13 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICToken.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 contract MockCToken is TestToken, ICToken {
+    using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
     address public immutable override underlying;
@@ -45,7 +48,7 @@ contract MockCToken is TestToken, ICToken {
     function mint(uint256 mintAmount) public override returns (uint256) {
         uint256 amountToMint = toCTokenAmount(mintAmount);
 
-        ERC20(underlying).transferFrom(msg.sender, address(this), mintAmount);
+        IERC20(underlying).safeTransferFrom(msg.sender, address(this), mintAmount);
 
         _mint(msg.sender, amountToMint);
 
@@ -67,7 +70,7 @@ contract MockCToken is TestToken, ICToken {
 
         uint256 amountToReturn = fromCTokenAmount(redeemTokens);
 
-        ERC20(underlying).transfer(msg.sender, amountToReturn);
+        IERC20(underlying).safeTransfer(msg.sender, amountToReturn);
 
         return 0;
     }
