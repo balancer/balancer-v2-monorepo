@@ -19,7 +19,7 @@ pragma solidity ^0.7.0;
 // lending and borrowing pools with custom parameters.
 
 import "../solidity-utils/openzeppelin/IERC20.sol";
-interface ICFuseToken is IERC20 {
+interface ICToken is IERC20 {
     /**
      * @dev Underlying asset for this CToken
      */
@@ -55,16 +55,6 @@ interface ICFuseToken is IERC20 {
     function exchangeRateStored() external view returns (uint256);
 
     /**
-     * @notice Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
-     */
-    function initialExchangeRateMantissa() external view returns (uint256);
-
-    /**
-     * @notice Maximum fraction of interest that can be set aside for reserves
-     */
-    function reserveFactorMantissa() external view returns (uint256);
-
-    /**
      * @notice Block number that interest was last accrued at
      */
     function accrualBlockNumber() external view returns (uint256);
@@ -78,14 +68,4 @@ interface ICFuseToken is IERC20 {
      * @notice Total amount of reserves of the underlying held in this market
      */
     function totalReserves() external view returns (uint256);
-
-    /**
-     * @notice Total admin fees
-     */
-    function totalAdminFees() external view returns (uint256);
-
-    /**
-     * @notice Total fuse fees
-     */
-    function totalFuseFees() external view returns (uint256);
 }

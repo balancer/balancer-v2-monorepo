@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICFuseToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
@@ -26,11 +26,11 @@ import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
 import "./IBaseRelayerLibrary.sol";
 
 /**
- * @title MidasWrapping
- * @notice Allows users to wrap and unwrap MidasCTokens tokens
+ * @title CompoundV2Wrapping
+ * @notice Allows users to wrap and unwrap CompoundV2CTokens tokens
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
-abstract contract MidasWrapping is IBaseRelayerLibrary {
+abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
     using Address for address payable;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
@@ -39,8 +39,8 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
      *@dev
      *@notice pulls tokens from sender to relayer and calls mint? on a CToken.
      */
-    function wrapMidas(
-        ICFuseToken wrappedToken,
+    function wrapCompoundV2(
+        ICToken wrappedToken,
         address sender,
         address recipient,
         uint256 amount,
@@ -61,7 +61,7 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
 
         mainToken.safeApprove(address(wrappedToken), amount);
 
-        // The mint function transfers an asset into the Midas protocol, which begins accumulating interest
+        // The mint function transfers an asset into the CompoundV2 protocol, which begins accumulating interest
         // based on the current Supply Rate for the asset. The user receives a quantity of cTokens
         // equal to the underlying tokens supplied, divided by the current Exchange Rate.
         require(wrappedToken.mint(amount) == 0, "wrapping failed");
@@ -77,8 +77,8 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
         }
     }
 
-    function unwrapMidas(
-        ICFuseToken wrappedToken,
+    function unwrapCompoundV2(
+        ICToken wrappedToken,
         address sender,
         address recipient,
         uint256 amount,

@@ -24,7 +24,7 @@ import {
   toChainedReference,
 } from './helpers/chainedReferences';
 
-describe('MidasWrapping', function () {
+describe('CompoundV2Wrapping', function () {
   let DAI: Token, cDAI: Token;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
@@ -82,7 +82,7 @@ describe('MidasWrapping', function () {
   describe('primitives', () => {
     const amount = fp(1);
 
-    describe('wrapMidas', () => {
+    describe('wrapCompoundV2', () => {
       let tokenSender: Account, tokenRecipient: Account;
 
       context('sender = senderUser, recipient = relayer', () => {
@@ -121,7 +121,7 @@ describe('MidasWrapping', function () {
 
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          const expectedMidasAmount = await cDAI.toCTokenAmount(amount);
+          const expectedCompoundV2Amount = await cDAI.toCTokenAmount(amount);
 
           const receipt = await (
             await relayer.connect(senderUser).multicall([encodeWrap(cDAI.address, tokenSender, tokenRecipient, amount)])
@@ -155,7 +155,7 @@ describe('MidasWrapping', function () {
             {
               from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayer),
-              value: expectedMidasAmount,
+              value: expectedCompoundV2Amount,
             },
             cDAI
           );
@@ -165,7 +165,7 @@ describe('MidasWrapping', function () {
               {
                 from: TypesConverter.toAddress(relayer),
                 to: TypesConverter.toAddress(tokenRecipient),
-                value: expectedMidasAmount,
+                value: expectedCompoundV2Amount,
               },
               cDAI
             );
@@ -239,7 +239,7 @@ describe('MidasWrapping', function () {
       }
     });
 
-    describe('unwrapMidas', () => {
+    describe('unwrapCompoundV2', () => {
       let tokenSender: Account, tokenRecipient: Account;
 
       context('sender = senderUser, recipient = relayer', () => {
@@ -797,7 +797,7 @@ describe('MidasWrapping', function () {
     amount: BigNumberish,
     outputReference?: BigNumberish
   ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapMidas', [
+    return relayerLibrary.interface.encodeFunctionData('wrapCompoundV2', [
       wrappedTokenAddress,
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),
@@ -813,7 +813,7 @@ describe('MidasWrapping', function () {
     amount: BigNumberish,
     outputReference?: BigNumberish
   ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapMidas', [
+    return relayerLibrary.interface.encodeFunctionData('unwrapCompoundV2', [
       wrappedTokenAddress,
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),

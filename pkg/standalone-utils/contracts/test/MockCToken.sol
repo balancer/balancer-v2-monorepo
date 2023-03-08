@@ -14,12 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICFuseToken.sol";
-
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract MockCToken is TestToken, ICFuseToken {
+contract MockCToken is TestToken, ICToken {
     using FixedPoint for uint256;
 
     address public immutable override underlying;
@@ -111,22 +110,6 @@ contract MockCToken is TestToken, ICFuseToken {
 
     function accrualBlockNumber() external pure override returns (uint256) {
         return 100000;
-    }
-
-    function initialExchangeRateMantissa() external pure override returns (uint256) {
-        return 2e17;
-    }
-
-    function reserveFactorMantissa() external pure override returns (uint256) {
-        return 0;
-    }
-
-    function totalAdminFees() external pure override returns (uint256) {
-        return 0;
-    }
-
-    function totalFuseFees() external pure override returns (uint256) {
-        return 0;
     }
 
     function totalBorrows() external pure override returns (uint256) {
