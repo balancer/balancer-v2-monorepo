@@ -19,7 +19,6 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICFuseToken.sol"
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-
 contract MockCToken is TestToken, ICFuseToken {
     using FixedPoint for uint256;
 
@@ -75,19 +74,20 @@ contract MockCToken is TestToken, ICFuseToken {
     }
 
     /**
-     * @notice preview amount of CTokens returned 
+     * @notice preview amount of CTokens returned
      * @param amount The number of underlying Tokens expected to be exchanged
-     * @return amount of CTokens returned for amount of Token depoisted 
+     * @return amount of CTokens returned for amount of Token depoisted
      */
-    function toCTokenAmount(uint256 amount) public view returns(uint256) {
+    function toCTokenAmount(uint256 amount) public view returns (uint256) {
         return amount.divDown(_exchangeRate);
     }
+
     /**
      * @notice preview amount of underlying returned
      * @param amount The number of underlying Tokens expected to be exchanged
-     * @return amount of CTokens returned for amount of Token depoisted 
+     * @return amount of CTokens returned for amount of Token depoisted
      */
-    function fromCTokenAmount(uint256 amount) public view returns(uint256) {
+    function fromCTokenAmount(uint256 amount) public view returns (uint256) {
         return amount.mulUp(_exchangeRate);
     }
 
