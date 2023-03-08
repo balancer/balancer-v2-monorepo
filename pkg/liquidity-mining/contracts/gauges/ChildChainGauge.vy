@@ -70,8 +70,8 @@ WEEK: constant(uint256) = 86400 * 7
 
 
 BAL: immutable(address)
+BAL_PSEUDO_MINTER: immutable(address)
 VOTING_ESCROW: immutable(address)
-FACTORY: immutable(address)
 BAL_VAULT: immutable(address)
 AUTHORIZER_ADAPTOR: immutable(address)
 
@@ -87,6 +87,7 @@ totalSupply: public(uint256)
 
 lp_token: public(address)
 version: public(String[128])
+factory: public(address)
 
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
@@ -115,13 +116,20 @@ inflation_rate: public(HashMap[uint256, uint256])
 
 
 @external
-def __init__(_bal_token: address, _voting_escrow: address, _factory: address, _authorizer_adaptor: address, _version: String[128]):
+def __init__(
+    _bal_token: address,
+    _voting_escrow: address,
+    _bal_pseudo_minter: address,
+    _authorizer_adaptor: address,
+    _version: String[128]
+):
     self.lp_token = 0x000000000000000000000000000000000000dEaD
     self.version = _version
+    self.factory = 0x000000000000000000000000000000000000dEaD
 
     BAL = _bal_token
     VOTING_ESCROW = _voting_escrow
-    FACTORY = _factory
+    BAL_PSEUDO_MINTER = _bal_pseudo_minter
     AUTHORIZER_ADAPTOR = _authorizer_adaptor
     BAL_VAULT = AuthorizerAdaptor(_authorizer_adaptor).getVault()
 
@@ -136,7 +144,8 @@ def _checkpoint(_user: address):
     period_time: uint256 = self.period_timestamp[period]
     integrate_inv_supply: uint256 = self.integrate_inv_supply[period]
 
-    if block.timestamp > period_time:
+    # If killed, we skip accumulating inflation in `integrate_inv_supply`
+    if block.timestamp > period_time and not self.is_killed:
 
         working_supply: uint256 = self.working_supply
         prev_week_time: uint256 = period_time
@@ -161,7 +170,7 @@ def _checkpoint(_user: address):
     if bal_balance != 0:
         current_week: uint256 = block.timestamp / WEEK
         self.inflation_rate[current_week] += bal_balance / ((current_week + 1) * WEEK - block.timestamp)
-        ERC20(BAL).transfer(FACTORY, bal_balance)
+        ERC20(BAL).transfer(BAL_PSEUDO_MINTER, bal_balance)
 
     period += 1
     self.period = period
@@ -499,7 +508,7 @@ def user_checkpoint(addr: address) -> bool:
     @param addr User address
     @return bool success
     """
-    assert msg.sender in [addr, FACTORY]  # dev: unauthorized
+    assert msg.sender in [addr, BAL_PSEUDO_MINTER]  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
@@ -513,7 +522,7 @@ def claimable_tokens(addr: address) -> uint256:
     @return uint256 number of claimable tokens per user
     """
     self._checkpoint(addr)
-    return self.integrate_fraction[addr] - Minter(FACTORY).minted(addr, self)
+    return self.integrate_fraction[addr] - Minter(BAL_PSEUDO_MINTER).minted(addr, self)
 
 
 @view
@@ -643,6 +652,7 @@ def killGauge():
 
     self.is_killed = True
 
+
 @external
 def unkillGauge():
     """
@@ -661,6 +671,7 @@ def decimals() -> uint256:
     """
     return 18
 
+
 @view
 @external
 def allowance(owner: address, spender: address) -> uint256:
@@ -678,18 +689,17 @@ def integrate_checkpoint() -> uint256:
 
 @view
 @external
+def bal_pseudo_minter() -> address:
+    return BAL_PSEUDO_MINTER
+
+@view
+@external
 def voting_escrow() -> address:
     return VOTING_ESCROW
 
 
 @view
 @external
-def factory() -> address:
-    return FACTORY
-
-
-@external
-@view
 def authorizer_adaptor() -> address:
     """
     @notice Return the authorizer adaptor address.
@@ -703,6 +713,7 @@ def initialize(_lp_token: address, _version: String[128]):
 
     self.lp_token = _lp_token
     self.version = _version
+    self.factory = msg.sender
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()
     name: String[64] = concat("Balancer ", symbol, " Gauge Deposit")

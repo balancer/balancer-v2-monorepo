@@ -21,11 +21,19 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 contract MockEulerProtocol {
     using SafeERC20 for IERC20;
 
-    function requestUnderlyingFromRelayer(address underlying, uint256 amount, address relayer) public {
-        IERC20(underlying).transferFrom(relayer, (address(this)), amount);
+    function requestUnderlyingFromRelayer(
+        address underlying,
+        uint256 amount,
+        address relayer
+    ) public {
+        IERC20(underlying).safeTransferFrom(relayer, (address(this)), amount);
     }
 
-    function sendUnderlyingToRelayer(address underlying, uint256 amount, address relayer) public {
-        IERC20(underlying).transfer(relayer, amount);
+    function sendUnderlyingToRelayer(
+        address underlying,
+        uint256 amount,
+        address relayer
+    ) public {
+        IERC20(underlying).safeTransfer(relayer, amount);
     }
 }

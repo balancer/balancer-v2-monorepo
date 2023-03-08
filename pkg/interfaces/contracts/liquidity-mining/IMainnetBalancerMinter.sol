@@ -12,27 +12,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
-interface IMockEulerProtocol {
-    /**
-     * @notice Triggers a transferFrom call `from` msg.sender
-     * @dev This mimics the requirement to ensure the euler protocol
-     * is allowed to transfer from msg.sender
-     */
-    function requestUnderlyingFromRelayer(
-        address underlying,
-        uint256 amount,
-        address msgSender
-    ) external;
+import "./IBalancerMinter.sol";
+import "./ILMGetters.sol";
 
-    /**
-     * @notice Sends tokens from EulerProtocol to relayer
-     * @dev This is a simple ERC20.transfer
-     */
-    function sendUnderlyingToRelayer(
-        address wrappedToken,
-        uint256 amount,
-        address relayer
-    ) external;
+/**
+ * @dev Full L1 Balancer minter interface with singleton getters.
+ */
+interface IMainnetBalancerMinter is IBalancerMinter, ILMGetters {
+    // solhint-disable-previous-line no-empty-blocks
 }

@@ -6,64 +6,68 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
-
-import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
+import { StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { ANY_ADDRESS, MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
-import {
-  expectChainedReferenceContents,
-  setChainedReferenceContents,
-  toChainedReference,
-} from './helpers/chainedReferences';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
 
-describe('EulerWrapping', function () {
-  let DAI: Contract, eDAI: Contract;
-  let mockEulerProtocol: Contract;
+describe('SiloWrapping', function () {
+  let DAI: Token, sDAI: Token, mockSilo: Contract;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
 
-  before('setup signers', async () => {
+  before('setup signer', async () => {
     [, admin, senderUser, recipientUser] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy Vault', async () => {
     vault = await Vault.create({ admin });
-
-    mockEulerProtocol = await deploy('MockEulerProtocol');
-
-    DAI = await deploy('v2-solidity-utils/TestToken', { args: ['DAI', 'DAI', 18] });
-
-    const daiAddress = DAI.address;
-    const eulerProtocolAddress = mockEulerProtocol.address;
-
-    eDAI = await deploy('MockEulerToken', {
-      args: ['eDAI', 'eDAI', 18, daiAddress, eulerProtocolAddress],
+    // Set up and deploy tokens
+    DAI = await deploy('v2-solidity-utils/TestToken', {
+      args: ['DAI', 'DAI', 18],
     });
-    await eDAI.setExchangeRateMultiplier(bn(5e18));
+
+    mockSilo = await deploy('MockSilo', {
+      args: [DAI.address],
+    });
+
+    sDAI = await deploy('MockShareToken', {
+      args: ['sDAI', 'sDAI', 18, mockSilo.address, DAI.address],
+    });
+
+    // initalize the asset storage mapping within the Silo for the main token
+    await mockSilo.setAssetStorage(
+      DAI.address, // interestBearingAsset
+      sDAI.address, // CollateralToken
+      sDAI.address, // CollateralOnlyToken (using wrapped token as a placeholder)
+      sDAI.address, // debtToken (using wrapped token as a placeholder)
+      fp(20000), // totalDeposits; These values do not matter for the sack of relayer tests
+      fp(100), // collateralOnlyDeposits; These values do not matter for the sack of relayer tests
+      fp(9000) // totalBorrowAmount; These values do not matter for the sack of relayer tests
+    );
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
     await DAI.mint(senderUser.address, fp(100));
-    await DAI.connect(senderUser).approve(vault.address, fp(100));
+    await sDAI.mint(senderUser.address, fp(100));
 
-    await eDAI.mint(senderUser.address, fp(100));
-    await eDAI.connect(senderUser).approve(vault.address, fp(100));
+    await DAI.connect(senderUser).approve(vault.address, fp(100));
+    await sDAI.connect(senderUser).approve(vault.address, fp(100));
   });
 
   sharedBeforeEach('set up relayer', async () => {
-    // deploy Relayer
+    // Deploy Relayer
     relayerLibrary = await deploy('MockBatchRelayerLibrary', {
-      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS, mockEulerProtocol.address],
+      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
     });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
@@ -73,89 +77,217 @@ describe('EulerWrapping', function () {
         actionId(vault.instance, action)
       )
     );
-    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
+    const authorizer = vault.authorizer;
+    const wheres = relayerActionIds.map(() => ANY_ADDRESS);
+    await authorizer.connect(admin).grantPermissions(relayerActionIds, relayer.address, wheres);
 
     // Approve relayer by sender
-    await vault.setRelayerApproval(senderUser, relayer, true);
+    await vault.instance.connect(senderUser).setRelayerApproval(senderUser.address, relayer.address, true);
   });
 
-  describe('primitives', async () => {
-    const amount = fp(100);
+  function encodeApprove(token: Token, amount: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
+  }
 
-    describe('wrap Euler', async () => {
+  function encodeWrap(
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('wrapShareToken', [
+      sDAI.address,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeUnwrap(
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('unwrapShareToken', [
+      sDAI.address,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeJoin(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    maxAmountsIn: BigNumberish[];
+    userData: string;
+    outputReference?: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('joinPool', [
+      params.poolId,
+      0, // WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        maxAmountsIn: params.maxAmountsIn,
+        userData: params.userData,
+        fromInternalBalance: false,
+      },
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
+
+  function encodeExit(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    minAmountsOut: BigNumberish[];
+    userData: string;
+    outputReference?: { index: number; key: BigNumberish }[];
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('exitPool', [
+      params.poolId,
+      0, // WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        minAmountsOut: params.minAmountsOut,
+        userData: params.userData,
+        toInternalBalance: false,
+      },
+      params.outputReference,
+    ]);
+  }
+
+  async function setChainedReferenceContents(ref: BigNumberish, value: BigNumberish): Promise<void> {
+    await relayer.multicall([relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [ref, value])]);
+  }
+
+  describe('primitives', () => {
+    const amount = fp(1);
+
+    describe('wrap DAI', () => {
       let tokenSender: Account, tokenRecipient: Account;
 
       context('sender = senderUser, recipient = relayer', () => {
-        this.beforeEach(() => {
+        beforeEach(async () => {
           tokenSender = senderUser;
           tokenRecipient = relayer;
         });
         testWrap();
       });
 
+      context('sender = senderUser, recipient = senderUser', () => {
+        beforeEach(() => {
+          tokenSender = senderUser;
+          tokenRecipient = senderUser;
+        });
+        testWrap();
+      });
+
+      context('sender = relayer, recipient = relayer', () => {
+        beforeEach(async () => {
+          await DAI.connect(senderUser).transfer(relayer.address, amount);
+          tokenSender = relayer;
+          tokenRecipient = relayer;
+        });
+        testWrap();
+      });
+
+      context('sender = relayer, recipient = senderUser', () => {
+        beforeEach(async () => {
+          await DAI.connect(senderUser).transfer(relayer.address, amount);
+          tokenSender = relayer;
+          tokenRecipient = senderUser;
+        });
+        testWrap();
+      });
+
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          const expectedulerAmount = await eDAI.convertUnderlyingToBalance(amount);
+          const expectedsDAIAmount = await mockSilo.underlyingToShares(amount);
 
           const receipt = await (
-            await relayer.connect(senderUser).multicall([encodeWrap(eDAI.address, tokenSender, tokenRecipient, amount)])
+            await relayer.connect(senderUser).multicall([encodeWrap(tokenSender, tokenRecipient, amount)])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
-          if (!relayerIsSender) {
-            expectTransferEvent(
-              receipt,
-              {
-                from: TypesConverter.toAddress(tokenSender),
-                to: TypesConverter.toAddress(relayer),
-                value: amount,
-              },
-              DAI
-            );
-          }
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(relayer),
-              to: TypesConverter.toAddress(mockEulerProtocol),
+              from: TypesConverter.toAddress(tokenSender),
+              to: TypesConverter.toAddress(relayerIsSender ? mockSilo : relayer),
               value: amount,
             },
             DAI
           );
-
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: ZERO_ADDRESS,
-              to: TypesConverter.toAddress(relayer),
-              value: expectedulerAmount,
+              from: TypesConverter.toAddress(ZERO_ADDRESS),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
+              value: expectedsDAIAmount,
             },
-            eDAI
+            sDAI
           );
-          if (!relayerIsRecipient) {
-            expectTransferEvent(
-              receipt,
-              {
-                from: TypesConverter.toAddress(relayer),
-                to: TypesConverter.toAddress(tokenRecipient),
-                value: expectedulerAmount,
-              },
-              eDAI
-            );
-          }
+        });
+
+        it('stores wrap output as chained reference', async () => {
+          const expectedsDAIAmount = await mockSilo.underlyingToShares(amount);
+
+          await relayer
+            .connect(senderUser)
+            .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
+
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedsDAIAmount);
+        });
+
+        it('wraps with chained references', async () => {
+          const expectedsDAIAmount = await mockSilo.underlyingToShares(amount);
+          await setChainedReferenceContents(toChainedReference(0), amount);
+
+          const receipt = await (
+            await relayer
+              .connect(senderUser)
+              .multicall([encodeWrap(tokenSender, tokenRecipient, toChainedReference(0))])
+          ).wait();
+
+          const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(tokenSender),
+              to: TypesConverter.toAddress(relayerIsSender ? mockSilo : relayer),
+              value: amount,
+            },
+            DAI
+          );
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(ZERO_ADDRESS),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
+              value: expectedsDAIAmount,
+            },
+            sDAI
+          );
         });
       }
     });
 
-    describe('unwrap Euler', async () => {
+    describe('unwrap sDAI', () => {
       let tokenSender: Account, tokenRecipient: Account;
-
-      beforeEach(async () => {
-        // Euler protocol does not have any underlying tokens
-        // so we wint them.
-        DAI.mint(mockEulerProtocol.address, fp(5000));
-      });
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
@@ -165,17 +297,46 @@ describe('EulerWrapping', function () {
         testUnwrap();
       });
 
+      context('sender = senderUser, recipient = senderUser', () => {
+        beforeEach(async () => {
+          tokenSender = senderUser;
+          tokenRecipient = senderUser;
+        });
+        testUnwrap();
+      });
+
+      context('sender = relayer, recipient = relayer', () => {
+        beforeEach(async () => {
+          await sDAI.connect(senderUser).transfer(relayer.address, amount);
+          tokenSender = relayer;
+          tokenRecipient = relayer;
+        });
+        testUnwrap();
+      });
+
+      context('sender = relayer, recipient = senderUser', () => {
+        beforeEach(async () => {
+          await sDAI.connect(senderUser).transfer(relayer.address, amount);
+          tokenSender = relayer;
+          tokenRecipient = senderUser;
+        });
+        testUnwrap();
+      });
+
       function testUnwrap(): void {
+        beforeEach('Load the liquidity pool with underlying tokens', async () => {
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+          await DAI.connect(senderUser).mint(mockSilo.address, expectedDAIAmount);
+        });
+
         it('unwraps with immediate amounts', async () => {
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+
           const receipt = await (
-            await relayer
-              .connect(senderUser)
-              .multicall([encodeUnwrap(eDAI.address, tokenSender, tokenRecipient, amount)])
+            await relayer.connect(senderUser).multicall([encodeUnwrap(tokenSender, tokenRecipient, amount)])
           ).wait();
-
-          const unwrappedAmount = await eDAI.convertBalanceToUnderlying(amount);
-
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+
           if (!relayerIsSender) {
             expectTransferEvent(
               receipt,
@@ -184,19 +345,9 @@ describe('EulerWrapping', function () {
                 to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
-              eDAI
+              sDAI
             );
           }
-          expectTransferEvent(
-            receipt,
-            {
-              from: TypesConverter.toAddress(mockEulerProtocol),
-              to: TypesConverter.toAddress(relayer),
-              value: unwrappedAmount,
-            },
-            DAI
-          );
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
@@ -204,7 +355,18 @@ describe('EulerWrapping', function () {
               to: ZERO_ADDRESS,
               value: amount,
             },
-            eDAI
+            sDAI
+          );
+
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(mockSilo),
+              to: TypesConverter.toAddress(relayer),
+              value: expectedDAIAmount,
+            },
+            DAI
           );
           if (!relayerIsRecipient) {
             expectTransferEvent(
@@ -212,31 +374,32 @@ describe('EulerWrapping', function () {
               {
                 from: TypesConverter.toAddress(relayer),
                 to: TypesConverter.toAddress(tokenRecipient),
-                value: unwrappedAmount,
+                value: expectedDAIAmount,
               },
               DAI
             );
           }
         });
+
         it('stores unwrap output as chained reference', async () => {
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+
           await relayer
             .connect(senderUser)
-            .multicall([encodeUnwrap(eDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
+            .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          const mainAmount = await eDAI.convertBalanceToUnderlying(amount);
-          await expectChainedReferenceContents(relayer, toChainedReference(0), mainAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedDAIAmount);
         });
 
         it('unwraps with chained references', async () => {
-          await setChainedReferenceContents(relayer, toChainedReference(0), amount);
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+          await setChainedReferenceContents(toChainedReference(0), amount);
 
           const receipt = await (
             await relayer
               .connect(senderUser)
-              .multicall([encodeUnwrap(eDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
+              .multicall([encodeUnwrap(tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
-
-          const unwrappedAmount = await eDAI.convertBalanceToUnderlying(amount);
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
@@ -247,20 +410,9 @@ describe('EulerWrapping', function () {
                 to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
-              eDAI
+              sDAI
             );
           }
-          expectTransferEvent(
-            receipt,
-            {
-              from: TypesConverter.toAddress(mockEulerProtocol),
-              to: TypesConverter.toAddress(relayer),
-              value: unwrappedAmount,
-            },
-            DAI
-          );
-
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
@@ -268,7 +420,18 @@ describe('EulerWrapping', function () {
               to: ZERO_ADDRESS,
               value: amount,
             },
-            eDAI
+            sDAI
+          );
+
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(mockSilo),
+              to: TypesConverter.toAddress(relayer),
+              value: expectedDAIAmount,
+            },
+            DAI
           );
           if (!relayerIsRecipient) {
             expectTransferEvent(
@@ -276,7 +439,7 @@ describe('EulerWrapping', function () {
               {
                 from: TypesConverter.toAddress(relayer),
                 to: TypesConverter.toAddress(tokenRecipient),
-                value: unwrappedAmount,
+                value: expectedDAIAmount,
               },
               DAI
             );
@@ -287,7 +450,7 @@ describe('EulerWrapping', function () {
   });
 
   describe('complex actions', () => {
-    let WETH: Token, DAIToken: Token, eDAIToken: Token;
+    let WETH: Token, DAIToken: Token, sDAIToken: Token;
     let poolTokens: TokenList;
     let poolId: string;
     let pool: StablePool;
@@ -296,8 +459,8 @@ describe('EulerWrapping', function () {
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
       DAIToken = await Token.deployedAt(await DAI.address);
-      eDAIToken = await Token.deployedAt(await eDAI.address);
-      poolTokens = new TokenList([WETH, eDAIToken]).sort();
+      sDAIToken = await Token.deployedAt(await sDAI.address);
+      poolTokens = new TokenList([WETH, sDAIToken]).sort();
 
       pool = await StablePool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
@@ -310,9 +473,9 @@ describe('EulerWrapping', function () {
       await WETH.approve(vault, MAX_UINT256, { from: admin });
 
       await DAIToken.mint(admin, fp(150));
-      await DAIToken.mint(mockEulerProtocol, fp(5000));
-      await DAIToken.approve(eDAI, fp(150), { from: admin });
-      await eDAIToken.approve(vault, MAX_UINT256, { from: admin });
+      await DAIToken.approve(sDAI, fp(150), { from: admin });
+      // await sDAIToken.connect(admin).wrap(fp(150));
+      await sDAIToken.approve(vault, MAX_UINT256, { from: admin });
 
       bptIndex = await pool.getBptIndex();
       const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
@@ -321,6 +484,38 @@ describe('EulerWrapping', function () {
     });
 
     describe('swap', () => {
+      function encodeSwap(params: {
+        poolId: string;
+        kind: SwapKind;
+        tokenIn: Token;
+        tokenOut: Token;
+        amount: BigNumberish;
+        sender: Account;
+        recipient: Account;
+        outputReference?: BigNumberish;
+      }): string {
+        return relayerLibrary.interface.encodeFunctionData('swap', [
+          {
+            poolId: params.poolId,
+            kind: params.kind,
+            assetIn: params.tokenIn.address,
+            assetOut: params.tokenOut.address,
+            amount: params.amount,
+            userData: '0x',
+          },
+          {
+            sender: TypesConverter.toAddress(params.sender),
+            recipient: TypesConverter.toAddress(params.recipient),
+            fromInternalBalance: false,
+            toInternalBalance: false,
+          },
+          0,
+          MAX_UINT256,
+          0,
+          params.outputReference ?? 0,
+        ]);
+      }
+
       describe('swap using DAI as an input', () => {
         let receipt: ContractReceipt;
         const amount = fp(1);
@@ -328,12 +523,12 @@ describe('EulerWrapping', function () {
         sharedBeforeEach('swap DAI for WETH', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              encodeWrap(eDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(eDAI, MAX_UINT256),
+              encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
+              encodeApprove(sDAI, MAX_UINT256),
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
-                tokenIn: eDAI,
+                tokenIn: sDAI,
                 tokenOut: WETH,
                 amount: toChainedReference(0),
                 sender: relayer,
@@ -347,7 +542,7 @@ describe('EulerWrapping', function () {
         it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
-            tokenIn: eDAI.address,
+            tokenIn: sDAI.address,
             tokenOut: WETH.address,
           });
 
@@ -356,7 +551,7 @@ describe('EulerWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
@@ -365,19 +560,23 @@ describe('EulerWrapping', function () {
         const amount = fp(1);
 
         sharedBeforeEach('swap WETH for DAI', async () => {
+          // Add DAI into the Silo to simulate an already existing liquidity pool
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+          await DAI.connect(senderUser).mint(mockSilo.address, expectedDAIAmount);
+
           receipt = await (
             await relayer.connect(senderUser).multicall([
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
                 tokenIn: WETH,
-                tokenOut: eDAIToken,
+                tokenOut: sDAIToken,
                 amount,
                 sender: senderUser,
                 recipient: relayer,
                 outputReference: toChainedReference(0),
               }),
-              encodeUnwrap(eDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
+              encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -386,23 +585,20 @@ describe('EulerWrapping', function () {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
             tokenIn: WETH.address,
-            tokenOut: eDAIToken.address,
+            tokenOut: sDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: mockEulerProtocol.address, to: relayer.address }, DAI);
-          if (recipientUser.address !== relayer.address) {
-            expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
-          }
+          expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });
 
-    describe('batchswap', () => {
+    describe('batchSwap', () => {
       function encodeBatchSwap(params: {
         swaps: Array<{
           poolId: string;
@@ -449,10 +645,10 @@ describe('EulerWrapping', function () {
         sharedBeforeEach('swap DAI for WETH', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              encodeWrap(eDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(eDAIToken, MAX_UINT256),
+              encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
+              encodeApprove(sDAIToken, MAX_UINT256),
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn: eDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
+                swaps: [{ poolId, tokenIn: sDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
                 sender: relayer,
                 recipient: recipientUser,
               }),
@@ -463,7 +659,7 @@ describe('EulerWrapping', function () {
         it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId: poolId,
-            tokenIn: eDAI.address,
+            tokenIn: sDAI.address,
             tokenOut: WETH.address,
           });
 
@@ -472,7 +668,7 @@ describe('EulerWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
@@ -481,15 +677,19 @@ describe('EulerWrapping', function () {
         const amount = fp(1);
 
         sharedBeforeEach('swap WETH for DAI', async () => {
+          // Add DAI into the Silo to simulate an already existing liquidity pool
+          const expectedDAIAmount = await mockSilo.sharesToUnderlying(amount);
+          await DAI.connect(senderUser).mint(mockSilo.address, expectedDAIAmount);
+
           receipt = await (
             await relayer.connect(senderUser).multicall([
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn: WETH, tokenOut: eDAIToken, amount }],
+                swaps: [{ poolId, tokenIn: WETH, tokenOut: sDAIToken, amount }],
                 sender: senderUser,
                 recipient: relayer,
-                outputReferences: { eDAI: toChainedReference(0) },
+                outputReferences: { sDAI: toChainedReference(0) },
               }),
-              encodeUnwrap(eDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
+              encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -498,35 +698,32 @@ describe('EulerWrapping', function () {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId: poolId,
             tokenIn: WETH.address,
-            tokenOut: eDAI.address,
+            tokenOut: sDAI.address,
           });
 
-          expectTransferEvent(receipt, { from: mockEulerProtocol.address, to: relayer.address }, DAI);
-          if (recipientUser.address !== relayer.address) {
-            expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
-          }
+          expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
         });
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });
 
     describe('joinPool', () => {
       let receipt: ContractReceipt;
-      let sendereDAIBalanceBefore: BigNumber;
+      let sendersDAIBalanceBefore: BigNumber;
       const amount = fp(1);
 
       sharedBeforeEach('join the pool', async () => {
         const { tokens: allTokens } = await pool.getTokens();
 
-        sendereDAIBalanceBefore = await eDAIToken.balanceOf(senderUser);
+        sendersDAIBalanceBefore = await sDAIToken.balanceOf(senderUser);
         receipt = await (
           await relayer.connect(senderUser).multicall([
-            encodeWrap(eDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(eDAIToken, MAX_UINT256),
+            encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(sDAIToken, MAX_UINT256),
             encodeJoin({
               poolId,
               assets: allTokens,
@@ -534,7 +731,7 @@ describe('EulerWrapping', function () {
               recipient: recipientUser,
               maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
               userData: StablePoolEncoder.joinExactTokensInForBPTOut(
-                poolTokens.map((token) => (token === eDAIToken ? toChainedReference(0) : 0)),
+                poolTokens.map((token) => (token === sDAIToken ? toChainedReference(0) : 0)),
                 0
               ),
             }),
@@ -552,14 +749,14 @@ describe('EulerWrapping', function () {
         expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, pool);
       });
 
-      it('does not take eDAI from the user', async () => {
-        const sendereDAIBalanceAfter = await eDAIToken.balanceOf(senderUser);
-        expect(sendereDAIBalanceAfter).to.be.eq(sendereDAIBalanceBefore);
+      it('does not take sDAI from the user', async () => {
+        const sendersDAIBalanceAfter = await sDAIToken.balanceOf(senderUser);
+        expect(sendersDAIBalanceAfter).to.be.eq(sendersDAIBalanceBefore);
       });
 
       it('does not leave dust on the relayer', async () => {
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
+        expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
 
@@ -571,10 +768,10 @@ describe('EulerWrapping', function () {
       sharedBeforeEach('exit the pool', async () => {
         const { tokens: allTokens } = await pool.getTokens();
 
-        // First transfer token to the pool, before testing exit
+        // First transfer tokens to pool, before testing exit
         await relayer.connect(senderUser).multicall([
-          encodeWrap(eDAI.address, senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
-          encodeApprove(eDAIToken, MAX_UINT256),
+          encodeWrap(senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
+          encodeApprove(sDAIToken, MAX_UINT256),
           encodeJoin({
             poolId,
             assets: allTokens,
@@ -582,16 +779,16 @@ describe('EulerWrapping', function () {
             recipient: senderUser,
             maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
             userData: StablePoolEncoder.joinExactTokensInForBPTOut(
-              poolTokens.map((token) => (token === eDAIToken ? toChainedReference(0) : 0)),
+              poolTokens.map((token) => (token === sDAIToken ? toChainedReference(0) : 0)),
               0
             ),
           }),
         ]);
 
-        const eDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
-          (token: Token) => token.instance.address === eDAIToken.address
+        const sDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
+          (token: Token) => token.instance.address === sDAIToken.address
         );
-        const eDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === eDAIToken.address);
+        const sDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === sDAIToken.address);
         const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
         BPTBalanceBefore = await pool.balanceOf(senderUser);
 
@@ -604,10 +801,10 @@ describe('EulerWrapping', function () {
               sender: senderUser,
               recipient: relayer,
               minAmountsOut: Array(poolTokens.length + 1).fill(0),
-              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, eDAIIndexWithoutBPT),
+              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, sDAIIndexWithoutBPT),
               outputReference,
             }),
-            encodeUnwrap(eDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + eDAIIndex)),
+            encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(10 + sDAIIndex)),
           ])
         ).wait();
       });
@@ -619,7 +816,6 @@ describe('EulerWrapping', function () {
         });
 
         // DAI transfered to recipient
-        expectTransferEvent(receipt, { from: mockEulerProtocol.address, to: relayer.address }, DAIToken);
         expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAIToken);
       });
 
@@ -635,125 +831,8 @@ describe('EulerWrapping', function () {
 
       it('does not leave dust on the relayer', async () => {
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
+        expect(await sDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
   });
-
-  function encodeApprove(token: Token, amount: BigNumberish): string {
-    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
-  }
-
-  function encodeWrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapEuler', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
-  function encodeUnwrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapEuler', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
-  function encodeSwap(params: {
-    poolId: string;
-    kind: SwapKind;
-    tokenIn: Token;
-    tokenOut: Token;
-    amount: BigNumberish;
-    sender: Account;
-    recipient: Account;
-    outputReference?: BigNumberish;
-  }): string {
-    return relayerLibrary.interface.encodeFunctionData('swap', [
-      {
-        poolId: params.poolId,
-        kind: params.kind,
-        assetIn: params.tokenIn.address,
-        assetOut: params.tokenOut.address,
-        amount: params.amount,
-        userData: '0x',
-      },
-      {
-        sender: TypesConverter.toAddress(params.sender),
-        recipient: TypesConverter.toAddress(params.recipient),
-        fromInternalBalance: false,
-        toInternalBalance: false,
-      },
-      0,
-      MAX_UINT256,
-      0,
-      params.outputReference ?? 0,
-    ]);
-  }
-
-  function encodeJoin(params: {
-    poolId: string;
-    sender: Account;
-    recipient: Account;
-    assets: string[];
-    maxAmountsIn: BigNumberish[];
-    userData: string;
-    outputReference?: BigNumberish;
-  }): string {
-    return relayerLibrary.interface.encodeFunctionData('joinPool', [
-      params.poolId,
-      0, // WeightedPool
-      TypesConverter.toAddress(params.sender),
-      TypesConverter.toAddress(params.recipient),
-      {
-        assets: params.assets,
-        maxAmountsIn: params.maxAmountsIn,
-        userData: params.userData,
-        fromInternalBalance: false,
-      },
-      0,
-      params.outputReference ?? 0,
-    ]);
-  }
-
-  function encodeExit(params: {
-    poolId: string;
-    sender: Account;
-    recipient: Account;
-    assets: string[];
-    minAmountsOut: BigNumberish[];
-    userData: string;
-    outputReference?: { index: number; key: BigNumberish }[];
-  }): string {
-    return relayerLibrary.interface.encodeFunctionData('exitPool', [
-      params.poolId,
-      0, //WeightedPool
-      TypesConverter.toAddress(params.sender),
-      TypesConverter.toAddress(params.recipient),
-      {
-        assets: params.assets,
-        minAmountsOut: params.minAmountsOut,
-        userData: params.userData,
-        toInternalBalance: false,
-      },
-      params.outputReference,
-    ]);
-  }
 });

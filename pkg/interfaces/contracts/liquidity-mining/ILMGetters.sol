@@ -12,27 +12,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
-interface IMockEulerProtocol {
+import "./IBalancerTokenAdmin.sol";
+import "./IGaugeController.sol";
+
+interface ILMGetters {
     /**
-     * @notice Triggers a transferFrom call `from` msg.sender
-     * @dev This mimics the requirement to ensure the euler protocol
-     * is allowed to transfer from msg.sender
+     * @notice Returns the address of the Balancer Token Admin contract
      */
-    function requestUnderlyingFromRelayer(
-        address underlying,
-        uint256 amount,
-        address msgSender
-    ) external;
+    function getBalancerTokenAdmin() external view returns (IBalancerTokenAdmin);
 
     /**
-     * @notice Sends tokens from EulerProtocol to relayer
-     * @dev This is a simple ERC20.transfer
+     * @notice Returns the address of the Gauge Controller
      */
-    function sendUnderlyingToRelayer(
-        address wrappedToken,
-        uint256 amount,
-        address relayer
-    ) external;
+    function getGaugeController() external view returns (IGaugeController);
 }

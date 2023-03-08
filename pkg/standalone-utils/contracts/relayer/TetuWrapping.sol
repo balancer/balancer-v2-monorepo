@@ -15,39 +15,26 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IEulerToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuSmartVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-
 import "./IBaseRelayerLibrary.sol";
 
 /**
- * @title EulerWrapping
- * @notice Allows users to wrap and unwrap Euler tokens
+ * @title TetuWrapping
+ * @notice Allows users to wrap and unwrap Tetu tokens
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
-abstract contract EulerWrapping is IBaseRelayerLibrary {
+abstract contract TetuWrapping is IBaseRelayerLibrary {
     using Address for address payable;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
-    address private immutable _eulerProtocol;
-    //solhint-disable-next-line private-vars-leading-underscore
-    uint256 private constant MAX_UINT256 = type(uint256).max;
-
-    /**
-     * @dev Euler protocol needs to be approved to transfer mainToken
-     * @param eulerProtocol - the address of the euler protocol
-     */
-    constructor(address eulerProtocol) {
-        _eulerProtocol = eulerProtocol;
-    }
-
-    function wrapEuler(
-        IEulerToken wrappedToken,
+    function wrapTetu(
+        ITetuSmartVault wrappedToken,
         address sender,
         address recipient,
         uint256 amount,
@@ -57,7 +44,7 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
-        IERC20 underlying = IERC20(wrappedToken.underlyingAsset());
+        IERC20 underlying = IERC20(wrappedToken.underlying());
 
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
         // to be sourced from outside the relayer, we must first pull them here.
@@ -66,12 +53,8 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlying, amount);
         }
 
-        underlying.safeApprove(_eulerProtocol, amount);
-
-        // Deposit MainToken into EulerToken
-        // 0 for the Euler primary account
-        wrappedToken.deposit(0, amount);
-
+        underlying.safeApprove(address(wrappedToken), amount);
+        wrappedToken.deposit(amount);
         uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
@@ -83,8 +66,8 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
         }
     }
 
-    function unwrapEuler(
-        IEulerToken wrappedToken,
+    function unwrapTetu(
+        ITetuSmartVault wrappedToken,
         address sender,
         address recipient,
         uint256 amount,
@@ -101,15 +84,8 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
             _pullToken(sender, wrappedToken, amount);
         }
 
-        IERC20 mainToken = IERC20(wrappedToken.underlyingAsset());
-
-        // Euler offers two ways to withdraw:
-        //     1. Calculate mainTokenOut via wrappedToken.convertBalanceToUnderlying(wrappedTokenAmount)
-        //     2. Redeem the account's full balance of wrappedToken for mainToken
-        // Option 1 may leave wrappedToken dust in the relayer, so we choose option 2
-        // The 0 argument is for the Euler primary account
-        wrappedToken.withdraw(0, MAX_UINT256); //MAX_UINT256 forces option 2
-
+        IERC20 mainToken = IERC20(wrappedToken.underlying());
+        wrappedToken.withdraw(amount);
         uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 
         if (recipient != address(this)) {

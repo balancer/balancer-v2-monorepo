@@ -75,7 +75,7 @@ describe('GaugeActions', function () {
     });
     await BAL.connect(admin).grantRole(await BAL.MINTER_ROLE(), balTokenAdmin.address);
 
-    balMinter = await deploy('v2-liquidity-mining/BalancerMinter', {
+    balMinter = await deploy('v2-liquidity-mining/MainnetBalancerMinter', {
       args: [balTokenAdmin.address, gaugeController.address],
     });
 
