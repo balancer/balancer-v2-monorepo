@@ -25,17 +25,24 @@ contract MockCToken is TestToken, ICToken {
     using FixedPoint for uint256;
 
     address private immutable _underlying;
+    uint256 private immutable _scaleFactor;
+
     uint256 private _exchangeRate;
 
     constructor(
         string memory name,
         string memory symbol,
-        uint8 decimals,
         address underlyingAsset,
         uint256 exchangeRate
-    ) TestToken(name, symbol, decimals) {
+    ) TestToken(name, symbol, 8) { // cTokens always have 8 decimals
         _underlying = underlyingAsset;
-        _exchangeRate = exchangeRate;
+
+        // Scale the exchange rate to 1e(18-8+underlyingDecimals).
+        uint256 scaleFactor = 10**(uint256(10).add(ERC20(underlyingAsset).decimals()));
+        _scaleFactor = scaleFactor;
+
+        // Incoming exchange rate is scaled to 1e18.
+        _exchangeRate = exchangeRate.mulDown(scaleFactor);
     }
 
     /// @inheritdoc ICToken
@@ -93,9 +100,9 @@ contract MockCToken is TestToken, ICToken {
 
     /**
      * @notice Set the exchange rate for testing purposes.
-     * @param newExchangeRate The number of underlying tokens per cToken.
+     * @param newExchangeRate The number of underlying tokens per cToken, scaled to 1e18.
      */
     function setExchangeRate(uint256 newExchangeRate) external {
-        _exchangeRate = newExchangeRate;
+        _exchangeRate = newExchangeRate.mulDown(_scaleFactor);
     }
 }

@@ -38,28 +38,22 @@ describe('CompoundV2Wrapping', function () {
     // const initialExchangeRate: BigNumber;
     vault = await Vault.create({ admin });
 
-    const wrappedTokenDecimals = 8;
     const mainTokenDecimals = 18;
-    // cToken exchangeRate is an unsigned integer scaled by 1 * 10 ^(18-8+underlyingDecimals)
-    // const initialExchangeRate = bn(1e28);
 
     DAI = await deploy('v2-solidity-utils/TestToken', { args: ['DAI', 'DAI', mainTokenDecimals] });
 
     cDAI = await deploy('MockCToken', {
-      args: ['cDAI', 'cDAI', wrappedTokenDecimals, DAI.address, bn(2e15)],
+      args: ['cDAI', 'cDAI', DAI.address, fp(2)], // exchange rate = 2
     });
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
     await DAI.mint(senderUser.address, fp(100));
     await DAI.connect(senderUser).approve(vault.address, fp(100));
-    await DAI.mint(cDAI.address, fp(10000));
+    await DAI.mint(cDAI.address, fp(100));
 
-    await cDAI.mintTestTokens(senderUser.address, fp(100));
-    await cDAI.connect(senderUser).approve(vault.address, fp(150));
-
-    // Underlying token decimals: Need to run after cDAI tokens are minted
-    // await cDAI.setRate(bn(5e18));
+    await cDAI.mintTestTokens(senderUser.address, bn(100e8));
+    await cDAI.connect(senderUser).approve(vault.address, bn(100e8));
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -80,9 +74,9 @@ describe('CompoundV2Wrapping', function () {
   });
 
   describe('primitives', () => {
-    const amount = fp(1);
 
     describe('wrapCompoundV2', () => {
+      const amount = fp(1);
       let tokenSender: Account, tokenRecipient: Account;
 
       context('sender = senderUser, recipient = relayer', () => {
@@ -241,6 +235,7 @@ describe('CompoundV2Wrapping', function () {
 
     describe('unwrapCompoundV2', () => {
       let tokenSender: Account, tokenRecipient: Account;
+      const amount = bn(1e8); // cTokens have 8 decimals
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
@@ -508,7 +503,7 @@ describe('CompoundV2Wrapping', function () {
 
       describe('swap using DAI as an output', () => {
         let receipt: ContractReceipt;
-        const amount = fp(1);
+        const amount = bn(1e8); // cTokens have 8 decimals
 
         sharedBeforeEach('swap WETH for DAI', async () => {
           receipt = await (
@@ -624,7 +619,7 @@ describe('CompoundV2Wrapping', function () {
 
       describe('swap using DAI as an output', () => {
         let receipt: ContractReceipt;
-        const amount = fp(1);
+        const amount = bn(1e8); // cTokens have 8 decimals
 
         sharedBeforeEach('swap WETH for DAI', async () => {
           receipt = await (
