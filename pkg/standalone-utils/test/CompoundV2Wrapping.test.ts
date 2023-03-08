@@ -5,9 +5,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
+import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 
-import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
+import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
@@ -24,8 +24,8 @@ import {
   toChainedReference,
 } from './helpers/chainedReferences';
 
-describe('TetuWrapping', function () {
-  let DAI: Token, xDAI: Token;
+describe('CompoundV2Wrapping', function () {
+  let DAI: Token, cDAI: Token;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
@@ -39,27 +39,23 @@ describe('TetuWrapping', function () {
 
     DAI = await deploy('v2-solidity-utils/TestToken', { args: ['DAI', 'DAI', 18] });
 
-    const tetuStrategy = await deploy('MockTetuStrategy');
-    xDAI = await deploy('MockTetuSmartVault', { args: ['xDAI', 'xDAI', 18, DAI.address, tetuStrategy.address] });
+    cDAI = await deploy('MockCToken', {
+      args: ['cDAI', 'cDAI', DAI.address, fp(2)], // exchange rate = 2
+    });
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
     await DAI.mint(senderUser.address, fp(100));
     await DAI.connect(senderUser).approve(vault.address, fp(100));
-    await DAI.mint(xDAI.address, fp(10000));
+    await DAI.mint(cDAI.address, fp(100));
 
-    await xDAI.mint(senderUser.address, fp(2500));
-    await xDAI.connect(senderUser).approve(xDAI.address, fp(150));
-
-    // Underlying token decimals: Need to run after xDAI tokens are minted
-    await xDAI.setRate(bn(5e18));
+    await cDAI.mintTestTokens(senderUser.address, bn(100e8));
+    await cDAI.connect(senderUser).approve(vault.address, bn(100e8));
   });
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
-      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS],
-    });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
@@ -75,9 +71,8 @@ describe('TetuWrapping', function () {
   });
 
   describe('primitives', () => {
-    const amount = fp(1);
-
-    describe('wrapTetu', () => {
+    describe('wrapCompoundV2', () => {
+      const amount = fp(1);
       let tokenSender: Account, tokenRecipient: Account;
 
       context('sender = senderUser, recipient = relayer', () => {
@@ -116,10 +111,10 @@ describe('TetuWrapping', function () {
 
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          const expectedTetuAmount = await xDAI.toTetuAmount(amount, xDAI.address);
+          const expectedWrappedAmount = await cDAI.toCTokenAmount(amount);
 
           const receipt = await (
-            await relayer.connect(senderUser).multicall([encodeWrap(xDAI.address, tokenSender, tokenRecipient, amount)])
+            await relayer.connect(senderUser).multicall([encodeWrap(cDAI.address, tokenSender, tokenRecipient, amount)])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
@@ -127,8 +122,8 @@ describe('TetuWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: tokenSender.address,
-                to: relayer.address,
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
               DAI
@@ -137,54 +132,54 @@ describe('TetuWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayer.address,
-              to: xDAI.address,
+              from: TypesConverter.toAddress(relayer),
+              to: TypesConverter.toAddress(cDAI),
               value: amount,
             },
             DAI
           );
 
-          const relayerIsReceiver = TypesConverter.toAddress(tokenRecipient) === relayer.address;
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: relayer.address,
-              value: expectedTetuAmount,
+              to: TypesConverter.toAddress(relayer),
+              value: expectedWrappedAmount,
             },
-            xDAI
+            cDAI
           );
-          if (!relayerIsReceiver) {
+          if (!relayerIsRecipient) {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
-                value: expectedTetuAmount,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
+                value: expectedWrappedAmount,
               },
-              xDAI
+              cDAI
             );
           }
         });
 
         it('stores wrap output as chained reference', async () => {
-          const expectedWrappedAmount = await xDAI.toTetuAmount(amount, xDAI.address);
+          const expectedWrappedAmount = await cDAI.toCTokenAmount(amount);
 
           await relayer
             .connect(senderUser)
-            .multicall([encodeWrap(xDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
+            .multicall([encodeWrap(cDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
           await expectChainedReferenceContents(relayer, toChainedReference(0), expectedWrappedAmount);
         });
 
         it('wraps with chained references', async () => {
-          const expectedWrappedAmount = await xDAI.toTetuAmount(amount, xDAI.address);
+          const expectedWrappedAmount = await cDAI.toCTokenAmount(amount);
           await setChainedReferenceContents(relayer, toChainedReference(0), amount);
 
           const receipt = await (
             await relayer
               .connect(senderUser)
-              .multicall([encodeWrap(xDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
+              .multicall([encodeWrap(cDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
@@ -192,8 +187,8 @@ describe('TetuWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: tokenSender.address,
-                to: relayer.address,
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
               DAI
@@ -202,44 +197,44 @@ describe('TetuWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayer.address,
-              to: xDAI.address,
+              from: TypesConverter.toAddress(relayer),
+              to: TypesConverter.toAddress(cDAI),
               value: amount,
             },
             DAI
           );
 
-          const relayerIsReceiver = TypesConverter.toAddress(tokenRecipient) === relayer.address;
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: relayer.address,
+              to: TypesConverter.toAddress(relayer),
               value: expectedWrappedAmount,
             },
-            xDAI
+            cDAI
           );
-          if (!relayerIsReceiver) {
+          if (!relayerIsRecipient) {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
                 value: expectedWrappedAmount,
               },
-              xDAI
+              cDAI
             );
           }
         });
       }
     });
 
-    describe('unwrapTetu', () => {
+    describe('unwrapCompoundV2', () => {
       let tokenSender: Account, tokenRecipient: Account;
+      const amount = bn(1e8); // cTokens have 8 decimals
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          await xDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = relayer;
         });
@@ -248,7 +243,7 @@ describe('TetuWrapping', function () {
 
       context('sender = senderUser, recipient = senderUser', () => {
         beforeEach(async () => {
-          await xDAI.connect(senderUser).approve(vault.address, fp(10));
+          await cDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = senderUser;
         });
@@ -257,7 +252,7 @@ describe('TetuWrapping', function () {
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await xDAI.connect(senderUser).transfer(relayer.address, amount);
+          await cDAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
@@ -266,7 +261,7 @@ describe('TetuWrapping', function () {
 
       context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await xDAI.connect(senderUser).transfer(relayer.address, amount);
+          await cDAI.connect(senderUser).transfer(relayer.address, amount);
           tokenSender = relayer;
           tokenRecipient = senderUser;
         });
@@ -278,10 +273,10 @@ describe('TetuWrapping', function () {
           const receipt = await (
             await relayer
               .connect(senderUser)
-              .multicall([encodeUnwrap(xDAI.address, tokenSender, tokenRecipient, amount)])
+              .multicall([encodeUnwrap(cDAI.address, tokenSender, tokenRecipient, amount)])
           ).wait();
 
-          const unwrappedAmount = await xDAI.fromTetuAmount(amount, xDAI.address);
+          const expectedUnwrappedAmount = await cDAI.fromCTokenAmount(amount);
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
@@ -292,7 +287,7 @@ describe('TetuWrapping', function () {
                 to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
-              xDAI
+              cDAI
             );
           }
           expectTransferEvent(
@@ -302,16 +297,16 @@ describe('TetuWrapping', function () {
               to: ZERO_ADDRESS,
               value: amount,
             },
-            xDAI
+            cDAI
           );
 
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: xDAI.address,
-              to: relayer.address,
-              value: unwrappedAmount,
+              from: TypesConverter.toAddress(cDAI),
+              to: TypesConverter.toAddress(relayer),
+              value: expectedUnwrappedAmount,
             },
             DAI
           );
@@ -319,9 +314,9 @@ describe('TetuWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
-                value: unwrappedAmount,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
+                value: expectedUnwrappedAmount,
               },
               DAI
             );
@@ -331,9 +326,9 @@ describe('TetuWrapping', function () {
         it('stores unwrap output as chained reference', async () => {
           await relayer
             .connect(senderUser)
-            .multicall([encodeUnwrap(xDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
+            .multicall([encodeUnwrap(cDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          const mainAmount = await xDAI.fromTetuAmount(amount, xDAI.address);
+          const mainAmount = await cDAI.fromCTokenAmount(amount);
           await expectChainedReferenceContents(relayer, toChainedReference(0), mainAmount);
         });
 
@@ -343,10 +338,10 @@ describe('TetuWrapping', function () {
           const receipt = await (
             await relayer
               .connect(senderUser)
-              .multicall([encodeUnwrap(xDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
+              .multicall([encodeUnwrap(cDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
-          const unwrappedAmount = await xDAI.fromTetuAmount(amount, xDAI.address);
+          const expectedUnwrappedAmount = await cDAI.fromCTokenAmount(amount);
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
@@ -357,7 +352,7 @@ describe('TetuWrapping', function () {
                 to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
-              xDAI
+              cDAI
             );
           }
           expectTransferEvent(
@@ -367,16 +362,16 @@ describe('TetuWrapping', function () {
               to: ZERO_ADDRESS,
               value: amount,
             },
-            xDAI
+            cDAI
           );
 
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: xDAI.address,
-              to: relayer.address,
-              value: unwrappedAmount,
+              from: TypesConverter.toAddress(cDAI),
+              to: TypesConverter.toAddress(relayer),
+              value: expectedUnwrappedAmount,
             },
             DAI
           );
@@ -384,9 +379,9 @@ describe('TetuWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: relayer.address,
-                to: tokenRecipient.address,
-                value: unwrappedAmount,
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
+                value: expectedUnwrappedAmount,
               },
               DAI
             );
@@ -397,35 +392,30 @@ describe('TetuWrapping', function () {
   });
 
   describe('complex actions', () => {
-    let WETH: Token, DAIToken: Token, xDAIToken: Token;
+    let WETH: Token, DAIToken: Token, cDAIToken: Token;
     let poolTokens: TokenList;
     let poolId: string;
-    let pool: StablePool;
-    let bptIndex: number;
+    let pool: WeightedPool;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
       DAIToken = await Token.deployedAt(await DAI.address);
-      xDAIToken = await Token.deployedAt(await xDAI.address);
-      poolTokens = new TokenList([WETH, xDAIToken]).sort();
+      cDAIToken = await Token.deployedAt(await cDAI.address);
+      poolTokens = new TokenList([WETH, cDAIToken]).sort();
 
-      pool = await StablePool.create({ tokens: poolTokens, vault });
+      pool = await WeightedPool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
 
       await WETH.mint(senderUser, fp(2));
       await WETH.approve(vault, MAX_UINT256, { from: senderUser });
 
-      // Seed liquidity in pool
-      await WETH.mint(admin, fp(200));
+      await WETH.mint(admin, fp(100));
       await WETH.approve(vault, MAX_UINT256, { from: admin });
 
-      await DAIToken.mint(admin, fp(150));
-      await DAIToken.approve(xDAI, fp(150), { from: admin });
-      // await xDAIToken.connect(admin).wrap(fp(150));
-      await xDAIToken.approve(vault, MAX_UINT256, { from: admin });
+      await cDAIToken.mint(admin, bn(100e8));
+      await cDAIToken.approve(vault, MAX_UINT256, { from: admin });
 
-      bptIndex = await pool.getBptIndex();
-      const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
+      const initialBalances = poolTokens.map((token) => (token === cDAIToken ? bn(100e8) : fp(100)));
 
       await pool.init({ initialBalances, from: admin });
     });
@@ -470,12 +460,12 @@ describe('TetuWrapping', function () {
         sharedBeforeEach('swap DAI for WETH', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              encodeWrap(xDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(xDAI, MAX_UINT256),
+              encodeWrap(cDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
+              encodeApprove(cDAI, MAX_UINT256),
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
-                tokenIn: xDAI,
+                tokenIn: cDAI,
                 tokenOut: WETH,
                 amount: toChainedReference(0),
                 sender: relayer,
@@ -489,7 +479,7 @@ describe('TetuWrapping', function () {
         it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
-            tokenIn: xDAI.address,
+            tokenIn: cDAI.address,
             tokenOut: WETH.address,
           });
 
@@ -498,13 +488,13 @@ describe('TetuWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await xDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await cDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
       describe('swap using DAI as an output', () => {
         let receipt: ContractReceipt;
-        const amount = fp(1);
+        const amount = bn(1e8); // cTokens have 8 decimals
 
         sharedBeforeEach('swap WETH for DAI', async () => {
           receipt = await (
@@ -513,13 +503,13 @@ describe('TetuWrapping', function () {
                 poolId,
                 kind: SwapKind.GivenIn,
                 tokenIn: WETH,
-                tokenOut: xDAIToken,
+                tokenOut: cDAIToken,
                 amount,
                 sender: senderUser,
                 recipient: relayer,
                 outputReference: toChainedReference(0),
               }),
-              encodeUnwrap(xDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
+              encodeUnwrap(cDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -528,10 +518,10 @@ describe('TetuWrapping', function () {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
             tokenIn: WETH.address,
-            tokenOut: xDAIToken.address,
+            tokenOut: cDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: xDAI.address, to: relayer.address }, DAI);
+          expectTransferEvent(receipt, { from: cDAI.address, to: relayer.address }, DAI);
           if (recipientUser.address !== relayer.address) {
             expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
           }
@@ -539,7 +529,7 @@ describe('TetuWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await xDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await cDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });
@@ -591,10 +581,10 @@ describe('TetuWrapping', function () {
         sharedBeforeEach('swap DAI for WETH', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              encodeWrap(xDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(xDAIToken, MAX_UINT256),
+              encodeWrap(cDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
+              encodeApprove(cDAIToken, MAX_UINT256),
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn: xDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
+                swaps: [{ poolId, tokenIn: cDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
                 sender: relayer,
                 recipient: recipientUser,
               }),
@@ -605,7 +595,7 @@ describe('TetuWrapping', function () {
         it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId: poolId,
-            tokenIn: xDAI.address,
+            tokenIn: cDAI.address,
             tokenOut: WETH.address,
           });
 
@@ -614,24 +604,24 @@ describe('TetuWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await xDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await cDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
       describe('swap using DAI as an output', () => {
         let receipt: ContractReceipt;
-        const amount = fp(1);
+        const amount = bn(1e8); // cTokens have 8 decimals
 
         sharedBeforeEach('swap WETH for DAI', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn: WETH, tokenOut: xDAIToken, amount }],
+                swaps: [{ poolId, tokenIn: WETH, tokenOut: cDAIToken, amount }],
                 sender: senderUser,
                 recipient: relayer,
-                outputReferences: { xDAI: toChainedReference(0) },
+                outputReferences: { cDAI: toChainedReference(0) },
               }),
-              encodeUnwrap(xDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
+              encodeUnwrap(cDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -640,10 +630,10 @@ describe('TetuWrapping', function () {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId: poolId,
             tokenIn: WETH.address,
-            tokenOut: xDAI.address,
+            tokenOut: cDAI.address,
           });
 
-          expectTransferEvent(receipt, { from: xDAI.address, to: relayer.address }, DAI);
+          expectTransferEvent(receipt, { from: cDAI.address, to: relayer.address }, DAI);
           if (recipientUser.address !== relayer.address) {
             expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
           }
@@ -651,32 +641,32 @@ describe('TetuWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await xDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await cDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });
 
     describe('joinPool', () => {
       let receipt: ContractReceipt;
-      let senderxDAIBalanceBefore: BigNumber;
+      let sendercDAIBalanceBefore: BigNumber;
       const amount = fp(1);
 
       sharedBeforeEach('join the pool', async () => {
-        const { tokens: allTokens } = await pool.getTokens();
+        const { tokens: allTokens } = await vault.getPoolTokens(await pool.getPoolId());
 
-        senderxDAIBalanceBefore = await xDAIToken.balanceOf(senderUser);
+        sendercDAIBalanceBefore = await cDAIToken.balanceOf(senderUser);
         receipt = await (
           await relayer.connect(senderUser).multicall([
-            encodeWrap(xDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(xDAIToken, MAX_UINT256),
+            encodeWrap(cDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(cDAIToken, MAX_UINT256),
             encodeJoin({
               poolId,
               assets: allTokens,
               sender: relayer,
               recipient: recipientUser,
-              maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
-              userData: StablePoolEncoder.joinExactTokensInForBPTOut(
-                poolTokens.map((token) => (token === xDAIToken ? toChainedReference(0) : 0)),
+              maxAmountsIn: Array(poolTokens.length).fill(MAX_UINT256),
+              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                poolTokens.map((token) => (token === cDAIToken ? toChainedReference(0) : 0)),
                 0
               ),
             }),
@@ -694,14 +684,14 @@ describe('TetuWrapping', function () {
         expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, pool);
       });
 
-      it('does not take xDAI from the user', async () => {
-        const senderxDAIBalanceAfter = await xDAIToken.balanceOf(senderUser);
-        expect(senderxDAIBalanceAfter).to.be.eq(senderxDAIBalanceBefore);
+      it('does not take cDAI from the user', async () => {
+        const sendercDAIBalanceAfter = await cDAIToken.balanceOf(senderUser);
+        expect(sendercDAIBalanceAfter).to.be.eq(sendercDAIBalanceBefore);
       });
 
       it('does not leave dust on the relayer', async () => {
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await xDAIToken.balanceOf(relayer)).to.be.eq(0);
+        expect(await cDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
 
@@ -711,30 +701,27 @@ describe('TetuWrapping', function () {
       const amountDAI = fp(1);
 
       sharedBeforeEach('exit the pool', async () => {
-        const { tokens: allTokens } = await pool.getTokens();
+        const { tokens: allTokens } = await vault.getPoolTokens(await pool.getPoolId());
 
-        // First transfer tokens to pool, before testing exit
+        // First transfer token to the pool, before testing exit
         await relayer.connect(senderUser).multicall([
-          encodeWrap(xDAI.address, senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
-          encodeApprove(xDAIToken, MAX_UINT256),
+          encodeWrap(cDAI.address, senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
+          encodeApprove(cDAIToken, MAX_UINT256),
           encodeJoin({
             poolId,
             assets: allTokens,
             sender: relayer,
             recipient: senderUser,
-            maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
-            userData: StablePoolEncoder.joinExactTokensInForBPTOut(
-              poolTokens.map((token) => (token === xDAIToken ? toChainedReference(0) : 0)),
+            maxAmountsIn: Array(poolTokens.length).fill(MAX_UINT256),
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              poolTokens.map((token) => (token === cDAIToken ? toChainedReference(0) : 0)),
               0
             ),
           }),
         ]);
 
-        const dDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
-          (token: Token) => token.instance.address === xDAIToken.address
-        );
-        const dDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === xDAIToken.address);
-        const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
+        const eDAIIndex = poolTokens.tokens.findIndex((token: Token) => token.instance.address === cDAIToken.address);
+        const outputReference = poolTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
         BPTBalanceBefore = await pool.balanceOf(senderUser);
 
         receipt = await (
@@ -745,11 +732,11 @@ describe('TetuWrapping', function () {
               assets: allTokens,
               sender: senderUser,
               recipient: relayer,
-              minAmountsOut: Array(poolTokens.length + 1).fill(0),
-              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, dDAIIndexWithoutBPT),
+              minAmountsOut: Array(poolTokens.length).fill(0),
+              userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, eDAIIndex),
               outputReference,
             }),
-            encodeUnwrap(xDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + dDAIIndex)),
+            encodeUnwrap(cDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + eDAIIndex)),
           ])
         ).wait();
       });
@@ -761,7 +748,7 @@ describe('TetuWrapping', function () {
         });
 
         // DAI transfered to recipient
-        expectTransferEvent(receipt, { from: xDAI.address, to: relayer.address }, DAIToken);
+        expectTransferEvent(receipt, { from: cDAI.address, to: relayer.address }, DAIToken);
         expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAIToken);
       });
 
@@ -777,10 +764,46 @@ describe('TetuWrapping', function () {
 
       it('does not leave dust on the relayer', async () => {
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await xDAIToken.balanceOf(relayer)).to.be.eq(0);
+        expect(await cDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
   });
+
+  function encodeApprove(token: Token, amount: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
+  }
+
+  function encodeWrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('wrapCompoundV2', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeUnwrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('unwrapCompoundV2', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
 
   function encodeJoin(params: {
     poolId: string;
@@ -818,7 +841,7 @@ describe('TetuWrapping', function () {
   }): string {
     return relayerLibrary.interface.encodeFunctionData('exitPool', [
       params.poolId,
-      0, // WeightedPool
+      0, //WeightedPool
       TypesConverter.toAddress(params.sender),
       TypesConverter.toAddress(params.recipient),
       {
@@ -828,42 +851,6 @@ describe('TetuWrapping', function () {
         toInternalBalance: false,
       },
       params.outputReference,
-    ]);
-  }
-
-  function encodeApprove(token: Token, amount: BigNumberish): string {
-    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
-  }
-
-  function encodeWrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapTetu', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
-  function encodeUnwrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapTetu', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
     ]);
   }
 });
