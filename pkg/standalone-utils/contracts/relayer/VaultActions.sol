@@ -161,8 +161,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _doWeightedExactTokensInForBPTOutReplacements(userData);
         } else {
-            // All other join kinds are 'given out' (i.e the parameter is a BPT amount), so we don't do replacements for
-            // those.
+            // All other join kinds are 'given out' (i.e the parameter is a BPT amount),
+            // so we don't do replacements for those.
             return userData;
         }
     }
@@ -190,8 +190,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         if (kind == StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _doStableExactTokensInForBPTOutReplacements(userData);
         } else {
-            // All other join kinds are 'given out' (i.e the parameter is a BPT amount), so we don't do replacements for
-            // those.
+            // All other join kinds are 'given out' (i.e the parameter is a BPT amount),
+            // so we don't do replacements for those.
             return userData;
         }
     }
@@ -281,9 +281,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
      * @dev Compute the final userData for an exit, depending on the PoolKind, performing replacements for chained
      * references as necessary.
      *
-     * While all Stable Pool versions fortuitously support the same join kinds (V3 supports one extra), they do NOT
-     * all support the same exit kinds. Also, though the encoding of the data associated with the exit is uniform
-     * across pool kinds for the same exit method, the ExitKind ID itself may have a different value.
+     * While all Stable Pool versions fortuitously support the same join kinds (V2 and higher support one extra),
+     * they do NOT all support the same exit kinds. Also, though the encoding of the data associated with the exit
+     * is uniform across pool kinds for the same exit method, the ExitKind ID itself may have a different value.
      *
      * For instance, BPT_IN_FOR_EXACT_TOKENS_OUT is 2 in legacy Stable Pools, but 1 in Composable Stable Pools.
      * (See the reference comment and libraries below.)
