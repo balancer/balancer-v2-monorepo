@@ -23,6 +23,7 @@ import "./relayer/EulerWrapping.sol";
 import "./relayer/GaugeActions.sol";
 import "./relayer/GearboxWrapping.sol";
 import "./relayer/LidoWrapping.sol";
+import "./relayer/CompoundV2Wrapping.sol";
 import "./relayer/UnbuttonWrapping.sol";
 import "./relayer/ReaperWrapping.sol";
 import "./relayer/TetuWrapping.sol";
@@ -45,6 +46,7 @@ contract BatchRelayerLibrary is
     GearboxWrapping,
     LidoWrapping,
     UnbuttonWrapping,
+    CompoundV2Wrapping,
     ReaperWrapping,
     SiloWrapping,
     TetuWrapping,
