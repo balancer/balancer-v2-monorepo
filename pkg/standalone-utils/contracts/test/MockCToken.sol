@@ -26,7 +26,6 @@ contract MockCToken is TestToken, ICToken {
 
     address private immutable _underlying;
     uint256 private _exchangeRate;
-    uint256 private _temp;
 
     constructor(
         string memory name,
