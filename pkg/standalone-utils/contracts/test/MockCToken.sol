@@ -39,20 +39,13 @@ contract MockCToken is TestToken, ICToken {
         _exchangeRate = exchangeRate;
     }
 
-    /**
-     * @dev Underlying asset for this CToken
-     */
+    /// @inheritdoc ICToken
     function underlying() external view override returns (address) {
         return _underlying;
     }
 
-    /**
-     * @notice Sender supplies assets into the market and receives cTokens in exchange
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * @param mintAmount The amount of the underlying asset to supply
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
-    function mint(uint256 mintAmount) public override returns (uint256) {
+    /// @inheritdoc ICToken
+    function mint(uint256 mintAmount) external override returns (uint256) {
         uint256 amountToMint = toCTokenAmount(mintAmount);
 
         IERC20(_underlying).safeTransferFrom(msg.sender, address(this), mintAmount);
@@ -62,16 +55,7 @@ contract MockCToken is TestToken, ICToken {
         return 0;
     }
 
-    function mintCTokens(address receiver, uint256 mintAmount) public {
-        _mint(receiver, mintAmount);
-    }
-
-    /**
-     * @notice Sender redeems cTokens in exchange for the underlying asset
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * @param redeemTokens The number of cTokens to redeem into underlying
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
+    /// @inheritdoc ICToken
     function redeem(uint256 redeemTokens) external override returns (uint256) {
         _burn(msg.sender, redeemTokens);
 
@@ -83,50 +67,36 @@ contract MockCToken is TestToken, ICToken {
     }
 
     /**
-     * @notice preview amount of CTokens returned
-     * @param amount The number of underlying Tokens expected to be exchanged
-     * @return amount of CTokens returned for amount of Token depoisted
+     * @notice Mint cTokens directly without depositing underlying assets.
+     * @dev This is required for testing because Compound's `mint` function overrides `TestToken.mint`.
+     */
+    function mintTestTokens(address receiver, uint256 mintAmount) external {
+        _mint(receiver, mintAmount);
+    }
+
+    /**
+     * @notice Preview the amount of underlying returned by a withdrawal.
+     * @param amount The number of cTokens to be redeemed.
+     * @return The number of underlying tokens returned.
+     */
+    function fromCTokenAmount(uint256 amount) public view returns (uint256) {
+        return amount.mulUp(_exchangeRate);
+    }
+
+    /**
+     * @notice Preview the amount of cTokens returned by a deposit.
+     * @param amount The number of underlying tokens to be deposited.
+     * @return The number of cTokens returned.
      */
     function toCTokenAmount(uint256 amount) public view returns (uint256) {
         return amount.divDown(_exchangeRate);
     }
 
     /**
-     * @notice preview amount of underlying returned
-     * @param amount The number of underlying Tokens expected to be exchanged
-     * @return amount of CTokens returned for amount of Token depoisted
+     * @notice Set the exchange rate for testing purposes.
+     * @param newExchangeRate The number of underlying tokens per cToken.
      */
-    function fromCTokenAmount(uint256 amount) public view returns (uint256) {
-        return amount.mulUp(_exchangeRate);
-    }
-
-    function exchangeRateCurrent() external view override returns (uint256) {
-        return _exchangeRate;
-    }
-
-    function exchangeRateStored() external view override returns (uint256) {
-        return _exchangeRate;
-    }
-
-    function setExchangeRate(uint256 newExchangeRate) public {
+    function setExchangeRate(uint256 newExchangeRate) external {
         _exchangeRate = newExchangeRate;
-    }
-
-    function accrueInterest() external returns (uint256) {
-        _temp = 1;
-
-        return 0;
-    }
-
-    function accrualBlockNumber() external pure override returns (uint256) {
-        return 100000;
-    }
-
-    function totalBorrows() external pure override returns (uint256) {
-        return 1e18;
-    }
-
-    function totalReserves() external pure override returns (uint256) {
-        return 2e18;
     }
 }

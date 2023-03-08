@@ -19,6 +19,7 @@ pragma solidity ^0.7.0;
 // lending and borrowing pools with custom parameters.
 
 import "../solidity-utils/openzeppelin/IERC20.sol";
+
 interface ICToken is IERC20 {
     /**
      * @dev Underlying asset for this CToken
@@ -40,32 +41,4 @@ interface ICToken is IERC20 {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeem(uint256 redeemTokens) external returns (uint256);
-
-    /**
-     * @notice Accrue interest then return the up-to-date exchange rate
-     * @return Calculated exchange rate scaled by 1e18
-     */
-    function exchangeRateCurrent() external returns (uint256);
-
-    /**
-     * @notice Calculates the exchange rate from the underlying to the CToken
-     * @dev This function does not accrue interest before calculating the exchange rate
-     * @return Calculated exchange rate scaled by 1e18
-     */
-    function exchangeRateStored() external view returns (uint256);
-
-    /**
-     * @notice Block number that interest was last accrued at
-     */
-    function accrualBlockNumber() external view returns (uint256);
-
-    /**
-     * @notice Total amount of outstanding borrows of the underlying in this market
-     */
-    function totalBorrows() external view returns (uint256);
-
-    /**
-     * @notice Total amount of reserves of the underlying held in this market
-     */
-    function totalReserves() external view returns (uint256);
 }

@@ -55,7 +55,7 @@ describe('CompoundV2Wrapping', function () {
     await DAI.connect(senderUser).approve(vault.address, fp(100));
     await DAI.mint(cDAI.address, fp(10000));
 
-    await cDAI.mintCTokens(senderUser.address, fp(100));
+    await cDAI.mintTestTokens(senderUser.address, fp(100));
     await cDAI.connect(senderUser).approve(vault.address, fp(150));
 
     // Underlying token decimals: Need to run after cDAI tokens are minted
