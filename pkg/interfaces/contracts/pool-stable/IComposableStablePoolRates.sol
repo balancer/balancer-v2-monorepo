@@ -20,7 +20,7 @@ interface IComposableStablePoolRates {
     /**
      * @dev Forces a rate cache hit for a token.
      * It will revert if the requested token does not have an associated rate provider.
-     * 
+     *
      * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
      *
      * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
