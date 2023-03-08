@@ -19,9 +19,6 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-
-import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -33,7 +30,6 @@ import "./IBaseRelayerLibrary.sol";
 abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
     using Address for address payable;
     using SafeERC20 for IERC20;
-    using FixedPoint for uint256;
 
     /**
      *@dev
