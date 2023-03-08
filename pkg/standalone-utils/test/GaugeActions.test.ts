@@ -81,7 +81,7 @@ describe('GaugeActions', function () {
 
     // Deploy Relayer: vault and BAL minter are required; we can skip wstETH.
     relayerLibrary = await deploy('MockBatchRelayerLibrary', {
-      args: [vault.address, ZERO_ADDRESS, balMinter.address, ZERO_ADDRESS],
+      args: [vault.address, ZERO_ADDRESS, balMinter.address],
     });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
