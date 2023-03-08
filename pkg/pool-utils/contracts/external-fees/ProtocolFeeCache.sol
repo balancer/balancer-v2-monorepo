@@ -22,6 +22,7 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePerc
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
 
+import "../lib/VaultReentrancyLib.sol";
 import "../RecoveryMode.sol";
 
 /**
@@ -134,6 +135,8 @@ abstract contract ProtocolFeeCache is IProtocolFeeCache, RecoveryMode {
 
     /// @inheritdoc IProtocolFeeCache
     function updateProtocolFeePercentageCache() external override {
+        VaultReentrancyLib.ensureNotInVaultContext(_getVault());
+
         _beforeProtocolFeeCacheUpdate();
 
         _updateProtocolFeeCache(_protocolFeeProvider, _feeIds);
