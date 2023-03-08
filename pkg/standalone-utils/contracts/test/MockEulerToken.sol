@@ -35,6 +35,8 @@ contract MockEulerToken is IEulerToken, TestToken {
     using FixedPoint for uint256;
 
     uint256 public exchangeRateMultiplier;
+    //solhint-disable-next-line private-vars-leading-underscore
+    uint256 private constant MAX_UINT256 = type(uint256).max;
 
     //solhint-disable-next-line var-name-mixedcase
     IMockEulerProtocol public immutable EULER_PROTOCOL;
@@ -90,7 +92,7 @@ contract MockEulerToken is IEulerToken, TestToken {
     function withdraw(uint256, uint256 amount) external override {
         uint256 wrappedAmount;
 
-        if (amount == uint256(-1)) {
+        if (amount == MAX_UINT256) {
             // MAX_UINT indicates that the sender's full balance of wrappedToken should be redeemed.
             wrappedAmount = balanceOf(msg.sender);
             amount = convertBalanceToUnderlying(wrappedAmount);

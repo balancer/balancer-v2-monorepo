@@ -35,6 +35,8 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
     using FixedPoint for uint256;
 
     address private immutable _eulerProtocol;
+    //solhint-disable-next-line private-vars-leading-underscore
+    uint256 private constant MAX_UINT256 = type(uint256).max;
 
     /**
      * @dev Euler protocol needs to be approved to transfer mainToken
@@ -106,7 +108,7 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
         //     2. Redeem the account's full balance of wrappedToken for mainToken
         // Option 1 may leave wrappedToken dust in the relayer, so we choose option 2
         // The 0 argument is for the Euler primary account
-        wrappedToken.withdraw(0, uint256(-1)); //MAX_UINT forces option 2
+        wrappedToken.withdraw(0, MAX_UINT256); //MAX_UINT256 forces option 2
 
         uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 
