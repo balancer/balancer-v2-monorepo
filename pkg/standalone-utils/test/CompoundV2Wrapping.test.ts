@@ -35,12 +35,9 @@ describe('CompoundV2Wrapping', function () {
   });
 
   sharedBeforeEach('deploy Vault', async () => {
-    // const initialExchangeRate: BigNumber;
     vault = await Vault.create({ admin });
 
-    const mainTokenDecimals = 18;
-
-    DAI = await deploy('v2-solidity-utils/TestToken', { args: ['DAI', 'DAI', mainTokenDecimals] });
+    DAI = await deploy('v2-solidity-utils/TestToken', { args: ['DAI', 'DAI', 18] });
 
     cDAI = await deploy('MockCToken', {
       args: ['cDAI', 'cDAI', DAI.address, fp(2)], // exchange rate = 2
@@ -115,7 +112,7 @@ describe('CompoundV2Wrapping', function () {
 
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          const expectedCompoundV2Amount = await cDAI.toCTokenAmount(amount);
+          const expectedWrappedAmount = await cDAI.toCTokenAmount(amount);
 
           const receipt = await (
             await relayer.connect(senderUser).multicall([encodeWrap(cDAI.address, tokenSender, tokenRecipient, amount)])
@@ -149,7 +146,7 @@ describe('CompoundV2Wrapping', function () {
             {
               from: ZERO_ADDRESS,
               to: TypesConverter.toAddress(relayer),
-              value: expectedCompoundV2Amount,
+              value: expectedWrappedAmount,
             },
             cDAI
           );
@@ -159,7 +156,7 @@ describe('CompoundV2Wrapping', function () {
               {
                 from: TypesConverter.toAddress(relayer),
                 to: TypesConverter.toAddress(tokenRecipient),
-                value: expectedCompoundV2Amount,
+                value: expectedWrappedAmount,
               },
               cDAI
             );
@@ -280,7 +277,7 @@ describe('CompoundV2Wrapping', function () {
               .multicall([encodeUnwrap(cDAI.address, tokenSender, tokenRecipient, amount)])
           ).wait();
 
-          const unwrappedAmount = await cDAI.fromCTokenAmount(amount);
+          const expectedUnwrappedAmount = await cDAI.fromCTokenAmount(amount);
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
@@ -310,7 +307,7 @@ describe('CompoundV2Wrapping', function () {
             {
               from: TypesConverter.toAddress(cDAI),
               to: TypesConverter.toAddress(relayer),
-              value: unwrappedAmount,
+              value: expectedUnwrappedAmount,
             },
             DAI
           );
@@ -320,7 +317,7 @@ describe('CompoundV2Wrapping', function () {
               {
                 from: TypesConverter.toAddress(relayer),
                 to: TypesConverter.toAddress(tokenRecipient),
-                value: unwrappedAmount,
+                value: expectedUnwrappedAmount,
               },
               DAI
             );
@@ -345,7 +342,7 @@ describe('CompoundV2Wrapping', function () {
               .multicall([encodeUnwrap(cDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
-          const unwrappedAmount = await cDAI.fromCTokenAmount(amount);
+          const expectedUnwrappedAmount = await cDAI.fromCTokenAmount(amount);
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
@@ -375,7 +372,7 @@ describe('CompoundV2Wrapping', function () {
             {
               from: TypesConverter.toAddress(cDAI),
               to: TypesConverter.toAddress(relayer),
-              value: unwrappedAmount,
+              value: expectedUnwrappedAmount,
             },
             DAI
           );
@@ -385,7 +382,7 @@ describe('CompoundV2Wrapping', function () {
               {
                 from: TypesConverter.toAddress(relayer),
                 to: TypesConverter.toAddress(tokenRecipient),
-                value: unwrappedAmount,
+                value: expectedUnwrappedAmount,
               },
               DAI
             );
