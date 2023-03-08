@@ -31,12 +31,12 @@ contract ArbitrumRootGaugeFactory is IArbitrumFeeProvider, BaseGaugeFactory, Sin
 
     constructor(
         IVault vault,
-        IBalancerMinter minter,
+        IMainnetBalancerMinter minter,
         IGatewayRouter gatewayRouter,
         uint64 gasLimit,
         uint64 gasPrice,
         uint64 maxSubmissionCost
-    ) BaseGaugeFactory(new ArbitrumRootGauge(minter, gatewayRouter)) SingletonAuthentication(vault) {
+    ) BaseGaugeFactory(address(new ArbitrumRootGauge(minter, gatewayRouter))) SingletonAuthentication(vault) {
         _gasLimit = gasLimit;
         _gasPrice = gasPrice;
         _maxSubmissionCost = maxSubmissionCost;

@@ -20,7 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidit
 import "../BaseGaugeFactory.sol";
 
 contract LiquidityGaugeFactory is BaseGaugeFactory {
-    constructor(IStakingLiquidityGauge gauge) BaseGaugeFactory(gauge) {
+    constructor(IStakingLiquidityGauge gauge) BaseGaugeFactory(address(gauge)) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
