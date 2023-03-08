@@ -365,10 +365,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     // For the first deployment of ComposableStablePool
-    function _doComposableStableExitChainedReferenceReplacements(bytes memory userData)
-        private
-        returns (bytes memory)
-    {
+    function _doComposableStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
         uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
 
         if (exitKind == uint8(ComposableStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT)) {
@@ -381,7 +378,10 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     // For ComposableStablePool V2 and V3
-    function _doComposableStableV2ExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+    function _doComposableStableV2ExitChainedReferenceReplacements(bytes memory userData)
+        private
+        returns (bytes memory)
+    {
         uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
 
         if (exitKind == uint8(StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT)) {
