@@ -5,9 +5,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
+import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 
-import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
+import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
@@ -395,8 +395,7 @@ describe('CompoundV2Wrapping', function () {
     let WETH: Token, DAIToken: Token, cDAIToken: Token;
     let poolTokens: TokenList;
     let poolId: string;
-    let pool: StablePool;
-    let bptIndex: number;
+    let pool: WeightedPool;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
@@ -404,23 +403,19 @@ describe('CompoundV2Wrapping', function () {
       cDAIToken = await Token.deployedAt(await cDAI.address);
       poolTokens = new TokenList([WETH, cDAIToken]).sort();
 
-      pool = await StablePool.create({ tokens: poolTokens, vault });
+      pool = await WeightedPool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
 
       await WETH.mint(senderUser, fp(2));
       await WETH.approve(vault, MAX_UINT256, { from: senderUser });
 
-      // Seed liquidity in pool
-      await WETH.mint(admin, fp(200));
+      await WETH.mint(admin, fp(100));
       await WETH.approve(vault, MAX_UINT256, { from: admin });
 
-      await DAIToken.mint(admin, fp(150));
-      await DAIToken.approve(cDAI, fp(150), { from: admin });
-      // await cDAIToken.connect(admin).wrap(fp(150));
+      await cDAIToken.mint(admin, bn(100e8));
       await cDAIToken.approve(vault, MAX_UINT256, { from: admin });
 
-      bptIndex = await pool.getBptIndex();
-      const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
+      const initialBalances = poolTokens.map((token) => (token === cDAIToken ? bn(100e8) : fp(100)));
 
       await pool.init({ initialBalances, from: admin });
     });
@@ -657,7 +652,7 @@ describe('CompoundV2Wrapping', function () {
       const amount = fp(1);
 
       sharedBeforeEach('join the pool', async () => {
-        const { tokens: allTokens } = await pool.getTokens();
+        const { tokens: allTokens } = await vault.getPoolTokens(await pool.getPoolId());
 
         sendercDAIBalanceBefore = await cDAIToken.balanceOf(senderUser);
         receipt = await (
@@ -669,8 +664,8 @@ describe('CompoundV2Wrapping', function () {
               assets: allTokens,
               sender: relayer,
               recipient: recipientUser,
-              maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
-              userData: StablePoolEncoder.joinExactTokensInForBPTOut(
+              maxAmountsIn: Array(poolTokens.length).fill(MAX_UINT256),
+              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
                 poolTokens.map((token) => (token === cDAIToken ? toChainedReference(0) : 0)),
                 0
               ),
@@ -706,7 +701,7 @@ describe('CompoundV2Wrapping', function () {
       const amountDAI = fp(1);
 
       sharedBeforeEach('exit the pool', async () => {
-        const { tokens: allTokens } = await pool.getTokens();
+        const { tokens: allTokens } = await vault.getPoolTokens(await pool.getPoolId());
 
         // First transfer token to the pool, before testing exit
         await relayer.connect(senderUser).multicall([
@@ -717,19 +712,16 @@ describe('CompoundV2Wrapping', function () {
             assets: allTokens,
             sender: relayer,
             recipient: senderUser,
-            maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
-            userData: StablePoolEncoder.joinExactTokensInForBPTOut(
+            maxAmountsIn: Array(poolTokens.length).fill(MAX_UINT256),
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
               poolTokens.map((token) => (token === cDAIToken ? toChainedReference(0) : 0)),
               0
             ),
           }),
         ]);
 
-        const eDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
-          (token: Token) => token.instance.address === cDAIToken.address
-        );
-        const eDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === cDAIToken.address);
-        const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
+        const eDAIIndex = poolTokens.tokens.findIndex((token: Token) => token.instance.address === cDAIToken.address);
+        const outputReference = poolTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
         BPTBalanceBefore = await pool.balanceOf(senderUser);
 
         receipt = await (
@@ -740,8 +732,8 @@ describe('CompoundV2Wrapping', function () {
               assets: allTokens,
               sender: senderUser,
               recipient: relayer,
-              minAmountsOut: Array(poolTokens.length + 1).fill(0),
-              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, eDAIIndexWithoutBPT),
+              minAmountsOut: Array(poolTokens.length).fill(0),
+              userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, eDAIIndex),
               outputReference,
             }),
             encodeUnwrap(cDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + eDAIIndex)),
