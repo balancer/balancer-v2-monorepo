@@ -116,27 +116,49 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     /**
      * @notice Emitted when a revoke permission is scheduled.
      */
-    event RevokePermissionScheduled(bytes32 indexed actionId, address indexed account, address indexed where, uint256 scheduledExecutionId);
+    event RevokePermissionScheduled(
+        bytes32 indexed actionId,
+        address indexed account,
+        address indexed where,
+        uint256 scheduledExecutionId
+    );
 
     /**
      * @notice Emitted when a grant permission is scheduled.
      */
-    event GrantPermissionScheduled(bytes32 indexed actionId, address indexed account, address indexed where, uint256 scheduledExecutionId);
+    event GrantPermissionScheduled(
+        bytes32 indexed actionId,
+        address indexed account,
+        address indexed where,
+        uint256 scheduledExecutionId
+    );
 
     /**
      * @notice Emitted when a revoke delay change is scheduled.
      */
-    event RevokeDelayChangeScheduled(bytes32 indexed actionId, uint256 indexed newDelay, uint256 indexed scheduledExecutionId);
+    event RevokeDelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
 
     /**
      * @notice Emitted when a grant delay change is scheduled.
      */
-    event GrantDelayChangeScheduled(bytes32 indexed actionId, uint256 indexed newDelay, uint256 indexed scheduledExecutionId);
+    event GrantDelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
 
     /**
      * @notice Emitted when a delay change is scheduled.
      */
-    event DelayChangeScheduled(bytes32 indexed actionId, uint256 indexed newDelay, uint256 indexed scheduledExecutionId);
+    event DelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
 
     /**
      * @notice Emitted when a root change is scheduled.
