@@ -90,7 +90,9 @@ export default class TimelockAuthorizer {
 
   async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).scheduleRootChange(this.toAddress(root), this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'RootChangeScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RootChangeScheduled', {
+      newRoot: this.toAddress(root),
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -107,6 +109,7 @@ export default class TimelockAuthorizer {
     const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'DelayChangeScheduled', {
       actionId: action,
+      newDelay: delay,
     });
     return event.args.scheduledExecutionId;
   }
@@ -120,6 +123,7 @@ export default class TimelockAuthorizer {
     const receipt = await this.with(params).scheduleGrantDelayChange(action, delay, this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'GrantDelayChangeScheduled', {
       actionId: action,
+      newDelay: delay,
     });
     return event.args.scheduledExecutionId;
   }
@@ -133,6 +137,7 @@ export default class TimelockAuthorizer {
     const receipt = await this.with(params).scheduleRevokeDelayChange(action, delay, this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'RevokeDelayChangeScheduled', {
       actionId: action,
+      newDelay: delay,
     });
     return event.args.scheduledExecutionId;
   }
@@ -159,6 +164,8 @@ export default class TimelockAuthorizer {
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'GrantPermissionScheduled', {
       actionId: action,
+      account: this.toAddress(account),
+      where: this.toAddress(where),
     });
     return event.args.scheduledExecutionId;
   }
@@ -179,6 +186,8 @@ export default class TimelockAuthorizer {
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'RevokePermissionScheduled', {
       actionId: action,
+      account: this.toAddress(account),
+      where: this.toAddress(where),
     });
     return event.args.scheduledExecutionId;
   }

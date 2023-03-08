@@ -116,32 +116,32 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     /**
      * @notice Emitted when a revoke permission is scheduled.
      */
-    event RevokePermissionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+    event RevokePermissionScheduled(bytes32 indexed actionId, address indexed account, address indexed where, uint256 scheduledExecutionId);
 
     /**
      * @notice Emitted when a grant permission is scheduled.
      */
-    event GrantPermissionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+    event GrantPermissionScheduled(bytes32 indexed actionId, address indexed account, address indexed where, uint256 scheduledExecutionId);
 
     /**
      * @notice Emitted when a revoke delay change is scheduled.
      */
-    event RevokeDelayChangeScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+    event RevokeDelayChangeScheduled(bytes32 indexed actionId, uint256 indexed newDelay, uint256 indexed scheduledExecutionId);
 
     /**
      * @notice Emitted when a grant delay change is scheduled.
      */
-    event GrantDelayChangeScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+    event GrantDelayChangeScheduled(bytes32 indexed actionId, uint256 indexed newDelay, uint256 indexed scheduledExecutionId);
 
     /**
      * @notice Emitted when a delay change is scheduled.
      */
-    event DelayChangeScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+    event DelayChangeScheduled(bytes32 indexed actionId, uint256 indexed newDelay, uint256 indexed scheduledExecutionId);
 
     /**
      * @notice Emitted when a root change is scheduled.
      */
-    event RootChangeScheduled(uint256 indexed scheduledExecutionId);
+    event RootChangeScheduled(address indexed newRoot, uint256 indexed scheduledExecutionId);
 
     /**
      * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
@@ -490,7 +490,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         // bother creating any new cancelers.
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, getRootTransferDelay(), executors);
 
-        emit RootChangeScheduled(scheduledExecutionId);
+        emit RootChangeScheduled(newRoot, scheduledExecutionId);
         return scheduledExecutionId;
     }
 
@@ -592,7 +592,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, executionDelay, executors);
-        emit DelayChangeScheduled(actionId, scheduledExecutionId);
+        emit DelayChangeScheduled(actionId, newDelay, scheduledExecutionId);
         return scheduledExecutionId;
     }
 
@@ -614,7 +614,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, executionDelay, executors);
-        emit GrantDelayChangeScheduled(actionId, scheduledExecutionId);
+        emit GrantDelayChangeScheduled(actionId, newDelay, scheduledExecutionId);
         return scheduledExecutionId;
     }
 
@@ -636,7 +636,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, executionDelay, executors);
-        emit RevokeDelayChangeScheduled(actionId, scheduledExecutionId);
+        emit RevokeDelayChangeScheduled(actionId, newDelay, scheduledExecutionId);
         return scheduledExecutionId;
     }
 
@@ -948,7 +948,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
-        emit GrantPermissionScheduled(actionId, scheduledExecutionId);
+        emit GrantPermissionScheduled(actionId, account, where, scheduledExecutionId);
         // Granters that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule grants (and root is
         // always a global canceler).
@@ -1051,7 +1051,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
-        emit RevokePermissionScheduled(actionId, scheduledExecutionId);
+        emit RevokePermissionScheduled(actionId, account, where, scheduledExecutionId);
         // Revokers that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule revokes (and root is
         // always a global canceler).
