@@ -24,6 +24,7 @@ interface IEulerToken is IERC20 {
      * https://github.com/euler-xyz/euler-contracts/blob/b1ee3265853628d5a529081d7908c38404201b4e/contracts/modules/EToken.sol#L104
      */
     function convertBalanceToUnderlying(uint256 balance) external view returns (uint256);
+
     /**
      * @dev Convert an underlying amount to an eToken balance, taking into account current exchange rate
      * @param underlyingAmount Amount in underlying units (same decimals as underlying token)

@@ -55,9 +55,8 @@ contract BatchRelayerLibrary is
     constructor(
         IVault vault,
         IERC20 wstETH,
-        IBalancerMinter minter,
-        address eulerProtocol
-    ) BaseRelayerLibrary(vault) LidoWrapping(wstETH) GaugeActions(minter) EulerWrapping(eulerProtocol) {
+        IBalancerMinter minter
+    ) BaseRelayerLibrary(vault) LidoWrapping(wstETH) GaugeActions(minter) {
         // solhint-disable-previous-line no-empty-blocks
     }
 }

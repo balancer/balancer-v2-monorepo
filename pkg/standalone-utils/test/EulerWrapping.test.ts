@@ -63,7 +63,7 @@ describe('EulerWrapping', function () {
   sharedBeforeEach('set up relayer', async () => {
     // deploy Relayer
     relayerLibrary = await deploy('MockBatchRelayerLibrary', {
-      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS, mockEulerProtocol.address],
+      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS],
     });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
@@ -98,7 +98,9 @@ describe('EulerWrapping', function () {
           const expectedulerAmount = await eDAI.convertUnderlyingToBalance(amount);
 
           const receipt = await (
-            await relayer.connect(senderUser).multicall([encodeWrap(eDAI.address, tokenSender, tokenRecipient, amount)])
+            await relayer
+              .connect(senderUser)
+              .multicall([encodeWrap(eDAI.address, mockEulerProtocol.address, tokenSender, tokenRecipient, amount)])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
@@ -328,7 +330,14 @@ describe('EulerWrapping', function () {
         sharedBeforeEach('swap DAI for WETH', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              encodeWrap(eDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
+              encodeWrap(
+                eDAI.address,
+                mockEulerProtocol.address,
+                senderUser.address,
+                relayer.address,
+                amount,
+                toChainedReference(0)
+              ),
               encodeApprove(eDAI, MAX_UINT256),
               encodeSwap({
                 poolId,
@@ -449,7 +458,14 @@ describe('EulerWrapping', function () {
         sharedBeforeEach('swap DAI for WETH', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              encodeWrap(eDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
+              encodeWrap(
+                eDAI.address,
+                mockEulerProtocol.address,
+                senderUser.address,
+                relayer.address,
+                amount,
+                toChainedReference(0)
+              ),
               encodeApprove(eDAIToken, MAX_UINT256),
               encodeBatchSwap({
                 swaps: [{ poolId, tokenIn: eDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
@@ -525,7 +541,14 @@ describe('EulerWrapping', function () {
         sendereDAIBalanceBefore = await eDAIToken.balanceOf(senderUser);
         receipt = await (
           await relayer.connect(senderUser).multicall([
-            encodeWrap(eDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
+            encodeWrap(
+              eDAI.address,
+              mockEulerProtocol.address,
+              senderUser.address,
+              relayer.address,
+              amount,
+              toChainedReference(0)
+            ),
             encodeApprove(eDAIToken, MAX_UINT256),
             encodeJoin({
               poolId,
@@ -573,7 +596,14 @@ describe('EulerWrapping', function () {
 
         // First transfer token to the pool, before testing exit
         await relayer.connect(senderUser).multicall([
-          encodeWrap(eDAI.address, senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
+          encodeWrap(
+            eDAI.address,
+            mockEulerProtocol.address,
+            senderUser.address,
+            relayer.address,
+            amountDAI,
+            toChainedReference(0)
+          ),
           encodeApprove(eDAIToken, MAX_UINT256),
           encodeJoin({
             poolId,
@@ -646,6 +676,7 @@ describe('EulerWrapping', function () {
 
   function encodeWrap(
     wrappedTokenAddress: string,
+    eulerProtocol: Account,
     sender: Account,
     recipient: Account,
     amount: BigNumberish,
@@ -653,6 +684,7 @@ describe('EulerWrapping', function () {
   ): string {
     return relayerLibrary.interface.encodeFunctionData('wrapEuler', [
       wrappedTokenAddress,
+      eulerProtocol,
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),
       amount,
