@@ -28,9 +28,8 @@ import "./IBaseRelayerLibrary.sol";
 /**
  * @title VaultActions
  * @notice Allows users to call the core functions on the Balancer Vault (swaps/joins/exits/user balance management)
- * @dev
- * Since the relayer is not expected to hold user funds, we expect the user to be the recipient of any token transfers
- * from the Vault.
+ * @dev Since the relayer is not expected to hold user funds, we expect the user to be the recipient of any token
+ * transfers from the Vault.
  *
  * All functions must be payable so they can be called from a multicall involving ETH
  */
@@ -103,7 +102,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         getVault().manageUserBalance{ value: value }(ops);
     }
 
-    enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE_V2, COMPOSABLE_STABLE_V3 }
+    enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE, COMPOSABLE_STABLE_V2 }
 
     function joinPool(
         bytes32 poolId,
@@ -147,8 +146,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             return _doWeightedJoinChainedReferenceReplacements(userData);
         } else if (
             kind == PoolKind.LEGACY_STABLE ||
-            kind == PoolKind.COMPOSABLE_STABLE_V2 ||
-            kind == PoolKind.COMPOSABLE_STABLE_V3
+            kind == PoolKind.COMPOSABLE_STABLE ||
+            kind == PoolKind.COMPOSABLE_STABLE_V2
         ) {
             return _doStableJoinChainedReferenceReplacements(userData);
         } else {
@@ -286,7 +285,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
      * all support the same exit kinds. Also, though the encoding of the data associated with the exit is uniform
      * across pool kinds for the same exit method, the ExitKind ID itself may have a different value.
      *
-     * For instance, BPT_IN_FOR_EXACT_TOKENS_OUT is 2 in legacy Stable Pools, but 1 in Composable Stable V1 Pools.
+     * For instance, BPT_IN_FOR_EXACT_TOKENS_OUT is 2 in legacy Stable Pools, but 1 in Composable Stable Pools.
      * (See the reference comment and libraries below.)
      *
      * To accommodate this, we delegate first to custom ChainedReferenceReplacement functions for each pool type.
@@ -303,10 +302,10 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         } else {
             if (kind == PoolKind.LEGACY_STABLE) {
                 return _doLegacyStableExitChainedReferenceReplacements(userData);
-            } else if (kind == PoolKind.COMPOSABLE_STABLE_V2) {
-                return _doLegacyComposableStableExitChainedReferenceReplacements(userData);
-            } else if (kind == PoolKind.COMPOSABLE_STABLE_V3) {
+            } else if (kind == PoolKind.COMPOSABLE_STABLE) {
                 return _doComposableStableExitChainedReferenceReplacements(userData);
+            } else if (kind == PoolKind.COMPOSABLE_STABLE_V2) {
+                return _doComposableStableV2ExitChainedReferenceReplacements(userData);
             } else {
                 revert("UNHANDLED_POOL_KIND");
             }
@@ -365,13 +364,14 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    function _doLegacyComposableStableExitChainedReferenceReplacements(bytes memory userData)
+    // For the first deployment of ComposableStablePool
+    function _doComposableStableExitChainedReferenceReplacements(bytes memory userData)
         private
         returns (bytes memory)
     {
         uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
 
-        if (exitKind == uint8(LegacyComposableStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT)) {
+        if (exitKind == uint8(ComposableStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT)) {
             return _doStableExactBptInForOneTokenOutReplacements(userData, exitKind);
         } else {
             // All other exit kinds are 'given out' (i.e the parameter is a token amount),
@@ -381,7 +381,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     // For ComposableStablePool V2 and V3
-    function _doComposableStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+    function _doComposableStableV2ExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
         uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
 
         if (exitKind == uint8(StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT)) {
@@ -435,7 +435,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 /*
     For reference:
 
-    StablePoolUserData (ComposableStablePoolV2+):
+    StablePoolUserData (applies to ComposableStablePool V2+):
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT }
@@ -446,12 +446,14 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 */
 
+// Applies to StablePool, MetaStablePool, PhantomStablePool, StablePool V2
 library LegacyStablePoolUserData {
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 }
 
-library LegacyComposableStablePoolUserData {
+// Applies to the first deployment of ComposableStablePool (pre-Versioning)
+library ComposableStablePoolUserData {
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 }

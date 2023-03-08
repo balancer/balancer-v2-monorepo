@@ -86,7 +86,7 @@ describe('stable pools', () => {
         await expect(
           relayer.connect(other).multicall([
             await encodeJoinPool(vault, relayerLibrary, {
-              poolKind: PoolKind.COMPOSABLE_STABLE,
+              poolKind: PoolKind.COMPOSABLE_STABLE_V2,
               poolId: poolIdStable,
               userData: '0x',
               sender: user.address,
@@ -125,7 +125,7 @@ describe('stable pools', () => {
               async () =>
                 relayer.connect(user).multicall([
                   await encodeJoinPool(vault, relayerLibrary, {
-                    poolKind: PoolKind.COMPOSABLE_STABLE,
+                    poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                     poolId: poolIdStable,
                     userData: StablePoolEncoder.joinExactTokensInForBPTOut(
                       getJoinExitAmounts(tokens, { DAI: amountInDAI, CDAI: amountInCDAI }),
@@ -150,7 +150,7 @@ describe('stable pools', () => {
             const receipt = await (
               await relayer.connect(user).multicall([
                 await encodeJoinPool(vault, relayerLibrary, {
-                  poolKind: PoolKind.COMPOSABLE_STABLE,
+                  poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                   poolId: poolIdStable,
                   userData: StablePoolEncoder.joinExactTokensInForBPTOut(
                     getJoinExitAmounts(tokens, { DAI: amountInDAI, CDAI: amountInCDAI }),
@@ -177,7 +177,7 @@ describe('stable pools', () => {
               async () =>
                 relayer.connect(user).multicall([
                   await encodeJoinPool(vault, relayerLibrary, {
-                    poolKind: PoolKind.COMPOSABLE_STABLE,
+                    poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                     poolId: poolIdStable,
                     userData: StablePoolEncoder.joinExactTokensInForBPTOut(
                       getJoinExitAmounts(tokens, { DAI: amountInDAI, CDAI: toChainedReference(0) }),
@@ -213,7 +213,7 @@ describe('stable pools', () => {
                       recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next join.
                     }),
                     encodeJoinPool(vault, relayerLibrary, {
-                      poolKind: PoolKind.COMPOSABLE_STABLE,
+                      poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                       poolId: poolIdStable2,
                       userData: StablePoolEncoder.joinExactTokensInForBPTOut(
                         getJoinExitAmounts(tokens, { DAI: toChainedReference(0) }),
@@ -256,7 +256,7 @@ describe('stable pools', () => {
               async () =>
                 relayer.connect(user).multicall([
                   await encodeJoinPool(vault, relayerLibrary, {
-                    poolKind: PoolKind.COMPOSABLE_STABLE,
+                    poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                     poolId: poolIdStable,
                     userData: StablePoolEncoder.joinTokenInForExactBPTOut(bptOut, daiIndex),
                     sender,
@@ -282,7 +282,7 @@ describe('stable pools', () => {
               async () =>
                 relayer.connect(user).multicall([
                   await encodeJoinPool(vault, relayerLibrary, {
-                    poolKind: PoolKind.COMPOSABLE_STABLE,
+                    poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                     poolId: poolIdStable,
                     userData: StablePoolEncoder.joinAllTokensInForExactBptOut(bptOut),
                     sender,
@@ -317,7 +317,7 @@ describe('stable pools', () => {
         await expect(
           relayer.connect(other).multicall([
             await encodeExitPool(vault, relayerLibrary, tokens, {
-              poolKind: PoolKind.COMPOSABLE_STABLE,
+              poolKind: PoolKind.COMPOSABLE_STABLE_V2,
               poolId: poolIdStable,
               userData: '0x',
               toInternalBalance: true,
@@ -369,7 +369,7 @@ describe('stable pools', () => {
                 async () =>
                   relayer.connect(user).multicall([
                     await encodeExitPool(vault, relayerLibrary, tokens, {
-                      poolKind: PoolKind.COMPOSABLE_STABLE,
+                      poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                       poolId: poolIdStable,
                       userData: StablePoolEncoder.exitExactBptInForTokensOut(fp(1)),
                       toInternalBalance: useInternalBalance,
@@ -391,7 +391,7 @@ describe('stable pools', () => {
               const receipt = await (
                 await relayer.connect(user).multicall([
                   await encodeExitPool(vault, relayerLibrary, tokens, {
-                    poolKind: PoolKind.COMPOSABLE_STABLE,
+                    poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                     poolId: poolIdStable,
                     userData: StablePoolEncoder.exitExactBptInForTokensOut(amountInBPT),
                     toInternalBalance: useInternalBalance,
@@ -456,7 +456,7 @@ describe('stable pools', () => {
                 async () =>
                   relayer.connect(user).multicall([
                     await encodeExitPool(vault, relayerLibrary, tokens, {
-                      poolKind: PoolKind.COMPOSABLE_STABLE,
+                      poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                       poolId: poolIdStable,
                       userData: StablePoolEncoder.exitExactBptInForTokensOut(toChainedReference(0)),
                       toInternalBalance: useInternalBalance,
@@ -480,7 +480,7 @@ describe('stable pools', () => {
                   async () =>
                     relayer.connect(user).multicall([
                       await encodeExitPool(vault, relayerLibrary, tokens, {
-                        poolKind: PoolKind.COMPOSABLE_STABLE,
+                        poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                         poolId: poolIdStable,
                         userData: StablePoolEncoder.exitExactBptInForTokensOut(amountInBPT),
                         toInternalBalance: useInternalBalance,
@@ -531,7 +531,7 @@ describe('stable pools', () => {
                 async () =>
                   relayer.connect(user).multicall([
                     await encodeExitPool(vault, relayerLibrary, tokens, {
-                      poolKind: PoolKind.COMPOSABLE_STABLE,
+                      poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                       poolId: poolIdStable,
                       userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(fp(1), 0),
                       toInternalBalance: useInternalBalance,
@@ -553,7 +553,7 @@ describe('stable pools', () => {
               const receipt = await (
                 await relayer.connect(user).multicall([
                   await encodeExitPool(vault, relayerLibrary, tokens, {
-                    poolKind: PoolKind.COMPOSABLE_STABLE,
+                    poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                     poolId: poolIdStable,
                     userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(
                       amountInBPT,
@@ -602,7 +602,7 @@ describe('stable pools', () => {
                 async () =>
                   relayer.connect(user).multicall([
                     await encodeExitPool(vault, relayerLibrary, tokens, {
-                      poolKind: PoolKind.COMPOSABLE_STABLE,
+                      poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                       poolId: poolIdStable,
                       userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(
                         toChainedReference(0),
@@ -629,7 +629,7 @@ describe('stable pools', () => {
                   async () =>
                     relayer.connect(user).multicall([
                       await encodeExitPool(vault, relayerLibrary, tokens, {
-                        poolKind: PoolKind.COMPOSABLE_STABLE,
+                        poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                         poolId: poolIdStable,
                         userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(
                           amountInBPT,
@@ -686,7 +686,7 @@ describe('stable pools', () => {
                 async () =>
                   relayer.connect(user).multicall([
                     await encodeExitPool(vault, relayerLibrary, tokens, {
-                      poolKind: PoolKind.COMPOSABLE_STABLE,
+                      poolKind: PoolKind.COMPOSABLE_STABLE_V2,
                       poolId: poolIdStable,
                       userData: StablePoolEncoder.exitBPTInForExactTokensOut(
                         [amountOutCDAI, amountOutDAI],
@@ -715,7 +715,7 @@ describe('stable pools', () => {
   });
 
   describe('unhandled pool types', () => {
-    const INVALID_POOL_KIND = PoolKind.COMPOSABLE_STABLE + 1;
+    const INVALID_POOL_KIND = PoolKind.COMPOSABLE_STABLE_V2 + 1;
 
     context('on joins', () => {
       const bptOut = fp(2);

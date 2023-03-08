@@ -16,8 +16,8 @@ import { SwapKind } from '@balancer-labs/balancer-js';
 export enum PoolKind {
   WEIGHTED = 0,
   LEGACY_STABLE,
-  LEGACY_COMPOSABLE_STABLE,
   COMPOSABLE_STABLE,
+  COMPOSABLE_STABLE_V2,
 }
 
 export async function setupRelayerEnvironment(): Promise<{
