@@ -114,6 +114,58 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     ScheduledExecution[] private _scheduledExecutions;
 
     /**
+     * @notice Emitted when a revoke permission is scheduled.
+     */
+    event RevokePermissionScheduled(
+        bytes32 indexed actionId,
+        address indexed account,
+        address indexed where,
+        uint256 scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a grant permission is scheduled.
+     */
+    event GrantPermissionScheduled(
+        bytes32 indexed actionId,
+        address indexed account,
+        address indexed where,
+        uint256 scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a revoke delay change is scheduled.
+     */
+    event RevokeDelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a grant delay change is scheduled.
+     */
+    event GrantDelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a delay change is scheduled.
+     */
+    event DelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a root change is scheduled.
+     */
+    event RootChangeScheduled(address indexed newRoot, uint256 indexed scheduledExecutionId);
+
+    /**
      * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
      */
     event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
@@ -456,11 +508,12 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
 
-        // TODO: fix event action id
-
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
-        return _scheduleWithDelay(0x0, address(this), data, getRootTransferDelay(), executors);
+        uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, getRootTransferDelay(), executors);
+
+        emit RootChangeScheduled(newRoot, scheduledExecutionId);
+        return scheduledExecutionId;
     }
 
     /**
@@ -560,7 +613,9 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
 
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
-        return _scheduleWithDelay(0x0, address(this), data, executionDelay, executors);
+        uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, executionDelay, executors);
+        emit DelayChangeScheduled(actionId, newDelay, scheduledExecutionId);
+        return scheduledExecutionId;
     }
 
     /**
@@ -570,18 +625,19 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
-    ) external returns (uint256 scheduledExecutionId) {
+    ) external returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_grantDelays[actionId], newDelay);
 
         bytes memory data = abi.encodeWithSelector(this.setGrantDelay.selector, actionId, newDelay);
-        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
 
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
-        return _scheduleWithDelay(0x0, address(this), data, executionDelay, executors);
+        uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, executionDelay, executors);
+        emit GrantDelayChangeScheduled(actionId, newDelay, scheduledExecutionId);
+        return scheduledExecutionId;
     }
 
     /**
@@ -591,18 +647,19 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
-    ) external returns (uint256 scheduledExecutionId) {
+    ) external returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_revokeDelays[actionId], newDelay);
 
         bytes memory data = abi.encodeWithSelector(this.setRevokeDelay.selector, actionId, newDelay);
-        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
 
         // Since this can only be called by root, which is always a canceler for all scheduled executions, we don't
         // bother creating any new cancelers.
-        return _scheduleWithDelay(0x0, address(this), data, executionDelay, executors);
+        uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, executionDelay, executors);
+        emit RevokeDelayChangeScheduled(actionId, newDelay, scheduledExecutionId);
+        return scheduledExecutionId;
     }
 
     function _getDelayChangeExecutionDelay(uint256 currentDelay, uint256 newDelay) private pure returns (uint256) {
@@ -679,7 +736,13 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
         require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
 
-        uint256 scheduledExecutionId = _schedule(actionId, where, data, executors);
+        uint256 delay = _delaysPerActionId[actionId];
+        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
+
+        uint256 scheduledExecutionId = _scheduleWithDelay(where, data, delay, executors);
+
+        emit ExecutionScheduled(actionId, scheduledExecutionId);
+
         // Accounts that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule actions (and root is
         // always a global canceler).
@@ -898,7 +961,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         address account,
         address where,
         address[] memory executors
-    ) external returns (uint256 scheduledExecutionId) {
+    ) external returns (uint256) {
         require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
 
         uint256 delay = _grantDelays[actionId];
@@ -906,17 +969,15 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
 
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
 
-        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
-        uint256 id = _scheduleWithDelay(0x0, address(this), data, delay, executors);
+        uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
+        emit GrantPermissionScheduled(actionId, account, where, scheduledExecutionId);
         // Granters that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule grants (and root is
         // always a global canceler).
-        // action. we check that they are not already a canceler since e.g. root may schedule actions (and root is
-        // always a global canceler).
-        if (!isCanceler(id, msg.sender)) {
-            _addCanceler(id, msg.sender);
+        if (!isCanceler(scheduledExecutionId, msg.sender)) {
+            _addCanceler(scheduledExecutionId, msg.sender);
         }
-        return id;
+        return scheduledExecutionId;
     }
 
     /**
@@ -1003,7 +1064,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         address account,
         address where,
         address[] memory executors
-    ) external returns (uint256 scheduledExecutionId) {
+    ) external returns (uint256) {
         require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
 
         uint256 delay = _revokeDelays[actionId];
@@ -1011,15 +1072,15 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
 
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
 
-        // TODO: fix actionId for event (maybe overhaul _scheduleWithDelay?)
-        uint256 id = _scheduleWithDelay(0x0, address(this), data, delay, executors);
+        uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
+        emit RevokePermissionScheduled(actionId, account, where, scheduledExecutionId);
         // Revokers that schedule actions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule revokes (and root is
         // always a global canceler).
-        if (!isCanceler(id, msg.sender)) {
-            _addCanceler(id, msg.sender);
+        if (!isCanceler(scheduledExecutionId, msg.sender)) {
+            _addCanceler(scheduledExecutionId, msg.sender);
         }
-        return id;
+        return scheduledExecutionId;
     }
 
     /**
@@ -1058,26 +1119,13 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         }
     }
 
-    function _schedule(
-        bytes32 actionId,
-        address where,
-        bytes memory data,
-        address[] memory executors
-    ) private returns (uint256 scheduledExecutionId) {
-        uint256 delay = _delaysPerActionId[actionId];
-        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
-        return _scheduleWithDelay(actionId, where, data, delay, executors);
-    }
-
     function _scheduleWithDelay(
-        bytes32 actionId,
         address where,
         bytes memory data,
         uint256 delay,
         address[] memory executors
     ) private returns (uint256 scheduledExecutionId) {
         scheduledExecutionId = _scheduledExecutions.length;
-        emit ExecutionScheduled(actionId, scheduledExecutionId);
 
         // solhint-disable-next-line not-rely-on-time
         uint256 executableAt = block.timestamp + delay;

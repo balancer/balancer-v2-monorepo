@@ -12,18 +12,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity ^0.7.0;
 
-interface IProtocolFeeCache {
+interface IMockEulerProtocol {
     /**
-     * @notice Updates the cache to the latest value set by governance.
-     * @dev Can be called by anyone to update the cached fee percentages.
-     *
-     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook. This is protected by a call to `ensureNotInVaultContext` in
-     * VaultReentrancyLib where overridden in `ProtocolFeeCache`, and so is safe to call on ManagedPool.
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     * @notice Triggers a transferFrom call `from` msg.sender
+     * @dev This mimics the requirement to ensure the euler protocol
+     * is allowed to transfer from msg.sender
      */
-    function updateProtocolFeePercentageCache() external;
+    function requestUnderlyingFromRelayer(
+        address underlying,
+        uint256 amount,
+        address msgSender
+    ) external;
+
+    /**
+     * @notice Sends tokens from EulerProtocol to relayer
+     * @dev This is a simple ERC20.transfer
+     */
+    function sendUnderlyingToRelayer(
+        address wrappedToken,
+        uint256 amount,
+        address relayer
+    ) external;
 }
