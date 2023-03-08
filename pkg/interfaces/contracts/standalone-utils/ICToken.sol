@@ -29,6 +29,8 @@ interface ICToken is IERC20 {
     /**
      * @notice Sender supplies assets into the market and receives cTokens in exchange
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * Error codes can be found here:
+     * https://github.com/compound-finance/compound-protocol/commits/master/contracts/ErrorReporter.sol
      * @param mintAmount The amount of the underlying asset to supply
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
@@ -37,6 +39,8 @@ interface ICToken is IERC20 {
     /**
      * @notice Sender redeems cTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * Error codes can be found here:
+     * https://github.com/compound-finance/compound-protocol/commits/master/contracts/ErrorReporter.sol
      * @param redeemTokens The number of cTokens to redeem into underlying
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
