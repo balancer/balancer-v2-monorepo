@@ -50,16 +50,16 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
-        IERC20 underlying = IERC20(wrappedToken.underlying());
+        IERC20 mainToken = IERC20(wrappedToken.underlying());
 
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, underlying, amount);
+            _pullToken(sender, mainToken, amount);
         }
 
-        underlying.safeApprove(address(wrappedToken), amount);
+        mainToken.safeApprove(address(wrappedToken), amount);
 
         // The mint function transfers an asset into the Midas protocol, which begins accumulating interest
         // based on the current Supply Rate for the asset. The user receives a quantity of cTokens
@@ -92,7 +92,7 @@ abstract contract MidasWrapping is IBaseRelayerLibrary {
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, IERC20(address(wrappedToken)), amount);
+            _pullToken(sender, wrappedToken, amount);
         }
 
         IERC20 mainToken = IERC20(wrappedToken.underlying());
