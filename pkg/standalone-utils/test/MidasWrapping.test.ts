@@ -46,7 +46,7 @@ describe('MidasWrapping', function () {
     DAI = await deploy('v2-solidity-utils/TestToken', { args: ['DAI', 'DAI', mainTokenDecimals] });
 
     cDAI = await deploy('MockCToken', {
-      args: ['cDAI', 'cDAI', wrappedTokenDecimals, DAI.address, bn(1e18)],
+      args: ['cDAI', 'cDAI', wrappedTokenDecimals, DAI.address, bn(2e15)],
     });
   });
 

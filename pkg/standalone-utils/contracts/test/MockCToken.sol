@@ -17,8 +17,12 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICFuseToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+
 
 contract MockCToken is TestToken, ICFuseToken {
+    using FixedPoint for uint256;
+
     address public immutable override underlying;
     uint256 private _exchangeRate;
     uint256 private _temp;
@@ -41,7 +45,7 @@ contract MockCToken is TestToken, ICFuseToken {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function mint(uint256 mintAmount) public override returns (uint256) {
-        uint256 amountToMint = mintAmount;
+        uint256 amountToMint = toCTokenAmount(mintAmount);
 
         ERC20(underlying).transferFrom(msg.sender, address(this), mintAmount);
 
@@ -63,7 +67,7 @@ contract MockCToken is TestToken, ICFuseToken {
     function redeem(uint256 redeemTokens) external override returns (uint256) {
         _burn(msg.sender, redeemTokens);
 
-        uint256 amountToReturn = redeemTokens;
+        uint256 amountToReturn = fromCTokenAmount(redeemTokens);
 
         ERC20(underlying).transfer(msg.sender, amountToReturn);
 
@@ -75,16 +79,16 @@ contract MockCToken is TestToken, ICFuseToken {
      * @param amount The number of underlying Tokens expected to be exchanged
      * @return amount of CTokens returned for amount of Token depoisted 
      */
-    function toCTokenAmount(uint256 amount) public pure returns(uint256) {
-        return amount;
+    function toCTokenAmount(uint256 amount) public view returns(uint256) {
+        return amount.divDown(_exchangeRate);
     }
     /**
      * @notice preview amount of underlying returned
      * @param amount The number of underlying Tokens expected to be exchanged
      * @return amount of CTokens returned for amount of Token depoisted 
      */
-    function fromCTokenAmount(uint256 amount) public pure returns(uint256) {
-        return amount;
+    function fromCTokenAmount(uint256 amount) public view returns(uint256) {
+        return amount.mulUp(_exchangeRate);
     }
 
     function exchangeRateCurrent() external view override returns (uint256) {
