@@ -24,17 +24,13 @@ import "./IBaseRelayerLibrary.sol";
 
 /**
  * @title CompoundV2Wrapping
- * @notice Allows users to wrap and unwrap CompoundV2CTokens tokens
+ * @notice Allows users to wrap and unwrap Compound v2 cTokens
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
     using Address for address payable;
     using SafeERC20 for IERC20;
 
-    /**
-     *@dev
-     *@notice pulls tokens from sender to relayer and calls mint? on a CToken.
-     */
     function wrapCompoundV2(
         ICToken wrappedToken,
         address sender,
@@ -57,9 +53,8 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
 
         mainToken.safeApprove(address(wrappedToken), amount);
 
-        // The mint function transfers an asset into the CompoundV2 protocol, which begins accumulating interest
-        // based on the current Supply Rate for the asset. The user receives a quantity of cTokens
-        // equal to the underlying tokens supplied, divided by the current Exchange Rate.
+        // The `mint` function deposits `amount` underlying tokens and transfers cTokens to the caller.
+        // It returns an error code where zero indicates success.
         require(wrappedToken.mint(amount) == 0, "wrapping failed");
 
         uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
@@ -93,11 +88,10 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
 
         IERC20 mainToken = IERC20(wrappedToken.underlying());
 
-        // The redeem function converts a specified quantity of cTokens into the underlying asset,
-        // and returns them to the user. The amount of underlying tokens received is equal to the
-        // quantity of cTokens redeemed, multiplied by the current Exchange Rate. The amount redeemed
-        // must be less than the user’s Account Liquidity and the market’s available liquidity.
+        // The `redeem` function burns `amount` cTokens and transfers underlying tokens to the caller.
+        // It returns an error code where zero indicates success.
         require(wrappedToken.redeem(amount) == 0, "unwrapping failed");
+
         uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 
         if (recipient != address(this)) {
