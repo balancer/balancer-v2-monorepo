@@ -695,8 +695,8 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
      * case any account can execute it.
      *
      * Avoid scheduling multiple revoke delay changes for the same action at the same time, as this makes it harder to
-     * reason about the state of the system. If there is already a scheduled revoke delay change and there is a desire to
-     * change the future grant delay to some other value, cancel the first scheduled change and schedule a new one.
+     * reason about the state of the system. If there is already a scheduled revoke delay change and there is a desire
+     * to change the future grant delay to some other value, cancel the first scheduled change and schedule a new one.
      *
      * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
      * (including global cancelers).
