@@ -79,43 +79,6 @@ describe('MidasWrapping', function () {
     await vault.setRelayerApproval(senderUser, relayer, true);
   });
 
-  function encodeApprove(token: Token, amount: BigNumberish): string {
-    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
-  }
-
-  // TODO: Check if function has changed in relayer.
-  function encodeWrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapMidas', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
-  function encodeUnwrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapMidas', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
   describe('primitives', () => {
     const amount = fp(1);
 
@@ -698,31 +661,6 @@ describe('MidasWrapping', function () {
     });
 
     describe('joinPool', () => {
-      function encodeJoin(params: {
-        poolId: string;
-        sender: Account;
-        recipient: Account;
-        assets: string[];
-        maxAmountsIn: BigNumberish[];
-        userData: string;
-        outputReference?: BigNumberish;
-      }): string {
-        return relayerLibrary.interface.encodeFunctionData('joinPool', [
-          params.poolId,
-          0, // WeightedPool
-          TypesConverter.toAddress(params.sender),
-          TypesConverter.toAddress(params.recipient),
-          {
-            assets: params.assets,
-            maxAmountsIn: params.maxAmountsIn,
-            userData: params.userData,
-            fromInternalBalance: false,
-          },
-          0,
-          params.outputReference ?? 0,
-        ]);
-      }
-
       let receipt: ContractReceipt;
       let sendercDAIBalanceBefore: BigNumber;
       const amount = fp(1);
@@ -770,5 +708,166 @@ describe('MidasWrapping', function () {
         expect(await cDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
+
+    describe('exitPool', () => {
+      let receipt: ContractReceipt;
+      let BPTBalanceBefore: BigNumber;
+      const amountDAI = fp(1);
+
+      sharedBeforeEach('exit the pool', async () => {
+        const { tokens: allTokens } = await pool.getTokens();
+
+        // First transfer token to the pool, before testing exit
+        await relayer.connect(senderUser).multicall([
+          encodeWrap(cDAI.address, senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
+          encodeApprove(cDAIToken, MAX_UINT256),
+          encodeJoin({
+            poolId,
+            assets: allTokens,
+            sender: relayer,
+            recipient: senderUser,
+            maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
+            userData: StablePoolEncoder.joinExactTokensInForBPTOut(
+              poolTokens.map((token) => (token === cDAIToken ? toChainedReference(0) : 0)),
+              0
+            ),
+          }),
+        ]);
+
+        const eDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
+          (token: Token) => token.instance.address === cDAIToken.address
+        );
+        const eDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === cDAIToken.address);
+        const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
+        BPTBalanceBefore = await pool.balanceOf(senderUser);
+
+        receipt = await (
+          await relayer.connect(senderUser).multicall([
+            encodeApprove(pool, MAX_UINT256),
+            encodeExit({
+              poolId,
+              assets: allTokens,
+              sender: senderUser,
+              recipient: relayer,
+              minAmountsOut: Array(poolTokens.length + 1).fill(0),
+              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, eDAIIndexWithoutBPT),
+              outputReference,
+            }),
+            encodeUnwrap(cDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + eDAIIndex)),
+          ])
+        ).wait();
+      });
+
+      it('exits the pool', async () => {
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          poolId,
+          liquidityProvider: senderUser.address,
+        });
+
+        // DAI transfered to recipient
+        expectTransferEvent(receipt, { from: cDAI.address, to: relayer.address }, DAIToken);
+        expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAIToken);
+      });
+
+      it('BPT burned from the sender user', async () => {
+        const BPTBalanceAfter = await pool.balanceOf(senderUser);
+        expect(BPTBalanceAfter).to.be.eq(0);
+      });
+
+      it('DAI transfered to recipient user', async () => {
+        const DAIBalanceAfter = await DAIToken.balanceOf(recipientUser);
+        expect(DAIBalanceAfter).to.be.gt(0);
+      });
+
+      it('does not leave dust on the relayer', async () => {
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await cDAIToken.balanceOf(relayer)).to.be.eq(0);
+      });
+    });
   });
+
+  function encodeApprove(token: Token, amount: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
+  }
+
+  function encodeWrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('wrapMidas', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeUnwrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('unwrapMidas', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeJoin(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    maxAmountsIn: BigNumberish[];
+    userData: string;
+    outputReference?: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('joinPool', [
+      params.poolId,
+      0, // WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        maxAmountsIn: params.maxAmountsIn,
+        userData: params.userData,
+        fromInternalBalance: false,
+      },
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
+
+  function encodeExit(params: {
+    poolId: string;
+    sender: Account;
+    recipient: Account;
+    assets: string[];
+    minAmountsOut: BigNumberish[];
+    userData: string;
+    outputReference?: { index: number; key: BigNumberish }[];
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('exitPool', [
+      params.poolId,
+      0, //WeightedPool
+      TypesConverter.toAddress(params.sender),
+      TypesConverter.toAddress(params.recipient),
+      {
+        assets: params.assets,
+        minAmountsOut: params.minAmountsOut,
+        userData: params.userData,
+        toInternalBalance: false,
+      },
+      params.outputReference,
+    ]);
+  }
 });
