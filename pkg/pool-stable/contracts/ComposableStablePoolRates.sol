@@ -21,6 +21,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/VaultReentrancyLib.sol";
 
 import "./ComposableStablePoolStorage.sol";
 
@@ -141,6 +142,8 @@ abstract contract ComposableStablePoolRates is IComposableStablePoolRates, Compo
 
     /// @inheritdoc IComposableStablePoolRates
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external override authenticate {
+        VaultReentrancyLib.ensureNotInVaultContext(_getVault());
+
         uint256 index = _getTokenIndex(token);
         IRateProvider provider = _getRateProvider(index);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
