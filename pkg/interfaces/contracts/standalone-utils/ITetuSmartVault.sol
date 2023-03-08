@@ -14,16 +14,24 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-interface IProtocolFeeCache {
-    /**
-     * @notice Updates the cache to the latest value set by governance.
-     * @dev Can be called by anyone to update the cached fee percentages.
-     *
-     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook. This is protected by a call to `ensureNotInVaultContext` in
-     * VaultReentrancyLib where overridden in `ProtocolFeeCache`, and so is safe to call on ManagedPool.
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
-     */
-    function updateProtocolFeePercentageCache() external;
+import "../solidity-utils/openzeppelin/IERC20.sol";
+
+interface ITetuSmartVault is IERC20 {
+    function deposit(uint256 amount) external;
+
+    function depositFor(uint256 amount, address holder) external;
+
+    function underlyingBalanceInVault() external view returns (uint256);
+
+    function withdraw(uint256 numberOfShares) external;
+
+    function underlyingBalanceWithInvestmentForHolder(address holder) external view returns (uint256);
+
+    function underlying() external view returns (address);
+
+    function underlyingUnit() external view returns (uint256);
+
+    function getPricePerFullShare() external view returns (uint256);
+
+    function strategy() external view returns (address);
 }

@@ -4,7 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '../../test/expectEvent';
 import { BigNumberish } from '../../numbers';
-import { ANY_ADDRESS, ONES_BYTES32 } from '../../constants';
+import { ANY_ADDRESS } from '../../constants';
 
 import TimelockAuthorizerDeployer from './TimelockAuthorizerDeployer';
 import { TimelockAuthorizerDeployment } from './types';
@@ -12,7 +12,6 @@ import { Account, NAry, TxParams } from '../types/types';
 import { advanceToTimestamp } from '../../time';
 
 export default class TimelockAuthorizer {
-  static GENERAL_PERMISSION_SPECIFIER = ONES_BYTES32;
   static EVERYWHERE = ANY_ADDRESS;
 
   instance: Contract;
@@ -35,38 +34,9 @@ export default class TimelockAuthorizer {
     return this.instance.interface;
   }
 
-  async GRANT_ACTION_ID(): Promise<string> {
-    return this.instance.GRANT_ACTION_ID();
-  }
-
-  async REVOKE_ACTION_ID(): Promise<string> {
-    return this.instance.REVOKE_ACTION_ID();
-  }
-
-  async SCHEDULE_DELAY_ACTION_ID(): Promise<string> {
-    return this.instance.SCHEDULE_DELAY_ACTION_ID();
-  }
-
   async getPermissionId(action: string, account: Account, where: Account): Promise<string> {
     return this.instance.getPermissionId(action, this.toAddress(account), this.toAddress(where));
   }
-
-  async getGrantPermissionActionId(actionId: string): Promise<string> {
-    return this.instance.getGrantPermissionActionId(actionId);
-  }
-
-  async getRevokePermissionActionId(actionId: string): Promise<string> {
-    return this.instance.getRevokePermissionActionId(actionId);
-  }
-
-  async getExecuteExecutionActionId(executionId: BigNumberish): Promise<string> {
-    return this.instance.getExecuteExecutionActionId(executionId);
-  }
-
-  async getScheduleDelayActionId(actionId: string): Promise<string> {
-    return this.instance.getScheduleDelayActionId(actionId);
-  }
-
   async isRoot(account: Account): Promise<boolean> {
     return this.instance.isRoot(this.toAddress(account));
   }
@@ -120,7 +90,9 @@ export default class TimelockAuthorizer {
 
   async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).scheduleRootChange(this.toAddress(root), this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RootChangeScheduled', {
+      newRoot: this.toAddress(root),
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -135,7 +107,10 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'DelayChangeScheduled', {
+      actionId: action,
+      newDelay: delay,
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -146,7 +121,10 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleGrantDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'GrantDelayChangeScheduled', {
+      actionId: action,
+      newDelay: delay,
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -157,7 +135,10 @@ export default class TimelockAuthorizer {
     params?: TxParams
   ): Promise<number> {
     const receipt = await this.with(params).scheduleRevokeDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RevokeDelayChangeScheduled', {
+      actionId: action,
+      newDelay: delay,
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -181,7 +162,11 @@ export default class TimelockAuthorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'GrantPermissionScheduled', {
+      actionId: action,
+      account: this.toAddress(account),
+      where: this.toAddress(where),
+    });
     return event.args.scheduledExecutionId;
   }
 
@@ -199,7 +184,11 @@ export default class TimelockAuthorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    const event = expectEvent.inReceipt(await receipt.wait(), 'RevokePermissionScheduled', {
+      actionId: action,
+      account: this.toAddress(account),
+      where: this.toAddress(where),
+    });
     return event.args.scheduledExecutionId;
   }
 

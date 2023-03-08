@@ -14,16 +14,16 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-interface IProtocolFeeCache {
-    /**
-     * @notice Updates the cache to the latest value set by governance.
-     * @dev Can be called by anyone to update the cached fee percentages.
-     *
-     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook. This is protected by a call to `ensureNotInVaultContext` in
-     * VaultReentrancyLib where overridden in `ProtocolFeeCache`, and so is safe to call on ManagedPool.
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
-     */
-    function updateProtocolFeePercentageCache() external;
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuStrategy.sol";
+
+contract MockTetuStrategy is ITetuStrategy {
+    uint256 private _investedUnderlyingBalance = 0;
+
+    function setInvestedUnderlyingBalance(uint256 investedUnderlyingBalance) public {
+        _investedUnderlyingBalance = investedUnderlyingBalance;
+    }
+
+    function investedUnderlyingBalance() external override view returns (uint256) {
+        return _investedUnderlyingBalance;
+    }
 }
