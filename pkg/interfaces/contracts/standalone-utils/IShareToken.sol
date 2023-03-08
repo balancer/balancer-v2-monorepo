@@ -14,16 +14,18 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-interface IProtocolFeeCache {
+import "../solidity-utils/openzeppelin/IERC20.sol";
+
+import "./ISilo.sol";
+
+interface IShareToken is IERC20 {
     /**
-     * @notice Updates the cache to the latest value set by governance.
-     * @dev Can be called by anyone to update the cached fee percentages.
-     *
-     * Correct behavior depends on the token balances from the Vault, which may be out of sync with the state of
-     * the pool during execution of a Vault hook. This is protected by a call to `ensureNotInVaultContext` in
-     * VaultReentrancyLib where overridden in `ProtocolFeeCache`, and so is safe to call on ManagedPool.
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     * @dev returns the underlying asset
      */
-    function updateProtocolFeePercentageCache() external;
+    function asset() external view returns (address);
+
+    /**
+     * @dev returns the address of the silo
+     */
+    function silo() external view returns (ISilo);
 }

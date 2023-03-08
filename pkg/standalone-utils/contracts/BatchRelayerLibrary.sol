@@ -25,6 +25,8 @@ import "./relayer/GearboxWrapping.sol";
 import "./relayer/LidoWrapping.sol";
 import "./relayer/UnbuttonWrapping.sol";
 import "./relayer/ReaperWrapping.sol";
+import "./relayer/TetuWrapping.sol";
+import "./relayer/SiloWrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
 import "./relayer/YearnWrapping.sol";
@@ -44,6 +46,8 @@ contract BatchRelayerLibrary is
     LidoWrapping,
     UnbuttonWrapping,
     ReaperWrapping,
+    SiloWrapping,
+    TetuWrapping,
     VaultActions,
     VaultPermit,
     YearnWrapping
