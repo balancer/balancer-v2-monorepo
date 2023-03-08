@@ -34,20 +34,12 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
-    address private immutable _eulerProtocol;
     //solhint-disable-next-line private-vars-leading-underscore
     uint256 private constant MAX_UINT256 = type(uint256).max;
 
-    /**
-     * @dev Euler protocol needs to be approved to transfer mainToken
-     * @param eulerProtocol - the address of the euler protocol
-     */
-    constructor(address eulerProtocol) {
-        _eulerProtocol = eulerProtocol;
-    }
-
     function wrapEuler(
         IEulerToken wrappedToken,
+        address eulerProtocol,
         address sender,
         address recipient,
         uint256 amount,
@@ -66,7 +58,7 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlying, amount);
         }
 
-        underlying.safeApprove(_eulerProtocol, amount);
+        underlying.safeApprove(eulerProtocol, amount);
 
         // Deposit MainToken into EulerToken
         // 0 for the Euler primary account
