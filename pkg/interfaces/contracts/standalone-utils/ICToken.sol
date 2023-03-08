@@ -21,6 +21,10 @@ pragma solidity ^0.7.0;
 import "../solidity-utils/openzeppelin/IERC20.sol";
 
 interface ICToken is IERC20 {
+    // Error codes referenced in this file can be found here:
+    // https://github.com/compound-finance/compound-protocol/blob/a3214f67b73310d547e00fc578e8355911c9d376/contracts/ErrorReporter.sol
+    // solhint-disable-previous-line max-line-length
+
     /**
      * @dev Underlying asset for this CToken
      */
@@ -29,20 +33,16 @@ interface ICToken is IERC20 {
     /**
      * @notice Sender supplies assets into the market and receives cTokens in exchange
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * Error codes can be found here:
-     * https://github.com/compound-finance/compound-protocol/commits/master/contracts/ErrorReporter.sol
      * @param mintAmount The amount of the underlying asset to supply
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
+     * @return uint 0=success, otherwise an error code (see ErrorReporter.sol link above for details)
      */
     function mint(uint256 mintAmount) external returns (uint256);
 
     /**
      * @notice Sender redeems cTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * Error codes can be found here:
-     * https://github.com/compound-finance/compound-protocol/commits/master/contracts/ErrorReporter.sol
      * @param redeemTokens The number of cTokens to redeem into underlying
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
+     * @return uint 0=success, otherwise an error code (see ErrorReporter.sol link above for details)
      */
     function redeem(uint256 redeemTokens) external returns (uint256);
 }

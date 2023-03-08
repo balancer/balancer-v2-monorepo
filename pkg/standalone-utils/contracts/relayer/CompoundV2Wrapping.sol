@@ -54,7 +54,9 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
         mainToken.safeApprove(address(wrappedToken), amount);
 
         // The `mint` function deposits `amount` underlying tokens and transfers cTokens to the caller.
-        // It returns an error code where zero indicates success.
+        // It returns an error code, where zero indicates success. Other error codes can be found here:
+        // https://github.com/compound-finance/compound-protocol/blob/a3214f67b73310d547e00fc578e8355911c9d376/contracts/ErrorReporter.sol
+        // solhint-disable-previous-line max-line-length
         require(wrappedToken.mint(amount) == 0, "wrapping failed");
 
         uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
@@ -89,7 +91,9 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
         IERC20 mainToken = IERC20(wrappedToken.underlying());
 
         // The `redeem` function burns `amount` cTokens and transfers underlying tokens to the caller.
-        // It returns an error code where zero indicates success.
+        // It returns an error code, where zero indicates success. Other error codes can be found here:
+        // https://github.com/compound-finance/compound-protocol/blob/a3214f67b73310d547e00fc578e8355911c9d376/contracts/ErrorReporter.sol
+        // solhint-disable-previous-line max-line-length
         require(wrappedToken.redeem(amount) == 0, "unwrapping failed");
 
         uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
