@@ -40,7 +40,8 @@ describe('ProtocolFeesWithdrawer', function () {
   sharedBeforeEach('grant permissions to allow/denylist tokens', async () => {
     const denylistTokenRole = await actionId(protocolFeesWithdrawer, 'denylistToken');
     const allowlistTokenRole = await actionId(protocolFeesWithdrawer, 'allowlistToken');
-    await vault.grantPermissionsGlobally([denylistTokenRole, allowlistTokenRole], admin);
+    await vault.grantPermissionGlobally(denylistTokenRole, admin);
+    await vault.grantPermissionGlobally(allowlistTokenRole, admin);
   });
 
   describe('constructor', () => {
@@ -119,10 +120,10 @@ describe('ProtocolFeesWithdrawer', function () {
   describe('withdrawCollectedFees', () => {
     sharedBeforeEach('grant permissions to withdraw tokens', async () => {
       const unsafeWithdrawCollectedFeesRole = await actionId(protocolFeesCollector, 'withdrawCollectedFees');
-      await vault.grantPermissionsGlobally([unsafeWithdrawCollectedFeesRole], protocolFeesWithdrawer);
+      await vault.grantPermissionGlobally(unsafeWithdrawCollectedFeesRole, protocolFeesWithdrawer);
 
       const safeWithdrawCollectedFeesRole = await actionId(protocolFeesWithdrawer, 'withdrawCollectedFees');
-      await vault.grantPermissionsGlobally([safeWithdrawCollectedFeesRole], claimer);
+      await vault.grantPermissionGlobally(safeWithdrawCollectedFeesRole, claimer);
     });
 
     sharedBeforeEach('deposit some tokens into the ProtocolFeeCollector', async () => {

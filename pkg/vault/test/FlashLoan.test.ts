@@ -28,7 +28,7 @@ describe('Flash Loans', () => {
     recipient = await deploy('MockFlashLoanRecipient', { from: other, args: [vault.address] });
 
     const action = await actionId(feesCollector, 'setFlashLoanFeePercentage');
-    await authorizer.connect(admin).grantPermissions([action], feeSetter.address, [ANY_ADDRESS]);
+    await authorizer.connect(admin).grantPermission(action, feeSetter.address, ANY_ADDRESS);
 
     tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
     await tokens.mint({ from: minter, to: vault, amount: bn(100e18) });

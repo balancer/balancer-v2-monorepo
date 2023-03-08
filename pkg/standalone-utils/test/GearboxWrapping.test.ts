@@ -64,7 +64,11 @@ describe('GearboxWrapping', function () {
         actionId(vault.instance, action)
       )
     );
-    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
+    await Promise.all(
+      relayerActionIds.map((action) => {
+        vault.grantPermissionGlobally(action, relayer);
+      })
+    );
 
     // Approve relayer by sender
     await vault.setRelayerApproval(senderUser, relayer, true);

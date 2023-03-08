@@ -169,7 +169,7 @@ describe('RewardsOnlyGauge', () => {
 
     sharedBeforeEach('set up distributor on streamer', async () => {
       const setDistributorActionId = await actionId(adaptorEntrypoint, 'set_reward_distributor', streamer.interface);
-      await vault.grantPermissionsGlobally([setDistributorActionId], admin);
+      await vault.grantPermissionGlobally(setDistributorActionId, admin);
 
       const calldata = streamer.interface.encodeFunctionData('set_reward_distributor', [
         balToken.address,

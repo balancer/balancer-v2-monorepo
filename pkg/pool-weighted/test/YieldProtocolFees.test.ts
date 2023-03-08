@@ -30,7 +30,7 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
     if (!vault.admin) throw new Error('Vault has no admin');
     const protocolFeesProvider = vault.protocolFeesProvider;
     const action = await actionId(protocolFeesProvider, 'setFeeTypePercentage');
-    await vault.grantPermissionsGlobally([action], vault.admin);
+    await vault.grantPermissionGlobally(action, vault.admin);
     await protocolFeesProvider
       .connect(vault.admin)
       .setFeeTypePercentage(ProtocolFee.YIELD, PROTOCOL_YIELD_FEE_PERCENTAGE);

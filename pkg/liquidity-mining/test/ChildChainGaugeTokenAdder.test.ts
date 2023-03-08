@@ -64,7 +64,8 @@ describe('ChildChainGaugeTokenAdder', () => {
     const addRewardRole = await actionId(adaptorEntrypoint, 'add_reward', streamer.interface);
     const setRewardsRole = await actionId(adaptorEntrypoint, 'set_rewards', gauge.interface);
 
-    await vault.grantPermissionsGlobally([addRewardRole, setRewardsRole], gaugeTokenAdder);
+    await vault.grantPermissionGlobally(addRewardRole, gaugeTokenAdder);
+    await vault.grantPermissionGlobally(setRewardsRole, gaugeTokenAdder);
   });
 
   describe('constructor', () => {
@@ -97,7 +98,7 @@ describe('ChildChainGaugeTokenAdder', () => {
     sharedBeforeEach('grant permission to add new tokens', async () => {
       const addTokenToGaugeRole = await actionId(gaugeTokenAdder, 'addTokenToGauge');
 
-      await vault.grantPermissionsGlobally([addTokenToGaugeRole], admin);
+      await vault.grantPermissionGlobally(addTokenToGaugeRole, admin);
     });
 
     context('when interacting with a gauge from the expected factory', () => {
@@ -165,7 +166,7 @@ describe('ChildChainGaugeTokenAdder', () => {
       context("when the gauge's streamer has been changed from the original", () => {
         sharedBeforeEach("change the gauge's streamer", async () => {
           const addTokenToGaugeRole = await actionId(adaptorEntrypoint, 'set_rewards', gauge.interface);
-          await vault.grantPermissionsGlobally([addTokenToGaugeRole], admin);
+          await vault.grantPermissionGlobally(addTokenToGaugeRole, admin);
 
           await adaptorEntrypoint
             .connect(admin)

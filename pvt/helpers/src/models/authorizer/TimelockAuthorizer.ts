@@ -255,32 +255,20 @@ export default class TimelockAuthorizer {
     return this.with(params).revokePermission(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async renouncePermission(
-    action: string,
-    where: Account,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
-    return this.with(params).renouncePermissions(action, this.toAddress(where));
+  async renouncePermission(action: string, where: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).renouncePermission(action, this.toAddress(where));
   }
 
-  async grantPermissionGlobally(
-    action: string,
-    account: Account,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
+  async grantPermissionGlobally(action: string, account: Account, params?: TxParams): Promise<ContractTransaction> {
     return this.with(params).grantPermission(action, this.toAddress(account), TimelockAuthorizer.EVERYWHERE);
   }
 
-  async revokePermissionGlobally(
-    action: string,
-    account: Account,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
+  async revokePermissionGlobally(action: string, account: Account, params?: TxParams): Promise<ContractTransaction> {
     return this.with(params).revokePermission(action, this.toAddress(account), TimelockAuthorizer.EVERYWHERE);
   }
 
   async renouncePermissionGlobally(action: string, params: TxParams): Promise<ContractTransaction> {
-    return this.with(params).renouncePermissions(action, TimelockAuthorizer.EVERYWHERE);
+    return this.with(params).renouncePermission(action, TimelockAuthorizer.EVERYWHERE);
   }
 
   async scheduleAndExecuteDelayChange(action: string, delay: number, params?: TxParams): Promise<void> {

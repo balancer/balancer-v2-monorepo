@@ -44,7 +44,7 @@ describe('L2BalancerPseudoMinter', () => {
 
   describe('addGaugeFactory', () => {
     sharedBeforeEach('give permissions to admin', async () => {
-      await vault.grantPermissionsGlobally([await actionId(pseudoMinter, 'addGaugeFactory')], admin);
+      await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin);
       expect(await pseudoMinter.isValidGaugeFactory(gaugeFactory.address)).to.be.false;
     });
 
@@ -81,10 +81,8 @@ describe('L2BalancerPseudoMinter', () => {
 
   describe('removeGaugeFactory', () => {
     sharedBeforeEach('give permissions to admin and add factory', async () => {
-      await vault.grantPermissionsGlobally(
-        [await actionId(pseudoMinter, 'addGaugeFactory'), await actionId(pseudoMinter, 'removeGaugeFactory')],
-        admin
-      );
+      await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'removeGaugeFactory'), admin);
+      await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin);
       await pseudoMinter.connect(admin).addGaugeFactory(gaugeFactory.address);
       expect(await pseudoMinter.isValidGaugeFactory(gaugeFactory.address)).to.be.true;
     });
@@ -124,7 +122,7 @@ describe('L2BalancerPseudoMinter', () => {
     const mockCheckpointStep = fp(1);
 
     sharedBeforeEach('setup factory and fund pseudo minter', async () => {
-      await vault.grantPermissionsGlobally([await actionId(pseudoMinter, 'addGaugeFactory')], admin);
+      await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin);
       await pseudoMinter.connect(admin).addGaugeFactory(gaugeFactory.address);
       await BAL.connect(admin).mint(pseudoMinter.address, fp(100));
       expect(await pseudoMinter.minted(user.address, gauge.address)).to.be.eq(0);
@@ -226,7 +224,7 @@ describe('L2BalancerPseudoMinter', () => {
     let gaugeAddresses: string[];
 
     sharedBeforeEach('setup factory and fund pseudo minter', async () => {
-      await vault.grantPermissionsGlobally([await actionId(pseudoMinter, 'addGaugeFactory')], admin);
+      await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin);
       await pseudoMinter.connect(admin).addGaugeFactory(gaugeFactory.address);
       await BAL.connect(admin).mint(pseudoMinter.address, fp(100));
 

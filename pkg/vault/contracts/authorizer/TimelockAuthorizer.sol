@@ -1086,7 +1086,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
      * @dev Note that the caller can always renounce permissions, even if revoking them would typically be
      * subject to a delay.
      */
-    function renouncePermissions(bytes32 actionId, address where) external {
+    function renouncePermission(bytes32 actionId, address where) external {
         _revokePermission(actionId, msg.sender, where);
     }
 

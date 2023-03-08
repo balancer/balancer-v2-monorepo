@@ -77,13 +77,13 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _rolesData.length; i++) {
             RoleData memory roleData = _rolesData[i];
             // We require that any permissions being copied from the old Authorizer must exist on the old Authorizer.
-            // This simplifies verification of the permissions being added to the new TimelockAuthorizer.
+            // This simplifies verification of the permissions eing added to the new TimelockAuthorizer.
             require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
-            _newAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
+            _newAuthorizer.grantPermission((roleData.role), roleData.grantee, roleData.target);
         }
         for (uint256 i = 0; i < _grantersData.length; i++) {
             // There's no concept of a "granter" on the old Authorizer so we cannot verify these onchain.
-            // We must manually verify that these permissions are set sensibly.
+            // We must manually verify that these permissions are set sensily.
             _newAuthorizer.addGranter(_grantersData[i].role, _grantersData[i].grantee, _grantersData[i].target);
         }
         for (uint256 i = 0; i < _revokersData.length; i++) {

@@ -10,6 +10,8 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+
 type ProviderFeeIDs = {
   swap: BigNumberish;
   yield: BigNumberish;
@@ -34,16 +36,25 @@ describe('ProtocolFeeCache', () => {
 
     await vault.authorizer
       .connect(admin)
-      .grantPermissions([actionId(vault.protocolFeesProvider, 'setFeeTypePercentage')], admin.address, [
-        vault.protocolFeesProvider.address,
-      ]);
+      .grantPermission(
+        actionId(vault.protocolFeesProvider, 'setFeeTypePercentage'),
+        admin.address,
+        vault.protocolFeesProvider.address
+      );
 
     await vault.authorizer
       .connect(admin)
-      .grantPermissions(
-        [actionId(feesCollector, 'setSwapFeePercentage'), actionId(feesCollector, 'setFlashLoanFeePercentage')],
+      .grantPermission(
+        actionId(feesCollector, 'setFlashLoanFeePercentage'),
         vault.protocolFeesProvider.address,
-        [feesCollector.address, feesCollector.address]
+        feesCollector.address
+      );
+    await vault.authorizer
+      .connect(admin)
+      .grantPermission(
+        actionId(feesCollector, 'setSwapFeePercentage'),
+        vault.protocolFeesProvider.address,
+        feesCollector.address
       );
   });
 
