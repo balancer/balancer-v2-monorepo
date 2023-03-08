@@ -21,16 +21,18 @@ interface IEulerToken is IERC20 {
      * @dev Convert an eToken balance to an underlying amount, taking into account current exchange rate
      * @param balance eToken balance, in internal book-keeping units (18 decimals)
      * @return Amount in underlying units, (same decimals as underlying token)
-     * https://github.com/euler-xyz/euler-contracts/blob/b1ee3265853628d5a529081d7908c38404201b4e/contracts/modules/EToken.sol#L104
      */
+    // https://github.com/euler-xyz/euler-contracts/blob/b1ee3265853628d5a529081d7908c38404201b4e/contracts/modules/EToken.sol#L104
+    // solhint-disable-previous-line max-line-length
     function convertBalanceToUnderlying(uint256 balance) external view returns (uint256);
 
     /**
      * @dev Convert an underlying amount to an eToken balance, taking into account current exchange rate
      * @param underlyingAmount Amount in underlying units (same decimals as underlying token)
      * @return eToken balance, in internal book-keeping units (18 decimals)
-     * https://github.com/euler-xyz/euler-contracts/blob/b1ee3265853628d5a529081d7908c38404201b4e/contracts/modules/EToken.sol#L114
      */
+    // https://github.com/euler-xyz/euler-contracts/blob/b1ee3265853628d5a529081d7908c38404201b4e/contracts/modules/EToken.sol#L114
+    // solhint-disable-previous-line max-line-length
     function convertUnderlyingToBalance(uint256 underlyingAmount) external view returns (uint256);
 
     /**
