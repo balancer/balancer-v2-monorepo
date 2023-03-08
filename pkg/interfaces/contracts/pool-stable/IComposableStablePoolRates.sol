@@ -20,6 +20,19 @@ interface IComposableStablePoolRates {
     /**
      * @dev Forces a rate cache hit for a token.
      * It will revert if the requested token does not have an associated rate provider.
+     * 
+     * This function will revert when called within a Vault context (i.e. in the middle of a join or an exit).
+     *
+     * This function depends on `getRate` via the rate provider, which may be calculated incorrectly in the middle of a
+     * join or an exit because the state of the pool could be out of sync with the state of the Vault. It is protected
+     * by a call to `VaultReentrancyLib.ensureNotInVaultContext` where overridden in `ComposableStablePoolRates`, and so
+     * is safe to call on ComposableStablePool.
+     *
+     * It will also revert if there was no rate provider set initially.
+     *
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
+     *
+     * @param token The token whose rate cache will be updated.
      */
     function updateTokenRateCache(IERC20 token) external;
 
