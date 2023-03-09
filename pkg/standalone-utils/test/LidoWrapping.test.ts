@@ -66,7 +66,11 @@ describe('LidoWrapping', function () {
         actionId(vault.instance, action)
       )
     );
-    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
+    await Promise.all(
+      relayerActionIds.map((action) => {
+        return vault.grantPermissionGlobally(action, relayer.address);
+      })
+    );
 
     // Approve relayer by sender
     await vault.setRelayerApproval(senderUser, relayer, true);

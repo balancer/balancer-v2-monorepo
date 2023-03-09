@@ -142,7 +142,7 @@ describe('Swap Validation', () => {
       context('when paused', () => {
         sharedBeforeEach('pause', async () => {
           const action = await actionId(vault, 'setPaused');
-          await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+          await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
           await vault.connect(admin).setPaused(true);
         });
 

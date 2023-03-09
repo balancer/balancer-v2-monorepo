@@ -80,7 +80,7 @@ describe('ChildChainGaugeRewardHelper', () => {
 
   sharedBeforeEach('set up distributor on streamer', async () => {
     const setDistributorActionId = await actionId(adaptorEntrypoint, 'set_reward_distributor', streamerOne.interface);
-    await vault.grantPermissionsGlobally([setDistributorActionId], admin);
+    await vault.grantPermissionGlobally(setDistributorActionId, admin);
 
     const calldata = streamerOne.interface.encodeFunctionData('set_reward_distributor', [
       balToken.address,

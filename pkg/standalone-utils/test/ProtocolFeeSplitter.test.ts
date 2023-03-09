@@ -73,24 +73,25 @@ describe('ProtocolFeeSplitter', function () {
 
     const setRevenueShareRole = await actionId(protocolFeeSplitter, 'setRevenueSharePercentage');
     const clearRevenueShareRole = await actionId(protocolFeeSplitter, 'clearRevenueSharePercentage');
-    await vault.grantPermissionsGlobally([setRevenueShareRole, clearRevenueShareRole], admin);
+    await vault.grantPermissionGlobally(setRevenueShareRole, admin);
+    await vault.grantPermissionGlobally(clearRevenueShareRole, admin);
 
     const setDefaultRevenueSharePercentageRole = await actionId(
       protocolFeeSplitter,
       'setDefaultRevenueSharePercentage'
     );
-    await vault.grantPermissionsGlobally([setDefaultRevenueSharePercentageRole], admin);
+    await vault.grantPermissionGlobally(setDefaultRevenueSharePercentageRole, admin);
 
     // Allow withdrawer to pull from collector
     const withdrawCollectedFeesRole = await actionId(await vault.getFeesCollector(), 'withdrawCollectedFees');
-    await vault.grantPermissionsGlobally([withdrawCollectedFeesRole], protocolFeesWithdrawer);
+    await vault.grantPermissionGlobally(withdrawCollectedFeesRole, protocolFeesWithdrawer);
 
     // Allow fee splitter to pull from withdrawer
     const withdrawCollectedFeesWithdrawerRole = await actionId(protocolFeesWithdrawer, 'withdrawCollectedFees');
-    await vault.grantPermissionsGlobally([withdrawCollectedFeesWithdrawerRole], protocolFeeSplitter);
+    await vault.grantPermissionGlobally(withdrawCollectedFeesWithdrawerRole, protocolFeeSplitter);
 
     const setTreasuryRole = await actionId(protocolFeeSplitter, 'setDaoFundsRecipient');
-    await vault.grantPermissionsGlobally([setTreasuryRole], admin);
+    await vault.grantPermissionGlobally(setTreasuryRole, admin);
   });
 
   describe('constructor', () => {
@@ -234,7 +235,7 @@ describe('ProtocolFeeSplitter', function () {
       sharedBeforeEach('set permissions', async () => {
         caller = other;
         const setBeneficiaryRole = await actionId(protocolFeeSplitter, 'setPoolBeneficiary');
-        await vault.grantPermissionsGlobally([setBeneficiaryRole], other);
+        await vault.grantPermissionGlobally(setBeneficiaryRole, other);
       });
 
       itSetsThePoolsBeneficiary();

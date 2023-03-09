@@ -21,7 +21,7 @@ describe('SingletonAuthentication', () => {
     ({ instance: vault, authorizer } = await Vault.create({ admin }));
 
     const action = await actionId(vault, 'setAuthorizer');
-    await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+    await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
 
     singleton = await deploy('SingletonAuthenticationMock', { args: [vault.address] });
   });

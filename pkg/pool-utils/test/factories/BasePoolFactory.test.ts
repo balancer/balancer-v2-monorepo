@@ -43,7 +43,7 @@ describe('BasePoolFactory', function () {
     });
 
     const action = await actionId(factory, 'disable');
-    await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+    await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
   });
 
   it('stores the vault address', async () => {

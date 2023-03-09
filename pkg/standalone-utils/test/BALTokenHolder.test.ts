@@ -51,9 +51,7 @@ describe('BALTokenHolder', function () {
     context('when the caller is authorized', () => {
       sharedBeforeEach(async () => {
         const withdrawActionId = await actionId(holder, 'withdrawFunds');
-        await vault.authorizer
-          .connect(admin)
-          .grantPermissions([withdrawActionId], authorized.address, [holder.address]);
+        await vault.authorizer.connect(admin).grantPermission(withdrawActionId, authorized.address, holder.address);
       });
 
       it('sends funds to the recipient', async () => {
@@ -75,7 +73,7 @@ describe('BALTokenHolder', function () {
     context('when the caller is authorized', () => {
       sharedBeforeEach(async () => {
         const sweepActionId = await actionId(holder, 'sweepTokens');
-        await vault.authorizer.connect(admin).grantPermissions([sweepActionId], authorized.address, [holder.address]);
+        await vault.authorizer.connect(admin).grantPermission(sweepActionId, authorized.address, holder.address);
       });
 
       context('when the token is not BAL', () => {

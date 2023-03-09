@@ -89,7 +89,7 @@ describe('GaugeActions', function () {
     const relayerActionIds = await Promise.all(
       ['setRelayerApproval', 'manageUserBalance'].map((action) => actionId(vault.instance, action))
     );
-    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
+    await Promise.all(relayerActionIds.map((action) => vault.grantPermissionGlobally(action, relayer)));
 
     // Approve relayer by BPT holder
     await vault.setRelayerApproval(userSender, relayer, true);
@@ -217,7 +217,7 @@ describe('GaugeActions', function () {
     describe('gaugeClaimRewards', () => {
       sharedBeforeEach('setup and deposit reward tokens in gauge', async () => {
         const action = await actionId(adaptorEntrypoint, 'add_reward', gauge.interface);
-        await vault.grantPermissionsGlobally([action], admin);
+        await vault.grantPermissionGlobally(action, admin);
 
         const rewardAmount = fp(500);
         await rewardToken.connect(admin).mint(admin.address, rewardAmount);

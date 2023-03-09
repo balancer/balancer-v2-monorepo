@@ -58,9 +58,13 @@ describe('ReaperWrapping', function () {
         actionId(vault.instance, action)
       )
     );
+
     const authorizer = vault.authorizer;
-    const wheres = relayerActionIds.map(() => ANY_ADDRESS);
-    await authorizer.connect(admin).grantPermissions(relayerActionIds, relayer.address, wheres);
+    await Promise.all(
+      relayerActionIds.map((action) => {
+        authorizer.connect(admin).grantPermission(action, relayer.address, ANY_ADDRESS);
+      })
+    );
 
     // Approve relayer by sender
     await vault.instance.connect(user).setRelayerApproval(user.address, relayer.address, true);
