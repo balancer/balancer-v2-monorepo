@@ -347,7 +347,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
      *
      * For instance, BPT_IN_FOR_EXACT_TOKENS_OUT is 2 in legacy Stable Pools, but 1 in Composable Stable Pools.
      * (See the reference comment and libraries below.)
-     * 
+     *
      * Accordingly, the three do[PoolKind]ExitChainedReferenceReplacements functions below (for LegacyStable,
      * ComposableStable, and CopmosableStableV2) extract the exitKind and pass it through to the shared
      * recoding functions.
