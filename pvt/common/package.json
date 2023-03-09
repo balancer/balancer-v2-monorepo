@@ -5,8 +5,8 @@
   "version": "1.0.0",
   "license": "GPL-3.0-only",
   "scripts": {
-    "lint": "NODE_NO_WARNINGS=1 yarn lint:typescript",
-    "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
+    "lint": "yarn lint:typescript",
+    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "dependencies": {
     "@balancer-labs/v2-helpers": "workspace:*",
