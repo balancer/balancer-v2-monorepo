@@ -18,11 +18,14 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 /**
  * @title IBaseRelayerLibrary
  */
 abstract contract IBaseRelayerLibrary is AssetHelpers {
+    using SafeERC20 for IERC20;
+
     constructor(IWETH weth) AssetHelpers(weth) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -50,4 +53,53 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
     function _setChainedReferenceValue(uint256 ref, uint256 value) internal virtual;
 
     function _getChainedReferenceValue(uint256 ref) internal virtual returns (uint256);
+
+    function _resolveAmountPullAndApproveToken(
+        IERC20 token,
+        IERC20 wrappedToken,
+        uint256 amount,
+        address sender
+    ) internal returns (uint256 resolvedAmount) {
+        resolvedAmount = _resolveAmountAndPullToken(token, amount, sender);
+
+        token.safeApprove(address(wrappedToken), resolvedAmount);
+    }
+
+    function _resolveAmountAndPullToken(
+        IERC20 token,
+        uint256 amount,
+        address sender
+    ) internal returns (uint256 resolvedAmount) {
+        resolvedAmount = _resolveAmount(amount);
+
+        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
+        // to be sourced from outside the relayer, we must first pull them here.
+        if (sender != address(this)) {
+            require(sender == msg.sender, "Incorrect sender");
+            _pullToken(sender, token, resolvedAmount);
+        }
+    }
+
+    function _resolveAmount(uint256 amount) internal returns (uint256) {
+        return _isChainedReference(amount) ? _getChainedReferenceValue(amount) : amount;
+    }
+
+    function _transferAndSetChainedReference(
+        IERC20 token,
+        address recipient,
+        uint256 amount,
+        uint256 outputReference
+    ) internal {
+        if (recipient != address(this)) {
+            token.safeTransfer(recipient, amount);
+        }
+
+        _setChainedReference(outputReference, amount);
+    }
+
+    function _setChainedReference(uint256 outputReference, uint256 amount) internal {
+        if (_isChainedReference(outputReference)) {
+            _setChainedReferenceValue(outputReference, amount);
+        }
+    }
 }
