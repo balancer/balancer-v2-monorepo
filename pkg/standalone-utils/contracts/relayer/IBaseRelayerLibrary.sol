@@ -55,9 +55,10 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
     function _getChainedReferenceValue(uint256 ref) internal virtual returns (uint256);
 
     /**
-     * @dev This reuses `_resolveAmountAndPullToken` to adjust the `amount` if it is a chained reference, and
-     * pulls that amount of the `mainToken` to the relayer. Additionally, approve the `wrappedToken` to enable
-     * wrapping operations.
+     * @dev This reuses `_resolveAmountAndPullToken` to adjust the `amount` in case it is a chained reference,
+     * then pull that amount of `token` to the relayer. Additionally, it approves the `spender` to enable
+     * wrapping operations. The spender is usually a token, but could also be another kind of contract (e.g.,
+     * a protocol or gauge).
      */
     function _resolveAmountPullTokenAndApproveSpender(
         IERC20 token,
@@ -71,7 +72,7 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
     }
 
     /**
-     * @dev Extract the `amount` (if it is a chained reference), and pull that amount of the `token` to
+     * @dev Extract the `amount` (if it is a chained reference), and pull that amount of `token` to
      * this contract.
      */
     function _resolveAmountAndPullToken(
