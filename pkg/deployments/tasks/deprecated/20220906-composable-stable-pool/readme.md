@@ -2,7 +2,7 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
-> This factory and associated Pools have been deprecated in favor of a new version that supports proportional joins and exits. Use this [updated version](../../20221122-composable-stable-pool-v2) instead.
+> This factory and associated Pools were deprecated in favor of a new version that supported proportional joins and exits. The factory was superseded by this [updated version (also now deprecated)](../20221122-composable-stable-pool-v2).
 
 Deployment of `ComposableStablePoolFactory`, which allows creating Stable Pools that are suitable to be included in other Pools.
 
@@ -12,5 +12,4 @@ Deployment of `ComposableStablePoolFactory`, which allows creating Stable Pools 
 - [Polygon addresses](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Optimism addresses](./output/optimism.json)
-- [`ComposableStablePool` artifact](./artifact/ComposableStablePool.json)
 - [`ComposableStablePoolFactory` artifact](./artifact/ComposableStablePoolFactory.json)

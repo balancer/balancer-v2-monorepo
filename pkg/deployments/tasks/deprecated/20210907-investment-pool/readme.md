@@ -9,4 +9,4 @@
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
-- [`InvestmentPool` artifact](./artifact/InvestmentPool.json)
+- [`InvestmentPoolFactory` artifact](./artifact/InvestmentPoolFactory.json)

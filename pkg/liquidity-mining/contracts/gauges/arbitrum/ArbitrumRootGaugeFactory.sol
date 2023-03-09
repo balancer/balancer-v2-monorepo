@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "../BaseGaugeFactory.sol";
 import "./ArbitrumRootGauge.sol";
@@ -32,12 +31,12 @@ contract ArbitrumRootGaugeFactory is IArbitrumFeeProvider, BaseGaugeFactory, Sin
 
     constructor(
         IVault vault,
-        IBalancerMinter minter,
+        IMainnetBalancerMinter minter,
         IGatewayRouter gatewayRouter,
         uint64 gasLimit,
         uint64 gasPrice,
         uint64 maxSubmissionCost
-    ) BaseGaugeFactory(new ArbitrumRootGauge(minter, gatewayRouter)) SingletonAuthentication(vault) {
+    ) BaseGaugeFactory(address(new ArbitrumRootGauge(minter, gatewayRouter))) SingletonAuthentication(vault) {
         _gasLimit = gasLimit;
         _gasPrice = gasPrice;
         _maxSubmissionCost = maxSubmissionCost;
@@ -69,7 +68,7 @@ contract ArbitrumRootGaugeFactory is IArbitrumFeeProvider, BaseGaugeFactory, Sin
      * @param relativeWeightCap The relative weight cap for the created gauge
      * @return The address of the deployed gauge
      */
-    function create(address recipient, uint256 relativeWeightCap) external override returns (address) {
+    function create(address recipient, uint256 relativeWeightCap) external returns (address) {
         address gauge = _create();
         ArbitrumRootGauge(gauge).initialize(recipient, relativeWeightCap);
         return gauge;

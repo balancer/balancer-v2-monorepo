@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "../BaseGaugeFactory.sol";
 import "./OptimismRootGauge.sol";
@@ -28,12 +27,12 @@ contract OptimismRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory
 
     constructor(
         IVault vault,
-        IBalancerMinter minter,
+        IMainnetBalancerMinter minter,
         IL1StandardBridge optimismL1StandardBridge,
         address optimismBal,
         uint32 gasLimit
     )
-        BaseGaugeFactory(new OptimismRootGauge(minter, optimismL1StandardBridge, optimismBal))
+        BaseGaugeFactory(address(new OptimismRootGauge(minter, optimismL1StandardBridge, optimismBal)))
         SingletonAuthentication(vault)
     {
         _gasLimit = gasLimit;
@@ -54,7 +53,7 @@ contract OptimismRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory
      * @param relativeWeightCap The relative weight cap for the created gauge
      * @return The address of the deployed gauge
      */
-    function create(address recipient, uint256 relativeWeightCap) external override returns (address) {
+    function create(address recipient, uint256 relativeWeightCap) external returns (address) {
         address gauge = _create();
         OptimismRootGauge(gauge).initialize(recipient, relativeWeightCap);
         return gauge;

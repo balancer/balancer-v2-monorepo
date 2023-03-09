@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+- Added `IChildChainGauge`.
+- Added `ILMGetters`.
+
+### Breaking changes
+
+- Removed `IBaseGaugeFactory`.
+- Refactor: renamed `IBalancerMinter` to `IMainnetBalancerMinter`.
+  - `IMainnetBalancerMinter` now implements reduced version of previous `IBalancerMinter` and `ILMGetters`.
+
+## 0.3.0 (20223-02-08)
+
+### New Features
+
+- Added `checkpointGaugesOfTypeAboveRelativeWeight` to `IL2GaugeCheckpointer`.
+- Added `IComposableStablePoolRates`.
+- Added `IProtocolFeeCache`.
+- Added `setTargets` and `setSwapFeePercentage` to `ILinearPool`.
+
+### Breaking changes
+
+- `IL2GaugeCheckpointer`: `getGaugeAt` renamed to `getGaugeAtIndex`.
+
+## 0.2.1 (2022-12-12)
+
+### Misc
+
+- Added examples to readme.
+
 ## 0.2.0 (2022-12-01)
 
 ### New Interfaces

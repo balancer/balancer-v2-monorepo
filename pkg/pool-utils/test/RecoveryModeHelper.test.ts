@@ -44,7 +44,7 @@ describe('RecoveryModeHelper', function () {
 
     it('reverts if the user data is not a recovery mode exit', async () => {
       const pool = await deploy('v2-vault/MockPool', { args: [vault.address, PoolSpecialization.GeneralPool] });
-      await pool.registerTokens([await randomAddress()], [ZERO_ADDRESS]);
+      await pool.registerTokens([randomAddress()], [ZERO_ADDRESS]);
 
       await expect(helper.calcComposableRecoveryAmountsOut(await pool.getPoolId(), '0xdeadbeef', 0)).to.be.reverted;
     });

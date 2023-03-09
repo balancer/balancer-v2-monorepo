@@ -29,6 +29,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Build
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-solidity-utils:
     runs-on: ubuntu-latest
@@ -40,6 +42,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-solidity-utils test
       - name: Install Foundry
@@ -59,6 +63,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-standalone-utils test
       - name: Install Foundry
@@ -78,6 +84,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
       - name: Install Foundry
@@ -97,6 +105,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-utils test
       - name: Install Foundry
@@ -116,6 +126,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-weighted test
       - name: Install Foundry
@@ -135,6 +147,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-stable test
       - name: Install Foundry
@@ -154,6 +168,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-linear test
       - name: Install Foundry
@@ -173,6 +189,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Foundry
@@ -190,6 +208,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-governance-scripts test
 
@@ -214,6 +234,8 @@ jobs:
         run: yarn workspace @balancer-labs/balancer-js build
       - name: Compile
         run: yarn build # Ideally we wouldn't depend on the packages of other artifacts, but we use some of their mocks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Forked Network Cache
         # Hardhat caches node requests when working with forked networks (e.g. when querying contract code, storage,
         # etc.) to save time in future runs. We cache this directory accross runs.

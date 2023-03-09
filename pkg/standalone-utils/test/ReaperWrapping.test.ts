@@ -32,7 +32,7 @@ describe('ReaperWrapping', function () {
 
   sharedBeforeEach('Deploy tokens and reaper vaults', async () => {
     dai = await Token.create({ name: 'DAI', symbol: 'DAI', decimals: 18 });
-    rfDAI = await deploy('v2-pool-linear/MockReaperVault', {
+    rfDAI = await deploy('MockReaperVault', {
       args: ['yvDAI', 'yvDAI', 18, dai.address, yvDaiRate],
     });
   });
@@ -47,7 +47,9 @@ describe('ReaperWrapping', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS],
+    });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions

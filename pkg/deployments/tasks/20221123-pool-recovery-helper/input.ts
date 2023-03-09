@@ -7,6 +7,7 @@ export type PoolRecoveryHelperDeployment = {
 
 const Vault = new Task('20210418-vault', TaskMode.READ_ONLY);
 const ComposableStablePoolFactoryTask = new Task('20220906-composable-stable-pool', TaskMode.READ_ONLY);
+const ComposableStablePoolFactoryV2Task = new Task('20221122-composable-stable-pool-v2', TaskMode.READ_ONLY);
 const WeightedPoolFactoryTask = new Task('20220908-weighted-pool-v2', TaskMode.READ_ONLY);
 
 export default {
@@ -46,5 +47,14 @@ export default {
       ComposableStablePoolFactoryTask.output({ network: 'bsc' }).ComposableStablePoolFactory,
       WeightedPoolFactoryTask.output({ network: 'bsc' }).WeightedPoolFactory,
     ],
+  },
+  gnosis: {
+    InitialFactories: [
+      ComposableStablePoolFactoryV2Task.output({ network: 'gnosis' }).ComposableStablePoolFactory,
+      WeightedPoolFactoryTask.output({ network: 'gnosis' }).WeightedPoolFactory,
+    ],
+  },
+  avalanche: {
+    InitialFactories: [],
   },
 };

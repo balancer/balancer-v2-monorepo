@@ -15,17 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
-
 import "../gauges/BaseGaugeFactory.sol";
 import "./MockLiquidityGauge.sol";
 
 contract MockLiquidityGaugeFactory is BaseGaugeFactory {
-    constructor(MockLiquidityGauge gaugeImplementation) BaseGaugeFactory(gaugeImplementation) {
+    constructor(MockLiquidityGauge gaugeImplementation) BaseGaugeFactory(address(gaugeImplementation)) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(address pool, uint256 relativeWeightCap) external override returns (address) {
+    function create(address pool, uint256 relativeWeightCap) external returns (address) {
         address gauge = _create();
 
         MockLiquidityGauge(gauge).initialize(pool, relativeWeightCap);
