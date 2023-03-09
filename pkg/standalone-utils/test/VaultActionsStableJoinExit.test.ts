@@ -29,7 +29,7 @@ import {
   encodeSwap,
 } from './VaultActionsRelayer.setup';
 
-describe('stable pools', () => {
+describe('Vault Actions - Stable Pools', () => {
   let vault: Vault;
   let tokens: TokenList;
   let relayer: Contract, relayerLibrary: Contract;
