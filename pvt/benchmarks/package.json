@@ -11,7 +11,7 @@
     "measure-join-exit": "hardhat run joinExit.ts",
     "measure-relayer": "hardhat run relayer.ts",
     "benchmark": "yarn measure-deployment && yarn measure-single-pair && yarn measure-multihop && yarn measure-join-exit && yarn measure-relayer",
-    "lint": "yarn lint:typescript",
+    "lint": "NODE_NO_WARNINGS=1 yarn lint:typescript",
     "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "devDependencies": {

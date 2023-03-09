@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "license": "GPL-3.0-only",
   "scripts": {
-    "lint": "yarn lint:typescript",
+    "lint": "NODE_NO_WARNINGS=1 yarn lint:typescript",
     "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "dependencies": {
