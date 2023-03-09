@@ -54,17 +54,26 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
 
     function _getChainedReferenceValue(uint256 ref) internal virtual returns (uint256);
 
+    /**
+     * @dev This reuses `_resolveAmountAndPullToken` to adjust the `amount` if it is a chained reference, and
+     * pulls that amount of the `mainToken` to the relayer. Additionally, approve the `wrappedToken` to enable
+     * wrapping operations.
+     */
     function _resolveAmountPullAndApproveToken(
-        IERC20 token,
+        IERC20 mainToken,
         IERC20 wrappedToken,
         uint256 amount,
         address sender
     ) internal returns (uint256 resolvedAmount) {
-        resolvedAmount = _resolveAmountAndPullToken(token, amount, sender);
+        resolvedAmount = _resolveAmountAndPullToken(mainToken, amount, sender);
 
-        token.safeApprove(address(wrappedToken), resolvedAmount);
+        mainToken.safeApprove(address(wrappedToken), resolvedAmount);
     }
 
+    /**
+     * @dev Extract the `amount` (if it is a chained reference), and pull that amount of the `token` to
+     * this contract.
+     */
     function _resolveAmountAndPullToken(
         IERC20 token,
         uint256 amount,
@@ -80,10 +89,18 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
         }
     }
 
+    /**
+     * @dev Resolve an amount from a possible chained reference. This is internal, since some wrappers
+     * call it independently.
+     */
     function _resolveAmount(uint256 amount) internal returns (uint256) {
         return _isChainedReference(amount) ? _getChainedReferenceValue(amount) : amount;
     }
 
+    /**
+     * @dev Transfer the given `amount` of `token` to `recipient`, then call `_setChainedReference`
+     * with that amount, in case it needs to be encoded as an output reference.
+     */
     function _transferAndSetChainedReference(
         IERC20 token,
         address recipient,
@@ -97,6 +114,10 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
         _setChainedReference(outputReference, amount);
     }
 
+    /**
+     * Check for a chained output reference, and encode the given `amount` if necessary.
+     * This is internal, since some wrappers call it independently.
+     */
     function _setChainedReference(uint256 outputReference, uint256 amount) internal {
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, amount);
