@@ -115,7 +115,7 @@ describe('VaultAuthorization', function () {
       context('when the sender is allowed by the authorizer', () => {
         sharedBeforeEach('grant permission to sender', async () => {
           const action = await actionId(vault, 'setRelayerApproval');
-          await authorizer.connect(admin).grantPermission(action, sender.address, [ANY_ADDRESS]);
+          await authorizer.connect(admin).grantPermission(action, sender.address, ANY_ADDRESS);
         });
 
         context('when the sender is approved by the user', () => {
@@ -258,7 +258,7 @@ describe('VaultAuthorization', function () {
 
       sharedBeforeEach('grant permission', async () => {
         action = await actionId(vault, 'setPaused');
-        await authorizer.connect(admin).grantPermission(action, admin.address, [ANY_ADDRESS]);
+        await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
       });
 
       it('can pause', async () => {

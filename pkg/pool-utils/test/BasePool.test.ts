@@ -548,12 +548,8 @@ describe('BasePool', function () {
         sharedBeforeEach('grant permission', async () => {
           const enableRecoveryAction = await actionId(pool, 'enableRecoveryMode');
           const disableRecoveryAction = await actionId(pool, 'disableRecoveryMode');
-          await authorizer
-            .connect(admin)
-            .grantPermission(enableRecoveryAction, sender.address, ANY_ADDRESS);
-          await authorizer
-            .connect(admin)
-            .grantPermission(disableRecoveryAction, sender.address, ANY_ADDRESS);
+          await authorizer.connect(admin).grantPermission(enableRecoveryAction, sender.address, ANY_ADDRESS);
+          await authorizer.connect(admin).grantPermission(disableRecoveryAction, sender.address, ANY_ADDRESS);
         });
 
         itCanEnableRecoveryMode();
