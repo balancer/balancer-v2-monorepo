@@ -38,7 +38,7 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
         // Initialize the corresponding Silo (Liquidity Pool)
         ISilo silo = wrappedToken.silo();
 
-        amount = _resolveAmountPullAndApproveToken(underlyingToken, IERC20(address(silo)), amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(underlyingToken, IERC20(address(silo)), amount, sender);
 
         // the collateralOnly param is set to false because we want to receive interest bearing shareTokens
         (, uint256 result) = silo.depositFor(address(underlyingToken), recipient, amount, false);

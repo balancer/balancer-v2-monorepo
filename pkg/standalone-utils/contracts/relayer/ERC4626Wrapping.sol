@@ -34,7 +34,7 @@ abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
     ) external payable {
         IERC20 underlying = IERC20(wrappedToken.asset());
 
-        amount = _resolveAmountPullAndApproveToken(underlying, wrappedToken, amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(underlying, wrappedToken, amount, sender);
 
         uint256 result = wrappedToken.deposit(amount, recipient);
 

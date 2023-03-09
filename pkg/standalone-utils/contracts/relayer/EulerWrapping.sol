@@ -38,7 +38,7 @@ abstract contract EulerWrapping is IBaseRelayerLibrary {
     ) external payable {
         IERC20 underlying = IERC20(wrappedToken.underlyingAsset());
 
-        amount = _resolveAmountPullAndApproveToken(underlying, IERC20(address(eulerProtocol)), amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(underlying, IERC20(address(eulerProtocol)), amount, sender);
 
         // Deposit MainToken into EulerToken
         // 0 for the Euler primary account

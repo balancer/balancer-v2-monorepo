@@ -49,7 +49,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        amount = _resolveAmountPullAndApproveToken(_stETH, IERC20(address(_wstETH)), amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(_stETH, IERC20(address(_wstETH)), amount, sender);
 
         uint256 result = IwstETH(_wstETH).wrap(amount);
 

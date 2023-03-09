@@ -36,7 +36,7 @@ abstract contract GearboxWrapping is IBaseRelayerLibrary {
         IERC20 underlying = IERC20(gearboxVault.underlyingToken());
 
         // Main Tokens are not deposited in the dieselToken address. Instead, they're deposited in a gearbox vault
-        mainAmount = _resolveAmountPullAndApproveToken(underlying, IERC20(address(gearboxVault)), mainAmount, sender);
+        mainAmount = _resolveAmountPullTokenAndApproveSpender(underlying, IERC20(address(gearboxVault)), mainAmount, sender);
 
         // The third argument of addLiquidity is a referral code, which will be always 0 for the relayer (no referee)
         gearboxVault.addLiquidity(mainAmount, recipient, 0);
