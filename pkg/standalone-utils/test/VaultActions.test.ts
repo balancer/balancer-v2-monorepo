@@ -28,6 +28,7 @@ import {
   encodeSwap,
   getJoinExitAmounts,
   approveVaultForRelayer,
+  PoolKind,
 } from './VaultActionsRelayer.setup';
 
 describe('VaultActions', function () {
@@ -523,6 +524,7 @@ describe('VaultActions', function () {
         await expect(
           relayer.connect(other).multicall([
             await encodeJoinPool(vault, relayerLibrary, {
+              poolKind: PoolKind.WEIGHTED,
               poolId: poolIdA,
               userData: '0x',
               sender: user.address,
@@ -562,6 +564,7 @@ describe('VaultActions', function () {
               async () =>
                 relayer.connect(user).multicall([
                   await encodeJoinPool(vault, relayerLibrary, {
+                    poolKind: PoolKind.WEIGHTED,
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
                       getJoinExitAmounts(tokensA, { DAI: amountInDAI, MKR: amountInMKR }),
@@ -586,6 +589,7 @@ describe('VaultActions', function () {
             const receipt = await (
               await relayer.connect(user).multicall([
                 await encodeJoinPool(vault, relayerLibrary, {
+                  poolKind: PoolKind.WEIGHTED,
                   poolId: poolIdA,
                   userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
                     getJoinExitAmounts(tokensA, { DAI: amountInDAI, MKR: amountInMKR }),
@@ -612,6 +616,7 @@ describe('VaultActions', function () {
               async () =>
                 relayer.connect(user).multicall([
                   await encodeJoinPool(vault, relayerLibrary, {
+                    poolKind: PoolKind.WEIGHTED,
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
                       getJoinExitAmounts(tokensA, { DAI: amountInDAI, MKR: toChainedReference(0) }),
@@ -647,6 +652,7 @@ describe('VaultActions', function () {
                       recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next join.
                     }),
                     encodeJoinPool(vault, relayerLibrary, {
+                      poolKind: PoolKind.WEIGHTED,
                       poolId: poolIdB,
                       userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
                         getJoinExitAmounts(tokensB, { MKR: toChainedReference(0) }),
@@ -685,6 +691,7 @@ describe('VaultActions', function () {
               async () =>
                 relayer.connect(user).multicall([
                   await encodeJoinPool(vault, relayerLibrary, {
+                    poolKind: PoolKind.WEIGHTED,
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.joinTokenInForExactBPTOut(bptOut, mkrIndex),
                     sender,
@@ -710,6 +717,7 @@ describe('VaultActions', function () {
               async () =>
                 relayer.connect(user).multicall([
                   await encodeJoinPool(vault, relayerLibrary, {
+                    poolKind: PoolKind.WEIGHTED,
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(bptOut),
                     sender,
@@ -744,6 +752,7 @@ describe('VaultActions', function () {
         await expect(
           relayer.connect(other).multicall([
             await encodeExitPool(vault, relayerLibrary, tokens, {
+              poolKind: PoolKind.WEIGHTED,
               poolId: poolIdA,
               userData: '0x',
               toInternalBalance: true,
@@ -795,6 +804,7 @@ describe('VaultActions', function () {
                   async () =>
                     relayer.connect(user).multicall([
                       await encodeExitPool(vault, relayerLibrary, tokens, {
+                        poolKind: PoolKind.WEIGHTED,
                         poolId: poolIdA,
                         userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(1)),
                         toInternalBalance: useInternalBalance,
@@ -816,6 +826,7 @@ describe('VaultActions', function () {
                 const receipt = await (
                   await relayer.connect(user).multicall([
                     await encodeExitPool(vault, relayerLibrary, tokens, {
+                      poolKind: PoolKind.WEIGHTED,
                       poolId: poolIdA,
                       userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
                       toInternalBalance: useInternalBalance,
@@ -880,6 +891,7 @@ describe('VaultActions', function () {
                   async () =>
                     relayer.connect(user).multicall([
                       await encodeExitPool(vault, relayerLibrary, tokens, {
+                        poolKind: PoolKind.WEIGHTED,
                         poolId: poolIdA,
                         userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(toChainedReference(0)),
                         toInternalBalance: useInternalBalance,
@@ -903,6 +915,7 @@ describe('VaultActions', function () {
                     async () =>
                       relayer.connect(user).multicall([
                         await encodeExitPool(vault, relayerLibrary, tokens, {
+                          poolKind: PoolKind.WEIGHTED,
                           poolId: poolIdA,
                           userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
                           toInternalBalance: useInternalBalance,
@@ -952,6 +965,7 @@ describe('VaultActions', function () {
                   async () =>
                     relayer.connect(user).multicall([
                       await encodeExitPool(vault, relayerLibrary, tokens, {
+                        poolKind: PoolKind.WEIGHTED,
                         poolId: poolIdA,
                         userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(fp(1), 0),
                         toInternalBalance: useInternalBalance,
@@ -973,6 +987,7 @@ describe('VaultActions', function () {
                 const receipt = await (
                   await relayer.connect(user).multicall([
                     await encodeExitPool(vault, relayerLibrary, tokens, {
+                      poolKind: PoolKind.WEIGHTED,
                       poolId: poolIdA,
                       userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
                         amountInBPT,
@@ -1021,6 +1036,7 @@ describe('VaultActions', function () {
                   async () =>
                     relayer.connect(user).multicall([
                       await encodeExitPool(vault, relayerLibrary, tokens, {
+                        poolKind: PoolKind.WEIGHTED,
                         poolId: poolIdA,
                         userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
                           toChainedReference(0),
@@ -1047,6 +1063,7 @@ describe('VaultActions', function () {
                     async () =>
                       relayer.connect(user).multicall([
                         await encodeExitPool(vault, relayerLibrary, tokens, {
+                          poolKind: PoolKind.WEIGHTED,
                           poolId: poolIdA,
                           userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
                             amountInBPT,
@@ -1102,6 +1119,7 @@ describe('VaultActions', function () {
                   async () =>
                     relayer.connect(user).multicall([
                       await encodeExitPool(vault, relayerLibrary, tokens, {
+                        poolKind: PoolKind.WEIGHTED,
                         poolId: poolIdA,
                         userData: WeightedPoolEncoder.exitBPTInForExactTokensOut(
                           [amountOutMKR, amountOutDAI],

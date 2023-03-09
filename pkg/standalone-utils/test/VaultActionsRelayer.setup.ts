@@ -59,14 +59,14 @@ export async function encodeJoinPool(
     outputReference?: BigNumberish;
     sender: Account;
     recipient: Account;
-    poolKind?: number;
+    poolKind: number;
   }
 ): Promise<string> {
   const { tokens } = await vault.getPoolTokens(params.poolId);
 
   return relayerLibrary.interface.encodeFunctionData('joinPool', [
     params.poolId,
-    params.poolKind ?? PoolKind.WEIGHTED,
+    params.poolKind,
     TypesConverter.toAddress(params.sender),
     TypesConverter.toAddress(params.recipient),
     {
@@ -91,7 +91,7 @@ export async function encodeExitPool(
     outputReferences?: Dictionary<BigNumberish>;
     sender: Account;
     recipient: Account;
-    poolKind?: number;
+    poolKind: number;
   }
 ): Promise<string> {
   const { tokens: poolTokens } = await vault.getPoolTokens(params.poolId);
@@ -102,7 +102,7 @@ export async function encodeExitPool(
 
   return relayerLibrary.interface.encodeFunctionData('exitPool', [
     params.poolId,
-    params.poolKind ?? PoolKind.WEIGHTED,
+    params.poolKind,
     TypesConverter.toAddress(params.sender),
     TypesConverter.toAddress(params.recipient),
     {
