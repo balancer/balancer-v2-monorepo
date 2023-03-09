@@ -182,8 +182,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         // so that is the only one where we do replacements. Luckily all versions of Stable Pool share the same
         // enum value for it, so we can treat them all the same, and just use the latest version.
 
-        // Note that ComposableStablePool v3 supports a proportional join kind which some previous versions did not.
-        // While it is not rejected here, if passed to the Pool it will revert.
+        // Note that ComposableStablePool versions V2 and up support a proportional join kind, which some previous
+        // versions did not. While it is not rejected here, if passed to the Pool it will revert.
 
         StablePoolUserData.JoinKind kind = StablePoolUserData.joinKind(userData);
 
@@ -280,18 +280,6 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     /**
      * @dev Compute the final userData for an exit, depending on the PoolKind, performing replacements for chained
      * references as necessary.
-     *
-     * While all Stable Pool versions fortuitously support the same join kinds (V2 and higher support one extra),
-     * they do NOT all support the same exit kinds. Also, though the encoding of the data associated with the exit
-     * is uniform across pool kinds for the same exit method, the ExitKind ID itself may have a different value.
-     *
-     * For instance, BPT_IN_FOR_EXACT_TOKENS_OUT is 2 in legacy Stable Pools, but 1 in Composable Stable Pools.
-     * (See the reference comment and libraries below.)
-     *
-     * To accommodate this, we delegate first to custom ChainedReferenceReplacement functions for each pool type.
-     * These functions determine the general exit method (e.g., single or multi-token), and then - since the encoding
-     * of the arguments is the same for each method across pool kinds - forward the specific ExitKind ID appropriate
-     * to that pool kind to the shared functions that perform the actual recoding.
      */
     function _doExitPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
         private
@@ -350,6 +338,21 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
+    // Stable Pool version-dependent recoding dispatch functions
+
+    /*
+     * While all Stable Pool versions fortuitously support the same join kinds (V2 and higher support one extra),
+     * they do NOT all support the same exit kinds. Also, though the encoding of the data associated with the exit
+     * is uniform across pool kinds for the same exit method, the ExitKind ID itself may have a different value.
+     *
+     * For instance, BPT_IN_FOR_EXACT_TOKENS_OUT is 2 in legacy Stable Pools, but 1 in Composable Stable Pools.
+     * (See the reference comment and libraries below.)
+     * 
+     * Accordingly, the three do[PoolKind]ExitChainedReferenceReplacements functions below (for LegacyStable,
+     * ComposableStable, and CopmosableStableV2) extract the exitKind and pass it through to the shared
+     * recoding functions.
+     */
+
     function _doLegacyStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
         uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
 
@@ -395,7 +398,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    // Shared Stable Exit utility functions
+    // Shared Stable Exit recoding functions
 
     // The following two functions perform the actual recoding, which involves parsing and re-encoding the userData.
     // The encoding of the actual arguments is uniform across pool kinds, which allows these recoding functions to be
