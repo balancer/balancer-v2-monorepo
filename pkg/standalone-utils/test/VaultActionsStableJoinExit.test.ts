@@ -34,7 +34,7 @@ describe('Vault Actions - Stable Pools', () => {
   let tokens: TokenList;
   let relayer: Contract, relayerLibrary: Contract;
   let user: SignerWithAddress, other: SignerWithAddress;
-  let sender: Account, recipient: Account;
+  let recipient: Account;
   let poolIdStable: string;
   let poolIdStable2: string;
   let bptIndex: number;
@@ -98,6 +98,8 @@ describe('Vault Actions - Stable Pools', () => {
     });
 
     context('when caller is authorized', () => {
+      let sender: Account;
+
       context('sender = user', () => {
         beforeEach(async () => {
           sender = user;
@@ -334,6 +336,8 @@ describe('Vault Actions - Stable Pools', () => {
     });
 
     context('when caller is authorized', () => {
+      let sender: Account;
+
       context('sender = user', () => {
         beforeEach(async () => {
           sender = user;
@@ -720,6 +724,7 @@ describe('Vault Actions - Stable Pools', () => {
 
   describe('unhandled pool types', () => {
     const INVALID_POOL_KIND = PoolKind.COMPOSABLE_STABLE_V2 + 1;
+    const sender = randomAddress();
 
     context('on joins', () => {
       const bptOut = fp(2);

@@ -40,7 +40,7 @@ describe('VaultActions', function () {
   let poolIdA: string, poolIdB: string, poolIdC: string;
   let tokensA: TokenList, tokensB: TokenList, tokensC: TokenList;
 
-  let sender: Account, recipient: Account;
+  let recipient: Account;
 
   before('setup environment', async () => {
     ({ user, other, vault, relayer, relayerLibrary } = await setupRelayerEnvironment());
@@ -98,7 +98,7 @@ describe('VaultActions', function () {
       amount: BigNumberish;
     }>;
     outputReferences?: Dictionary<BigNumberish>;
-    sender?: Account;
+    sender: Account;
     recipient?: Account;
   }): string {
     const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
@@ -117,7 +117,7 @@ describe('VaultActions', function () {
       })),
       tokens.addresses,
       {
-        sender: params.sender ?? TypesConverter.toAddress(sender),
+        sender: TypesConverter.toAddress(params.sender),
         recipient: params.recipient ?? TypesConverter.toAddress(recipient),
         fromInternalBalance: false,
         toInternalBalance: false,
@@ -150,6 +150,8 @@ describe('VaultActions', function () {
     });
 
     context('when caller is authorized', () => {
+      let sender: Account;
+
       context('sender = user', () => {
         beforeEach(() => {
           sender = user;
@@ -306,6 +308,8 @@ describe('VaultActions', function () {
     });
 
     context('when caller is authorized', () => {
+      let sender: Account;
+
       context('sender = user', () => {
         beforeEach(() => {
           sender = user;
@@ -335,6 +339,7 @@ describe('VaultActions', function () {
                     { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
                     { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
                   ],
+                  sender,
                 }),
               ]),
             tokens,
@@ -375,6 +380,7 @@ describe('VaultActions', function () {
                   { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
                   { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
                 ],
+                sender,
                 outputReferences: {
                   MKR: toChainedReference(0),
                   SNX: toChainedReference(1),
@@ -413,6 +419,7 @@ describe('VaultActions', function () {
                     amount: toChainedReference(0),
                   },
                 ],
+                sender,
               }),
             ])
           ).wait();
@@ -437,6 +444,7 @@ describe('VaultActions', function () {
                       MKR: toChainedReference(0),
                       BAT: toChainedReference(1),
                     },
+                    sender,
                     recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next swap.
                   }),
                   encodeBatchSwap({
@@ -456,6 +464,7 @@ describe('VaultActions', function () {
                         amount: toChainedReference(1),
                       },
                     ],
+                    sender,
                   }),
                 ]),
               tokens,
@@ -536,6 +545,8 @@ describe('VaultActions', function () {
     });
 
     context('when caller is authorized', () => {
+      let sender: Account;
+
       describe('weighted pool', () => {
         context('sender = user', () => {
           beforeEach(() => {
@@ -769,6 +780,8 @@ describe('VaultActions', function () {
     });
 
     context('when caller is authorized', () => {
+      let sender: Account;
+
       describe('weighted pool', () => {
         context('sender = user', () => {
           beforeEach(() => {
