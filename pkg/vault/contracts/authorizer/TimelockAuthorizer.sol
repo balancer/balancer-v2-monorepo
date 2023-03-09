@@ -929,27 +929,28 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants multiple permissions to a single `account`.
+     * @notice Grants a permission to a single `account` at 'where' address.
      * @dev This function can only be used for actions that have no grant delay. For those that do, use
      * `scheduleGrantPermission` instead.
      */
-    function grantPermissions(
-        bytes32[] memory actionIds,
+    function grantPermission(
+        bytes32 actionId,
         address account,
-        address[] memory where
+        address where
     ) external {
-        InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
-        for (uint256 i = 0; i < actionIds.length; i++) {
-            if (_grantDelays[actionIds[i]] == 0) {
-                require(isGranter(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_GRANTER");
-            } else {
-                // Some actions may have delays associated with granting them - these permissions cannot be granted
-                // directly, even if the caller is a granter, and must instead be scheduled for future execution via
-                // `scheduleGrantPermission`.
-                require(msg.sender == address(_executionHelper), "GRANT_MUST_BE_SCHEDULED");
-            }
+        if (_grantDelays[actionId] == 0) {
+            require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
+        } else {
+            // Some actions may have delays associated with granting them - these permissions cannot be granted
+            // directly, even if the caller is a granter, and must instead be scheduled for future execution via
+            // `scheduleGrantPermission`.
+            require(msg.sender == address(_executionHelper), "GRANT_MUST_BE_SCHEDULED");
+        }
 
-            _grantPermission(actionIds[i], account, where[i]);
+        bytes32 permission = getPermissionId(actionId, account, where);
+        if (!_isPermissionGranted[permission]) {
+            _isPermissionGranted[permission] = true;
+            emit PermissionGranted(actionId, account, where);
         }
     }
 
@@ -967,7 +968,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         uint256 delay = _grantDelays[actionId];
         require(delay > 0, "ACTION_HAS_NO_GRANT_DELAY");
 
-        bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
+        bytes memory data = abi.encodeWithSelector(this.grantPermission.selector, actionId, account, where);
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit GrantPermissionScheduled(actionId, account, where, scheduledExecutionId);
@@ -1033,27 +1034,24 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Revokes multiple permissions from a single `account`.
+     * @notice Revokes a permission from a single `account` at `where` address.
      * @dev This function can only be used for actions that have no revoke delay. For those that do, use
      * `scheduleRevokePermission` instead.
      */
-    function revokePermissions(
-        bytes32[] memory actionIds,
+    function revokePermission(
+        bytes32 actionId,
         address account,
-        address[] memory where
+        address where
     ) external {
-        InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
-        for (uint256 i = 0; i < actionIds.length; i++) {
-            if (_revokeDelays[actionIds[i]] == 0) {
-                require(isRevoker(msg.sender, where[i]), "SENDER_IS_NOT_REVOKER");
-            } else {
-                // Some actions may have delays associated with revoking them - these permissions cannot be revoked
-                // directly, even if the caller is a revoker, and must instead be scheduled for future execution via
-                // `scheduleRevokePermission`.
-                require(msg.sender == address(_executionHelper), "REVOKE_MUST_BE_SCHEDULED");
-            }
-            _revokePermission(actionIds[i], account, where[i]);
+        if (_revokeDelays[actionId] == 0) {
+            require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
+        } else {
+            // Some actions may have delays associated with revoking them - these permissions cannot be revoked
+            // directly, even if the caller is a revoker, and must instead be scheduled for future execution via
+            // `scheduleRevokePermission`.
+            require(msg.sender == address(_executionHelper), "REVOKE_MUST_BE_SCHEDULED");
         }
+        _revokePermission(actionId, account, where);
     }
 
     /**
@@ -1070,7 +1068,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         uint256 delay = _revokeDelays[actionId];
         require(delay > 0, "ACTION_HAS_NO_REVOKE_DELAY");
 
-        bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
+        bytes memory data = abi.encodeWithSelector(this.revokePermission.selector, actionId, account, where);
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit RevokePermissionScheduled(actionId, account, where, scheduledExecutionId);
@@ -1084,27 +1082,12 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Revokes multiple permissions from the caller.
+     * @notice Revokes a permission from the caller for `actionId` at `where` address
      * @dev Note that the caller can always renounce permissions, even if revoking them would typically be
      * subject to a delay.
      */
-    function renouncePermissions(bytes32[] memory actionIds, address[] memory where) external {
-        InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
-        for (uint256 i = 0; i < actionIds.length; i++) {
-            _revokePermission(actionIds[i], msg.sender, where[i]);
-        }
-    }
-
-    function _grantPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) private {
-        bytes32 permission = getPermissionId(actionId, account, where);
-        if (!_isPermissionGranted[permission]) {
-            _isPermissionGranted[permission] = true;
-            emit PermissionGranted(actionId, account, where);
-        }
+    function renouncePermission(bytes32 actionId, address where) external {
+        _revokePermission(actionId, msg.sender, where);
     }
 
     function _revokePermission(
@@ -1169,15 +1152,5 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
         if (data.length < 4) return bytes4(0);
         return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
-    }
-
-    function _ar(bytes32 item) private pure returns (bytes32[] memory result) {
-        result = new bytes32[](1);
-        result[0] = item;
-    }
-
-    function _ar(address item) private pure returns (address[] memory result) {
-        result = new address[](1);
-        result[0] = item;
     }
 }

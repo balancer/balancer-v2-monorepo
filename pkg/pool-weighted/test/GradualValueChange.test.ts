@@ -1,9 +1,10 @@
 import { BigNumber, Contract } from 'ethers';
+import { expect } from 'chai';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, advanceToTimestamp, currentTimestamp, DAY, MINUTE } from '@balancer-labs/v2-helpers/src/time';
-import { expect } from 'chai';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const MAX_RELATIVE_ERROR = 0.0005;
 

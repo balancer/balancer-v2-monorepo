@@ -8,6 +8,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('SmartWalletChecker', () => {
   let vault: Vault;
@@ -28,7 +29,8 @@ describe('SmartWalletChecker', () => {
   sharedBeforeEach('set up permissions', async () => {
     const allowAction = await actionId(smartWalletChecker, 'allowlistAddress');
     const denyAction = await actionId(smartWalletChecker, 'denylistAddress');
-    await vault.grantPermissionsGlobally([allowAction, denyAction], admin);
+    await vault.grantPermissionGlobally(allowAction, admin);
+    await vault.grantPermissionGlobally(denyAction, admin);
   });
 
   describe('constructor', () => {
@@ -58,7 +60,7 @@ describe('SmartWalletChecker', () => {
     context('when caller is authorized', () => {
       sharedBeforeEach('authorize caller', async () => {
         const action = await actionId(smartWalletChecker, 'allowlistAddress');
-        await vault.grantPermissionsGlobally([action], caller);
+        await vault.grantPermissionGlobally(action, caller);
       });
 
       context('when address is already allowlisted', () => {
@@ -103,7 +105,7 @@ describe('SmartWalletChecker', () => {
     context('when caller is authorized', () => {
       sharedBeforeEach('authorize caller', async () => {
         const action = await actionId(smartWalletChecker, 'denylistAddress');
-        await vault.grantPermissionsGlobally([action], caller);
+        await vault.grantPermissionGlobally(action, caller);
       });
 
       context('when address is already denylisted', () => {

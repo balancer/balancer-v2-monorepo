@@ -10,6 +10,7 @@ import { bn, min } from '@balancer-labs/v2-helpers/src/numbers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { forceSendEth } from './helpers/eth';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('AssetTransfersHandler', function () {
   let handler: Contract;

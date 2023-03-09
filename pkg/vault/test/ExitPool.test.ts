@@ -17,6 +17,7 @@ import { ANY_ADDRESS, MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { PoolSpecialization, RelayerAuthorization } from '@balancer-labs/balancer-js';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('Exit Pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -40,7 +41,7 @@ describe('Exit Pool', () => {
     feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
     const action = await actionId(feesCollector, 'setSwapFeePercentage');
-    await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+    await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
     await feesCollector.connect(admin).setSwapFeePercentage(SWAP_FEE_PERCENTAGE);
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
@@ -259,7 +260,7 @@ describe('Exit Pool', () => {
             context('when the relayer is whitelisted by the authorizer', () => {
               sharedBeforeEach('grant permission to relayer', async () => {
                 const action = await actionId(vault, 'exitPool');
-                await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
+                await authorizer.connect(admin).grantPermission(action, relayer.address, ANY_ADDRESS);
               });
 
               context('when the relayer is allowed by the user', () => {
@@ -296,7 +297,7 @@ describe('Exit Pool', () => {
             context('when the relayer is not whitelisted by the authorizer', () => {
               sharedBeforeEach('revoke permission from relayer', async () => {
                 const action = await actionId(vault, 'exitPool');
-                await authorizer.connect(admin).revokePermissions([action], relayer.address, [ANY_ADDRESS]);
+                await authorizer.connect(admin).revokePermission(action, relayer.address, ANY_ADDRESS);
               });
 
               context('when the relayer is allowed by the user', () => {
@@ -401,7 +402,7 @@ describe('Exit Pool', () => {
         context('when paused', () => {
           sharedBeforeEach('pause', async () => {
             const action = await actionId(vault, 'setPaused');
-            await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+            await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
             await vault.connect(admin).setPaused(true);
           });
 
