@@ -59,15 +59,15 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
      * pulls that amount of the `mainToken` to the relayer. Additionally, approve the `wrappedToken` to enable
      * wrapping operations.
      */
-    function _resolveAmountPullAndApproveToken(
-        IERC20 mainToken,
+    function _resolveAmountPullTokenAndApproveSpender(
+        IERC20 token,
         IERC20 wrappedToken,
         uint256 amount,
         address sender
     ) internal returns (uint256 resolvedAmount) {
-        resolvedAmount = _resolveAmountAndPullToken(mainToken, amount, sender);
+        resolvedAmount = _resolveAmountAndPullToken(token, amount, sender);
 
-        mainToken.safeApprove(address(wrappedToken), resolvedAmount);
+        token.safeApprove(address(wrappedToken), resolvedAmount);
     }
 
     /**
