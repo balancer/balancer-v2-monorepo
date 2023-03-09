@@ -115,7 +115,7 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
     }
 
     /**
-     * Check for a chained output reference, and encode the given `amount` if necessary.
+     * @dev Check for a chained output reference, and encode the given `amount` if necessary.
      * This is internal, since some wrappers call it independently.
      */
     function _setChainedReference(uint256 outputReference, uint256 amount) internal {
