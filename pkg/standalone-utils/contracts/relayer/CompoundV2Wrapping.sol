@@ -17,9 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ICToken.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
-
 import "./IBaseRelayerLibrary.sol";
 
 /**
@@ -28,9 +25,6 @@ import "./IBaseRelayerLibrary.sol";
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
-    using Address for address payable;
-    using SafeERC20 for IERC20;
-
     function wrapCompoundV2(
         ICToken wrappedToken,
         address sender,
@@ -38,20 +32,8 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
         IERC20 mainToken = IERC20(wrappedToken.underlying());
-
-        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, mainToken, amount);
-        }
-
-        mainToken.safeApprove(address(wrappedToken), amount);
+        amount = _resolveAmountPullAndApproveToken(mainToken, wrappedToken, amount, sender);
 
         // The `mint` function deposits `amount` underlying tokens and transfers cTokens to the caller.
         // It returns an error code, where zero indicates success. Other error codes can be found here:
@@ -61,13 +43,7 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
 
         uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
 
-        if (recipient != address(this)) {
-            IERC20(wrappedToken).safeTransfer(recipient, receivedWrappedAmount);
-        }
-
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, receivedWrappedAmount);
-        }
+        _transferAndSetChainedReference(wrappedToken, recipient, receivedWrappedAmount, outputReference);
     }
 
     function unwrapCompoundV2(
@@ -77,16 +53,7 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
-        // The unwrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, wrappedToken, amount);
-        }
+        amount = _resolveAmountAndPullToken(wrappedToken, amount, sender);
 
         IERC20 mainToken = IERC20(wrappedToken.underlying());
 
@@ -98,12 +65,6 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
 
         uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 
-        if (recipient != address(this)) {
-            mainToken.safeTransfer(recipient, withdrawnMainAmount);
-        }
-
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, withdrawnMainAmount);
-        }
+        _transferAndSetChainedReference(mainToken, recipient, withdrawnMainAmount, outputReference);
     }
 }
