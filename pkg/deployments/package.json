@@ -36,10 +36,8 @@
     "test": "yarn build && hardhat test ./**/test/*.ts",
     "ci:prepare-config": "ts-node ci/prepare-config.ts"
   },
-  "dependencies": {
-    "@balancer-labs/balancer-js": "workspace:*"
-  },
   "devDependencies": {
+    "@balancer-labs/balancer-js": "workspace:*",
     "@balancer-labs/v2-helpers": "workspace:*",
     "@balancer-labs/v2-interfaces": "workspace:*",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.6",
