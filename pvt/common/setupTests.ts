@@ -109,13 +109,14 @@ chai.use(function (chai, utils) {
           'Transaction reverted.',
           'Transaction NOT reverted.'
         );
-      } catch (revert) {
+      } catch (revert: unknown) {
         try {
           // Run catch function
-          const catchResult = await assertion.catch(revert);
+          const catchResult = await assertion.catch(revert as Error);
           // If the catch function didn't throw, then return it because it did match what we were expecting
           return catchResult;
-        } catch (error) {
+        } catch (caughtError: unknown) {
+          const error = caughtError as Error;
           // If the catch didn't throw because another reason was expected, re-throw the error
           if (!error.message.includes('but other exception was thrown')) throw error;
 
