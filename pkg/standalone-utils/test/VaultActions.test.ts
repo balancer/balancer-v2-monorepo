@@ -5,7 +5,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { getPoolAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_INT256, MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
@@ -48,7 +48,7 @@ describe('VaultActions', function () {
 
   before('setup common recipient', () => {
     // All the tests use the same recipient; this is a simple abstraction to improve readability.
-    recipient = user;
+    recipient = randomAddress();
   });
 
   sharedBeforeEach('set up pools', async () => {
@@ -604,7 +604,11 @@ describe('VaultActions', function () {
 
             const {
               args: { value: BPTAmountOut },
-            } = expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: user.address }, getPoolAddress(poolIdA));
+            } = expectTransferEvent(
+              receipt,
+              { from: ZERO_ADDRESS, to: TypesConverter.toAddress(recipient) },
+              getPoolAddress(poolIdA)
+            );
 
             await expectChainedReferenceContents(relayer, toChainedReference(0), BPTAmountOut);
           });

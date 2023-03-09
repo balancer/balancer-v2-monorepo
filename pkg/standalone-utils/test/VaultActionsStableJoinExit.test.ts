@@ -4,7 +4,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 import { getPoolAddress, StablePoolEncoder } from '@balancer-labs/balancer-js';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
@@ -46,7 +46,7 @@ describe('Vault Actions - Stable Pools', () => {
 
   before('setup common recipient', () => {
     // All the tests use the same recipient; this is a simple abstraction to improve readability.
-    recipient = user;
+    recipient = randomAddress();
   });
 
   sharedBeforeEach('set up pools', async () => {
@@ -165,7 +165,11 @@ describe('Vault Actions - Stable Pools', () => {
 
             const {
               args: { value: BPTAmountOut },
-            } = expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: user.address }, getPoolAddress(poolIdStable));
+            } = expectTransferEvent(
+              receipt,
+              { from: ZERO_ADDRESS, to: TypesConverter.toAddress(recipient) },
+              getPoolAddress(poolIdStable)
+            );
 
             await expectChainedReferenceContents(relayer, toChainedReference(0), BPTAmountOut);
           });
