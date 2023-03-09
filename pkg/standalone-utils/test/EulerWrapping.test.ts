@@ -13,7 +13,7 @@ import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTr
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
@@ -23,38 +23,45 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
-describe('GearboxWrapping', function () {
-  let DAI: Token, dDAI: Token;
+describe('EulerWrapping', function () {
+  let DAI: Contract, eDAI: Contract;
+  let mockEulerProtocol: Contract;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
-  let relayer: Contract, relayerLibrary: Contract, gearboxVault: Contract;
+  let relayer: Contract, relayerLibrary: Contract;
 
-  before('setup signer', async () => {
+  before('setup signers', async () => {
     [, admin, senderUser, recipientUser] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy Vault', async () => {
     vault = await Vault.create({ admin });
 
+    mockEulerProtocol = await deploy('MockEulerProtocol');
+
     DAI = await deploy('v2-solidity-utils/TestToken', { args: ['DAI', 'DAI', 18] });
 
-    gearboxVault = await deploy('MockGearboxVault', { args: [DAI.address] });
-    dDAI = await deploy('MockGearboxDieselToken', { args: ['dDAI', 'dDAI', 18, gearboxVault.address] });
-    await gearboxVault.setDieselToken(dDAI.address);
+    const daiAddress = DAI.address;
+    const eulerProtocolAddress = mockEulerProtocol.address;
+
+    eDAI = await deploy('MockEulerToken', {
+      args: ['eDAI', 'eDAI', 18, daiAddress, eulerProtocolAddress],
+    });
+    await eDAI.setExchangeRateMultiplier(bn(5e18));
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
     await DAI.mint(senderUser.address, fp(100));
     await DAI.connect(senderUser).approve(vault.address, fp(100));
-    await DAI.mint(gearboxVault.address, fp(10000));
 
-    await dDAI.mint(senderUser.address, fp(2500));
-    await dDAI.connect(senderUser).approve(dDAI.address, fp(150));
+    await eDAI.mint(senderUser.address, fp(100));
+    await eDAI.connect(senderUser).approve(vault.address, fp(100));
   });
 
   sharedBeforeEach('set up relayer', async () => {
-    // Deploy Relayer
+    // deploy Relayer
     relayerLibrary = await deploy('MockBatchRelayerLibrary', {
       args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS],
     });
@@ -66,6 +73,7 @@ describe('GearboxWrapping', function () {
         actionId(vault.instance, action)
       )
     );
+
     await Promise.all(
       relayerActionIds.map((action) => {
         vault.grantPermissionGlobally(action, relayer);
@@ -76,106 +84,28 @@ describe('GearboxWrapping', function () {
     await vault.setRelayerApproval(senderUser, relayer, true);
   });
 
-  describe('primitives', () => {
-    const amount = fp(1);
+  describe('primitives', async () => {
+    const amount = fp(100);
 
-    describe('wrapGearbox', () => {
+    describe('wrap Euler', async () => {
       let tokenSender: Account, tokenRecipient: Account;
 
       context('sender = senderUser, recipient = relayer', () => {
-        beforeEach(() => {
+        this.beforeEach(() => {
           tokenSender = senderUser;
           tokenRecipient = relayer;
-        });
-        testWrap();
-      });
-
-      context('sender = senderUser, recipient = senderUser', () => {
-        beforeEach(() => {
-          tokenSender = senderUser;
-          tokenRecipient = senderUser;
-        });
-        testWrap();
-      });
-
-      context('sender = relayer, recipient = relayer', () => {
-        beforeEach(async () => {
-          await DAI.connect(senderUser).transfer(relayer.address, amount);
-          tokenSender = relayer;
-          tokenRecipient = relayer;
-        });
-        testWrap();
-      });
-
-      context('sender = relayer, recipient = senderUser', () => {
-        beforeEach(async () => {
-          await DAI.connect(senderUser).transfer(relayer.address, amount);
-          tokenSender = relayer;
-          tokenRecipient = senderUser;
         });
         testWrap();
       });
 
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          const expectedDieselAmount = await gearboxVault.toDiesel(amount);
-
-          const receipt = await (
-            await relayer.connect(senderUser).multicall([encodeWrap(dDAI.address, tokenSender, tokenRecipient, amount)])
-          ).wait();
-
-          const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
-          if (!relayerIsSender) {
-            expectTransferEvent(
-              receipt,
-              {
-                from: tokenSender.address,
-                to: relayer.address,
-                value: amount,
-              },
-              DAI
-            );
-          }
-          expectTransferEvent(
-            receipt,
-            {
-              from: relayer.address,
-              to: gearboxVault.address,
-              value: amount,
-            },
-            DAI
-          );
-
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
-          expectTransferEvent(
-            receipt,
-            {
-              from: ZERO_ADDRESS,
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: expectedDieselAmount,
-            },
-            dDAI
-          );
-        });
-
-        it('stores wrap output as chained reference', async () => {
-          const expectedWrappedAmount = await gearboxVault.toDiesel(amount);
-
-          await relayer
-            .connect(senderUser)
-            .multicall([encodeWrap(dDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
-
-          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedWrappedAmount);
-        });
-
-        it('wraps with chained references', async () => {
-          const expectedWrappedAmount = await gearboxVault.toDiesel(amount);
-          await setChainedReferenceContents(relayer, toChainedReference(0), amount);
+          const expectedulerAmount = await eDAI.convertUnderlyingToBalance(amount);
 
           const receipt = await (
             await relayer
               .connect(senderUser)
-              .multicall([encodeWrap(dDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
+              .multicall([encodeWrap(eDAI.address, mockEulerProtocol.address, tokenSender, tokenRecipient, amount)])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
@@ -183,8 +113,8 @@ describe('GearboxWrapping', function () {
             expectTransferEvent(
               receipt,
               {
-                from: tokenSender.address,
-                to: relayer.address,
+                from: TypesConverter.toAddress(tokenSender),
+                to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
               DAI
@@ -193,8 +123,8 @@ describe('GearboxWrapping', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayer.address,
-              to: gearboxVault.address,
+              from: TypesConverter.toAddress(relayer),
+              to: TypesConverter.toAddress(mockEulerProtocol),
               value: amount,
             },
             DAI
@@ -205,50 +135,39 @@ describe('GearboxWrapping', function () {
             receipt,
             {
               from: ZERO_ADDRESS,
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: expectedWrappedAmount,
+              to: TypesConverter.toAddress(relayer),
+              value: expectedulerAmount,
             },
-            dDAI
+            eDAI
           );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
+                value: expectedulerAmount,
+              },
+              eDAI
+            );
+          }
         });
       }
     });
 
-    describe('unwrapGearbox', () => {
+    describe('unwrap Euler', async () => {
       let tokenSender: Account, tokenRecipient: Account;
+
+      beforeEach(async () => {
+        // Euler protocol does not have any underlying tokens
+        // so we wint them.
+        DAI.mint(mockEulerProtocol.address, fp(5000));
+      });
 
       context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          await dDAI.connect(senderUser).approve(vault.address, fp(10));
           tokenSender = senderUser;
           tokenRecipient = relayer;
-        });
-        testUnwrap();
-      });
-
-      context('sender = senderUser, recipient = senderUser', () => {
-        beforeEach(async () => {
-          await dDAI.connect(senderUser).approve(vault.address, fp(10));
-          tokenSender = senderUser;
-          tokenRecipient = senderUser;
-        });
-        testUnwrap();
-      });
-
-      context('sender = relayer, recipient = relayer', () => {
-        beforeEach(async () => {
-          await dDAI.connect(senderUser).transfer(relayer.address, amount);
-          tokenSender = relayer;
-          tokenRecipient = relayer;
-        });
-        testUnwrap();
-      });
-
-      context('sender = relayer, recipient = senderUser', () => {
-        beforeEach(async () => {
-          await dDAI.connect(senderUser).transfer(relayer.address, amount);
-          tokenSender = relayer;
-          tokenRecipient = senderUser;
         });
         testUnwrap();
       });
@@ -258,8 +177,10 @@ describe('GearboxWrapping', function () {
           const receipt = await (
             await relayer
               .connect(senderUser)
-              .multicall([encodeUnwrap(dDAI.address, tokenSender, tokenRecipient, amount)])
+              .multicall([encodeUnwrap(eDAI.address, tokenSender, tokenRecipient, amount)])
           ).wait();
+
+          const unwrappedAmount = await eDAI.convertBalanceToUnderlying(amount);
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
@@ -270,9 +191,19 @@ describe('GearboxWrapping', function () {
                 to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
-              dDAI
+              eDAI
             );
           }
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(mockEulerProtocol),
+              to: TypesConverter.toAddress(relayer),
+              value: unwrappedAmount,
+            },
+            DAI
+          );
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
@@ -280,27 +211,26 @@ describe('GearboxWrapping', function () {
               to: ZERO_ADDRESS,
               value: amount,
             },
-            dDAI
+            eDAI
           );
-
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
-          expectTransferEvent(
-            receipt,
-            {
-              from: gearboxVault.address,
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: await gearboxVault.fromDiesel(amount),
-            },
-            DAI
-          );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
+                value: unwrappedAmount,
+              },
+              DAI
+            );
+          }
         });
-
         it('stores unwrap output as chained reference', async () => {
           await relayer
             .connect(senderUser)
-            .multicall([encodeUnwrap(dDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
+            .multicall([encodeUnwrap(eDAI.address, tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          const mainAmount = await gearboxVault.fromDiesel(amount);
+          const mainAmount = await eDAI.convertBalanceToUnderlying(amount);
           await expectChainedReferenceContents(relayer, toChainedReference(0), mainAmount);
         });
 
@@ -310,8 +240,10 @@ describe('GearboxWrapping', function () {
           const receipt = await (
             await relayer
               .connect(senderUser)
-              .multicall([encodeUnwrap(dDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
+              .multicall([encodeUnwrap(eDAI.address, tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
+
+          const unwrappedAmount = await eDAI.convertBalanceToUnderlying(amount);
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           if (!relayerIsSender) {
@@ -322,9 +254,20 @@ describe('GearboxWrapping', function () {
                 to: TypesConverter.toAddress(relayer),
                 value: amount,
               },
-              dDAI
+              eDAI
             );
           }
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(mockEulerProtocol),
+              to: TypesConverter.toAddress(relayer),
+              value: unwrappedAmount,
+            },
+            DAI
+          );
+
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
             {
@@ -332,26 +275,26 @@ describe('GearboxWrapping', function () {
               to: ZERO_ADDRESS,
               value: amount,
             },
-            dDAI
+            eDAI
           );
-
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
-          expectTransferEvent(
-            receipt,
-            {
-              from: gearboxVault.address,
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: await gearboxVault.fromDiesel(amount),
-            },
-            DAI
-          );
+          if (!relayerIsRecipient) {
+            expectTransferEvent(
+              receipt,
+              {
+                from: TypesConverter.toAddress(relayer),
+                to: TypesConverter.toAddress(tokenRecipient),
+                value: unwrappedAmount,
+              },
+              DAI
+            );
+          }
         });
       }
     });
   });
 
   describe('complex actions', () => {
-    let WETH: Token, DAIToken: Token, dDAIToken: Token;
+    let WETH: Token, DAIToken: Token, eDAIToken: Token;
     let poolTokens: TokenList;
     let poolId: string;
     let pool: StablePool;
@@ -360,8 +303,8 @@ describe('GearboxWrapping', function () {
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
       DAIToken = await Token.deployedAt(await DAI.address);
-      dDAIToken = await Token.deployedAt(await dDAI.address);
-      poolTokens = new TokenList([WETH, dDAIToken]).sort();
+      eDAIToken = await Token.deployedAt(await eDAI.address);
+      poolTokens = new TokenList([WETH, eDAIToken]).sort();
 
       pool = await StablePool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
@@ -374,9 +317,9 @@ describe('GearboxWrapping', function () {
       await WETH.approve(vault, MAX_UINT256, { from: admin });
 
       await DAIToken.mint(admin, fp(150));
-      await DAIToken.approve(dDAI, fp(150), { from: admin });
-      // await dDAIToken.connect(admin).wrap(fp(150));
-      await dDAIToken.approve(vault, MAX_UINT256, { from: admin });
+      await DAIToken.mint(mockEulerProtocol, fp(5000));
+      await DAIToken.approve(eDAI, fp(150), { from: admin });
+      await eDAIToken.approve(vault, MAX_UINT256, { from: admin });
 
       bptIndex = await pool.getBptIndex();
       const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
@@ -385,38 +328,6 @@ describe('GearboxWrapping', function () {
     });
 
     describe('swap', () => {
-      function encodeSwap(params: {
-        poolId: string;
-        kind: SwapKind;
-        tokenIn: Token;
-        tokenOut: Token;
-        amount: BigNumberish;
-        sender: Account;
-        recipient: Account;
-        outputReference?: BigNumberish;
-      }): string {
-        return relayerLibrary.interface.encodeFunctionData('swap', [
-          {
-            poolId: params.poolId,
-            kind: params.kind,
-            assetIn: params.tokenIn.address,
-            assetOut: params.tokenOut.address,
-            amount: params.amount,
-            userData: '0x',
-          },
-          {
-            sender: TypesConverter.toAddress(params.sender),
-            recipient: TypesConverter.toAddress(params.recipient),
-            fromInternalBalance: false,
-            toInternalBalance: false,
-          },
-          0,
-          MAX_UINT256,
-          0,
-          params.outputReference ?? 0,
-        ]);
-      }
-
       describe('swap using DAI as an input', () => {
         let receipt: ContractReceipt;
         const amount = fp(1);
@@ -424,12 +335,19 @@ describe('GearboxWrapping', function () {
         sharedBeforeEach('swap DAI for WETH', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              encodeWrap(dDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(dDAI, MAX_UINT256),
+              encodeWrap(
+                eDAI.address,
+                mockEulerProtocol.address,
+                senderUser.address,
+                relayer.address,
+                amount,
+                toChainedReference(0)
+              ),
+              encodeApprove(eDAI, MAX_UINT256),
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
-                tokenIn: dDAI,
+                tokenIn: eDAI,
                 tokenOut: WETH,
                 amount: toChainedReference(0),
                 sender: relayer,
@@ -443,7 +361,7 @@ describe('GearboxWrapping', function () {
         it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
-            tokenIn: dDAI.address,
+            tokenIn: eDAI.address,
             tokenOut: WETH.address,
           });
 
@@ -452,7 +370,7 @@ describe('GearboxWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
@@ -467,13 +385,13 @@ describe('GearboxWrapping', function () {
                 poolId,
                 kind: SwapKind.GivenIn,
                 tokenIn: WETH,
-                tokenOut: dDAIToken,
+                tokenOut: eDAIToken,
                 amount,
                 sender: senderUser,
                 recipient: relayer,
                 outputReference: toChainedReference(0),
               }),
-              encodeUnwrap(dDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
+              encodeUnwrap(eDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -482,20 +400,23 @@ describe('GearboxWrapping', function () {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
             tokenIn: WETH.address,
-            tokenOut: dDAIToken.address,
+            tokenOut: eDAIToken.address,
           });
 
-          expectTransferEvent(receipt, { from: gearboxVault.address, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: mockEulerProtocol.address, to: relayer.address }, DAI);
+          if (recipientUser.address !== relayer.address) {
+            expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
+          }
         });
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });
 
-    describe('batchSwap', () => {
+    describe('batchswap', () => {
       function encodeBatchSwap(params: {
         swaps: Array<{
           poolId: string;
@@ -542,10 +463,17 @@ describe('GearboxWrapping', function () {
         sharedBeforeEach('swap DAI for WETH', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              encodeWrap(dDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(dDAIToken, MAX_UINT256),
+              encodeWrap(
+                eDAI.address,
+                mockEulerProtocol.address,
+                senderUser.address,
+                relayer.address,
+                amount,
+                toChainedReference(0)
+              ),
+              encodeApprove(eDAIToken, MAX_UINT256),
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn: dDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
+                swaps: [{ poolId, tokenIn: eDAIToken, tokenOut: WETH, amount: toChainedReference(0) }],
                 sender: relayer,
                 recipient: recipientUser,
               }),
@@ -556,7 +484,7 @@ describe('GearboxWrapping', function () {
         it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId: poolId,
-            tokenIn: dDAI.address,
+            tokenIn: eDAI.address,
             tokenOut: WETH.address,
           });
 
@@ -565,7 +493,7 @@ describe('GearboxWrapping', function () {
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
@@ -577,12 +505,12 @@ describe('GearboxWrapping', function () {
           receipt = await (
             await relayer.connect(senderUser).multicall([
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn: WETH, tokenOut: dDAIToken, amount }],
+                swaps: [{ poolId, tokenIn: WETH, tokenOut: eDAIToken, amount }],
                 sender: senderUser,
                 recipient: relayer,
-                outputReferences: { dDAI: toChainedReference(0) },
+                outputReferences: { eDAI: toChainedReference(0) },
               }),
-              encodeUnwrap(dDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
+              encodeUnwrap(eDAI.address, relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -591,32 +519,42 @@ describe('GearboxWrapping', function () {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId: poolId,
             tokenIn: WETH.address,
-            tokenOut: dDAI.address,
+            tokenOut: eDAI.address,
           });
 
-          expectTransferEvent(receipt, { from: gearboxVault.address, to: recipientUser.address }, DAI);
+          expectTransferEvent(receipt, { from: mockEulerProtocol.address, to: relayer.address }, DAI);
+          if (recipientUser.address !== relayer.address) {
+            expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAI);
+          }
         });
 
         it('does not leave dust on the relayer', async () => {
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });
 
     describe('joinPool', () => {
       let receipt: ContractReceipt;
-      let senderdDAIBalanceBefore: BigNumber;
+      let sendereDAIBalanceBefore: BigNumber;
       const amount = fp(1);
 
       sharedBeforeEach('join the pool', async () => {
         const { tokens: allTokens } = await pool.getTokens();
 
-        senderdDAIBalanceBefore = await dDAIToken.balanceOf(senderUser);
+        sendereDAIBalanceBefore = await eDAIToken.balanceOf(senderUser);
         receipt = await (
           await relayer.connect(senderUser).multicall([
-            encodeWrap(dDAI.address, senderUser.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(dDAIToken, MAX_UINT256),
+            encodeWrap(
+              eDAI.address,
+              mockEulerProtocol.address,
+              senderUser.address,
+              relayer.address,
+              amount,
+              toChainedReference(0)
+            ),
+            encodeApprove(eDAIToken, MAX_UINT256),
             encodeJoin({
               poolId,
               assets: allTokens,
@@ -624,7 +562,7 @@ describe('GearboxWrapping', function () {
               recipient: recipientUser,
               maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
               userData: StablePoolEncoder.joinExactTokensInForBPTOut(
-                poolTokens.map((token) => (token === dDAIToken ? toChainedReference(0) : 0)),
+                poolTokens.map((token) => (token === eDAIToken ? toChainedReference(0) : 0)),
                 0
               ),
             }),
@@ -642,14 +580,14 @@ describe('GearboxWrapping', function () {
         expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, pool);
       });
 
-      it('does not take dDAI from the user', async () => {
-        const senderdDAIBalanceAfter = await dDAIToken.balanceOf(senderUser);
-        expect(senderdDAIBalanceAfter).to.be.eq(senderdDAIBalanceBefore);
+      it('does not take eDAI from the user', async () => {
+        const sendereDAIBalanceAfter = await eDAIToken.balanceOf(senderUser);
+        expect(sendereDAIBalanceAfter).to.be.eq(sendereDAIBalanceBefore);
       });
 
       it('does not leave dust on the relayer', async () => {
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
+        expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
 
@@ -661,10 +599,17 @@ describe('GearboxWrapping', function () {
       sharedBeforeEach('exit the pool', async () => {
         const { tokens: allTokens } = await pool.getTokens();
 
-        // First transfer tokens to pool, before testing exit
+        // First transfer token to the pool, before testing exit
         await relayer.connect(senderUser).multicall([
-          encodeWrap(dDAI.address, senderUser.address, relayer.address, amountDAI, toChainedReference(0)),
-          encodeApprove(dDAIToken, MAX_UINT256),
+          encodeWrap(
+            eDAI.address,
+            mockEulerProtocol.address,
+            senderUser.address,
+            relayer.address,
+            amountDAI,
+            toChainedReference(0)
+          ),
+          encodeApprove(eDAIToken, MAX_UINT256),
           encodeJoin({
             poolId,
             assets: allTokens,
@@ -672,16 +617,16 @@ describe('GearboxWrapping', function () {
             recipient: senderUser,
             maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
             userData: StablePoolEncoder.joinExactTokensInForBPTOut(
-              poolTokens.map((token) => (token === dDAIToken ? toChainedReference(0) : 0)),
+              poolTokens.map((token) => (token === eDAIToken ? toChainedReference(0) : 0)),
               0
             ),
           }),
         ]);
 
-        const dDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
-          (token: Token) => token.instance.address === dDAIToken.address
+        const eDAIIndexWithoutBPT = poolTokens.tokens.findIndex(
+          (token: Token) => token.instance.address === eDAIToken.address
         );
-        const dDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === dDAIToken.address);
+        const eDAIIndex = allTokens.findIndex((tokenAddress: string) => tokenAddress === eDAIToken.address);
         const outputReference = allTokens.map((_, i) => ({ index: i, key: toChainedReference(10 + i) }));
         BPTBalanceBefore = await pool.balanceOf(senderUser);
 
@@ -694,10 +639,10 @@ describe('GearboxWrapping', function () {
               sender: senderUser,
               recipient: relayer,
               minAmountsOut: Array(poolTokens.length + 1).fill(0),
-              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, dDAIIndexWithoutBPT),
+              userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTBalanceBefore, eDAIIndexWithoutBPT),
               outputReference,
             }),
-            encodeUnwrap(dDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + dDAIIndex)),
+            encodeUnwrap(eDAI.address, relayer.address, recipientUser.address, toChainedReference(10 + eDAIIndex)),
           ])
         ).wait();
       });
@@ -709,7 +654,8 @@ describe('GearboxWrapping', function () {
         });
 
         // DAI transfered to recipient
-        expectTransferEvent(receipt, { from: gearboxVault.address, to: recipientUser.address }, DAIToken);
+        expectTransferEvent(receipt, { from: mockEulerProtocol.address, to: relayer.address }, DAIToken);
+        expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAIToken);
       });
 
       it('BPT burned from the sender user', async () => {
@@ -724,10 +670,80 @@ describe('GearboxWrapping', function () {
 
       it('does not leave dust on the relayer', async () => {
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await dDAIToken.balanceOf(relayer)).to.be.eq(0);
+        expect(await eDAIToken.balanceOf(relayer)).to.be.eq(0);
       });
     });
   });
+
+  function encodeApprove(token: Token, amount: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
+  }
+
+  function encodeWrap(
+    wrappedTokenAddress: string,
+    eulerProtocol: Account,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('wrapEuler', [
+      wrappedTokenAddress,
+      eulerProtocol,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeUnwrap(
+    wrappedTokenAddress: string,
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('unwrapEuler', [
+      wrappedTokenAddress,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  function encodeSwap(params: {
+    poolId: string;
+    kind: SwapKind;
+    tokenIn: Token;
+    tokenOut: Token;
+    amount: BigNumberish;
+    sender: Account;
+    recipient: Account;
+    outputReference?: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('swap', [
+      {
+        poolId: params.poolId,
+        kind: params.kind,
+        assetIn: params.tokenIn.address,
+        assetOut: params.tokenOut.address,
+        amount: params.amount,
+        userData: '0x',
+      },
+      {
+        sender: TypesConverter.toAddress(params.sender),
+        recipient: TypesConverter.toAddress(params.recipient),
+        fromInternalBalance: false,
+        toInternalBalance: false,
+      },
+      0,
+      MAX_UINT256,
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
 
   function encodeJoin(params: {
     poolId: string;
@@ -765,7 +781,7 @@ describe('GearboxWrapping', function () {
   }): string {
     return relayerLibrary.interface.encodeFunctionData('exitPool', [
       params.poolId,
-      0, // WeightedPool
+      0, //WeightedPool
       TypesConverter.toAddress(params.sender),
       TypesConverter.toAddress(params.recipient),
       {
@@ -775,42 +791,6 @@ describe('GearboxWrapping', function () {
         toInternalBalance: false,
       },
       params.outputReference,
-    ]);
-  }
-
-  function encodeApprove(token: Token, amount: BigNumberish): string {
-    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
-  }
-
-  function encodeWrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapGearbox', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
-    ]);
-  }
-
-  function encodeUnwrap(
-    wrappedTokenAddress: string,
-    sender: Account,
-    recipient: Account,
-    amount: BigNumberish,
-    outputReference?: BigNumberish
-  ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapGearbox', [
-      wrappedTokenAddress,
-      TypesConverter.toAddress(sender),
-      TypesConverter.toAddress(recipient),
-      amount,
-      outputReference ?? 0,
     ]);
   }
 });
