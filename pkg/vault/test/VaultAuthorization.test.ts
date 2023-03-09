@@ -10,6 +10,7 @@ import { ANY_ADDRESS, MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { RelayerAuthorization } from '@balancer-labs/balancer-js';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VaultAuthorization', function () {
   let authorizer: Contract, vault: Contract;

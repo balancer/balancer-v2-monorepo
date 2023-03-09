@@ -9,6 +9,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { Comparison, expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 import {
   BatchSwapStep,

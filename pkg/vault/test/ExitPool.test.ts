@@ -17,6 +17,7 @@ import { ANY_ADDRESS, MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { PoolSpecialization, RelayerAuthorization } from '@balancer-labs/balancer-js';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('Exit Pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;

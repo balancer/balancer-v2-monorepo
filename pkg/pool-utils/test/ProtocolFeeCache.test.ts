@@ -9,6 +9,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 type ProviderFeeIDs = {
   swap: BigNumberish;

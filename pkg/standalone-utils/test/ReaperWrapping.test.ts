@@ -14,6 +14,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ReaperWrapping', function () {
   let dai: Token, rfDAI: Contract;

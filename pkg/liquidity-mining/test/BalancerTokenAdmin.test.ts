@@ -13,6 +13,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { parseFixed } from '@ethersproject/bignumber';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const DEFAULT_ADMIN_ROLE = ZERO_BYTES32;
 const MINTER_ROLE = solidityKeccak256(['string'], ['MINTER_ROLE']);

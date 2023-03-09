@@ -8,6 +8,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ProtocolFeesWithdrawer', function () {
   let vault: Vault;

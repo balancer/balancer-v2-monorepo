@@ -13,6 +13,7 @@ import { advanceTime, DAY, receiptTimestamp, WEEK } from '@balancer-labs/v2-help
 import { expect } from 'chai';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ChildChainStreamer', () => {
   let vault: Vault;

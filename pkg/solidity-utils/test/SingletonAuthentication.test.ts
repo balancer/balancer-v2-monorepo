@@ -6,6 +6,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('SingletonAuthentication', () => {
   let singleton: Contract;

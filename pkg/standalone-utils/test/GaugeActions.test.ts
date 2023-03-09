@@ -20,6 +20,7 @@ import {
 import { BalancerMinterAuthorization } from '@balancer-labs/balancer-js/src/utils/signatures';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('GaugeActions', function () {
   let vault: Vault;

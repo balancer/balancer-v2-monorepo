@@ -12,6 +12,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('TimelockAuthorizer', () => {
   let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
