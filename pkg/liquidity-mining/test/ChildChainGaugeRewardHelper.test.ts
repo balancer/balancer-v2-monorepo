@@ -12,6 +12,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { parseFixed } from '@ethersproject/bignumber';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ChildChainGaugeRewardHelper', () => {
   const rewardAmount = parseFixed('1', 18);

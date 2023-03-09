@@ -8,6 +8,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ProtocolFeePercentagesProvider', function () {
   let admin: SignerWithAddress, authorized: SignerWithAddress, other: SignerWithAddress;

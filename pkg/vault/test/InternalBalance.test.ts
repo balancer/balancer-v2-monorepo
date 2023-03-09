@@ -16,6 +16,7 @@ import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const OP_KIND = {
   DEPOSIT_INTERNAL: 0,

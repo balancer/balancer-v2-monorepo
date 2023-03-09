@@ -16,6 +16,7 @@ import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConv
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;

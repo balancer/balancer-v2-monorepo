@@ -16,6 +16,7 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('AaveWrapping', function () {
   let token: Contract, aToken: Contract;

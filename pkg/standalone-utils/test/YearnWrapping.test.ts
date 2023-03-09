@@ -23,6 +23,7 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('YearnWrapping', function () {
   let DAI: Token, yvDAI: Token;
