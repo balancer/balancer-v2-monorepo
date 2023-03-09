@@ -34,7 +34,7 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
     ) external payable {
         IERC20 underlying = IERC20(wrappedToken.underlying());
 
-        amount = _resolveAmountPullTokenAndApproveSpender(underlying, wrappedToken, amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(underlying, address(wrappedToken), amount, sender);
 
         wrappedToken.deposit(amount);
         uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));

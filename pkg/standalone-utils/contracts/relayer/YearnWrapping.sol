@@ -34,7 +34,7 @@ abstract contract YearnWrapping is IBaseRelayerLibrary {
     ) external payable {
         IERC20 underlying = IERC20(wrappedToken.token());
 
-        amount = _resolveAmountPullTokenAndApproveSpender(underlying, wrappedToken, amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(underlying, address(wrappedToken), amount, sender);
 
         uint256 receivedWrappedAmount = wrappedToken.deposit(amount, recipient);
 

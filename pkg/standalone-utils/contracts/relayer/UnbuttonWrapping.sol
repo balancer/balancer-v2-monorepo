@@ -44,7 +44,7 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
     ) external payable {
         IERC20 underlyingToken = IERC20(wrapperToken.underlying());
 
-        uAmount = _resolveAmountPullTokenAndApproveSpender(underlyingToken, wrapperToken, uAmount, sender);
+        uAmount = _resolveAmountPullTokenAndApproveSpender(underlyingToken, address(wrapperToken), uAmount, sender);
 
         uint256 mintAmount = wrapperToken.depositFor(recipient, uAmount);
 

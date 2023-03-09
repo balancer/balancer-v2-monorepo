@@ -61,13 +61,13 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
      */
     function _resolveAmountPullTokenAndApproveSpender(
         IERC20 token,
-        IERC20 wrappedToken,
+        address spender,
         uint256 amount,
         address sender
     ) internal returns (uint256 resolvedAmount) {
         resolvedAmount = _resolveAmountAndPullToken(token, amount, sender);
 
-        token.safeApprove(address(wrappedToken), resolvedAmount);
+        token.safeApprove(spender, resolvedAmount);
     }
 
     /**

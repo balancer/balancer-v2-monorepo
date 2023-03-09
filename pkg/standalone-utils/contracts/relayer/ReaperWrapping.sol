@@ -53,7 +53,7 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
     ) external payable {
         IERC20 underlyingToken = IERC20(vaultToken.token());
 
-        amount = _resolveAmountPullTokenAndApproveSpender(underlyingToken, vaultToken, amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(underlyingToken, address(vaultToken), amount, sender);
 
         // Deposit the tokens into the vault
         vaultToken.deposit(amount);

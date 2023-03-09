@@ -33,7 +33,7 @@ abstract contract CompoundV2Wrapping is IBaseRelayerLibrary {
         uint256 outputReference
     ) external payable {
         IERC20 mainToken = IERC20(wrappedToken.underlying());
-        amount = _resolveAmountPullTokenAndApproveSpender(mainToken, wrappedToken, amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(mainToken, address(wrappedToken), amount, sender);
 
         // The `mint` function deposits `amount` underlying tokens and transfers cTokens to the caller.
         // It returns an error code, where zero indicates success. Other error codes can be found here:

@@ -48,7 +48,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         // We can query which token to pull and approve from the wrapper contract.
         IERC20 bptToken = gauge.lp_token();
 
-        amount = _resolveAmountPullTokenAndApproveSpender(bptToken, IERC20(address(gauge)), amount, sender);
+        amount = _resolveAmountPullTokenAndApproveSpender(bptToken, address(gauge), amount, sender);
 
         gauge.deposit(amount, recipient);
     }
