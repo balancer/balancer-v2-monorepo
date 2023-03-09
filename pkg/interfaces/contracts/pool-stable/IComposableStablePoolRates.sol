@@ -27,10 +27,9 @@ interface IComposableStablePoolRates {
      * join or an exit because the state of the pool could be out of sync with the state of the Vault. It is protected
      * by a call to `VaultReentrancyLib.ensureNotInVaultContext` where overridden in `ComposableStablePoolRates`, and so
      * is safe to call on ComposableStablePool.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
      * It will also revert if there was no rate provider set initially.
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
      * @param token The token whose rate cache will be updated.
      */
@@ -46,10 +45,9 @@ interface IComposableStablePoolRates {
      * join or an exit because the state of the pool could be out of sync with the state of the Vault. It is protected
      * by a call to `VaultReentrancyLib.ensureNotInVaultContext` where overridden in `ComposableStablePoolRates`, and so
      * is safe to call on ComposableStablePool.
+     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
      * It will also revert if there was no rate provider set initially.
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      *
      * @param duration Number of seconds until the current token rate is fetched again.
      */
