@@ -597,10 +597,10 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
 
     /**
      * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`. This makes it impossible to
-     * execute `actionId` without an immutable public on-chain committment for the execution at least `newDelay` seconds
+     * execute `actionId` without an immutable public on-chain commitment for the execution at least `newDelay` seconds
      * in advance.
      *
-     * Critical actions that are expected to be performed by EOAs or multisigs are typically subject to said delays to
+     * Critical actions that are expected to be performed by EOAs or multisigs are typically subject to such delays to
      * allow for public scrutiny.
      *
      * How long it will take to make this change will depend on the current and new delays: if increasing by more than
@@ -639,10 +639,10 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
 
     /**
      * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`. This makes
-     * it impossible to grant permission to execute `actionId` without an immutable public on-chain committment for the
+     * it impossible to grant permission to execute `actionId` without an immutable public on-chain commitment for the
      * granting at least `newDelay` seconds in advance.
      *
-     * Critical actions that are expected to be performed by smart contracts are typically subject to said grant delays
+     * Critical actions that are expected to be performed by smart contracts are typically subject to such grant delays
      * to allow for public scrutiny of new contracts that are granted the permission.
      *
      * How long it will take to make this change will depend on the current and new grant delays: if increasing by more
@@ -680,11 +680,11 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
 
     /**
      * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`. This makes
-     * it impossible to revoke permission to execute `actionId` without an immutable public on-chain committment for the
+     * it impossible to revoke permission to execute `actionId` without an immutable public on-chain commitment for the
      * revoking at least `newDelay` seconds in advance.
      *
      * Critical actions that are performed by smart contracts and to which there is a long term commitment (e.g. minting
-     * of BAL as part of the Liquidity Mining Program) are typically subject to said revoke delays, making it impossible
+     * of BAL as part of the Liquidity Mining Program) are typically subject to such revoke delays, making it impossible
      * to disable the system without sufficient notice.
      *
      * How long it will take to make this change will depend on the current and new revoke delays: if increasing by more
