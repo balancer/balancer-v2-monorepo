@@ -1,5 +1,9 @@
 # 2022-09-16 - Batch Relayer V4
 
+> ⚠️ **DEPRECATED: do not use** ⚠️
+> This deployment has been deprecated in favor of a new version with full support for stable pools and new protocols.
+> The new version is: [batch-relayer-v5](../../20230314-batch-relayer-v5/).
+
 Deployment of the fourth `BalancerRelayer` using `BatchRelayerLibrary`, for combining multiple operations (swaps, joins, etc.) in a single transaction.
 
 This new version provides quality of life improvements, like read-only chained references and ways to read them.
