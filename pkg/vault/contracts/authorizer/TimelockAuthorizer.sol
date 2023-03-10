@@ -54,6 +54,13 @@ import "./TimelockAuthorizerManagement.sol";
  * is necessary in order to be able to call these.
  */
 contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
+    // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
+    // an arbitrarily long delay.
+    uint256 public constant MAX_DELAY = 2 * (365 days);
+
+    // We need a minimum delay period to ensure that all delay changes may be properly scrutinised.
+    uint256 public constant MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = 5 days;
+
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
 

@@ -46,12 +46,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      */
     uint256 public constant GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
 
-    // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
-    // an arbitrarily long delay.
-    uint256 public constant MAX_DELAY = 2 * (365 days);
-
-    // We need a minimum delay period to ensure that all delay changes may be properly scrutinised.
-    uint256 public constant MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = 5 days;
 
     struct ScheduledExecution {
         address where;
