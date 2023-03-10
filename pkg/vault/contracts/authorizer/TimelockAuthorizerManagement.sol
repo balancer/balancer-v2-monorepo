@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/ITimelockAuthorizer.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -46,15 +47,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      */
     uint256 public constant GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
 
-    struct ScheduledExecution {
-        address where;
-        bytes data;
-        bool executed;
-        bool cancelled;
-        bool protected;
-        uint256 executableAt;
-    }
-
     TimelockExecutionHelper private immutable _executionHelper;
     IAuthentication private immutable _vault;
     uint256 private immutable _rootTransferDelay;
@@ -73,7 +65,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     // scheduled execution id => account => is canceler
     mapping(uint256 => mapping(address => bool)) private _isCanceler;
 
-    ScheduledExecution[] private _scheduledExecutions;
+    ITimelockAuthorizer.ScheduledExecution[] private _scheduledExecutions;
 
     /**
      * @notice Emitted when a root change is scheduled.
@@ -249,7 +241,11 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     /**
      * @notice Returns the scheduled execution `scheduledExecutionId`.
      */
-    function getScheduledExecution(uint256 scheduledExecutionId) external view returns (ScheduledExecution memory) {
+    function getScheduledExecution(uint256 scheduledExecutionId)
+        external
+        view
+        returns (ITimelockAuthorizer.ScheduledExecution memory)
+    {
         return _scheduledExecutions[scheduledExecutionId];
     }
 
@@ -266,12 +262,19 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      */
     function canExecute(uint256 scheduledExecutionId) external view returns (bool) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
+        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         return
             !scheduledExecution.executed &&
             !scheduledExecution.cancelled &&
             block.timestamp >= scheduledExecution.executableAt;
         // solhint-disable-previous-line not-rely-on-time
+    }
+
+    function isCanceler(uint256 scheduledExecutionId, address account) public view returns (bool) {
+        return
+            _isCanceler[scheduledExecutionId][account] ||
+            _isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID][account] ||
+            isRoot(account);
     }
 
     /**
@@ -334,7 +337,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      */
     function execute(uint256 scheduledExecutionId) external nonReentrant returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
+        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
@@ -368,7 +371,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      */
     function cancel(uint256 scheduledExecutionId) external {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
+        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
 
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
@@ -377,13 +380,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
 
         scheduledExecution.cancelled = true;
         emit ExecutionCancelled(scheduledExecutionId);
-    }
-
-    function isCanceler(uint256 scheduledExecutionId, address account) public view returns (bool) {
-        return
-            _isCanceler[scheduledExecutionId][account] ||
-            _isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID][account] ||
-            isRoot(account);
     }
 
     function addCanceler(uint256 scheduledExecutionId, address account) external {
@@ -413,13 +409,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
 
         _isCanceler[scheduledExecutionId][account] = false;
         emit CancelerRemoved(scheduledExecutionId, account);
-    }
-
-    function _addCanceler(uint256 scheduledExecutionId, address account) internal {
-        require(!isCanceler(scheduledExecutionId, account), "ACCOUNT_IS_ALREADY_CANCELER");
-
-        _isCanceler[scheduledExecutionId][account] = true;
-        emit CancelerAdded(scheduledExecutionId, account);
     }
 
     /**
@@ -555,7 +544,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         bool protected = executors.length > 0;
 
         _scheduledExecutions.push(
-            ScheduledExecution({
+            ITimelockAuthorizer.ScheduledExecution({
                 where: where,
                 data: data,
                 executed: false,
@@ -578,6 +567,13 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     function _setRoot(address root) internal {
         _root = root;
         emit RootSet(root);
+    }
+
+    function _addCanceler(uint256 scheduledExecutionId, address account) internal {
+        require(!isCanceler(scheduledExecutionId, account), "ACCOUNT_IS_ALREADY_CANCELER");
+
+        _isCanceler[scheduledExecutionId][account] = true;
+        emit CancelerAdded(scheduledExecutionId, account);
     }
 
     /**
