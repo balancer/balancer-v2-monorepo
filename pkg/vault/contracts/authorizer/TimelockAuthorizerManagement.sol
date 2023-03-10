@@ -82,62 +82,11 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
 
     ScheduledExecution[] private _scheduledExecutions;
 
-    /**
-     * @notice Emitted when a revoke permission is scheduled.
-     */
-    event RevokePermissionScheduled(
-        bytes32 indexed actionId,
-        address indexed account,
-        address indexed where,
-        uint256 scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a grant permission is scheduled.
-     */
-    event GrantPermissionScheduled(
-        bytes32 indexed actionId,
-        address indexed account,
-        address indexed where,
-        uint256 scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a revoke delay change is scheduled.
-     */
-    event RevokeDelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a grant delay change is scheduled.
-     */
-    event GrantDelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a delay change is scheduled.
-     */
-    event DelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
 
     /**
      * @notice Emitted when a root change is scheduled.
      */
     event RootChangeScheduled(address indexed newRoot, uint256 indexed scheduledExecutionId);
-
-    /**
-     * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
-     */
-    event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
 
     /**
      * @notice Emitted when an executor is added for a scheduled execution `scheduledExecutionId`.
@@ -183,31 +132,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      * @notice Emitted when an execution `scheduledExecutionId` is cancelled.
      */
     event ExecutionCancelled(uint256 indexed scheduledExecutionId);
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to perform action `actionId`.
-     */
-    event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
-     */
-    event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to revoke permission to execute action `actionId`.
-     */
-    event RevokeDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when `account` is granted permission to perform action `actionId` in target `where`.
-     */
-    event PermissionGranted(bytes32 indexed actionId, address indexed account, address indexed where);
-
-    /**
-     * @notice Emitted when `account`'s permission to perform action `actionId` in target `where` is revoked.
-     */
-    event PermissionRevoked(bytes32 indexed actionId, address indexed account, address indexed where);
 
     /**
      * @notice Emitted when a new `root` is set.
