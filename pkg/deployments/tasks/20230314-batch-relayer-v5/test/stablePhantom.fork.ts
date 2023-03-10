@@ -1,15 +1,24 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js';
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { defaultAbiCoder } from '@ethersproject/abi/lib/abi-coder';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+import {
+  DAI,
+  USDC,
+  amplificationParameter,
+  cacheDurations,
+  rateProviders,
+  swapFeePercentage,
+  tokens,
+  initialBalances,
+} from './helpers/sharedStableParams';
 
 describeForkTest('Stable Phantom Exit', 'mainnet', 13776527, function () {
   let vault: Contract, authorizer: Contract;
@@ -22,18 +31,6 @@ describeForkTest('Stable Phantom Exit', 'mainnet', 13776527, function () {
   });
 
   describe('stable phantom pools', () => {
-    const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
-    const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-
-    const tokens = [DAI, USDC];
-    const amplificationParameter = bn(100);
-    const swapFeePercentage = fp(0.01);
-    const initialBalanceDAI = fp(1e6);
-    const initialBalanceUSDC = fp(1e6).div(1e12); // 6 digits
-    const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
-    const rateProviders = [ZERO_ADDRESS, ZERO_ADDRESS];
-    const cacheDurations = [FP_ZERO, FP_ZERO];
-
     const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
     const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 

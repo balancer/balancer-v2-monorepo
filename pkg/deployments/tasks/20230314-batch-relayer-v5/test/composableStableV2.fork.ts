@@ -1,13 +1,25 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+import {
+  DAI,
+  USDC,
+  amplificationParameter,
+  cacheDurations,
+  exemptFlags,
+  rateProviders,
+  swapFeePercentage,
+  tokens,
+  initialBalances,
+  initialBalanceDAI,
+  initialBalanceUSDC,
+} from './helpers/sharedStableParams';
 
 describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789433, function () {
   let task: Task;
@@ -30,19 +42,6 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
   });
 
   describe('composable stable pool V2+', () => {
-    const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
-    const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-
-    const tokens = [DAI, USDC];
-    const amplificationParameter = bn(100);
-    const swapFeePercentage = fp(0.01);
-    const initialBalanceDAI = fp(1e6);
-    const initialBalanceUSDC = fp(1e6).div(1e12); // 6 digits
-    const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
-    const rateProviders = [ZERO_ADDRESS, ZERO_ADDRESS];
-    const cacheDurations = [FP_ZERO, FP_ZERO];
-    const exemptFlags = [false, false];
-
     const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
 
     let owner: SignerWithAddress, whale: SignerWithAddress;
