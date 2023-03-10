@@ -46,7 +46,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      */
     uint256 public constant GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
 
-
     struct ScheduledExecution {
         address where;
         bytes data;
@@ -75,7 +74,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     mapping(uint256 => mapping(address => bool)) private _isCanceler;
 
     ScheduledExecution[] private _scheduledExecutions;
-
 
     /**
      * @notice Emitted when a root change is scheduled.
