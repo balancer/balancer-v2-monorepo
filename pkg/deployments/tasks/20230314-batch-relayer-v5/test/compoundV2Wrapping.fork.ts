@@ -8,7 +8,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
-describeForkTest.only('CompoundV2Wrapping', 'bsc', 26028991, function () {
+describeForkTest('CompoundV2Wrapping', 'bsc', 26028991, function () {
   let task: Task;
   let relayer: Contract, library: Contract;
   let vault: Contract, authorizer: Contract;
