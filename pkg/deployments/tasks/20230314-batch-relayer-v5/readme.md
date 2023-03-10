@@ -16,3 +16,4 @@ It also adds support for many new protocol wrappers: CompoundV2 (Midas), Euler, 
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`BatchRelayerLibrary` artifact](./artifact/BatchRelayerLibrary.json)
+- [`ITetuController` artifact](./artifact/ITetuController.json)
