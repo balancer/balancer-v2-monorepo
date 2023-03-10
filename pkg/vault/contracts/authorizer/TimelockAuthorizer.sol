@@ -97,7 +97,6 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         return _revokeDelays[actionId];
     }
 
-
     /**
      * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
      */

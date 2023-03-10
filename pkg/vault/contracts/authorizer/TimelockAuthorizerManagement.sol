@@ -80,7 +80,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     // scheduled execution id => account => is canceler
     mapping(uint256 => mapping(address => bool)) private _isCanceler;
 
-
     ScheduledExecution[] private _scheduledExecutions;
 
     /**
@@ -331,7 +330,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         return _isRevoker[account][where] || _isRevoker[account][EVERYWHERE] || isRoot(account);
     }
 
-
     /**
      * @notice Returns the scheduled execution `scheduledExecutionId`.
      */
@@ -374,7 +372,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         emit RootChangeScheduled(newRoot, scheduledExecutionId);
         return scheduledExecutionId;
     }
-
 
     /**
      * @notice Sets the pending root address to `pendingRoot`.
@@ -465,8 +462,6 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         scheduledExecution.cancelled = true;
         emit ExecutionCancelled(scheduledExecutionId);
     }
-
-
 
     function isCanceler(uint256 scheduledExecutionId, address account) public view returns (bool) {
         return
