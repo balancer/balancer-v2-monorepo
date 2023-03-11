@@ -16,26 +16,28 @@ import {
   swapFeePercentage,
   tokens,
   initialBalances,
+  PoolKind,
 } from './helpers/sharedStableParams';
 
 describeForkTest('BatchRelayerLibrary - Legacy Stable', 'mainnet', 14860000, function () {
   let task: Task;
 
-  // let relayer: Contract, library: Contract;
-  let vault: Contract;
+  let relayer: Contract, library: Contract;
+  let vault: Contract, authorizer: Contract;
 
   before('run task', async () => {
     task = new Task('20230314-batch-relayer-v5', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
-    // Will use when we add the relayer test
-    // library = await task.deployedInstance('BatchRelayerLibrary');
-    // relayer = await task.instanceAt('BalancerRelayer', await library.getEntrypoint());
+
+    library = await task.deployedInstance('BatchRelayerLibrary');
+    relayer = await task.instanceAt('BalancerRelayer', await library.getEntrypoint());
   });
 
   before('load vault and authorizer', async () => {
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
 
     vault = await vaultTask.deployedInstance('Vault');
+    authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
   });
 
   describe('original stable pools', () => {
@@ -56,6 +58,25 @@ describeForkTest('BatchRelayerLibrary - Legacy Stable', 'mainnet', 14860000, fun
     before('get signers', async () => {
       owner = await getSigner();
       whale = await impersonate(LARGE_TOKEN_HOLDER);
+    });
+
+    before('approve relayer at the authorizer', async () => {
+      const relayerActionIds = await Promise.all(
+        ['swap', 'batchSwap', 'joinPool', 'exitPool', 'setRelayerApproval', 'manageUserBalance'].map((action) =>
+          vault.getActionId(vault.interface.getSighash(action))
+        )
+      );
+
+      // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
+      // such an account exists.
+      const admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0));
+
+      // Grant relayer permission to call all relayer functions
+      await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
+    });
+
+    before('approve relayer by the user', async () => {
+      await vault.connect(owner).setRelayerApproval(owner.address, relayer.address, true);
     });
 
     before('load tokens and approve', async () => {
@@ -95,7 +116,7 @@ describeForkTest('BatchRelayerLibrary - Legacy Stable', 'mainnet', 14860000, fun
         });
       });
 
-      it('can exit proportionally', async () => {
+      it('can exit proportionally through the relayer', async () => {
         const bptBalance = await pool.balanceOf(owner.address);
         expect(bptBalance).to.gt(0);
 
@@ -106,12 +127,33 @@ describeForkTest('BatchRelayerLibrary - Legacy Stable', 'mainnet', 14860000, fun
           ['uint256', 'uint256'],
           [LegacyStablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptBalance]
         );
+
+        /* The exit without the relayer:
         await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
           assets: tokens,
-          minAmountsOut: Array(tokens.length).fill(0),
+          minAmountsOut: tokens.map(() => 0),
           fromInternalBalance: false,
           userData,
-        });
+        }); */
+
+        // Send BPT to the relayer so it can exit.
+        await pool.connect(owner).transfer(relayer.address, bptBalance);
+
+        const exitCalldata = library.interface.encodeFunctionData('exitPool', [
+          poolId,
+          PoolKind.LEGACY_STABLE,
+          relayer.address,
+          owner.address,
+          {
+            assets: tokens,
+            minAmountsOut: tokens.map(() => 0),
+            toInternalBalance: false,
+            userData,
+          },
+          [],
+        ]);
+
+        await relayer.connect(owner).multicall([exitCalldata]);
 
         const remainingBalance = await pool.balanceOf(owner.address);
         expect(remainingBalance).to.equal(0);
@@ -163,7 +205,7 @@ describeForkTest('BatchRelayerLibrary - Legacy Stable', 'mainnet', 14860000, fun
         });
       });
 
-      it('can exit proportionally', async () => {
+      it('can exit proportionally through the relayer', async () => {
         const bptBalance = await pool.balanceOf(owner.address);
         expect(bptBalance).to.gt(0);
 
@@ -174,12 +216,33 @@ describeForkTest('BatchRelayerLibrary - Legacy Stable', 'mainnet', 14860000, fun
           ['uint256', 'uint256'],
           [LegacyStablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptBalance]
         );
+
+        /* The exit without the relayer:
         await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
           assets: tokens,
           minAmountsOut: Array(tokens.length).fill(0),
           fromInternalBalance: false,
           userData,
-        });
+        }); */
+
+        // Send BPT to the relayer so it can exit.
+        await pool.connect(owner).transfer(relayer.address, bptBalance);
+
+        const exitCalldata = library.interface.encodeFunctionData('exitPool', [
+          poolId,
+          PoolKind.LEGACY_STABLE,
+          relayer.address,
+          owner.address,
+          {
+            assets: tokens,
+            minAmountsOut: tokens.map(() => 0),
+            toInternalBalance: false,
+            userData,
+          },
+          [],
+        ]);
+
+        await relayer.connect(owner).multicall([exitCalldata]);
 
         const remainingBalance = await pool.balanceOf(owner.address);
         expect(remainingBalance).to.equal(0);

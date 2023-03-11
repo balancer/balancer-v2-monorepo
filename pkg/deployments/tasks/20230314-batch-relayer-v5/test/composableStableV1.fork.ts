@@ -18,26 +18,28 @@ import {
   swapFeePercentage,
   tokens,
   initialBalances,
+  PoolKind,
 } from './helpers/sharedStableParams';
 
 describeForkTest('BatchRelayerLibrary - Composable Stable V1', 'mainnet', 16083775, function () {
   let task: Task;
 
-  //let relayer: Contract, library: Contract;
-  let vault: Contract;
+  let relayer: Contract, library: Contract;
+  let vault: Contract, authorizer: Contract;
 
   before('run task', async () => {
     task = new Task('20230314-batch-relayer-v5', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
-    // Put back when going through relayer
-    //library = await task.deployedInstance('BatchRelayerLibrary');
-    //relayer = await task.instanceAt('BalancerRelayer', await library.getEntrypoint());
+
+    library = await task.deployedInstance('BatchRelayerLibrary');
+    relayer = await task.instanceAt('BalancerRelayer', await library.getEntrypoint());
   });
 
   before('load vault and authorizer', async () => {
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
 
     vault = await vaultTask.deployedInstance('Vault');
+    authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
   });
 
   describe('composable stable pool V1', () => {
@@ -57,6 +59,25 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V1', 'mainnet', 160837
     before('get signers', async () => {
       owner = await getSigner();
       whale = await impersonate(LARGE_TOKEN_HOLDER);
+    });
+
+    before('approve relayer at the authorizer', async () => {
+      const relayerActionIds = await Promise.all(
+        ['swap', 'batchSwap', 'joinPool', 'exitPool', 'setRelayerApproval', 'manageUserBalance'].map((action) =>
+          vault.getActionId(vault.interface.getSighash(action))
+        )
+      );
+
+      // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
+      // such an account exists.
+      const admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0));
+
+      // Grant relayer permission to call all relayer functions
+      await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
+    });
+
+    before('approve relayer by the user', async () => {
+      await vault.connect(owner).setRelayerApproval(owner.address, relayer.address, true);
     });
 
     before('load tokens and approve', async () => {
@@ -112,7 +133,7 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V1', 'mainnet', 160837
     });
 
     // V1 does not support proportional exits
-    it('can exit with exact tokens', async () => {
+    it('can exit with exact tokens through the relayer', async () => {
       const bptBalance = await pool.balanceOf(owner.address);
       expect(bptBalance).to.gt(0);
 
@@ -125,12 +146,33 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V1', 'mainnet', 160837
         ['uint256', 'uint256[]', 'uint256'],
         [ComposableStablePoolV1ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, MAX_UINT256]
       );
+
+      /* The exit without the relayer
       await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
         assets: allTokens,
         minAmountsOut: Array(tokens.length + 1).fill(0),
         fromInternalBalance: false,
         userData,
-      });
+      }); */
+
+      // Send BPT to the relayer so it can exit.
+      await pool.connect(owner).transfer(relayer.address, bptBalance);
+
+      const exitCalldata = library.interface.encodeFunctionData('exitPool', [
+        poolId,
+        PoolKind.COMPOSABLE_STABLE,
+        relayer.address,
+        owner.address,
+        {
+          assets: allTokens,
+          minAmountsOut: Array(tokens.length + 1).fill(0),
+          toInternalBalance: false,
+          userData,
+        },
+        [],
+      ]);
+
+      await relayer.connect(owner).multicall([exitCalldata]);
 
       const vaultDAIBalanceAfterExit = await dai.balanceOf(vault.address);
       const ownerDAIBalanceAfterExit = await dai.balanceOf(owner.address);

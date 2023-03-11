@@ -19,26 +19,28 @@ import {
   initialBalances,
   initialBalanceDAI,
   initialBalanceUSDC,
+  PoolKind,
 } from './helpers/sharedStableParams';
 
 describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789433, function () {
   let task: Task;
 
-  //let relayer: Contract, library: Contract;
-  let vault: Contract;
+  let relayer: Contract, library: Contract;
+  let vault: Contract, authorizer: Contract;
 
   before('run task', async () => {
     task = new Task('20230314-batch-relayer-v5', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
-    // Will add back in when I add relayer support
-    //library = await task.deployedInstance('BatchRelayerLibrary');
-    //relayer = await task.instanceAt('BalancerRelayer', await library.getEntrypoint());
+
+    library = await task.deployedInstance('BatchRelayerLibrary');
+    relayer = await task.instanceAt('BalancerRelayer', await library.getEntrypoint());
   });
 
   before('load vault and authorizer', async () => {
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
 
     vault = await vaultTask.deployedInstance('Vault');
+    authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
   });
 
   describe('composable stable pool V2+', () => {
@@ -54,6 +56,25 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
     before('get signers', async () => {
       owner = await getSigner();
       whale = await impersonate(LARGE_TOKEN_HOLDER);
+    });
+
+    before('approve relayer at the authorizer', async () => {
+      const relayerActionIds = await Promise.all(
+        ['swap', 'batchSwap', 'joinPool', 'exitPool', 'setRelayerApproval', 'manageUserBalance'].map((action) =>
+          vault.getActionId(vault.interface.getSighash(action))
+        )
+      );
+
+      // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
+      // such an account exists.
+      const admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0));
+
+      // Grant relayer permission to call all relayer functions
+      await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
+    });
+
+    before('approve relayer by the user', async () => {
+      await vault.connect(whale).setRelayerApproval(whale.address, relayer.address, true);
     });
 
     before('load tokens and approve', async () => {
@@ -115,11 +136,11 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
       );
     }
 
-    describe('proportional join', () => {
+    describe('proportional join (outside relayer)', () => {
       before('deploy pool', async () => {
         pool = await createPool();
 
-        poolId = pool.getPoolId();
+        poolId = await pool.getPoolId();
         const [registeredAddress] = await vault.getPool(poolId);
         expect(registeredAddress).to.equal(pool.address);
 
@@ -156,11 +177,11 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
       });
     });
 
-    describe('proportional exit', () => {
+    describe('proportional exit (outside relayer)', () => {
       before('deploy pool', async () => {
         pool = await createPool();
 
-        poolId = pool.getPoolId();
+        poolId = await pool.getPoolId();
         const [registeredAddress] = await vault.getPool(poolId);
         expect(registeredAddress).to.equal(pool.address);
 
@@ -192,6 +213,66 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
         // Make sure sent BPT is close to what we expect
         const currentBptBalance = await pool.balanceOf(owner.address);
         expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).sub(bptIn), 0.001);
+      });
+    });
+
+    describe('proportional join/exit through relayer', () => {
+      before('deploy pool', async () => {
+        pool = await createPool();
+
+        poolId = await pool.getPoolId();
+        const [registeredAddress] = await vault.getPool(poolId);
+        expect(registeredAddress).to.equal(pool.address);
+      });
+
+      it('can join and exit', async () => {
+        const bptAmount = fp(1000);
+
+        const whaleDAIBalanceBeforeJoinExit = await dai.balanceOf(whale.address);
+        const ownerDAIBalanceBeforeJoinExit = await dai.balanceOf(owner.address);
+
+        const { tokens: allTokens } = await vault.getPoolTokens(poolId);
+
+        const joinUserData = StablePoolEncoder.joinAllTokensInForExactBptOut(bptAmount);
+
+        const joinCalldata = library.interface.encodeFunctionData('joinPool', [
+          poolId,
+          PoolKind.COMPOSABLE_STABLE_V2,
+          whale.address,
+          relayer.address,
+          {
+            assets: allTokens,
+            maxAmountsIn: Array(tokens.length + 1).fill(MAX_UINT256),
+            userData: joinUserData,
+            fromInternalBalance: false,
+          },
+          0,
+          0,
+        ]);
+
+        const exitUserData = StablePoolEncoder.exitExactBptInForTokensOut(bptAmount);
+
+        const exitCalldata = library.interface.encodeFunctionData('exitPool', [
+          poolId,
+          PoolKind.COMPOSABLE_STABLE_V2,
+          relayer.address,
+          owner.address,
+          {
+            assets: allTokens,
+            minAmountsOut: Array(tokens.length + 1).fill(0),
+            userData: exitUserData,
+            toInternalBalance: false,
+          },
+          [],
+        ]);
+
+        await relayer.connect(whale).multicall([joinCalldata, exitCalldata]);
+
+        const whaleDAIBalanceAfterJoinExit = await dai.balanceOf(whale.address);
+        const ownerDAIBalanceAfterJoinExit = await dai.balanceOf(owner.address);
+
+        expect(whaleDAIBalanceAfterJoinExit).to.lt(whaleDAIBalanceBeforeJoinExit);
+        expect(ownerDAIBalanceAfterJoinExit).to.gt(ownerDAIBalanceBeforeJoinExit);
       });
     });
   });
