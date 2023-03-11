@@ -13,3 +13,10 @@ export const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
 export const rateProviders = [ZERO_ADDRESS, ZERO_ADDRESS];
 export const cacheDurations = [FP_ZERO, FP_ZERO];
 export const exemptFlags = [false, false];
+
+export enum PoolKind {
+  WEIGHTED = 0,
+  LEGACY_STABLE,
+  COMPOSABLE_STABLE,
+  COMPOSABLE_STABLE_V2,
+}
