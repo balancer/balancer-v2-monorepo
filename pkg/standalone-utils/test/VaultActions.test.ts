@@ -30,6 +30,7 @@ import {
   approveVaultForRelayer,
   PoolKind,
 } from './VaultActionsRelayer.setup';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VaultActions', function () {
   let vault: Vault;

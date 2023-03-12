@@ -9,6 +9,7 @@ import { MAX_UINT256 as MAX_DEADLINE, ZERO_ADDRESS } from '@balancer-labs/v2-hel
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { signPermit } from '@balancer-labs/balancer-js';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VeBoostV2', () => {
   let boost: Contract;

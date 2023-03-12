@@ -15,6 +15,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { parseFixed } from '@ethersproject/bignumber';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('RewardsOnlyGauge', () => {
   let vault: Vault;
@@ -169,7 +170,7 @@ describe('RewardsOnlyGauge', () => {
 
     sharedBeforeEach('set up distributor on streamer', async () => {
       const setDistributorActionId = await actionId(adaptorEntrypoint, 'set_reward_distributor', streamer.interface);
-      await vault.grantPermissionsGlobally([setDistributorActionId], admin);
+      await vault.grantPermissionGlobally(setDistributorActionId, admin);
 
       const calldata = streamer.interface.encodeFunctionData('set_reward_distributor', [
         balToken.address,

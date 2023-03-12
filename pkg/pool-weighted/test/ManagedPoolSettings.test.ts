@@ -839,7 +839,7 @@ describe('ManagedPoolSettings', function () {
       context('when the sender is allowed', () => {
         sharedBeforeEach('grant permissions', async () => {
           const updateSwapFeeGraduallyPermission = await actionId(pool.instance, 'updateSwapFeeGradually');
-          await pool.vault.grantPermissionsGlobally([updateSwapFeeGraduallyPermission], other);
+          await pool.vault.grantPermissionGlobally(updateSwapFeeGraduallyPermission, other);
         });
 
         itStartsAGradualFeeChange();
@@ -1075,7 +1075,7 @@ describe('ManagedPoolSettings', function () {
         context('when the sender is allowed', () => {
           sharedBeforeEach('grant permissions', async () => {
             const setCircuitBreakersPermission = await actionId(pool.instance, 'setCircuitBreakers');
-            await pool.vault.grantPermissionsGlobally([setCircuitBreakersPermission], other);
+            await pool.vault.grantPermissionGlobally(setCircuitBreakersPermission, other);
           });
 
           itSetsTheCircuitBreaker();
@@ -1540,7 +1540,7 @@ describe('ManagedPoolSettings', function () {
       protocolFeesProvider = vault.protocolFeesProvider;
 
       const action = await actionId(protocolFeesProvider, 'setFeeTypePercentage');
-      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+      await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
       await protocolFeesProvider.connect(admin).setFeeTypePercentage(ProtocolFee.AUM, AUM_PROTOCOL_FEE_PERCENTAGE);
     });
 

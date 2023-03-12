@@ -16,11 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ITetuSmartVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "./IBaseRelayerLibrary.sol";
 
 /**
@@ -29,10 +25,6 @@ import "./IBaseRelayerLibrary.sol";
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract TetuWrapping is IBaseRelayerLibrary {
-    using Address for address payable;
-    using SafeERC20 for IERC20;
-    using FixedPoint for uint256;
-
     function wrapTetu(
         ITetuSmartVault wrappedToken,
         address sender,
@@ -40,30 +32,14 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
         IERC20 underlying = IERC20(wrappedToken.underlying());
 
-        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, underlying, amount);
-        }
+        amount = _resolveAmountPullTokenAndApproveSpender(underlying, address(wrappedToken), amount, sender);
 
-        underlying.safeApprove(address(wrappedToken), amount);
         wrappedToken.deposit(amount);
         uint256 receivedWrappedAmount = wrappedToken.balanceOf(address(this));
 
-        if (recipient != address(this)) {
-            IERC20(wrappedToken).safeTransfer(recipient, receivedWrappedAmount);
-        }
-
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, receivedWrappedAmount);
-        }
+        _transferAndSetChainedReference(wrappedToken, recipient, receivedWrappedAmount, outputReference);
     }
 
     function unwrapTetu(
@@ -73,27 +49,12 @@ abstract contract TetuWrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
-        // The unwrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, wrappedToken, amount);
-        }
+        amount = _resolveAmountAndPullToken(wrappedToken, amount, sender);
 
         IERC20 mainToken = IERC20(wrappedToken.underlying());
         wrappedToken.withdraw(amount);
         uint256 withdrawnMainAmount = mainToken.balanceOf(address(this));
 
-        if (recipient != address(this)) {
-            mainToken.safeTransfer(recipient, withdrawnMainAmount);
-        }
-
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, withdrawnMainAmount);
-        }
+        _transferAndSetChainedReference(mainToken, recipient, withdrawnMainAmount, outputReference);
     }
 }
