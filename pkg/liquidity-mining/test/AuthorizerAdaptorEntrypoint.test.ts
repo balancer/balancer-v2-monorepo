@@ -121,9 +121,8 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     context('when caller is authorized globally', () => {
       sharedBeforeEach('authorize caller globally', async () => {
-        await authorizer
-          .connect(admin)
-          .grantPermissions([action, payableAction], grantee.address, [ANY_ADDRESS, ANY_ADDRESS]);
+        await authorizer.connect(admin).grantPermission(action, grantee.address, ANY_ADDRESS);
+        await authorizer.connect(admin).grantPermission(payableAction, grantee.address, ANY_ADDRESS);
       });
 
       itHandlesFunctionCallsCorrectly();
@@ -131,9 +130,8 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     context('when caller is authorized locally on target', () => {
       sharedBeforeEach('authorize caller on target locally', async () => {
-        await authorizer
-          .connect(admin)
-          .grantPermissions([action, payableAction], grantee.address, [vault.address, paymentReceiver.address]);
+        await authorizer.connect(admin).grantPermission(action, grantee.address, vault.address);
+        await authorizer.connect(admin).grantPermission(payableAction, grantee.address, paymentReceiver.address);
       });
 
       itHandlesFunctionCallsCorrectly();
@@ -141,7 +139,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     context('when caller is authorized locally on a different target', () => {
       sharedBeforeEach('authorize caller on different target locally', async () => {
-        await authorizer.connect(admin).grantPermissions([action], grantee.address, [other.address]);
+        await authorizer.connect(admin).grantPermission(action, grantee.address, other.address);
       });
 
       it('reverts', async () => {

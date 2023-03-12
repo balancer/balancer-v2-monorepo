@@ -18,11 +18,14 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 /**
  * @title IBaseRelayerLibrary
  */
 abstract contract IBaseRelayerLibrary is AssetHelpers {
+    using SafeERC20 for IERC20;
+
     constructor(IWETH weth) AssetHelpers(weth) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -50,4 +53,75 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
     function _setChainedReferenceValue(uint256 ref, uint256 value) internal virtual;
 
     function _getChainedReferenceValue(uint256 ref) internal virtual returns (uint256);
+
+    /**
+     * @dev This reuses `_resolveAmountAndPullToken` to adjust the `amount` in case it is a chained reference,
+     * then pull that amount of `token` to the relayer. Additionally, it approves the `spender` to enable
+     * wrapping operations. The spender is usually a token, but could also be another kind of contract (e.g.,
+     * a protocol or gauge).
+     */
+    function _resolveAmountPullTokenAndApproveSpender(
+        IERC20 token,
+        address spender,
+        uint256 amount,
+        address sender
+    ) internal returns (uint256 resolvedAmount) {
+        resolvedAmount = _resolveAmountAndPullToken(token, amount, sender);
+
+        token.safeApprove(spender, resolvedAmount);
+    }
+
+    /**
+     * @dev Extract the `amount` (if it is a chained reference), and pull that amount of `token` to
+     * this contract.
+     */
+    function _resolveAmountAndPullToken(
+        IERC20 token,
+        uint256 amount,
+        address sender
+    ) internal returns (uint256 resolvedAmount) {
+        resolvedAmount = _resolveAmount(amount);
+
+        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
+        // to be sourced from outside the relayer, we must first pull them here.
+        if (sender != address(this)) {
+            require(sender == msg.sender, "Incorrect sender");
+            _pullToken(sender, token, resolvedAmount);
+        }
+    }
+
+    /**
+     * @dev Resolve an amount from a possible chained reference. This is internal, since some wrappers
+     * call it independently.
+     */
+    function _resolveAmount(uint256 amount) internal returns (uint256) {
+        return _isChainedReference(amount) ? _getChainedReferenceValue(amount) : amount;
+    }
+
+    /**
+     * @dev Transfer the given `amount` of `token` to `recipient`, then call `_setChainedReference`
+     * with that amount, in case it needs to be encoded as an output reference.
+     */
+    function _transferAndSetChainedReference(
+        IERC20 token,
+        address recipient,
+        uint256 amount,
+        uint256 outputReference
+    ) internal {
+        if (recipient != address(this)) {
+            token.safeTransfer(recipient, amount);
+        }
+
+        _setChainedReference(outputReference, amount);
+    }
+
+    /**
+     * @dev Check for a chained output reference, and encode the given `amount` if necessary.
+     * This is internal, since some wrappers call it independently.
+     */
+    function _setChainedReference(uint256 outputReference, uint256 amount) internal {
+        if (_isChainedReference(outputReference)) {
+            _setChainedReferenceValue(outputReference, amount);
+        }
+    }
 }
