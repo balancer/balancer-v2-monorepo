@@ -96,10 +96,8 @@ describe('ProtocolFeeSplitter', function () {
       protocolFeeSplitter,
       'clearFactoryDefaultRevenueSharePercentage'
     );
-    await vault.grantPermissionsGlobally(
-      [setFactoryDefaultRevenueShareRole, clearFactoryDefaultRevenueShareRole],
-      admin
-    );
+    await vault.grantPermissionGlobally(setFactoryDefaultRevenueShareRole, admin);
+    await vault.grantPermissionGlobally(clearFactoryDefaultRevenueShareRole, admin);
 
     // Allow withdrawer to pull from collector
     const withdrawCollectedFeesRole = await actionId(await vault.getFeesCollector(), 'withdrawCollectedFees');
