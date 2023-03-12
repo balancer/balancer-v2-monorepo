@@ -6,7 +6,7 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "lint": "yarn lint:typescript",
-    "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
+    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.6",

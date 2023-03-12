@@ -658,7 +658,7 @@ describe('ComposableStablePoolRates', () => {
           context('when the sender is allowed', () => {
             sharedBeforeEach('grant role to caller', async () => {
               const action = await actionId(pool, 'setTokenRateCacheDuration');
-              await vault.grantPermissionsGlobally([action], other);
+              await vault.grantPermissionGlobally(action, other);
             });
 
             context('before the cache expires', () => {

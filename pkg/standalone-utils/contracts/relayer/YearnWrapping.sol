@@ -16,10 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IYearnTokenVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -29,9 +25,6 @@ import "./IBaseRelayerLibrary.sol";
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract YearnWrapping is IBaseRelayerLibrary {
-    using Address for address payable;
-    using SafeERC20 for IERC20;
-
     function wrapYearn(
         IYearnTokenVault wrappedToken,
         address sender,
@@ -39,24 +32,13 @@ abstract contract YearnWrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
         IERC20 underlying = IERC20(wrappedToken.token());
 
-        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, underlying, amount);
-        }
+        amount = _resolveAmountPullTokenAndApproveSpender(underlying, address(wrappedToken), amount, sender);
 
-        underlying.safeApprove(address(wrappedToken), amount);
         uint256 receivedWrappedAmount = wrappedToken.deposit(amount, recipient);
 
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, receivedWrappedAmount);
-        }
+        _setChainedReference(outputReference, receivedWrappedAmount);
     }
 
     function unwrapYearn(
@@ -66,21 +48,10 @@ abstract contract YearnWrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
-        // The unwrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, IERC20(address(wrappedToken)), amount);
-        }
+        amount = _resolveAmountAndPullToken(IERC20(address(wrappedToken)), amount, sender);
 
         uint256 mainAmount = wrappedToken.withdraw(amount, recipient);
 
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, mainAmount);
-        }
+        _setChainedReference(outputReference, mainAmount);
     }
 }

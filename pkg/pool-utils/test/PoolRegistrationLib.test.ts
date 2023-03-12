@@ -9,6 +9,7 @@ import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('PoolRegistrationLib', function () {
   let vault: Vault;

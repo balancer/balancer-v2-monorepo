@@ -21,7 +21,7 @@ interface ERC1271:
 interface AuthorizerAdaptor:
     def getVault() -> address: view
 
-interface VotingEscrowBoostProxy:
+interface VotingEscrowDelegationProxy:
     def totalSupply() -> uint256: view
     def adjustedBalanceOf(_account: address) -> uint256: view
 
@@ -71,7 +71,7 @@ WEEK: constant(uint256) = 86400 * 7
 
 BAL: immutable(address)
 BAL_PSEUDO_MINTER: immutable(address)
-VOTING_ESCROW: immutable(address)
+VE_DELEGATION_PROXY: immutable(address)
 BAL_VAULT: immutable(address)
 AUTHORIZER_ADAPTOR: immutable(address)
 
@@ -118,7 +118,7 @@ inflation_rate: public(HashMap[uint256, uint256])
 @external
 def __init__(
     _bal_token: address,
-    _voting_escrow: address,
+    _voting_escrow_delegation_proxy: address,
     _bal_pseudo_minter: address,
     _authorizer_adaptor: address,
     _version: String[128]
@@ -128,7 +128,7 @@ def __init__(
     self.factory = 0x000000000000000000000000000000000000dEaD
 
     BAL = _bal_token
-    VOTING_ESCROW = _voting_escrow
+    VE_DELEGATION_PROXY = _voting_escrow_delegation_proxy
     BAL_PSEUDO_MINTER = _bal_pseudo_minter
     AUTHORIZER_ADAPTOR = _authorizer_adaptor
     BAL_VAULT = AuthorizerAdaptor(_authorizer_adaptor).getVault()
@@ -193,11 +193,11 @@ def _update_liquidity_limit(_user: address, _user_balance: uint256, _total_suppl
     """
     working_balance: uint256 = _user_balance * TOKENLESS_PRODUCTION / 100
 
-    ve: address = VOTING_ESCROW
+    ve: address = VE_DELEGATION_PROXY
     if ve != ZERO_ADDRESS:
-        ve_ts: uint256 = VotingEscrowBoostProxy(ve).totalSupply()
+        ve_ts: uint256 = VotingEscrowDelegationProxy(ve).totalSupply()
         if ve_ts != 0:
-            ve_user_balance: uint256 = VotingEscrowBoostProxy(ve).adjustedBalanceOf(_user)
+            ve_user_balance: uint256 = VotingEscrowDelegationProxy(ve).adjustedBalanceOf(_user)
             working_balance += _total_supply * ve_user_balance / ve_ts * (100 - TOKENLESS_PRODUCTION) / 100
             working_balance = min(_user_balance, working_balance)
 
@@ -694,8 +694,8 @@ def bal_pseudo_minter() -> address:
 
 @view
 @external
-def voting_escrow() -> address:
-    return VOTING_ESCROW
+def voting_escrow_delegation_proxy() -> address:
+    return VE_DELEGATION_PROXY
 
 
 @view

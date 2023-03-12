@@ -301,7 +301,8 @@ describe('StablePoolAmplification', () => {
         sharedBeforeEach('grant permissions', async () => {
           const startAmpChangePermission = await actionId(pool, 'startAmplificationParameterUpdate');
           const stopAmpChangePermission = await actionId(pool, 'stopAmplificationParameterUpdate');
-          await vault.grantPermissionsGlobally([startAmpChangePermission, stopAmpChangePermission], other);
+          await vault.grantPermissionGlobally(stopAmpChangePermission, other);
+          await vault.grantPermissionGlobally(startAmpChangePermission, other);
         });
 
         itStartsAnAmpUpdateCorrectly();
@@ -401,7 +402,8 @@ describe('StablePoolAmplification', () => {
         sharedBeforeEach('grant permissions', async () => {
           const startAmpChangePermission = await actionId(pool, 'startAmplificationParameterUpdate');
           const stopAmpChangePermission = await actionId(pool, 'stopAmplificationParameterUpdate');
-          await vault.grantPermissionsGlobally([startAmpChangePermission, stopAmpChangePermission], other);
+          await vault.grantPermissionGlobally(startAmpChangePermission, other);
+          await vault.grantPermissionGlobally(stopAmpChangePermission, other);
         });
 
         itStopsAnAmpUpdateCorrectly();
