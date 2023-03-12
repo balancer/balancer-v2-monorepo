@@ -596,7 +596,26 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`.
+     * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`. This makes it impossible to
+     * execute `actionId` without an immutable public on-chain commitment for the execution at least `newDelay` seconds
+     * in advance.
+     *
+     * Critical actions that are expected to be performed by EOAs or multisigs are typically subject to such delays to
+     * allow for public scrutiny.
+     *
+     * How long it will take to make this change will depend on the current and new delays: if increasing by more than
+     * 5 days, then the time difference between the delays must pass. Otherwise, the minimum delay change execution
+     * delay of 5 days must pass instead.
+     *
+     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * case any account can execute it.
+     *
+     * Avoid scheduling multiple delay changes for the same action at the same time, as this makes it harder to reason
+     * about the state of the system. If there is already a scheduled delay change and there is a desire to change the
+     * future delay to some other value, cancel the first scheduled change and schedule a new one.
+     *
+     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
+     * (including global cancelers).
      */
     function scheduleDelayChange(
         bytes32 actionId,
@@ -619,7 +638,26 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`.
+     * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`. This makes
+     * it impossible to grant permission to execute `actionId` without an immutable public on-chain commitment for the
+     * granting at least `newDelay` seconds in advance.
+     *
+     * Critical actions that are expected to be performed by smart contracts are typically subject to such grant delays
+     * to allow for public scrutiny of new contracts that are granted the permission.
+     *
+     * How long it will take to make this change will depend on the current and new grant delays: if increasing by more
+     * than 5 days, then the time difference between the grant delays must pass. Otherwise, the minimum delay change
+     * execution delay of 5 days must pass instead.
+     *
+     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * case any account can execute it.
+     *
+     * Avoid scheduling multiple grant delay changes for the same action at the same time, as this makes it harder to
+     * reason about the state of the system. If there is already a scheduled grant delay change and there is a desire to
+     * change the future grant delay to some other value, cancel the first scheduled change and schedule a new one.
+     *
+     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
+     * (including global cancelers).
      */
     function scheduleGrantDelayChange(
         bytes32 actionId,
@@ -641,7 +679,27 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`.
+     * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`. This makes
+     * it impossible to revoke permission to execute `actionId` without an immutable public on-chain commitment for the
+     * revoking at least `newDelay` seconds in advance.
+     *
+     * Critical actions that are performed by smart contracts and to which there is a long term commitment (e.g. minting
+     * of BAL as part of the Liquidity Mining Program) are typically subject to such revoke delays, making it impossible
+     * to disable the system without sufficient notice.
+     *
+     * How long it will take to make this change will depend on the current and new revoke delays: if increasing by more
+     * than 5 days, then the time difference between the revoke delays must pass. Otherwise, the minimum delay change
+     * execution delay of 5 days must pass instead.
+     *
+     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * case any account can execute it.
+     *
+     * Avoid scheduling multiple revoke delay changes for the same action at the same time, as this makes it harder to
+     * reason about the state of the system. If there is already a scheduled revoke delay change and there is a desire
+     * to change the future grant delay to some other value, cancel the first scheduled change and schedule a new one.
+     *
+     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
+     * (including global cancelers).
      */
     function scheduleRevokeDelayChange(
         bytes32 actionId,
@@ -929,27 +987,28 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants multiple permissions to a single `account`.
+     * @notice Grants a permission to a single `account` at 'where' address.
      * @dev This function can only be used for actions that have no grant delay. For those that do, use
      * `scheduleGrantPermission` instead.
      */
-    function grantPermissions(
-        bytes32[] memory actionIds,
+    function grantPermission(
+        bytes32 actionId,
         address account,
-        address[] memory where
+        address where
     ) external {
-        InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
-        for (uint256 i = 0; i < actionIds.length; i++) {
-            if (_grantDelays[actionIds[i]] == 0) {
-                require(isGranter(actionIds[i], msg.sender, where[i]), "SENDER_IS_NOT_GRANTER");
-            } else {
-                // Some actions may have delays associated with granting them - these permissions cannot be granted
-                // directly, even if the caller is a granter, and must instead be scheduled for future execution via
-                // `scheduleGrantPermission`.
-                require(msg.sender == address(_executionHelper), "GRANT_MUST_BE_SCHEDULED");
-            }
+        if (_grantDelays[actionId] == 0) {
+            require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
+        } else {
+            // Some actions may have delays associated with granting them - these permissions cannot be granted
+            // directly, even if the caller is a granter, and must instead be scheduled for future execution via
+            // `scheduleGrantPermission`.
+            require(msg.sender == address(_executionHelper), "GRANT_MUST_BE_SCHEDULED");
+        }
 
-            _grantPermission(actionIds[i], account, where[i]);
+        bytes32 permission = getPermissionId(actionId, account, where);
+        if (!_isPermissionGranted[permission]) {
+            _isPermissionGranted[permission] = true;
+            emit PermissionGranted(actionId, account, where);
         }
     }
 
@@ -967,7 +1026,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         uint256 delay = _grantDelays[actionId];
         require(delay > 0, "ACTION_HAS_NO_GRANT_DELAY");
 
-        bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
+        bytes memory data = abi.encodeWithSelector(this.grantPermission.selector, actionId, account, where);
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit GrantPermissionScheduled(actionId, account, where, scheduledExecutionId);
@@ -1033,27 +1092,24 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Revokes multiple permissions from a single `account`.
+     * @notice Revokes a permission from a single `account` at `where` address.
      * @dev This function can only be used for actions that have no revoke delay. For those that do, use
      * `scheduleRevokePermission` instead.
      */
-    function revokePermissions(
-        bytes32[] memory actionIds,
+    function revokePermission(
+        bytes32 actionId,
         address account,
-        address[] memory where
+        address where
     ) external {
-        InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
-        for (uint256 i = 0; i < actionIds.length; i++) {
-            if (_revokeDelays[actionIds[i]] == 0) {
-                require(isRevoker(msg.sender, where[i]), "SENDER_IS_NOT_REVOKER");
-            } else {
-                // Some actions may have delays associated with revoking them - these permissions cannot be revoked
-                // directly, even if the caller is a revoker, and must instead be scheduled for future execution via
-                // `scheduleRevokePermission`.
-                require(msg.sender == address(_executionHelper), "REVOKE_MUST_BE_SCHEDULED");
-            }
-            _revokePermission(actionIds[i], account, where[i]);
+        if (_revokeDelays[actionId] == 0) {
+            require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
+        } else {
+            // Some actions may have delays associated with revoking them - these permissions cannot be revoked
+            // directly, even if the caller is a revoker, and must instead be scheduled for future execution via
+            // `scheduleRevokePermission`.
+            require(msg.sender == address(_executionHelper), "REVOKE_MUST_BE_SCHEDULED");
         }
+        _revokePermission(actionId, account, where);
     }
 
     /**
@@ -1070,7 +1126,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         uint256 delay = _revokeDelays[actionId];
         require(delay > 0, "ACTION_HAS_NO_REVOKE_DELAY");
 
-        bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
+        bytes memory data = abi.encodeWithSelector(this.revokePermission.selector, actionId, account, where);
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit RevokePermissionScheduled(actionId, account, where, scheduledExecutionId);
@@ -1084,27 +1140,12 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
     }
 
     /**
-     * @notice Revokes multiple permissions from the caller.
+     * @notice Revokes a permission from the caller for `actionId` at `where` address
      * @dev Note that the caller can always renounce permissions, even if revoking them would typically be
      * subject to a delay.
      */
-    function renouncePermissions(bytes32[] memory actionIds, address[] memory where) external {
-        InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
-        for (uint256 i = 0; i < actionIds.length; i++) {
-            _revokePermission(actionIds[i], msg.sender, where[i]);
-        }
-    }
-
-    function _grantPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) private {
-        bytes32 permission = getPermissionId(actionId, account, where);
-        if (!_isPermissionGranted[permission]) {
-            _isPermissionGranted[permission] = true;
-            emit PermissionGranted(actionId, account, where);
-        }
+    function renouncePermission(bytes32 actionId, address where) external {
+        _revokePermission(actionId, msg.sender, where);
     }
 
     function _revokePermission(
@@ -1169,15 +1210,5 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
         if (data.length < 4) return bytes4(0);
         return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
-    }
-
-    function _ar(bytes32 item) private pure returns (bytes32[] memory result) {
-        result = new bytes32[](1);
-        result[0] = item;
-    }
-
-    function _ar(address item) private pure returns (address[] memory result) {
-        result = new address[](1);
-        result[0] = item;
     }
 }

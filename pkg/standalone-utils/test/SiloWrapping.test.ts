@@ -18,6 +18,7 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('SiloWrapping', function () {
   let DAI: Token, sDAI: Token, mockSilo: Contract;
@@ -78,8 +79,11 @@ describe('SiloWrapping', function () {
       )
     );
     const authorizer = vault.authorizer;
-    const wheres = relayerActionIds.map(() => ANY_ADDRESS);
-    await authorizer.connect(admin).grantPermissions(relayerActionIds, relayer.address, wheres);
+    await Promise.all(
+      relayerActionIds.map((action) => {
+        return authorizer.connect(admin).grantPermission(action, relayer.address, ANY_ADDRESS);
+      })
+    );
 
     // Approve relayer by sender
     await vault.instance.connect(senderUser).setRelayerApproval(senderUser.address, relayer.address, true);

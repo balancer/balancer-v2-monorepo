@@ -1,9 +1,10 @@
 import { Contract } from 'ethers';
+import { expect } from 'chai';
+import { ethers } from 'hardhat';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
-import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BasePoolCodeFactory', function () {
   let factory: Contract;

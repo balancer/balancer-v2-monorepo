@@ -17,10 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/ISilo.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IShareToken.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -30,9 +26,6 @@ import "./IBaseRelayerLibrary.sol";
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract SiloWrapping is IBaseRelayerLibrary {
-    using Address for address payable;
-    using SafeERC20 for IERC20;
-
     function wrapShareToken(
         IShareToken wrappedToken,
         address sender,
@@ -40,30 +33,17 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
         // Initialize the token we will be wrapping (underlying asset of shareToken)
         IERC20 underlyingToken = IERC20(wrappedToken.asset());
         // Initialize the corresponding Silo (Liquidity Pool)
         ISilo silo = wrappedToken.silo();
 
-        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, underlyingToken, amount);
-        }
-
-        underlyingToken.safeApprove(address(silo), amount);
+        amount = _resolveAmountPullTokenAndApproveSpender(underlyingToken, address(silo), amount, sender);
 
         // the collateralOnly param is set to false because we want to receive interest bearing shareTokens
         (, uint256 result) = silo.depositFor(address(underlyingToken), recipient, amount, false);
 
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, result);
-        }
+        _setChainedReference(outputReference, result);
     }
 
     function unwrapShareToken(
@@ -73,20 +53,11 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-        // Initialize the token we will be withdrawing
-        IERC20 underlyingToken = IERC20(wrappedToken.asset());
+        amount = _resolveAmountAndPullToken(wrappedToken, amount, sender);
+
         // Initialize the corresponding Silo (Liquidity Pool)
         ISilo silo = wrappedToken.silo();
-
-        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first them pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, wrappedToken, amount);
-        }
+        IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
         // No approval is needed here, as the shareTokens are burned directly from the relayer's account.
         // Setting the amount to type(uint256).max informs Silo that we'd like to redeem all the relayer's shares.
@@ -95,12 +66,6 @@ abstract contract SiloWrapping is IBaseRelayerLibrary {
 
         uint256 result = underlyingToken.balanceOf(address(this));
 
-        if (recipient != address(this)) {
-            underlyingToken.safeTransfer(recipient, result);
-        }
-
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, result);
-        }
+        _transferAndSetChainedReference(underlyingToken, recipient, result, outputReference);
     }
 }

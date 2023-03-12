@@ -1,16 +1,18 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
+import { random, range } from 'lodash';
+
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fp, fpDiv, fpMul, FP_100_PCT, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { random, range } from 'lodash';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const randomFloat = (min: number, max: number) => random(min, max, true);
 
@@ -30,7 +32,7 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
     if (!vault.admin) throw new Error('Vault has no admin');
     const protocolFeesProvider = vault.protocolFeesProvider;
     const action = await actionId(protocolFeesProvider, 'setFeeTypePercentage');
-    await vault.grantPermissionsGlobally([action], vault.admin);
+    await vault.grantPermissionGlobally(action, vault.admin);
     await protocolFeesProvider
       .connect(vault.admin)
       .setFeeTypePercentage(ProtocolFee.YIELD, PROTOCOL_YIELD_FEE_PERCENTAGE);

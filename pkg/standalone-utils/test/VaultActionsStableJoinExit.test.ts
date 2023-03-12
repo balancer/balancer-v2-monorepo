@@ -28,6 +28,7 @@ import {
   getJoinExitAmounts,
   encodeSwap,
 } from './VaultActionsRelayer.setup';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('Vault Actions - Stable Pools', () => {
   let vault: Vault;

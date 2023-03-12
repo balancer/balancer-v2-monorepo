@@ -7,6 +7,7 @@ import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';

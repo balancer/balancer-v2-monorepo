@@ -15,6 +15,7 @@ import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { ANY_ADDRESS, MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('Swap Validation', () => {
   let authorizer: Contract, vault: Contract;
@@ -142,7 +143,7 @@ describe('Swap Validation', () => {
       context('when paused', () => {
         sharedBeforeEach('pause', async () => {
           const action = await actionId(vault, 'setPaused');
-          await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+          await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
           await vault.connect(admin).setPaused(true);
         });
 

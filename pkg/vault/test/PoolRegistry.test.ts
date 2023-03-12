@@ -13,6 +13,7 @@ import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpe
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('PoolRegistry', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
