@@ -4,6 +4,7 @@ import { Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 

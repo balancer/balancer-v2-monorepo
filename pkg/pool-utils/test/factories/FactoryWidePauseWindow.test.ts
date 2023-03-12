@@ -1,8 +1,10 @@
 import { BigNumber, Contract } from 'ethers';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
+
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('FactoryWidePauseWindow', function () {
   let factory: Contract;

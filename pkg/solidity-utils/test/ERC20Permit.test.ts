@@ -9,6 +9,7 @@ import { MAX_UINT256 as MAX_DEADLINE } from '@balancer-labs/v2-helpers/src/const
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { signPermit } from '@balancer-labs/balancer-js';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ERC20Permit', () => {
   let token: Contract;

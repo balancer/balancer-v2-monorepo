@@ -11,6 +11,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('LiquidityBootstrappingPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
@@ -26,15 +27,15 @@ describe('LiquidityBootstrappingPool', function () {
   // Add the weighted pool tests for the joins/exits, etc.
 
   context('for a 2 token pool', () => {
-    itBehavesAsWeightedPool(2);
+    itBehavesAsWeightedPool(2, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   context('for a 3 token pool', () => {
-    itBehavesAsWeightedPool(3);
+    itBehavesAsWeightedPool(3, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   context('for a 4 token pool', () => {
-    itBehavesAsWeightedPool(4);
+    itBehavesAsWeightedPool(4, WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL);
   });
 
   sharedBeforeEach('deploy tokens', async () => {

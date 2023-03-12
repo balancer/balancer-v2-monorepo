@@ -8,6 +8,7 @@ import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('SignaturesValidator', () => {
   let validator: Contract;

@@ -153,7 +153,7 @@ describe('VaultReentrancyLib', function () {
       describe('recovery mode', () => {
         sharedBeforeEach('enable recovery mode', async () => {
           const enableRecoveryAction = await actionId(pool, 'enableRecoveryMode');
-          await authorizer.connect(admin).grantPermissions([enableRecoveryAction], poolOwner.address, [ANY_ADDRESS]);
+          await authorizer.connect(admin).grantPermission(enableRecoveryAction, poolOwner.address, ANY_ADDRESS);
 
           await pool.connect(poolOwner).enableRecoveryMode();
 

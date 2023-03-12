@@ -66,7 +66,7 @@ describe('GaugeRelativeWeightCap', () => {
 
   sharedBeforeEach('set up permissions', async () => {
     const action = await actionId(adaptorEntrypoint, 'setRelativeWeightCap', liquidityGaugeImplementation.interface);
-    await vault.grantPermissionsGlobally([action], admin);
+    await vault.grantPermissionGlobally(action, admin);
   });
 
   enum GaugeKind {
