@@ -22,12 +22,12 @@ import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
-import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/VaultReentrancyLib.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./LinearMath.sol";
@@ -57,7 +57,6 @@ import "./LinearMath.sol";
 abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBasePool {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
-    using PriceRateCache for bytes32;
     using BasePoolUserData for bytes;
 
     uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT

@@ -23,7 +23,7 @@
     "build": "rollup --config rollup.config.ts --configPlugin typescript",
     "dev": "rollup --config rollup.config.ts --configPlugin typescript -w",
     "test": "mocha --extension test.ts -r ts-node/register --recursive",
-    "lint": "eslint ./src --ext .ts --max-warnings 0"
+    "lint": "NODE_NO_WARNINGS=1 eslint ./src --ext .ts --max-warnings 0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^23.0.2",

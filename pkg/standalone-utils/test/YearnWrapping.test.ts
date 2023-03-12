@@ -23,6 +23,7 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('YearnWrapping', function () {
   let DAI: Token, yvDAI: Token;
@@ -64,7 +65,11 @@ describe('YearnWrapping', function () {
         actionId(vault.instance, action)
       )
     );
-    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
+    await Promise.all(
+      relayerActionIds.map((action) => {
+        vault.grantPermissionGlobally(action, relayer);
+      })
+    );
 
     // Approve relayer by sender
     await vault.setRelayerApproval(senderUser, relayer, true);

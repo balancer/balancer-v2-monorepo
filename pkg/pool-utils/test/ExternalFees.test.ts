@@ -1,8 +1,9 @@
 import { Contract } from 'ethers';
+import { expect } from 'chai';
 
 import { fp, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { expect } from 'chai';
 
 describe('ExternalFees', function () {
   let mock: Contract;

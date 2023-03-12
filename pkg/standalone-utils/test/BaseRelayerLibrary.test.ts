@@ -13,6 +13,7 @@ import { ANY_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constant
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { toChainedReference } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BaseRelayerLibrary', function () {
   let vault: Contract;
@@ -226,7 +227,7 @@ describe('BaseRelayerLibrary', function () {
         sharedBeforeEach('authorise relayer', async () => {
           const setApprovalRole = await actionId(vault, 'setRelayerApproval');
           const authorizer = await deployedAt('v2-vault/TimelockAuthorizer', await vault.getAuthorizer());
-          await authorizer.connect(admin).grantPermissions([setApprovalRole], relayer.address, [ANY_ADDRESS]);
+          await authorizer.connect(admin).grantPermission(setApprovalRole, relayer.address, ANY_ADDRESS);
         });
 
         describe('when modifying its own approval', () => {

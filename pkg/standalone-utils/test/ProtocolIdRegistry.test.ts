@@ -26,11 +26,12 @@ describe('ProtocolIdRegistry', () => {
   });
 
   sharedBeforeEach('grant permissions', async () => {
-    await authorizer.connect(admin).grantPermissions(
-      ['registerProtocolId', 'renameProtocolId'].map((fn) => actionId(registry, fn)),
-      authorizedUser.address,
-      [registry.address, registry.address]
-    );
+    await authorizer
+      .connect(admin)
+      .grantPermission(actionId(registry, 'registerProtocolId'), authorizedUser.address, registry.address);
+    await authorizer
+      .connect(admin)
+      .grantPermission(actionId(registry, 'renameProtocolId'), authorizedUser.address, registry.address);
   });
 
   describe('Constructor', () => {

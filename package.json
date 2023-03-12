@@ -20,11 +20,12 @@
     "John Grant <john@balancer.finance>",
     "Mike McDonald <mike@balancer.finance>",
     "Nicolás Venturo <nico@balancer.finance>",
-    "Tom French <tom@balancer.finance>"
+    "Tom French <tom@balancer.finance>",
+    "Igor Yalovoy <igor@balancerlabs.dev>"
   ],
   "scripts": {
     "build": "yarn workspaces foreach --parallel --verbose  run build",
-    "lint": "yarn workspaces foreach --parallel --verbose run lint",
+    "lint": "NODE_NO_WARNINGS=1 yarn workspaces foreach --parallel --verbose run lint",
     "test": "yarn workspaces foreach --parallel --verbose run test"
   },
   "workspaces": [
