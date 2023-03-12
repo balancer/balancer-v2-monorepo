@@ -1,10 +1,11 @@
 import { Contract } from 'ethers';
+import { expect } from 'chai';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { expect } from 'chai';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BaseGaugeFactory', () => {
   let gaugeImplementation: Contract;

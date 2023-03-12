@@ -12,6 +12,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { parseFixed } from '@ethersproject/bignumber';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ChildChainGaugeRewardHelper', () => {
   const rewardAmount = parseFixed('1', 18);
@@ -80,7 +81,7 @@ describe('ChildChainGaugeRewardHelper', () => {
 
   sharedBeforeEach('set up distributor on streamer', async () => {
     const setDistributorActionId = await actionId(adaptorEntrypoint, 'set_reward_distributor', streamerOne.interface);
-    await vault.grantPermissionsGlobally([setDistributorActionId], admin);
+    await vault.grantPermissionGlobally(setDistributorActionId, admin);
 
     const calldata = streamerOne.interface.encodeFunctionData('set_reward_distributor', [
       balToken.address,

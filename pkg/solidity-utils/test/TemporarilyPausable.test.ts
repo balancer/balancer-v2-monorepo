@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('TemporarilyPausable', function () {
   let instance: Contract;
