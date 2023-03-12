@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_INT256, MIN_INT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('Math', () => {
   let lib: Contract;

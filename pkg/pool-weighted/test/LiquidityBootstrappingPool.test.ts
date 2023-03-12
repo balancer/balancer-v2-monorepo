@@ -11,6 +11,7 @@ import LiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/poo
 import { range } from 'lodash';
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('LiquidityBootstrappingPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;

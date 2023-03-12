@@ -16,6 +16,7 @@ import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { PoolSpecialization } from '../../balancer-js/dist';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 
@@ -318,7 +319,7 @@ describe('Asset Management', function () {
             context('when paused', () => {
               sharedBeforeEach('pause', async () => {
                 const action = await actionId(vault, 'setPaused');
-                await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+                await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
                 await vault.connect(admin).setPaused(true);
               });
 
@@ -443,7 +444,7 @@ describe('Asset Management', function () {
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
                   const action = await actionId(vault, 'setPaused');
-                  await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+                  await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
                   await vault.connect(admin).setPaused(true);
                 });
 
@@ -603,7 +604,7 @@ describe('Asset Management', function () {
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
                   const action = await actionId(vault, 'setPaused');
-                  await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+                  await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
                   await vault.connect(admin).setPaused(true);
                 });
 

@@ -8,6 +8,7 @@ import {
   calculateBPTSwapFeeAmount,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { expect } from 'chai';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const MAX_RELATIVE_ERROR = 0.0001; // Max relative error
 
