@@ -16,6 +16,7 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('AaveWrapping', function () {
   let token: Contract, aToken: Contract;
@@ -53,14 +54,16 @@ describe('AaveWrapping', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS],
+    });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
     const relayerActionIds = await Promise.all(
       ['setRelayerApproval', 'manageUserBalance'].map((action) => actionId(vault.instance, action))
     );
-    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
+    await Promise.all(relayerActionIds.map((action) => vault.grantPermissionGlobally(action, relayer)));
 
     // Approve relayer by sender
     await vault.setRelayerApproval(user, relayer, true);

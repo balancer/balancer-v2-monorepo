@@ -16,6 +16,7 @@ import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;

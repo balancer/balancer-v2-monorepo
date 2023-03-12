@@ -52,7 +52,7 @@ describe('PoolRecoveryHelper', function () {
         helper = await deploy('PoolRecoveryHelper', { args: [vault.address, []] });
         newFactory = randomAddress();
 
-        await vault.grantPermissionsGlobally([await actionId(helper, 'addPoolFactory')], operator);
+        await vault.grantPermissionGlobally(await actionId(helper, 'addPoolFactory'), operator);
       });
 
       it('reverts if the caller does not have permission', async () => {
@@ -78,10 +78,10 @@ describe('PoolRecoveryHelper', function () {
         helper = await deploy('PoolRecoveryHelper', { args: [vault.address, []] });
         factory = randomAddress();
 
-        await vault.grantPermissionsGlobally([await actionId(helper, 'addPoolFactory')], admin);
+        await vault.grantPermissionGlobally(await actionId(helper, 'addPoolFactory'), admin);
         await helper.connect(admin).addPoolFactory(factory);
 
-        await vault.grantPermissionsGlobally([await actionId(helper, 'removePoolFactory')], operator);
+        await vault.grantPermissionGlobally(await actionId(helper, 'removePoolFactory'), operator);
       });
 
       it('reverts if the caller does not have permission', async () => {
@@ -120,7 +120,7 @@ describe('PoolRecoveryHelper', function () {
 
       helper = await deploy('PoolRecoveryHelper', { args: [vault.address, factories.map((f) => f.address)] });
 
-      await vault.grantPermissionsGlobally([await actionId(pool, 'enableRecoveryMode')], helper);
+      await vault.grantPermissionGlobally(await actionId(pool, 'enableRecoveryMode'), helper);
     });
 
     it('reverts if the pool is not from a known factory', async () => {

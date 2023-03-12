@@ -10,6 +10,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('GaugeAdder', () => {
   let vault: Vault;
@@ -45,7 +46,7 @@ describe('GaugeAdder', () => {
 
   sharedBeforeEach('set up permissions', async () => {
     const action = await actionId(adaptorEntrypoint, 'add_gauge', gaugeController.interface);
-    await vault.grantPermissionsGlobally([action], gaugeAdder);
+    await vault.grantPermissionGlobally(action, gaugeAdder);
   });
 
   async function deployGauge(gaugeFactory: Contract, poolAddress: string): Promise<string> {
@@ -67,7 +68,7 @@ describe('GaugeAdder', () => {
     context('when caller is authorized', () => {
       sharedBeforeEach('authorize caller', async () => {
         const action = await actionId(gaugeAdder, 'addGaugeFactory');
-        await vault.grantPermissionsGlobally([action], admin);
+        await vault.grantPermissionGlobally(action, admin);
       });
 
       context('when gauge type does not exist on GaugeController', () => {
@@ -125,7 +126,7 @@ describe('GaugeAdder', () => {
     context('when factory has been added to GaugeAdder', () => {
       sharedBeforeEach('add gauge factory', async () => {
         const action = await actionId(gaugeAdder, 'addGaugeFactory');
-        await vault.grantPermissionsGlobally([action], admin);
+        await vault.grantPermissionGlobally(action, admin);
 
         await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
       });
@@ -160,7 +161,7 @@ describe('GaugeAdder', () => {
     context('when caller is authorized', () => {
       sharedBeforeEach('authorize caller', async () => {
         const action = await actionId(gaugeAdder, 'addEthereumGauge');
-        await vault.grantPermissionsGlobally([action], admin);
+        await vault.grantPermissionGlobally(action, admin);
       });
 
       context('when gauge has not been deployed from a valid factory', () => {
@@ -172,7 +173,7 @@ describe('GaugeAdder', () => {
       context('when gauge has been deployed from a valid factory', () => {
         sharedBeforeEach('add gauge factory', async () => {
           const action = await actionId(gaugeAdder, 'addGaugeFactory');
-          await vault.grantPermissionsGlobally([action], admin);
+          await vault.grantPermissionGlobally(action, admin);
 
           await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
         });

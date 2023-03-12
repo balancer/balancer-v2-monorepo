@@ -8,6 +8,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ProtocolFeePercentagesProvider', function () {
   let admin: SignerWithAddress, authorized: SignerWithAddress, other: SignerWithAddress;
@@ -204,18 +205,25 @@ describe('ProtocolFeePercentagesProvider', function () {
               sharedBeforeEach('grant permission to caller', async () => {
                 await authorizer
                   .connect(admin)
-                  .grantPermissions([actionId(provider, 'setFeeTypePercentage')], authorized.address, [
-                    provider.address,
-                  ]);
+                  .grantPermission(actionId(provider, 'setFeeTypePercentage'), authorized.address, provider.address);
               });
 
               context('when the provider is authorized', () => {
                 sharedBeforeEach('grant permission to provider', async () => {
-                  await authorizer.connect(admin).grantPermissions(
-                    ['setSwapFeePercentage', 'setFlashLoanFeePercentage'].map((fn) => actionId(feesCollector, fn)),
-                    provider.address,
-                    [feesCollector.address, feesCollector.address]
-                  );
+                  await authorizer
+                    .connect(admin)
+                    .grantPermission(
+                      actionId(feesCollector, 'setSwapFeePercentage'),
+                      provider.address,
+                      feesCollector.address
+                    );
+                  await authorizer
+                    .connect(admin)
+                    .grantPermission(
+                      actionId(feesCollector, 'setFlashLoanFeePercentage'),
+                      provider.address,
+                      feesCollector.address
+                    );
                 });
 
                 function itSetsTheValueCorrectly(feeType: number, value: BigNumber) {
@@ -283,9 +291,7 @@ describe('ProtocolFeePercentagesProvider', function () {
               sharedBeforeEach('grant permission to caller', async () => {
                 await authorizer
                   .connect(admin)
-                  .grantPermissions([actionId(provider, 'setFeeTypePercentage')], authorized.address, [
-                    provider.address,
-                  ]);
+                  .grantPermission(actionId(provider, 'setFeeTypePercentage'), authorized.address, provider.address);
               });
 
               function itSetsTheValueCorrectly(feeType: number, value: BigNumber) {
@@ -345,11 +351,12 @@ describe('ProtocolFeePercentagesProvider', function () {
 
     describe('native fee type out of band change', () => {
       sharedBeforeEach('grant permission', async () => {
-        await authorizer.connect(admin).grantPermissions(
-          ['setSwapFeePercentage', 'setFlashLoanFeePercentage'].map((fn) => actionId(feesCollector, fn)),
-          other.address,
-          [feesCollector.address, feesCollector.address]
-        );
+        await authorizer
+          .connect(admin)
+          .grantPermission(actionId(feesCollector, 'setSwapFeePercentage'), other.address, feesCollector.address);
+        await authorizer
+          .connect(admin)
+          .grantPermission(actionId(feesCollector, 'setFlashLoanFeePercentage'), other.address, feesCollector.address);
       });
 
       describe('swap fee', () => {
@@ -375,7 +382,7 @@ describe('ProtocolFeePercentagesProvider', function () {
         sharedBeforeEach('grant permission', async () => {
           await authorizer
             .connect(admin)
-            .grantPermissions([actionId(provider, 'registerFeeType')], authorized.address, [provider.address]);
+            .grantPermission(actionId(provider, 'registerFeeType'), authorized.address, provider.address);
         });
 
         context('when the fee type is already in use', () => {
@@ -475,7 +482,7 @@ describe('ProtocolFeePercentagesProvider', function () {
 
             await authorizer
               .connect(admin)
-              .grantPermissions([actionId(provider, 'setFeeTypePercentage')], authorized.address, [provider.address]);
+              .grantPermission(actionId(provider, 'setFeeTypePercentage'), authorized.address, provider.address);
 
             await provider.connect(authorized).setFeeTypePercentage(NEW_FEE_TYPE, fp(0.042));
             expect(await provider.getFeeTypePercentage(NEW_FEE_TYPE)).to.equal(fp(0.042));
