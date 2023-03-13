@@ -1,4 +1,4 @@
-import hre from 'hardhat';
+import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
@@ -59,10 +59,15 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
     tetuVault = await task.instanceAt('ITetuSmartVault', xUSDT);
     sender = await impersonate(USDT_HOLDER);
 
-    // Set white list approvals for the batch relayer to interacte with the Tetu Smart Vault
+    // Set white list approvals for the batch relayer to interact with the Tetu Smart Vault
     const governance = await impersonate(TETU_GOVERNANCE);
-    const controller = await task.instanceAt('ITetuController', TETU_CONTROLLER);
-    await controller.connect(governance).changeWhiteListStatus([relayer.address], true);
+
+    const tetuControllerABI = new ethers.utils.Interface([
+      'function changeWhiteListStatus(address[] memory _targets, bool status) external',
+    ]).format();
+    const tetuController = await ethers.getContractAt(tetuControllerABI, TETU_CONTROLLER);
+
+    await tetuController.connect(governance).changeWhiteListStatus([relayer.address], true);
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
   });

@@ -53,7 +53,7 @@ describeForkTest('CompoundV2Wrapping', 'polygon', 40305420, function () {
 
   before(async () => {
     brzToken = await task.instanceAt('IERC20', BRZ);
-    cToken = await task.instanceAt('ICToken', cBRZ);
+    cToken = await task.instanceAt('IERC20', cBRZ);
     sender = await impersonate(BRZ_HOLDER);
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);

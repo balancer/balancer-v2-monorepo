@@ -8,5 +8,3 @@ It also adds support for many new protocol wrappers: CompoundV2 (Midas), Euler, 
 ## Useful Files
 
 - [`BatchRelayerLibrary` artifact](./artifact/BatchRelayerLibrary.json)
-- [`ITetuController` artifact](./artifact/ITetuController.json)
-- [`ICToken` artifact](./artifact/ICToken.json)
