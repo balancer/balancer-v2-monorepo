@@ -8,19 +8,19 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
-describeForkTest('CompoundV2Wrapping', 'bsc', 26028991, function () {
+describeForkTest('CompoundV2Wrapping', 'polygon', 40305420, function () {
   let task: Task;
   let relayer: Contract, library: Contract;
   let vault: Contract, authorizer: Contract;
 
-  const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
-  const WBNB_HOLDER = '0xd7D069493685A581d27824Fc46EdA46B7EfC0063';
-  const cWBNB = '0x92897f3De21E2FFa8dd8b3a48D1Edf29B5fCef0e';
+  const BRZ = '0x491a4eB4f1FC3BfF8E1d2FC856a6A46663aD556f';
+  const BRZ_HOLDER = '0xB90B2050C955cd899b9BC8B5C743c25770EBc8AA';
+  const cBRZ = '0x2e4659b451C3ba2E72D79aAf267cFc09BCCc9d7c';
 
-  let wbnbToken: Contract, cToken: Contract;
+  let brzToken: Contract, cToken: Contract;
   let sender: SignerWithAddress;
   let chainedReference: BigNumber;
-  const amountToWrap = bn(1e18);
+  const amountToWrap = bn(1000e4); // BRZ is 4 decimals
 
   before('run task', async () => {
     task = new Task('20230314-batch-relayer-v5', TaskMode.TEST, getForkedNetwork(hre));
@@ -52,26 +52,26 @@ describeForkTest('CompoundV2Wrapping', 'bsc', 26028991, function () {
   });
 
   before(async () => {
-    wbnbToken = await task.instanceAt('IERC20', WBNB);
-    cToken = await task.instanceAt('ICToken', cWBNB);
-    sender = await impersonate(WBNB_HOLDER);
+    brzToken = await task.instanceAt('IERC20', BRZ);
+    cToken = await task.instanceAt('ICToken', cBRZ);
+    sender = await impersonate(BRZ_HOLDER);
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
   });
 
   it('should wrap successfully', async () => {
-    const balanceOfwbnbBefore = await wbnbToken.balanceOf(sender.address);
+    const balanceOfbrzBefore = await brzToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfcwbnbBefore = await cToken.balanceOf(relayer.address);
+    const balanceOfcbrzBefore = await cToken.balanceOf(relayer.address);
 
-    expect(balanceOfcwbnbBefore).to.be.equal(0);
+    expect(balanceOfcbrzBefore).to.be.equal(0);
 
     // Approving vault to pull tokens from user.
-    await wbnbToken.connect(sender).approve(vault.address, amountToWrap);
+    await brzToken.connect(sender).approve(vault.address, amountToWrap);
 
     chainedReference = toChainedReference(80);
     const depositIntoMidas = library.interface.encodeFunctionData('wrapCompoundV2', [
-      cWBNB,
+      cBRZ,
       sender.address,
       relayer.address,
       amountToWrap,
@@ -80,20 +80,20 @@ describeForkTest('CompoundV2Wrapping', 'bsc', 26028991, function () {
 
     await relayer.connect(sender).multicall([depositIntoMidas]);
 
-    const balanceOfwbnbAfter = await wbnbToken.balanceOf(sender.address);
-    expect(balanceOfwbnbBefore.sub(balanceOfwbnbAfter)).to.be.equal(amountToWrap);
+    const balanceOfbrzAfter = await brzToken.balanceOf(sender.address);
+    expect(balanceOfbrzBefore.sub(balanceOfbrzAfter)).to.be.equal(amountToWrap);
   });
 
   it('should unwrap successfully', async () => {
-    const balanceOfwbnbBefore = await wbnbToken.balanceOf(sender.address);
+    const balanceOfbrzBefore = await brzToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const cwbnbAmountToWithdraw = await cToken.balanceOf(relayer.address);
-    const balanceOfcwbnbBefore = await cToken.balanceOf(relayer.address);
+    const cbrzAmountToWithdraw = await cToken.balanceOf(relayer.address);
+    const balanceOfcbrzBefore = await cToken.balanceOf(relayer.address);
 
-    expect(balanceOfcwbnbBefore).to.be.equal(cwbnbAmountToWithdraw);
+    expect(balanceOfcbrzBefore).to.be.equal(cbrzAmountToWithdraw);
 
     const withdrawFromMidas = library.interface.encodeFunctionData('unwrapCompoundV2', [
-      cWBNB,
+      cBRZ,
       relayer.address,
       sender.address,
       chainedReference,
@@ -102,12 +102,12 @@ describeForkTest('CompoundV2Wrapping', 'bsc', 26028991, function () {
 
     await relayer.connect(sender).multicall([withdrawFromMidas]);
 
-    const balanceOfwbnbAfter = await wbnbToken.balanceOf(sender.address);
+    const balanceOfbrzAfter = await brzToken.balanceOf(sender.address);
     // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfcwbnbAfter = await cToken.balanceOf(relayer.address);
+    const balanceOfcbrzbAfter = await cToken.balanceOf(relayer.address);
 
-    expect(balanceOfcwbnbAfter).to.be.equal(0);
-    expect(balanceOfwbnbAfter.sub(balanceOfwbnbBefore)).to.be.almostEqual(amountToWrap, 0.01);
+    expect(balanceOfcbrzbAfter).to.be.equal(0);
+    expect(balanceOfbrzAfter.sub(balanceOfbrzBefore)).to.be.almostEqual(amountToWrap, 0.01);
   });
 });
 
