@@ -36,7 +36,7 @@ contract VotingEscrowRemapper is SingletonAuthentication {
     mapping(uint256 => mapping(address => address)) private _remoteToLocalAddressMap;
 
     // Records a mapping from an address to another address which is authorized to manage its remote users.
-    mapping(address => address) private _addressManagerDelegate;
+    mapping(address => address) private _localRemappingManager;
 
     event AddressMappingUpdated(address indexed localUser, address indexed remoteUser, uint256 indexed chainId);
     event AddressDelegateUpdated(address indexed localUser, address indexed delegate);
@@ -96,6 +96,10 @@ contract VotingEscrowRemapper is SingletonAuthentication {
         return remoteUser == address(0) ? localUser : remoteUser;
     }
 
+    function getRemappingManager(address localUser) public view returns (address) {
+        return _localRemappingManager[localUser];
+    }
+
     // Remapping Setters
 
     /**
@@ -111,10 +115,7 @@ contract VotingEscrowRemapper is SingletonAuthentication {
         address remoteUser,
         uint256 chainId
     ) external {
-        _require(
-            msg.sender == localUser || msg.sender == _addressManagerDelegate[localUser],
-            Errors.SENDER_NOT_ALLOWED
-        );
+        _require(msg.sender == localUser || msg.sender == _localRemappingManager[localUser], Errors.SENDER_NOT_ALLOWED);
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL can set up a mapping");
 
         // Prevent two local users pointing to the same remote user as this allows easy griefing attacks.
@@ -144,10 +145,10 @@ contract VotingEscrowRemapper is SingletonAuthentication {
      * @param localUser - The address of a contract allowlisted on the `SmartWalletChecker`.
      * @param delegate - The address which is allowed to manage remote users to be linked to `localUser`.
      */
-    function setNetworkRemappingDelegate(address localUser, address delegate) external authenticate {
+    function setNetworkRemappingManager(address localUser, address delegate) external authenticate {
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL may have a delegate");
 
-        _addressManagerDelegate[localUser] = delegate;
+        _localRemappingManager[localUser] = delegate;
         emit AddressDelegateUpdated(localUser, delegate);
     }
 
@@ -158,14 +159,14 @@ contract VotingEscrowRemapper is SingletonAuthentication {
      * @param localUser - The address of the local user to erase.
      * @param chainId - The chain id of the network to erase.
      */
-    function clearNetworkRemapping(address localUser, uint256 chainId) external authenticate {
+    function clearNetworkRemapping(address localUser, uint256 chainId) external {
         require(!_isAllowedContract(localUser), "localUser is still in good standing.");
 
         address remoteUser = _localToRemoteAddressMap[chainId][localUser];
 
         _remoteToLocalAddressMap[chainId][remoteUser] = address(0);
         _localToRemoteAddressMap[chainId][localUser] = address(0);
-        _addressManagerDelegate[localUser] = address(0);
+        _localRemappingManager[localUser] = address(0);
 
         emit AddressMappingUpdated(localUser, address(0), chainId);
         emit AddressDelegateUpdated(localUser, address(0));
