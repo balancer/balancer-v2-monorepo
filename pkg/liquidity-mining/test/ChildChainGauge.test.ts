@@ -68,7 +68,7 @@ describe('ChildChainGauge', () => {
   });
 
   sharedBeforeEach('add gauge factory to pseudo minter', async () => {
-    await vault.grantPermissionsGlobally([await actionId(pseudoMinter, 'addGaugeFactory')], admin.address);
+    await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin.address);
 
     await pseudoMinter.connect(admin).addGaugeFactory(gaugeFactory.address);
   });
@@ -98,7 +98,7 @@ describe('ChildChainGauge', () => {
     });
 
     it('returns the voting escrow proxy', async () => {
-      expect(await gauge.voting_escrow()).to.be.eq(veDelegationProxy.address);
+      expect(await gauge.voting_escrow_delegation_proxy()).to.be.eq(veDelegationProxy.address);
     });
 
     it('returns the authorizer adaptor', async () => {
@@ -356,7 +356,7 @@ describe('ChildChainGauge', () => {
 
     sharedBeforeEach('grant add_reward permission to admin', async () => {
       const action = await actionId(vault.authorizerAdaptorEntrypoint, 'add_reward', gauge.interface);
-      await vault.grantPermissionsGlobally([action], admin);
+      await vault.grantPermissionGlobally(action, admin);
     });
 
     sharedBeforeEach('add reward', async () => {
