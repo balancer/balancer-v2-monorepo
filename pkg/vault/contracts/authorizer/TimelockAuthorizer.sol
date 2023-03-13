@@ -301,20 +301,24 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         emit RevokeDelaySet(actionId, delay);
     }
 
+    /**
+     * @notice Checks if a `delay` is shorter than `setAuthorizer` action delay.
+     *
+     * @dev No delay can be greater than the current delay for changing the Authorizer itself (`IVault.setAuthorizer`).
+     * Otherwise, it'd be possible to execute the action with a shorter delay by simply replacing
+     * the TimelockAuthorizer with a different contract that didn't enforce these delays.
+     * Note that it is still possible for an action to end up with a delay longer than `setAuthorizer` if
+     * e.g. `setAuthorizer`'s delay was to ever be decreased, but this is not expected to happen. The following
+     * check is therefore simply a way to try to prevent user error, but is not infallible.
+     */
     function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
-        // No delay can be greater than the current delay for changing the Authorizer itself (`IVault.setAuthorizer`).
-        // Otherwise, it'd be possible to execute the action with a shorter delay by simply replacing the
-        // TimelockAuthorizer with a different contract that didn't enforce these delays.
-        // Note that it is still possible for an action to end up with a delay longer than `setAuthorizer` if e.g.
-        // `setAuthorizer`'s delay was to ever be decreased, but this is not expected to happen. The following check is
-        // therefore simply a way to try to prevent user error, but is not infallible.
-
         bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector);
         return delay <= _delaysPerActionId[setAuthorizerActionId];
     }
 
     /**
      * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`.
+     * Check `schedule` comments;
      */
     function scheduleDelayChange(
         bytes32 actionId,
@@ -338,6 +342,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
     /**
      * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`.
+     * See `schedule` comments.
      */
     function scheduleGrantDelayChange(
         bytes32 actionId,
@@ -360,6 +365,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
     /**
      * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`.
+     * See `schedule` comments.
      */
     function scheduleRevokeDelayChange(
         bytes32 actionId,
@@ -498,6 +504,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
     /**
      * @notice Schedules a grant permission to `account` for action `actionId` in target `where`.
+     * See `schedule` comments.
      */
     function scheduleGrantPermission(
         bytes32 actionId,
@@ -546,6 +553,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
     /**
      * @notice Schedules a revoke permission from `account` for action `actionId` in target `where`.
+     * See `schedule` comments.
      */
     function scheduleRevokePermission(
         bytes32 actionId,

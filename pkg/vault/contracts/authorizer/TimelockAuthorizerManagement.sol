@@ -270,6 +270,9 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         // solhint-disable-previous-line not-rely-on-time
     }
 
+    /**
+     * @notice Returns true if `account` is an canceler for `scheduledExecutionId`.
+     */
     function isCanceler(uint256 scheduledExecutionId, address account) public view returns (bool) {
         return
             _isCanceler[scheduledExecutionId][account] ||
@@ -279,6 +282,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
 
     /**
      * @notice Schedules an execution to change the root address to `newRoot`.
+     * See `schedule` comments.
      */
     function scheduleRootChange(address newRoot, address[] memory executors) external returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
@@ -382,11 +386,25 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         emit ExecutionCancelled(scheduledExecutionId);
     }
 
+    /**
+     * @notice Grants canceler status to `account` for scheduled action `scheduledExecutionId`.
+     * @dev Only the root can add a canceler.
+     *
+     * Note that there are no delays associated with adding or removing cancelers. This is based on the assumption that
+     * any action which a malicious user could exploit to damage the protocol can be mitigated by root.
+     * Root can remove any canceler and reschedule any task
+     */
     function addCanceler(uint256 scheduledExecutionId, address account) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         _addCanceler(scheduledExecutionId, account);
     }
 
+    /**
+     * @notice Remove canceler status from `account` for scheduled action `scheduledExecutionId`.
+     * @dev Only the root can remove a canceler.
+     *
+     * See `addCanceler` comments.
+     */
     function removeCanceler(uint256 scheduledExecutionId, address account) external {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
@@ -531,6 +549,12 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         emit RevokerRemoved(account, where);
     }
 
+    /**
+     * @dev Schedules an execution of `data` at contract `where` with a `delay`
+     * allowing only `executors` to invoke the action after the delay.
+     *
+     * @dev Doesn't verify that msg.sender has the the right to schedule. Beware.
+     */
     function _scheduleWithDelay(
         address where,
         bytes memory data,
@@ -569,6 +593,11 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         emit RootSet(root);
     }
 
+    /**
+     * @dev Does not check that caller is root
+     *
+     * See `addCanceler` comments.
+     */
     function _addCanceler(uint256 scheduledExecutionId, address account) internal {
         require(!isCanceler(scheduledExecutionId, account), "ACCOUNT_IS_ALREADY_CANCELER");
 

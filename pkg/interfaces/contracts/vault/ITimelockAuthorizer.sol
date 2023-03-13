@@ -138,6 +138,9 @@ interface ITimelockAuthorizer {
      */
     function canExecute(uint256 scheduledExecutionId) external view returns (bool);
 
+    /**
+     * @notice Returns true if `account` is an canceler for `scheduledExecutionId`.
+     */
     function isCanceler(uint256 scheduledExecutionId, address account) external view returns (bool);
 
     /**
@@ -170,14 +173,6 @@ interface ITimelockAuthorizer {
      * scheduled execution is said to be 'unprotected', and can be executed by anyone.
      *
      * Once executed, a scheduled execution cannot be executed again. It also cannot be executed if canceled.
-     *
-     * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
-     * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a
-     * scheduled action during the execution of another scheduled action - an unlikely and convoluted scenario that we
-     * explicitly forbid.
-     *
-     * Note that while `execute` is nonReentrant, other functions are not - indeed, we rely on reentrancy to e.g. call
-     * `setPendingRoot` or `setDelay`.
      */
     function execute(uint256 scheduledExecutionId) external returns (bytes memory result);
 
@@ -191,8 +186,20 @@ interface ITimelockAuthorizer {
      */
     function cancel(uint256 scheduledExecutionId) external;
 
+    /**
+     * @notice Grants canceler status to `account` for scheduled action `scheduledExecutionId`.
+     * @dev Only the root can add a canceler.
+     *
+     * Note that there are no delays associated with adding or removing cancelers. This is based on the assumption that
+     * any action which a malicious user could exploit to damage the protocol can be mitigated by root.
+     * Root can remove any canceler and reschedule any task
+     */
     function addCanceler(uint256 scheduledExecutionId, address account) external;
 
+    /**
+     * @notice Remove canceler status from `account` for scheduled action `scheduledExecutionId`.
+     * @dev Only the root can remove a canceler.
+     */
     function removeCanceler(uint256 scheduledExecutionId, address account) external;
 
     /**
@@ -282,6 +289,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`.
+     * See `schedule` comments.
      */
     function scheduleDelayChange(
         bytes32 actionId,
@@ -291,6 +299,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`.
+     * See `schedule` comments.
      */
     function scheduleGrantDelayChange(
         bytes32 actionId,
@@ -300,6 +309,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`.
+     * See `schedule` comments.
      */
     function scheduleRevokeDelayChange(
         bytes32 actionId,
@@ -344,6 +354,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Schedules a grant permission to `account` for action `actionId` in target `where`.
+     * See `schedule` comments.
      */
     function scheduleGrantPermission(
         bytes32 actionId,
@@ -365,6 +376,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Schedules a revoke permission from `account` for action `actionId` in target `where`.
+     * See `schedule` comments.
      */
     function scheduleRevokePermission(
         bytes32 actionId,
