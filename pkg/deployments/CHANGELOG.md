@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ### Deprecations
 
 - Deprecated `20220916-batch-relayer-v4`.
