@@ -43,237 +43,235 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
   });
 
-  describe('composable stable pool V2+', () => {
-    const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
+  const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
 
-    let owner: SignerWithAddress, whale: SignerWithAddress;
-    let pool: Contract, factory: Contract;
-    let usdc: Contract, dai: Contract;
-    let poolId: string;
-    let stableTask: Task;
-    let bptIndex: number;
+  let owner: SignerWithAddress, whale: SignerWithAddress;
+  let pool: Contract, factory: Contract;
+  let usdc: Contract, dai: Contract;
+  let poolId: string;
+  let stableTask: Task;
+  let bptIndex: number;
 
-    before('get signers', async () => {
-      owner = await getSigner();
-      whale = await impersonate(LARGE_TOKEN_HOLDER);
+  before('get signers', async () => {
+    owner = await getSigner();
+    whale = await impersonate(LARGE_TOKEN_HOLDER);
+  });
+
+  before('approve relayer at the authorizer', async () => {
+    const relayerActionIds = await Promise.all(
+      ['swap', 'batchSwap', 'joinPool', 'exitPool', 'setRelayerApproval', 'manageUserBalance'].map((action) =>
+        vault.getActionId(vault.interface.getSighash(action))
+      )
+    );
+
+    // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
+    // such an account exists.
+    const admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0));
+
+    // Grant relayer permission to call all relayer functions
+    await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
+  });
+
+  before('approve relayer by the user', async () => {
+    await vault.connect(whale).setRelayerApproval(whale.address, relayer.address, true);
+  });
+
+  before('load tokens and approve', async () => {
+    dai = await task.instanceAt('IERC20', DAI);
+    usdc = await task.instanceAt('IERC20', USDC);
+
+    await dai.connect(whale).approve(vault.address, MAX_UINT256);
+    await usdc.connect(whale).approve(vault.address, MAX_UINT256);
+  });
+
+  // Use V3 so that it's not disabled: same as V2 for joins/exits
+  before('run composable stable pool V2+ task', async () => {
+    stableTask = new Task('20230206-composable-stable-pool-v3', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    factory = await stableTask.deployedInstance('ComposableStablePoolFactory');
+  });
+
+  async function createPool(): Promise<Contract> {
+    const tx = await factory.create(
+      'SP',
+      'SPT',
+      tokens,
+      amplificationParameter,
+      rateProviders,
+      cacheDurations,
+      exemptFlags,
+      swapFeePercentage,
+      owner.address
+    );
+    const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
+
+    pool = await stableTask.instanceAt('ComposableStablePool', event.args.pool);
+    expect(await factory.isPoolFromFactory(pool.address)).to.be.true;
+
+    poolId = await pool.getPoolId();
+    const [registeredAddress] = await vault.getPool(poolId);
+    expect(registeredAddress).to.equal(pool.address);
+
+    bptIndex = await pool.getBptIndex();
+
+    const composableInitialBalances = Array.from({ length: tokens.length + 1 }).map((_, i) =>
+      i == bptIndex ? 0 : i < bptIndex ? initialBalances[i] : initialBalances[i - 1]
+    );
+    const { tokens: allTokens } = await vault.getPoolTokens(poolId);
+
+    const userData = StablePoolEncoder.joinInit(composableInitialBalances);
+    await vault.connect(whale).joinPool(poolId, whale.address, owner.address, {
+      assets: allTokens,
+      maxAmountsIn: Array(tokens.length + 1).fill(MAX_UINT256),
+      fromInternalBalance: false,
+      userData,
     });
 
-    before('approve relayer at the authorizer', async () => {
-      const relayerActionIds = await Promise.all(
-        ['swap', 'batchSwap', 'joinPool', 'exitPool', 'setRelayerApproval', 'manageUserBalance'].map((action) =>
-          vault.getActionId(vault.interface.getSighash(action))
-        )
-      );
+    return pool;
+  }
 
-      // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
-      // such an account exists.
-      const admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0));
+  function getRegisteredBalances(bptIndex: number, balances: BigNumber[]): BigNumber[] {
+    return Array.from({ length: balances.length + 1 }).map((_, i) =>
+      i == bptIndex ? bn(0) : i < bptIndex ? balances[i] : balances[i - 1]
+    );
+  }
 
-      // Grant relayer permission to call all relayer functions
-      await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
-    });
-
-    before('approve relayer by the user', async () => {
-      await vault.connect(whale).setRelayerApproval(whale.address, relayer.address, true);
-    });
-
-    before('load tokens and approve', async () => {
-      dai = await task.instanceAt('IERC20', DAI);
-      usdc = await task.instanceAt('IERC20', USDC);
-
-      await dai.connect(whale).approve(vault.address, MAX_UINT256);
-      await usdc.connect(whale).approve(vault.address, MAX_UINT256);
-    });
-
-    // Use V3 so that it's not disabled: same as V2 for joins/exits
-    before('run composable stable pool V2+ task', async () => {
-      stableTask = new Task('20230206-composable-stable-pool-v3', TaskMode.READ_ONLY, getForkedNetwork(hre));
-      factory = await stableTask.deployedInstance('ComposableStablePoolFactory');
-    });
-
-    async function createPool(): Promise<Contract> {
-      const tx = await factory.create(
-        'SP',
-        'SPT',
-        tokens,
-        amplificationParameter,
-        rateProviders,
-        cacheDurations,
-        exemptFlags,
-        swapFeePercentage,
-        owner.address
-      );
-      const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
-
-      pool = await stableTask.instanceAt('ComposableStablePool', event.args.pool);
-      expect(await factory.isPoolFromFactory(pool.address)).to.be.true;
+  describe('proportional join (outside relayer)', () => {
+    before('deploy pool', async () => {
+      pool = await createPool();
 
       poolId = await pool.getPoolId();
       const [registeredAddress] = await vault.getPool(poolId);
       expect(registeredAddress).to.equal(pool.address);
 
       bptIndex = await pool.getBptIndex();
+    });
 
-      const composableInitialBalances = Array.from({ length: tokens.length + 1 }).map((_, i) =>
-        i == bptIndex ? 0 : i < bptIndex ? initialBalances[i] : initialBalances[i - 1]
-      );
+    it('joins proportionally', async () => {
+      const ownerBptBalance = await pool.balanceOf(owner.address);
+      const bptOut = ownerBptBalance.div(5);
+
+      const { tokens: registeredTokens } = await vault.getPoolTokens(poolId);
+      // Given the bptOut, the max amounts in should be slightly more than 1/5. Decimals make it a bit complicated.
+      const adjustedBalances = [
+        initialBalanceDAI.div(fp(4.99)).mul(fp(1)),
+        initialBalanceUSDC.div(bn(4.99e6)).mul(1e6),
+      ];
+      const maxAmountsIn = getRegisteredBalances(bptIndex, adjustedBalances);
+
+      const tx = await vault.connect(whale).joinPool(poolId, whale.address, whale.address, {
+        assets: registeredTokens,
+        maxAmountsIn: maxAmountsIn,
+        fromInternalBalance: false,
+        userData: StablePoolEncoder.joinAllTokensInForExactBptOut(bptOut),
+      });
+      const receipt = await (await tx).wait();
+      const { deltas: amountsIn } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+
+      // Amounts in should be ~ 1/5 the initial balances
+      expect(amountsIn).to.equalWithError(maxAmountsIn, 0.01);
+
+      // Make sure received BPT is close to what we expect
+      const currentBptBalance = await pool.balanceOf(whale.address);
+      expect(currentBptBalance).to.be.equalWithError(bptOut, 0.001);
+    });
+  });
+
+  describe('proportional exit (outside relayer)', () => {
+    before('deploy pool', async () => {
+      pool = await createPool();
+
+      poolId = await pool.getPoolId();
+      const [registeredAddress] = await vault.getPool(poolId);
+      expect(registeredAddress).to.equal(pool.address);
+
+      bptIndex = await pool.getBptIndex();
+    });
+
+    it('exits proportionally', async () => {
+      const previousBptBalance = await pool.balanceOf(owner.address);
+      const bptIn = previousBptBalance.div(4);
+
+      const { tokens: registeredTokens, balances: registeredBalances } = await vault.getPoolTokens(poolId);
+
+      const tx = await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
+        assets: registeredTokens,
+        minAmountsOut: Array(registeredTokens.length).fill(0),
+        fromInternalBalance: false,
+        userData: StablePoolEncoder.exitExactBptInForTokensOut(bptIn),
+      });
+      const receipt = await (await tx).wait();
+      const { deltas } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+      const amountsOut = deltas.map((x: BigNumber) => x.mul(-1));
+
+      const expectedAmountsOut = (registeredBalances as BigNumber[]).map((b) => b.div(4));
+      expectedAmountsOut[bptIndex] = bn(0);
+
+      // Amounts out should be 1/4 the initial balances
+      expect(amountsOut).to.equalWithError(expectedAmountsOut, 0.00001);
+
+      // Make sure sent BPT is close to what we expect
+      const currentBptBalance = await pool.balanceOf(owner.address);
+      expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).sub(bptIn), 0.001);
+    });
+  });
+
+  describe('proportional join/exit through relayer', () => {
+    before('deploy pool', async () => {
+      pool = await createPool();
+
+      poolId = await pool.getPoolId();
+      const [registeredAddress] = await vault.getPool(poolId);
+      expect(registeredAddress).to.equal(pool.address);
+    });
+
+    it('can join and exit', async () => {
+      const bptAmount = fp(1000);
+
+      const whaleDAIBalanceBeforeJoinExit = await dai.balanceOf(whale.address);
+      const ownerDAIBalanceBeforeJoinExit = await dai.balanceOf(owner.address);
+
       const { tokens: allTokens } = await vault.getPoolTokens(poolId);
 
-      const userData = StablePoolEncoder.joinInit(composableInitialBalances);
-      await vault.connect(whale).joinPool(poolId, whale.address, owner.address, {
-        assets: allTokens,
-        maxAmountsIn: Array(tokens.length + 1).fill(MAX_UINT256),
-        fromInternalBalance: false,
-        userData,
-      });
+      const joinUserData = StablePoolEncoder.joinAllTokensInForExactBptOut(bptAmount);
 
-      return pool;
-    }
-
-    function getRegisteredBalances(bptIndex: number, balances: BigNumber[]): BigNumber[] {
-      return Array.from({ length: balances.length + 1 }).map((_, i) =>
-        i == bptIndex ? bn(0) : i < bptIndex ? balances[i] : balances[i - 1]
-      );
-    }
-
-    describe('proportional join (outside relayer)', () => {
-      before('deploy pool', async () => {
-        pool = await createPool();
-
-        poolId = await pool.getPoolId();
-        const [registeredAddress] = await vault.getPool(poolId);
-        expect(registeredAddress).to.equal(pool.address);
-
-        bptIndex = await pool.getBptIndex();
-      });
-
-      it('joins proportionally', async () => {
-        const ownerBptBalance = await pool.balanceOf(owner.address);
-        const bptOut = ownerBptBalance.div(5);
-
-        const { tokens: registeredTokens } = await vault.getPoolTokens(poolId);
-        // Given the bptOut, the max amounts in should be slightly more than 1/5. Decimals make it a bit complicated.
-        const adjustedBalances = [
-          initialBalanceDAI.div(fp(4.99)).mul(fp(1)),
-          initialBalanceUSDC.div(bn(4.99e6)).mul(1e6),
-        ];
-        const maxAmountsIn = getRegisteredBalances(bptIndex, adjustedBalances);
-
-        const tx = await vault.connect(whale).joinPool(poolId, whale.address, whale.address, {
-          assets: registeredTokens,
-          maxAmountsIn: maxAmountsIn,
+      const joinCalldata = library.interface.encodeFunctionData('joinPool', [
+        poolId,
+        PoolKind.COMPOSABLE_STABLE_V2,
+        whale.address,
+        relayer.address,
+        {
+          assets: allTokens,
+          maxAmountsIn: Array(tokens.length + 1).fill(MAX_UINT256),
+          userData: joinUserData,
           fromInternalBalance: false,
-          userData: StablePoolEncoder.joinAllTokensInForExactBptOut(bptOut),
-        });
-        const receipt = await (await tx).wait();
-        const { deltas: amountsIn } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+        },
+        0,
+        0,
+      ]);
 
-        // Amounts in should be ~ 1/5 the initial balances
-        expect(amountsIn).to.equalWithError(maxAmountsIn, 0.01);
+      const exitUserData = StablePoolEncoder.exitExactBptInForTokensOut(bptAmount);
 
-        // Make sure received BPT is close to what we expect
-        const currentBptBalance = await pool.balanceOf(whale.address);
-        expect(currentBptBalance).to.be.equalWithError(bptOut, 0.001);
-      });
-    });
+      const exitCalldata = library.interface.encodeFunctionData('exitPool', [
+        poolId,
+        PoolKind.COMPOSABLE_STABLE_V2,
+        relayer.address,
+        owner.address,
+        {
+          assets: allTokens,
+          minAmountsOut: Array(tokens.length + 1).fill(0),
+          userData: exitUserData,
+          toInternalBalance: false,
+        },
+        [],
+      ]);
 
-    describe('proportional exit (outside relayer)', () => {
-      before('deploy pool', async () => {
-        pool = await createPool();
+      await relayer.connect(whale).multicall([joinCalldata, exitCalldata]);
 
-        poolId = await pool.getPoolId();
-        const [registeredAddress] = await vault.getPool(poolId);
-        expect(registeredAddress).to.equal(pool.address);
+      const whaleDAIBalanceAfterJoinExit = await dai.balanceOf(whale.address);
+      const ownerDAIBalanceAfterJoinExit = await dai.balanceOf(owner.address);
 
-        bptIndex = await pool.getBptIndex();
-      });
-
-      it('exits proportionally', async () => {
-        const previousBptBalance = await pool.balanceOf(owner.address);
-        const bptIn = previousBptBalance.div(4);
-
-        const { tokens: registeredTokens, balances: registeredBalances } = await vault.getPoolTokens(poolId);
-
-        const tx = await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
-          assets: registeredTokens,
-          minAmountsOut: Array(registeredTokens.length).fill(0),
-          fromInternalBalance: false,
-          userData: StablePoolEncoder.exitExactBptInForTokensOut(bptIn),
-        });
-        const receipt = await (await tx).wait();
-        const { deltas } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-        const amountsOut = deltas.map((x: BigNumber) => x.mul(-1));
-
-        const expectedAmountsOut = (registeredBalances as BigNumber[]).map((b) => b.div(4));
-        expectedAmountsOut[bptIndex] = bn(0);
-
-        // Amounts out should be 1/4 the initial balances
-        expect(amountsOut).to.equalWithError(expectedAmountsOut, 0.00001);
-
-        // Make sure sent BPT is close to what we expect
-        const currentBptBalance = await pool.balanceOf(owner.address);
-        expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).sub(bptIn), 0.001);
-      });
-    });
-
-    describe('proportional join/exit through relayer', () => {
-      before('deploy pool', async () => {
-        pool = await createPool();
-
-        poolId = await pool.getPoolId();
-        const [registeredAddress] = await vault.getPool(poolId);
-        expect(registeredAddress).to.equal(pool.address);
-      });
-
-      it('can join and exit', async () => {
-        const bptAmount = fp(1000);
-
-        const whaleDAIBalanceBeforeJoinExit = await dai.balanceOf(whale.address);
-        const ownerDAIBalanceBeforeJoinExit = await dai.balanceOf(owner.address);
-
-        const { tokens: allTokens } = await vault.getPoolTokens(poolId);
-
-        const joinUserData = StablePoolEncoder.joinAllTokensInForExactBptOut(bptAmount);
-
-        const joinCalldata = library.interface.encodeFunctionData('joinPool', [
-          poolId,
-          PoolKind.COMPOSABLE_STABLE_V2,
-          whale.address,
-          relayer.address,
-          {
-            assets: allTokens,
-            maxAmountsIn: Array(tokens.length + 1).fill(MAX_UINT256),
-            userData: joinUserData,
-            fromInternalBalance: false,
-          },
-          0,
-          0,
-        ]);
-
-        const exitUserData = StablePoolEncoder.exitExactBptInForTokensOut(bptAmount);
-
-        const exitCalldata = library.interface.encodeFunctionData('exitPool', [
-          poolId,
-          PoolKind.COMPOSABLE_STABLE_V2,
-          relayer.address,
-          owner.address,
-          {
-            assets: allTokens,
-            minAmountsOut: Array(tokens.length + 1).fill(0),
-            userData: exitUserData,
-            toInternalBalance: false,
-          },
-          [],
-        ]);
-
-        await relayer.connect(whale).multicall([joinCalldata, exitCalldata]);
-
-        const whaleDAIBalanceAfterJoinExit = await dai.balanceOf(whale.address);
-        const ownerDAIBalanceAfterJoinExit = await dai.balanceOf(owner.address);
-
-        expect(whaleDAIBalanceAfterJoinExit).to.lt(whaleDAIBalanceBeforeJoinExit);
-        expect(ownerDAIBalanceAfterJoinExit).to.gt(ownerDAIBalanceBeforeJoinExit);
-      });
+      expect(whaleDAIBalanceAfterJoinExit).to.lt(whaleDAIBalanceBeforeJoinExit);
+      expect(ownerDAIBalanceAfterJoinExit).to.gt(ownerDAIBalanceBeforeJoinExit);
     });
   });
 });
