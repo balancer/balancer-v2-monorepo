@@ -29,10 +29,14 @@ import "./TimelockExecutionHelper.sol";
 /**
  * @title Timelock Authorizer Management
  * @author Balancer Labs
- * @dev TODO
+ * @dev TimelockAuthorizerManagement is a parent class for TimelockAuthorizer introduced to bring more
+ * clarity and readability into TimelockAuthorizer smart contract. It handles logic for handling a root change
+ * (`setPendingRoot` and 'claimRoot'), scheduling and executing actions (`_scheduleWithDelay`, `execute`, and
+ * `cancel`), and managing roles (`addRevoker`, `addGranter`, `addCanceler`).
  *
+ * See `TimelockAuthorizer`
  */
-contract TimelockAuthorizerManagement is ReentrancyGuard {
+contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, ReentrancyGuard {
     using Address for address;
 
     /**
@@ -65,7 +69,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     // scheduled execution id => account => is canceler
     mapping(uint256 => mapping(address => bool)) private _isCanceler;
 
-    ITimelockAuthorizer.ScheduledExecution[] private _scheduledExecutions;
+    ITimelockAuthorizerManagement.ScheduledExecution[] private _scheduledExecutions;
 
     /**
      * @notice Emitted when a root change is scheduled.
@@ -174,49 +178,49 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     /**
      * @notice Returns true if `account` is the root.
      */
-    function isRoot(address account) public view returns (bool) {
+    function isRoot(address account) public view override returns (bool) {
         return account == _root;
     }
 
     /**
      * @notice Returns true if `account` is the pending root.
      */
-    function isPendingRoot(address account) public view returns (bool) {
+    function isPendingRoot(address account) public view override returns (bool) {
         return account == _pendingRoot;
     }
 
     /**
      * @notice Returns the delay required to transfer the root address.
      */
-    function getRootTransferDelay() public view returns (uint256) {
+    function getRootTransferDelay() public view override returns (uint256) {
         return _rootTransferDelay;
     }
 
     /**
      * @notice Returns the vault address.
      */
-    function getVault() public view returns (address) {
+    function getVault() public view override returns (address) {
         return address(_vault);
     }
 
     /**
      * @notice Returns the TimelockExecutionHelper address.
      */
-    function getTimelockExecutionHelper() public view returns (address) {
+    function getTimelockExecutionHelper() public view override returns (address) {
         return address(_executionHelper);
     }
 
     /**
      * @notice Returns the root address.
      */
-    function getRoot() external view returns (address) {
+    function getRoot() external view override returns (address) {
         return _root;
     }
 
     /**
      * @notice Returns the currently pending new root address.
      */
-    function getPendingRoot() external view returns (address) {
+    function getPendingRoot() external view override returns (address) {
         return _pendingRoot;
     }
 
@@ -227,14 +231,14 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         bytes32 actionId,
         address account,
         address where
-    ) public view returns (bool) {
+    ) public view override returns (bool) {
         return _isGranter[actionId][account][where] || _isGranter[actionId][account][EVERYWHERE] || isRoot(account);
     }
 
     /**
      * @notice Returns true if `account` is allowed to revoke permissions in target `where` for all actions.
      */
-    function isRevoker(address account, address where) public view returns (bool) {
+    function isRevoker(address account, address where) public view override returns (bool) {
         return _isRevoker[account][where] || _isRevoker[account][EVERYWHERE] || isRoot(account);
     }
 
@@ -244,7 +248,8 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     function getScheduledExecution(uint256 scheduledExecutionId)
         external
         view
-        returns (ITimelockAuthorizer.ScheduledExecution memory)
+        override
+        returns (ITimelockAuthorizerManagement.ScheduledExecution memory)
     {
         return _scheduledExecutions[scheduledExecutionId];
     }
@@ -252,7 +257,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     /**
      * @notice Returns true if `account` is an executor for `scheduledExecutionId`.
      */
-    function isExecutor(uint256 scheduledExecutionId, address account) public view returns (bool) {
+    function isExecutor(uint256 scheduledExecutionId, address account) public view override returns (bool) {
         return _isExecutor[scheduledExecutionId][account];
     }
 
@@ -260,9 +265,12 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      * @notice Returns true if execution `scheduledExecutionId` can be executed.
      * Only true if it is not already executed or cancelled, and if the execution delay has passed.
      */
-    function canExecute(uint256 scheduledExecutionId) external view returns (bool) {
+    function canExecute(uint256 scheduledExecutionId) external view override returns (bool) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
+
+
+            ITimelockAuthorizerManagement.ScheduledExecution storage scheduledExecution
+         = _scheduledExecutions[scheduledExecutionId];
         return
             !scheduledExecution.executed &&
             !scheduledExecution.cancelled &&
@@ -273,7 +281,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
     /**
      * @notice Returns true if `account` is an canceler for `scheduledExecutionId`.
      */
-    function isCanceler(uint256 scheduledExecutionId, address account) public view returns (bool) {
+    function isCanceler(uint256 scheduledExecutionId, address account) public view override returns (bool) {
         return
             _isCanceler[scheduledExecutionId][account] ||
             _isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID][account] ||
@@ -284,7 +292,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      * @notice Schedules an execution to change the root address to `newRoot`.
      * See `schedule` comments.
      */
-    function scheduleRootChange(address newRoot, address[] memory executors) external returns (uint256) {
+    function scheduleRootChange(address newRoot, address[] memory executors) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
 
@@ -303,7 +311,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      *
      * Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
      */
-    function setPendingRoot(address pendingRoot) external onlyScheduled {
+    function setPendingRoot(address pendingRoot) external override onlyScheduled {
         _setPendingRoot(pendingRoot);
     }
 
@@ -312,7 +320,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      * @dev This function prevents accidentally transferring root to an invalid address.
      * To become root, the pending root must call this function to ensure that it's able to interact with this contract.
      */
-    function claimRoot() external {
+    function claimRoot() external override {
         address pendingRoot = _pendingRoot;
         require(msg.sender == pendingRoot, "SENDER_IS_NOT_PENDING_ROOT");
 
@@ -339,9 +347,12 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      * Note that while `execute` is nonReentrant, other functions are not - indeed, we rely on reentrancy to e.g. call
      * `setPendingRoot` or `setDelay`.
      */
-    function execute(uint256 scheduledExecutionId) external nonReentrant returns (bytes memory result) {
+    function execute(uint256 scheduledExecutionId) external override nonReentrant returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
+
+
+            ITimelockAuthorizerManagement.ScheduledExecution storage scheduledExecution
+         = _scheduledExecutions[scheduledExecutionId];
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
@@ -373,9 +384,12 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      * The caller must be a canceler, a permission which is managed by the `addCanceler` and `removeCanceler` functions.
      * Note that root is always a canceler for all scheduled executions.
      */
-    function cancel(uint256 scheduledExecutionId) external {
+    function cancel(uint256 scheduledExecutionId) external override {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
+
+
+            ITimelockAuthorizerManagement.ScheduledExecution storage scheduledExecution
+         = _scheduledExecutions[scheduledExecutionId];
 
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
@@ -394,7 +408,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      * any action which a malicious user could exploit to damage the protocol can be mitigated by root.
      * Root can remove any canceler and reschedule any task
      */
-    function addCanceler(uint256 scheduledExecutionId, address account) external {
+    function addCanceler(uint256 scheduledExecutionId, address account) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         _addCanceler(scheduledExecutionId, account);
     }
@@ -405,7 +419,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      *
      * See `addCanceler` comments.
      */
-    function removeCanceler(uint256 scheduledExecutionId, address account) external {
+    function removeCanceler(uint256 scheduledExecutionId, address account) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         // The root account is always a canceler, and this cannot be revoked.
@@ -448,7 +462,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         bytes32 actionId,
         address account,
         address where
-    ) external {
+    ) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(!isGranter(actionId, account, where), "ACCOUNT_IS_ALREADY_GRANTER");
@@ -478,7 +492,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         bytes32 actionId,
         address account,
         address where
-    ) external {
+    ) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(isGranter(actionId, account, where), "ACCOUNT_IS_NOT_GRANTER");
@@ -508,7 +522,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      *
      * A malicious revoker cannot add new revokers, so root can simply revoke their status once.
      */
-    function addRevoker(address account, address where) external {
+    function addRevoker(address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(!isRevoker(account, where), "ACCOUNT_IS_ALREADY_REVOKER");
@@ -530,7 +544,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
      * is if we had contracts that were revoker, and this was depended upon for operation of the system. This however
      * doesn't seem like it will ever be required - revokers are typically subDAOs.
      */
-    function removeRevoker(address account, address where) external {
+    function removeRevoker(address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(isRevoker(account, where), "ACCOUNT_IS_NOT_REVOKER");
@@ -568,7 +582,7 @@ contract TimelockAuthorizerManagement is ReentrancyGuard {
         bool protected = executors.length > 0;
 
         _scheduledExecutions.push(
-            ITimelockAuthorizer.ScheduledExecution({
+            ITimelockAuthorizerManagement.ScheduledExecution({
                 where: where,
                 data: data,
                 executed: false,

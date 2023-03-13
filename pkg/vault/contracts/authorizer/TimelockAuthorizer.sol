@@ -53,7 +53,7 @@ import "./TimelockAuthorizerManagement.sol";
  * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
  * is necessary in order to be able to call these.
  */
-contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
+contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, TimelockAuthorizerManagement {
     // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
     // an arbitrarily long delay.
     uint256 public constant MAX_DELAY = 2 * (365 days);
@@ -163,21 +163,21 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     /**
      * @notice Returns the execution delay for action `actionId`.
      */
-    function getActionIdDelay(bytes32 actionId) external view returns (uint256) {
+    function getActionIdDelay(bytes32 actionId) external view override returns (uint256) {
         return _delaysPerActionId[actionId];
     }
 
     /**
      * @notice Returns the execution delay for granting permission for action `actionId`.
      */
-    function getActionIdGrantDelay(bytes32 actionId) external view returns (uint256) {
+    function getActionIdGrantDelay(bytes32 actionId) external view override returns (uint256) {
         return _grantDelays[actionId];
     }
 
     /**
      * @notice Returns the execution delay for revoking permission for action `actionId`.
      */
-    function getActionIdRevokeDelay(bytes32 actionId) external view returns (uint256) {
+    function getActionIdRevokeDelay(bytes32 actionId) external view override returns (uint256) {
         return _revokeDelays[actionId];
     }
 
@@ -188,7 +188,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         bytes32 actionId,
         address account,
         address where
-    ) public pure returns (bytes32) {
+    ) public pure override returns (bytes32) {
         return keccak256(abi.encodePacked(actionId, account, where));
     }
 
@@ -205,7 +205,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         bytes32 actionId,
         address account,
         address where
-    ) external view returns (bool) {
+    ) external view override returns (bool) {
         return _isPermissionGranted[getPermissionId(actionId, account, where)];
     }
 
@@ -216,7 +216,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         bytes32 actionId,
         address account,
         address where
-    ) public view returns (bool) {
+    ) public view override returns (bool) {
         return
             _isPermissionGranted[getPermissionId(actionId, account, where)] ||
             _isPermissionGranted[getPermissionId(actionId, account, EVERYWHERE)];
@@ -264,7 +264,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
      * the TimelockExecutionHelper after after calling `scheduleDelayChange`.
      */
-    function setDelay(bytes32 actionId, uint256 delay) external onlyScheduled {
+    function setDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         // If changing the `setAuthorizer` delay itself, then we don't need to compare it to its current value for
         // validity.
         if (actionId != IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector)) {
@@ -281,7 +281,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * the TimelockExecutor after after calling `scheduleGrantDelayChange`.
      * Delay has to be shorter than the Authorizer delay.
      */
-    function setGrantDelay(bytes32 actionId, uint256 delay) external onlyScheduled {
+    function setGrantDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
 
         _grantDelays[actionId] = delay;
@@ -294,26 +294,11 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * the TimelockExecutor after after calling `scheduleRevokeDelayChange`.
      * Delay has to be shorter than the Authorizer delay.
      */
-    function setRevokeDelay(bytes32 actionId, uint256 delay) external onlyScheduled {
+    function setRevokeDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
 
         _revokeDelays[actionId] = delay;
         emit RevokeDelaySet(actionId, delay);
-    }
-
-    /**
-     * @notice Checks if a `delay` is shorter than `setAuthorizer` action delay.
-     *
-     * @dev No delay can be greater than the current delay for changing the Authorizer itself (`IVault.setAuthorizer`).
-     * Otherwise, it'd be possible to execute the action with a shorter delay by simply replacing
-     * the TimelockAuthorizer with a different contract that didn't enforce these delays.
-     * Note that it is still possible for an action to end up with a delay longer than `setAuthorizer` if
-     * e.g. `setAuthorizer`'s delay was to ever be decreased, but this is not expected to happen. The following
-     * check is therefore simply a way to try to prevent user error, but is not infallible.
-     */
-    function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
-        bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector);
-        return delay <= _delaysPerActionId[setAuthorizerActionId];
     }
 
     /**
@@ -342,7 +327,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
@@ -384,7 +369,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
@@ -426,7 +411,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
 
@@ -439,33 +424,6 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, executionDelay, executors);
         emit RevokeDelayChangeScheduled(actionId, newDelay, scheduledExecutionId);
         return scheduledExecutionId;
-    }
-
-    function _getDelayChangeExecutionDelay(uint256 currentDelay, uint256 newDelay) private pure returns (uint256) {
-        // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
-        // current delay.
-        //
-        // If we're reducing the action's delay then we must first wait for the difference between the two delays.
-        // This means that if we immediately schedule the action for execution once the delay is reduced, then
-        // these two delays combined will result in the original delay.
-        // For example, if an action's delay is 20 days and we wish to reduce it to 5 days, we need to wait 15 days
-        // before the new shorter delay is effective, to make it impossible to execute the action before the full
-        // original 20-day delay period has elapsed.
-        //
-        // If we're increasing the delay on an action, we could in principle execute this change immediately, since the
-        // larger delay would fulfill the original constraint imposed by the first delay.
-        // For example, if we wish to increase the delay of an action from 5 days to 20 days, there is no need to wait
-        // as it would not be possible to execute the action with a delay shorter than the initial 5 days at any point.
-        //
-        // However, not requiring a delay to increase an action's delay creates an issue: it would be possible to
-        // effectively disable actions by setting huge delays (e.g. 2 years) for them. Because of this, all delay
-        // changes are subject to a minimum execution delay, to allow for proper scrutiny of these potentially
-        // dangerous actions.
-
-        return
-            newDelay < currentDelay
-                ? Math.max(currentDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
-                : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
     }
 
     /**
@@ -490,7 +448,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address where,
         bytes memory data,
         address[] memory executors
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         // Allowing scheduling arbitrary calls into the TimelockAuthorizer is dangerous.
         //
         // It is expected that only the `root` account can initiate a root transfer as this condition is enforced
@@ -540,7 +498,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         bytes32 actionId,
         address account,
         address where
-    ) external {
+    ) external override {
         if (_grantDelays[actionId] == 0) {
             require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
         } else {
@@ -566,7 +524,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address account,
         address where,
         address[] memory executors
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
 
         uint256 delay = _grantDelays[actionId];
@@ -594,7 +552,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         bytes32 actionId,
         address account,
         address where
-    ) external {
+    ) external override {
         if (_revokeDelays[actionId] == 0) {
             require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
         } else {
@@ -615,7 +573,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address account,
         address where,
         address[] memory executors
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
 
         uint256 delay = _revokeDelays[actionId];
@@ -639,7 +597,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * @dev Note that the caller can always renounce permissions, even if revoking them would typically be
      * subject to a delay.
      */
-    function renouncePermission(bytes32 actionId, address where) external {
+    function renouncePermission(bytes32 actionId, address where) external override {
         _revokePermission(actionId, msg.sender, where);
     }
 
@@ -653,5 +611,47 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
             _isPermissionGranted[permission] = false;
             emit PermissionRevoked(actionId, account, where);
         }
+    }
+
+    function _getDelayChangeExecutionDelay(uint256 currentDelay, uint256 newDelay) private pure returns (uint256) {
+        // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
+        // current delay.
+        //
+        // If we're reducing the action's delay then we must first wait for the difference between the two delays.
+        // This means that if we immediately schedule the action for execution once the delay is reduced, then
+        // these two delays combined will result in the original delay.
+        // For example, if an action's delay is 20 days and we wish to reduce it to 5 days, we need to wait 15 days
+        // before the new shorter delay is effective, to make it impossible to execute the action before the full
+        // original 20-day delay period has elapsed.
+        //
+        // If we're increasing the delay on an action, we could in principle execute this change immediately, since the
+        // larger delay would fulfill the original constraint imposed by the first delay.
+        // For example, if we wish to increase the delay of an action from 5 days to 20 days, there is no need to wait
+        // as it would not be possible to execute the action with a delay shorter than the initial 5 days at any point.
+        //
+        // However, not requiring a delay to increase an action's delay creates an issue: it would be possible to
+        // effectively disable actions by setting huge delays (e.g. 2 years) for them. Because of this, all delay
+        // changes are subject to a minimum execution delay, to allow for proper scrutiny of these potentially
+        // dangerous actions.
+
+        return
+            newDelay < currentDelay
+                ? Math.max(currentDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
+                : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
+    }
+
+    /**
+     * @notice Checks if a `delay` is shorter than `setAuthorizer` action delay.
+     *
+     * @dev No delay can be greater than the current delay for changing the Authorizer itself (`IVault.setAuthorizer`).
+     * Otherwise, it'd be possible to execute the action with a shorter delay by simply replacing
+     * the TimelockAuthorizer with a different contract that didn't enforce these delays.
+     * Note that it is still possible for an action to end up with a delay longer than `setAuthorizer` if
+     * e.g. `setAuthorizer`'s delay was to ever be decreased, but this is not expected to happen. The following
+     * check is therefore simply a way to try to prevent user error, but is not infallible.
+     */
+    function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
+        bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector);
+        return delay <= _delaysPerActionId[setAuthorizerActionId];
     }
 }

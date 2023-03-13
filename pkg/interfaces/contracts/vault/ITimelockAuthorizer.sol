@@ -15,7 +15,10 @@
 pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
-interface ITimelockAuthorizer {
+/**
+ * @dev We need this interface to avoid overriding functions at TimelockAuthorizer
+ */
+interface ITimelockAuthorizerManagement {
     struct ScheduledExecution {
         address where;
         bytes data;
@@ -24,54 +27,6 @@ interface ITimelockAuthorizer {
         bool protected;
         uint256 executableAt;
     }
-
-    /**
-     * @notice Returns the execution delay for action `actionId`.
-     */
-    function getActionIdDelay(bytes32 actionId) external view returns (uint256);
-
-    /**
-     * @notice Returns the execution delay for granting permission for action `actionId`.
-     */
-    function getActionIdGrantDelay(bytes32 actionId) external view returns (uint256);
-
-    /**
-     * @notice Returns the execution delay for revoking permission for action `actionId`.
-     */
-    function getActionIdRevokeDelay(bytes32 actionId) external view returns (uint256);
-
-    /**
-     * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
-     */
-    function getPermissionId(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external pure returns (bytes32);
-
-    /**
-     * @notice Returns true if `account` has the permission defined by action `actionId` and target `where`.
-     * @dev This function is specific for the strict permission defined by the tuple `(actionId, where)`: `account` may
-     * instead hold the global permission for the action `actionId`, also granting them permission on `where`, but this
-     * function would return false regardless.
-     *
-     * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
-     * a given action.
-     */
-    function isPermissionGrantedOnTarget(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view returns (bool);
-
-    /**
-     * @notice Returns true if `account` has permission over the action `actionId` in target `where`.
-     */
-    function hasPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view returns (bool);
 
     /**
      * @notice Returns true if `account` is the root.
@@ -263,6 +218,59 @@ interface ITimelockAuthorizer {
      * doesn't seem like it will ever be required - revokers are typically subDAOs.
      */
     function removeRevoker(address account, address where) external;
+}
+
+/**
+ * @dev We need this interface to avoid overriding functions at TimelockAuthorizer
+ */
+interface ITimelockAuthorizerPartial {
+    /**
+     * @notice Returns the execution delay for action `actionId`.
+     */
+    function getActionIdDelay(bytes32 actionId) external view returns (uint256);
+
+    /**
+     * @notice Returns the execution delay for granting permission for action `actionId`.
+     */
+    function getActionIdGrantDelay(bytes32 actionId) external view returns (uint256);
+
+    /**
+     * @notice Returns the execution delay for revoking permission for action `actionId`.
+     */
+    function getActionIdRevokeDelay(bytes32 actionId) external view returns (uint256);
+
+    /**
+     * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
+     */
+    function getPermissionId(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external pure returns (bytes32);
+
+    /**
+     * @notice Returns true if `account` has the permission defined by action `actionId` and target `where`.
+     * @dev This function is specific for the strict permission defined by the tuple `(actionId, where)`: `account` may
+     * instead hold the global permission for the action `actionId`, also granting them permission on `where`, but this
+     * function would return false regardless.
+     *
+     * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
+     * a given action.
+     */
+    function isPermissionGrantedOnTarget(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external view returns (bool);
+
+    /**
+     * @notice Returns true if `account` has permission over the action `actionId` in target `where`.
+     */
+    function hasPermission(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external view returns (bool);
 
     /**
      * @notice Sets a new delay `delay` for action `actionId`.
@@ -392,3 +400,5 @@ interface ITimelockAuthorizer {
      */
     function renouncePermission(bytes32 actionId, address where) external;
 }
+
+interface ITimelockAuthorizer is ITimelockAuthorizerPartial, ITimelockAuthorizerManagement {}
