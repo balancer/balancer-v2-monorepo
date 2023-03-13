@@ -154,13 +154,10 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V1', 'mainnet', 160837
         userData,
       }); */
 
-    // Send BPT to the relayer so it can exit.
-    await pool.connect(owner).transfer(relayer.address, bptBalance);
-
     const exitCalldata = library.interface.encodeFunctionData('exitPool', [
       poolId,
       PoolKind.COMPOSABLE_STABLE,
-      relayer.address,
+      owner.address,
       owner.address,
       {
         assets: allTokens,
