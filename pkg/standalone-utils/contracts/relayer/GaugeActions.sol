@@ -17,9 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidityGauge.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
@@ -29,7 +27,6 @@ import "./IBaseRelayerLibrary.sol";
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract GaugeActions is IBaseRelayerLibrary {
-    using Address for address payable;
     using SafeERC20 for IERC20;
 
     IBalancerMinter private immutable _balancerMinter;
@@ -48,21 +45,11 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         address recipient,
         uint256 amount
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
         // We can query which token to pull and approve from the wrapper contract.
         IERC20 bptToken = gauge.lp_token();
 
-        // The deposit caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, bptToken, amount);
-        }
+        amount = _resolveAmountPullTokenAndApproveSpender(bptToken, address(gauge), amount, sender);
 
-        bptToken.safeApprove(address(gauge), amount);
         gauge.deposit(amount, recipient);
     }
 
@@ -72,16 +59,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         address recipient,
         uint256 amount
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
-        // The unwrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, IERC20(gauge), amount);
-        }
+        amount = _resolveAmountAndPullToken(gauge, amount, sender);
 
         // No approval is needed here, as the gauge Tokens are burned directly from the relayer's account.
         gauge.withdraw(amount);
@@ -98,9 +76,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
     function gaugeMint(address[] calldata gauges, uint256 outputReference) external payable {
         uint256 balMinted = _balancerMinter.mintManyFor(gauges, msg.sender);
 
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, balMinted);
-        }
+        _setChainedReference(outputReference, balMinted);
     }
 
     function gaugeSetMinterApproval(

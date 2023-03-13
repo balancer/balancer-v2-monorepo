@@ -12,6 +12,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import { bn, divCeil, fp, fpMul, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('Flash Loans', () => {
   let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
@@ -28,7 +29,7 @@ describe('Flash Loans', () => {
     recipient = await deploy('MockFlashLoanRecipient', { from: other, args: [vault.address] });
 
     const action = await actionId(feesCollector, 'setFlashLoanFeePercentage');
-    await authorizer.connect(admin).grantPermissions([action], feeSetter.address, [ANY_ADDRESS]);
+    await authorizer.connect(admin).grantPermission(action, feeSetter.address, ANY_ADDRESS);
 
     tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
     await tokens.mint({ from: minter, to: vault, amount: bn(100e18) });

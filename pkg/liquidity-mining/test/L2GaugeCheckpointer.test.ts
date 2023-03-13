@@ -69,7 +69,7 @@ describe('L2GaugeCheckpointer', () => {
       args: [gaugeController.address, adaptorEntrypoint.address],
     });
     const action = await actionId(gaugeAdder, 'addGaugeFactory');
-    await vault.grantPermissionsGlobally([action], admin);
+    await vault.grantPermissionGlobally(action, admin);
 
     await Promise.all(
       gaugeFactories.map((factory) => gaugeAdder.connect(admin).addGaugeFactory(factory.contract.address, factory.type))

@@ -12,7 +12,7 @@
     "measure-relayer": "hardhat run relayer.ts",
     "benchmark": "yarn measure-deployment && yarn measure-single-pair && yarn measure-multihop && yarn measure-join-exit && yarn measure-relayer",
     "lint": "yarn lint:typescript",
-    "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
+    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "devDependencies": {
     "@balancer-labs/v2-common": "workspace:*",

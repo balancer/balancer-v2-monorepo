@@ -1,8 +1,9 @@
 import { expect } from 'chai';
+import { Contract } from 'ethers';
 
 import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { Contract } from 'ethers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 describe('ExpLog', () => {

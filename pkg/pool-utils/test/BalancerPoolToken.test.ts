@@ -8,6 +8,7 @@ import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTr
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BalancerPoolToken', () => {
   let token: Contract;
