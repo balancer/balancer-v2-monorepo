@@ -146,14 +146,6 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V1', 'mainnet', 160837
       [ComposableStablePoolV1ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, MAX_UINT256]
     );
 
-    /* The exit without the relayer
-      await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
-        assets: allTokens,
-        minAmountsOut: Array(tokens.length + 1).fill(0),
-        fromInternalBalance: false,
-        userData,
-      }); */
-
     const exitCalldata = library.interface.encodeFunctionData('exitPool', [
       poolId,
       PoolKind.COMPOSABLE_STABLE,

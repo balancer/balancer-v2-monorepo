@@ -128,14 +128,6 @@ describeForkTest('BatchRelayerLibrary - Legacy Stable', 'mainnet', 14860000, fun
           [LegacyStablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptBalance]
         );
 
-        /* The exit without the relayer:
-        await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
-          assets: tokens,
-          minAmountsOut: tokens.map(() => 0),
-          fromInternalBalance: false,
-          userData,
-        }); */
-
         // Send BPT to the relayer so it can exit.
         await pool.connect(owner).transfer(relayer.address, bptBalance);
 
@@ -216,14 +208,6 @@ describeForkTest('BatchRelayerLibrary - Legacy Stable', 'mainnet', 14860000, fun
           ['uint256', 'uint256'],
           [LegacyStablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptBalance]
         );
-
-        /* The exit without the relayer:
-        await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
-          assets: tokens,
-          minAmountsOut: Array(tokens.length).fill(0),
-          fromInternalBalance: false,
-          userData,
-        }); */
 
         // Send BPT to the relayer so it can exit.
         await pool.connect(owner).transfer(relayer.address, bptBalance);
