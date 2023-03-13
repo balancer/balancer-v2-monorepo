@@ -282,11 +282,16 @@ describe('ChildChainGauge', () => {
   describe('non-BAL rewards', () => {
     const bptAmount = fp(10);
     const rewardAmount = fp(100);
+
     const claim = 'claim_rewards(address,address,uint256[])';
+    const claimSelected = () =>
+      gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, rewards.indicesOf(selectedRewards.tokens));
+    const claimAll = () => gauge.connect(claimer)['claim_rewards(address,address)'](claimer.address, ZERO_ADDRESS);
+
     let selectedRewards: TokenList;
     let claimer: SignerWithAddress;
 
-    function itTransfersRewardsToClaimer() {
+    function itTransfersRewardsToClaimer(claimFunction: () => Promise<unknown> = claimSelected) {
       it("transfers rewards to claimer without affecting other users' rewards", async () => {
         const claimerStake = await gauge.balanceOf(claimer.address);
         const gaugeTotalSupply = await gauge.totalSupply();
@@ -314,11 +319,7 @@ describe('ChildChainGauge', () => {
         // We claim only the selected ones by sending the indices that correspond to them, but we monitor the balance
         // change of all the rewards inconditionally. This way, we ensure that only the selected rewards are transferred
         // and the remaining ones are not affected.
-        await expectBalanceChange(
-          () => gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, rewards.indicesOf(selectedRewards.tokens)),
-          rewards,
-          expectedBalanceChanges
-        );
+        await expectBalanceChange(claimFunction, rewards, expectedBalanceChanges);
       });
     }
 
@@ -329,12 +330,20 @@ describe('ChildChainGauge', () => {
         await advanceToTimestamp((await currentTimestamp()).add(WEEK));
       });
 
-      context('all rewards', () => {
+      context('all rewards with no explicit indexes', () => {
         sharedBeforeEach(() => {
           selectedRewards = rewards;
         });
 
-        itTransfersRewardsToClaimer();
+        itTransfersRewardsToClaimer(claimAll);
+      });
+
+      context('all rewards using indexes', () => {
+        sharedBeforeEach(() => {
+          selectedRewards = rewards;
+        });
+
+        itTransfersRewardsToClaimer(claimSelected);
       });
 
       context('selecting consecutive rewards', () => {
@@ -342,7 +351,7 @@ describe('ChildChainGauge', () => {
           selectedRewards = rewards.subset(3, 2);
         });
 
-        itTransfersRewardsToClaimer();
+        itTransfersRewardsToClaimer(claimSelected);
       });
 
       context('selecting random rewards', () => {
@@ -350,7 +359,7 @@ describe('ChildChainGauge', () => {
           selectedRewards = new TokenList([rewards.get(4), rewards.get(7), rewards.get(1)]);
         });
 
-        itTransfersRewardsToClaimer();
+        itTransfersRewardsToClaimer(claimSelected);
       });
     }
 
@@ -395,9 +404,10 @@ describe('ChildChainGauge', () => {
     });
 
     context('when invalid token indexes are selected', () => {
-      it('stops claiming on the first invalid index', async () => {
-        const tx = await gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [rewards.length + 1, 0, 1, 2]);
-        await expectEvent.notEmitted(await tx.wait(), 'Transfer');
+      it('reverts', async () => {
+        await expect(gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [rewards.length])).to.be.revertedWith(
+          'INVALID_REWARD_INDEX'
+        );
       });
     });
   });

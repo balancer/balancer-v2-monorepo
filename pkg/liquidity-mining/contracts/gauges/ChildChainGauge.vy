@@ -250,8 +250,8 @@ def _checkpoint_rewards(
         reward_indexes = _input_reward_indexes
 
     for i in reward_indexes:
-        if i >= reward_count:
-            break
+        assert i < reward_count, "INVALID_REWARD_INDEX"
+
         token: address = self.reward_tokens[i]
 
         integral: uint256 = self.reward_data[token].integral
