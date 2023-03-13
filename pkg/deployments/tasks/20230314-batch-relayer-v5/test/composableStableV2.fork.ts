@@ -1,9 +1,9 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js';
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
@@ -17,8 +17,6 @@ import {
   swapFeePercentage,
   tokens,
   initialBalances,
-  initialBalanceDAI,
-  initialBalanceUSDC,
   PoolKind,
 } from './helpers/sharedStableParams';
 
@@ -129,12 +127,6 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
     return pool;
   }
 
-  function getRegisteredBalances(bptIndex: number, balances: BigNumber[]): BigNumber[] {
-    return Array.from({ length: balances.length + 1 }).map((_, i) =>
-      i == bptIndex ? bn(0) : i < bptIndex ? balances[i] : balances[i - 1]
-    );
-  }
-
   describe('proportional join/exit through relayer', () => {
     before('deploy pool', async () => {
       pool = await createPool();
@@ -158,7 +150,7 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
         poolId,
         PoolKind.COMPOSABLE_STABLE_V2,
         whale.address,
-        relayer.address,
+        whale.address,
         {
           assets: allTokens,
           maxAmountsIn: Array(tokens.length + 1).fill(MAX_UINT256),
@@ -174,7 +166,7 @@ describeForkTest('BatchRelayerLibrary - Composable Stable V2+', 'mainnet', 16789
       const exitCalldata = library.interface.encodeFunctionData('exitPool', [
         poolId,
         PoolKind.COMPOSABLE_STABLE_V2,
-        relayer.address,
+        whale.address,
         owner.address,
         {
           assets: allTokens,
