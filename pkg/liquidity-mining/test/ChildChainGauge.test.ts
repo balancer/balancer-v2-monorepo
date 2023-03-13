@@ -6,7 +6,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { WEEK, advanceToTimestamp, currentTimestamp, currentWeekTimestamp } from '@balancer-labs/v2-helpers/src/time';
@@ -30,15 +30,15 @@ describe('ChildChainGauge', () => {
     deployment: 'test-deployment',
   });
 
-  async function stakeBPT(bptUser1: BigNumber, bptUser2: BigNumber) {
-    await BPT.mint(user1.address, bptUser1);
-    await BPT.mint(user2.address, bptUser2);
+  async function stakeBPT(user1Stake: BigNumber, user2Stake: BigNumber) {
+    await BPT.mint(user1.address, user1Stake);
+    await BPT.mint(user2.address, user2Stake);
 
-    await BPT.connect(user1).approve(gauge.address, bptUser1);
-    await BPT.connect(user2).approve(gauge.address, bptUser2);
+    await BPT.connect(user1).approve(gauge.address, user1Stake);
+    await BPT.connect(user2).approve(gauge.address, user2Stake);
 
-    await gauge.connect(user1)['deposit(uint256)'](bptUser1);
-    await gauge.connect(user2)['deposit(uint256)'](bptUser2);
+    await gauge.connect(user1)['deposit(uint256)'](user1Stake);
+    await gauge.connect(user2)['deposit(uint256)'](user2Stake);
   }
 
   before('setup signers', async () => {
@@ -265,7 +265,8 @@ describe('ChildChainGauge', () => {
           });
 
           // In this case, User 1 gets the maximum boost, since the boosted working balance is above the user's stake.
-          // Here's how adjusted working balances are calculated, considering BPT = bptAmount, and Boost = baseBoost.
+          // Here's how adjusted working balances (WB1* and WB2*) are calculated, considering
+          // BPT = bptAmount, and Boost = baseBoost:
           // WB1* = min(0.4 * BPT + 0.6 * (Boost * 2) / (Boost * 3) * (BPT * 3), BPT) = BPT.
           // WB2* = min(0.4 * (BPT * 2) + 0.6 * Boost / (Boost * 3) * (BPT * 3), 2 BPT) = 1.4 BPT
           // Then, WB2* = 14/10 * WB1*.
@@ -283,26 +284,27 @@ describe('ChildChainGauge', () => {
     const rewardAmount = fp(100);
     const claim = 'claim_rewards(address,address,uint256[])';
     let selectedRewards: TokenList;
-
-    // _addr: address = msg.sender,
-    // _receiver: address = ZERO_ADDRESS,
-    // _reward_indexes: DynArray[uint256, MAX_REWARDS] = []
+    let claimer: SignerWithAddress;
 
     function itTransfersRewardsToClaimer() {
       it("transfers rewards to claimer without affecting other users' rewards", async () => {
-        // Two users with the same stake get half the total rewards each after the distribution period is over.
+        const claimerStake = await gauge.balanceOf(claimer.address);
+        const gaugeTotalSupply = await gauge.totalSupply();
+
+        // Claimer rewards are proportional to their BPT stake in the gauge given that staking time is constant for all
+        // users.
         const expectedBalanceChanges = [
           {
             account: gauge.address,
             changes: selectedRewards.reduce((acc, token) => {
-              acc[token.symbol] = ['near', rewardAmount.div(-2)];
+              acc[token.symbol] = ['near', rewardAmount.mul(claimerStake).div(gaugeTotalSupply).mul(-1)]; // Outgoing
               return acc;
             }, {} as Record<string, Comparison>),
           },
           {
-            account: user1,
+            account: claimer,
             changes: selectedRewards.reduce((acc, token) => {
-              acc[token.symbol] = ['near', rewardAmount.div(2)];
+              acc[token.symbol] = ['near', rewardAmount.mul(claimerStake).div(gaugeTotalSupply)];
               return acc;
             }, {} as Record<string, Comparison>),
           },
@@ -313,10 +315,42 @@ describe('ChildChainGauge', () => {
         // change of all the rewards inconditionally. This way, we ensure that only the selected rewards are transferred
         // and the remaining ones are not affected.
         await expectBalanceChange(
-          () => gauge.connect(user1)[claim](user1.address, ZERO_ADDRESS, rewards.indicesOf(selectedRewards.tokens)),
+          () => gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, rewards.indicesOf(selectedRewards.tokens)),
           rewards,
           expectedBalanceChanges
         );
+      });
+    }
+
+    function itClaimsRewards(user1Stake: BigNumber, user2Stake: BigNumber) {
+      sharedBeforeEach('stake BPT and wait', async () => {
+        await stakeBPT(user1Stake, user2Stake);
+        // Rewards are distributed throughout a week
+        await advanceToTimestamp((await currentTimestamp()).add(WEEK));
+      });
+
+      context('all rewards', () => {
+        sharedBeforeEach(() => {
+          selectedRewards = rewards;
+        });
+
+        itTransfersRewardsToClaimer();
+      });
+
+      context('selecting consecutive rewards', () => {
+        sharedBeforeEach(() => {
+          selectedRewards = rewards.subset(3, 2);
+        });
+
+        itTransfersRewardsToClaimer();
+      });
+
+      context('selecting random rewards', () => {
+        sharedBeforeEach(() => {
+          selectedRewards = new TokenList([rewards.get(4), rewards.get(7), rewards.get(1)]);
+        });
+
+        itTransfersRewardsToClaimer();
       });
     }
 
@@ -335,45 +369,36 @@ describe('ChildChainGauge', () => {
       );
     });
 
-    sharedBeforeEach('deposit reward tokens', async () => {
+    sharedBeforeEach('deposit reward tokens and set claimer', async () => {
       await rewards.mint({ to: admin, amount: rewardAmount });
       await rewards.approve({ from: admin, to: gauge.address });
 
-      // await gauge.connect(admin).deposit_reward_token(DAI.address, rewardAmount);
-      // await gauge.connect(admin).deposit_reward_token(AAVE.address, rewardAmount);
       await Promise.all(
         rewards.addresses.map((reward) => gauge.connect(admin).deposit_reward_token(reward, rewardAmount))
       );
+
+      claimer = user1;
     });
 
-    sharedBeforeEach('stake BPT and wait', async () => {
-      await stakeBPT(bptAmount, bptAmount);
-      // Rewards are distributed throughout a week
-      await advanceToTimestamp((await currentTimestamp()).add(WEEK));
-    });
-
-    context('all rewards', () => {
-      sharedBeforeEach(() => {
-        selectedRewards = rewards;
+    context('when valid token indexes are selected', () => {
+      context('one user', () => {
+        itClaimsRewards(bptAmount, bn(0));
       });
 
-      itTransfersRewardsToClaimer();
-    });
-
-    context('selecting consecutive rewards', () => {
-      sharedBeforeEach(() => {
-        selectedRewards = rewards.subset(3, 2);
+      context('two users with equal stake', () => {
+        itClaimsRewards(bptAmount, bptAmount);
       });
 
-      itTransfersRewardsToClaimer();
+      context('two users with unequal stake', () => {
+        itClaimsRewards(bptAmount.mul(7), bptAmount);
+      });
     });
 
-    context('selecting random rewards', () => {
-      sharedBeforeEach(() => {
-        selectedRewards = new TokenList([rewards.get(4), rewards.get(7), rewards.get(1)]);
+    context('when invalid token indexes are selected', () => {
+      it('stops claiming on the first invalid index', async () => {
+        const tx = await gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [rewards.length + 1, 0, 1, 2]);
+        await expectEvent.notEmitted(await tx.wait(), 'Transfer');
       });
-
-      itTransfersRewardsToClaimer();
     });
   });
 });
