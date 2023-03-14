@@ -14,6 +14,7 @@ import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTr
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { Comparison, expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { random } from 'lodash';
 
 describe('ChildChainGauge', () => {
   let vault: Vault;
@@ -39,6 +40,12 @@ describe('ChildChainGauge', () => {
 
     await gauge.connect(user1)['deposit(uint256)'](user1Stake);
     await gauge.connect(user2)['deposit(uint256)'](user2Stake);
+  }
+
+  // In this case we are using a null implementation in the proxy, so the boost depends on VE balances directly.
+  async function setupBoosts(user1Boost: BigNumber, user2Boost: BigNumber) {
+    await VE.mint(user1.address, user1Boost);
+    await VE.mint(user2.address, user2Boost);
   }
 
   before('setup signers', async () => {
@@ -137,6 +144,19 @@ describe('ChildChainGauge', () => {
         const tx2 = await gauge.connect(user2).user_checkpoint(user2.address);
         expectEvent.notEmitted(await tx2.wait(), 'Transfer');
       });
+
+      it('updates the inflation rate for the period', async () => {
+        const currentWeek = (await currentWeekTimestamp()).div(WEEK);
+        const inflationRateBefore = await gauge.inflation_rate(currentWeek);
+        await gauge.connect(user1).user_checkpoint(user1.address);
+        const inflationRateAfter = await gauge.inflation_rate(currentWeek);
+
+        const nextWeekTimestamp = (await currentWeekTimestamp()).add(WEEK);
+        // new_rate = old_rate + BAL / (next_week_timestamp - current_timestamp)
+        expect(inflationRateAfter).to.be.eq(
+          inflationRateBefore.add(balAmountPerWeek.div(nextWeekTimestamp.sub(await currentTimestamp())))
+        );
+      });
     });
 
     describe('mint', () => {
@@ -201,18 +221,12 @@ describe('ChildChainGauge', () => {
           });
 
           // User 2 has double the stake, so 1/3 of the rewards go to User 1, and 2/3 go to User 2.
-          itMintsRewardsForUsers(balAmountPerWeek.div(3), balAmountPerWeek.div(3).mul(2));
+          itMintsRewardsForUsers(balAmountPerWeek.div(3), balAmountPerWeek.mul(2).div(3));
         });
       });
 
       context('with VE boosts', () => {
         const baseBoost = fp(100);
-
-        // In this case we are using a null implementation in the proxy, so the boost depends on VE balances directly.
-        async function setupBoosts(user1Boost: BigNumber, user2Boost: BigNumber) {
-          await VE.mint(user1.address, user1Boost);
-          await VE.mint(user2.address, user2Boost);
-        }
 
         context('two users, equal BPT stake, only one boost', () => {
           sharedBeforeEach(async () => {
@@ -380,6 +394,8 @@ describe('ChildChainGauge', () => {
 
     function itClaimsRewards(user1Stake: BigNumber, user2Stake: BigNumber) {
       sharedBeforeEach('stake BPT and wait', async () => {
+        // Boosts shouldn't affect rewards; we add a random amount to each user to verify it.
+        await setupBoosts(fp(random(100, 10000)), fp(random(1, 30000)));
         await stakeBPT(user1Stake, user2Stake);
         // Rewards are distributed throughout a week
         await advanceToTimestamp((await currentTimestamp()).add(WEEK));
@@ -416,6 +432,14 @@ describe('ChildChainGauge', () => {
 
         itTransfersRewardsToClaimer(claimSelected);
       });
+
+      context('selecting the same reward more than once', () => {
+        sharedBeforeEach(() => {
+          selectedRewards = new TokenList([rewards.get(4), rewards.get(3), rewards.get(3), rewards.get(3)]);
+        });
+
+        itTransfersRewardsToClaimer(claimSelected);
+      });
     }
 
     sharedBeforeEach('grant add_reward permission to admin', async () => {
@@ -423,28 +447,28 @@ describe('ChildChainGauge', () => {
       await vault.grantPermissionGlobally(action, admin);
     });
 
-    sharedBeforeEach('add reward', async () => {
-      await Promise.all(
-        rewards.addresses.map((reward) =>
-          vault.authorizerAdaptorEntrypoint
-            .connect(admin)
-            .performAction(gauge.address, gauge.interface.encodeFunctionData('add_reward', [reward, admin.address]))
-        )
-      );
-    });
+    context('with all rewards', () => {
+      sharedBeforeEach('add rewards', async () => {
+        await Promise.all(
+          rewards.addresses.map((reward) =>
+            vault.authorizerAdaptorEntrypoint
+              .connect(admin)
+              .performAction(gauge.address, gauge.interface.encodeFunctionData('add_reward', [reward, admin.address]))
+          )
+        );
+      });
 
-    sharedBeforeEach('deposit reward tokens and set claimer', async () => {
-      await rewards.mint({ to: admin, amount: rewardAmount });
-      await rewards.approve({ from: admin, to: gauge.address });
+      sharedBeforeEach('deposit reward tokens and set claimer', async () => {
+        await rewards.mint({ to: admin, amount: rewardAmount });
+        await rewards.approve({ from: admin, to: gauge.address });
 
-      await Promise.all(
-        rewards.addresses.map((reward) => gauge.connect(admin).deposit_reward_token(reward, rewardAmount))
-      );
+        await Promise.all(
+          rewards.addresses.map((reward) => gauge.connect(admin).deposit_reward_token(reward, rewardAmount))
+        );
 
-      claimer = user1;
-    });
+        claimer = user1;
+      });
 
-    context('when valid token indexes are selected', () => {
       context('one user', () => {
         itClaimsRewards(bptAmount, bn(0));
       });
@@ -456,13 +480,24 @@ describe('ChildChainGauge', () => {
       context('two users with unequal stake', () => {
         itClaimsRewards(bptAmount.mul(7), bptAmount);
       });
-    });
 
-    context('when invalid token indexes are selected', () => {
-      it('reverts', async () => {
+      it('reverts with explicit invalid index', async () => {
         await expect(gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [rewards.length])).to.be.revertedWith(
           'INVALID_REWARD_INDEX'
         );
+      });
+    });
+
+    context('with no rewards', () => {
+      it('reverts with explicit invalid index', async () => {
+        await expect(gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [0])).to.be.revertedWith(
+          'INVALID_REWARD_INDEX'
+        );
+      });
+
+      it('it does nothing with implicit indexes', async () => {
+        const tx = await claimAll();
+        expectEvent.notEmitted(await tx.wait(), 'Transfer');
       });
     });
 

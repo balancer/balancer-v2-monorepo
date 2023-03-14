@@ -210,11 +210,13 @@ def _update_liquidity_limit(_user: address, _user_balance: uint256, _total_suppl
     log UpdateLiquidityLimit(_user, _user_balance, _total_supply, working_balance, working_supply)
 
 
-@pure
+@view
 @internal
 def _all_indexes() -> DynArray[uint256, MAX_REWARDS]:
     indexes: DynArray[uint256, MAX_REWARDS] = []
     for i in range(MAX_REWARDS):
+        if i >= self.reward_count:
+            break
         indexes.append(i)
 
     return indexes
