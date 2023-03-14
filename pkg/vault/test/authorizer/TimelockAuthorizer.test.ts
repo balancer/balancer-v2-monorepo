@@ -1460,7 +1460,7 @@ describe('TimelockAuthorizer', () => {
                   await advanceTime(delay);
 
                   await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith(
-                    'SENDER_IS_NOT_EXECUTION_HELPER'
+                    'SENDER_IS_NOT_EXECUTOR'
                   );
 
                   const receipt = await authorizer.execute(id, { from: executors[0] });
@@ -1658,7 +1658,7 @@ describe('TimelockAuthorizer', () => {
             await advanceTime(delay);
 
             await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith(
-              'SENDER_IS_NOT_EXECUTION_HELPER'
+              'SENDER_IS_NOT_EXECUTOR'
             );
           });
         });

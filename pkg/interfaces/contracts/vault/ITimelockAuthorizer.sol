@@ -537,4 +537,6 @@ interface ITimelockAuthorizerPartial {
     function renouncePermission(bytes32 actionId, address where) external;
 }
 
-interface ITimelockAuthorizer is ITimelockAuthorizerPartial, ITimelockAuthorizerManagement {}
+interface ITimelockAuthorizer is ITimelockAuthorizerPartial, ITimelockAuthorizerManagement {
+    // solhint-disable-previous-line no-empty-blocks
+}
