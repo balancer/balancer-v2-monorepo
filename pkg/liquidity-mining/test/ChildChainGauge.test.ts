@@ -410,5 +410,13 @@ describe('ChildChainGauge', () => {
         );
       });
     });
+
+    it('reverts adding BAL as a reward', async () => {
+      await expect(
+        vault.authorizerAdaptorEntrypoint
+          .connect(admin)
+          .performAction(gauge.address, gauge.interface.encodeFunctionData('add_reward', [BAL.address, admin.address]))
+      ).to.be.revertedWith('CANNOT_ADD_BAL_REWARD');
+    });
   });
 });

@@ -620,9 +620,11 @@ def claim_rewards(
 @external
 def add_reward(_reward_token: address, _distributor: address):
     """
-    @notice Set the active reward contract
+    @notice Set the active reward contract.
+    @dev The reward token cannot be BAL, since it is transferred automatically to the pseudo minter during checkpoints.
     """
     assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+    assert _reward_token != BAL, "CANNOT_ADD_BAL_REWARD"
 
     reward_count: uint256 = self.reward_count
     assert reward_count < MAX_REWARDS
@@ -723,8 +725,15 @@ def integrate_checkpoint() -> uint256:
 
 @view
 @external
+def bal_token() -> address:
+    return BAL
+
+
+@view
+@external
 def bal_pseudo_minter() -> address:
     return BAL_PSEUDO_MINTER
+
 
 @view
 @external
