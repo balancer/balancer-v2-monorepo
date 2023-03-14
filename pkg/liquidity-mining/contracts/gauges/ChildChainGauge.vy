@@ -1,4 +1,4 @@
-# @version 0.3.1
+# @version 0.3.3
 """
 @title Child Liquidity Gauge
 @license MIT
@@ -210,8 +210,26 @@ def _update_liquidity_limit(_user: address, _user_balance: uint256, _total_suppl
     log UpdateLiquidityLimit(_user, _user_balance, _total_supply, working_balance, working_supply)
 
 
+@view
 @internal
-def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _receiver: address):
+def _all_indexes() -> DynArray[uint256, MAX_REWARDS]:
+    indexes: DynArray[uint256, MAX_REWARDS] = []
+    for i in range(MAX_REWARDS):
+        if i >= self.reward_count:
+            break
+        indexes.append(i)
+
+    return indexes
+
+
+@internal
+def _checkpoint_rewards(
+    _user: address,
+    _total_supply: uint256,
+    _claim: bool,
+    _receiver: address,
+    _input_reward_indexes: DynArray[uint256, MAX_REWARDS]
+):
     """
     @notice Claim pending rewards and checkpoint rewards for a user
     """
@@ -227,9 +245,15 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
                 receiver = _user
 
     reward_count: uint256 = self.reward_count
-    for i in range(MAX_REWARDS):
-        if i == reward_count:
-            break
+    reward_indexes: DynArray[uint256, MAX_REWARDS] = []
+    if len(_input_reward_indexes) == 0:
+        reward_indexes = self._all_indexes()
+    else:
+        reward_indexes = _input_reward_indexes
+
+    for i in reward_indexes:
+        assert i < reward_count, "INVALID_REWARD_INDEX"
+
         token: address = self.reward_tokens[i]
 
         integral: uint256 = self.reward_data[token].integral
@@ -279,7 +303,9 @@ def _transfer(_from: address, _to: address, _value: uint256):
     has_rewards: bool = self.reward_count != 0
     for addr in [_from, _to]:
         self._checkpoint(addr)
-        self._checkpoint_rewards(addr, total_supply, False, ZERO_ADDRESS)
+        # We need to checkpoint all of the rewards before affecting the gauge token balance for a user,
+        # but to do it safely we need to skip making external calls. Therefore, we set _claim to False.
+        self._checkpoint_rewards(addr, total_supply, False, ZERO_ADDRESS, [])
 
     new_balance: uint256 = self.balanceOf[_from] - _value
     self.balanceOf[_from] = new_balance
@@ -294,7 +320,7 @@ def _transfer(_from: address, _to: address, _value: uint256):
 
 @external
 @nonreentrant("lock")
-def deposit(_value: uint256, _user: address = msg.sender, _claim_rewards: bool = False):
+def deposit(_value: uint256, _user: address = msg.sender):
     """
     @notice Deposit `_value` LP tokens
     @param _value Number of tokens to deposit
@@ -308,7 +334,9 @@ def deposit(_value: uint256, _user: address = msg.sender, _claim_rewards: bool =
     new_balance: uint256 = self.balanceOf[_user] + _value
 
     if self.reward_count != 0:
-        self._checkpoint_rewards(_user, total_supply, _claim_rewards, ZERO_ADDRESS)
+        # We need to checkpoint all of the rewards before affecting the gauge token balance for a user,
+        # but to do it safely we need to skip making external calls. Therefore, we set _claim to False.
+        self._checkpoint_rewards(_user, total_supply, False, ZERO_ADDRESS, [])
 
     total_supply += _value
 
@@ -325,7 +353,7 @@ def deposit(_value: uint256, _user: address = msg.sender, _claim_rewards: bool =
 
 @external
 @nonreentrant("lock")
-def withdraw(_value: uint256, _user: address = msg.sender, _claim_rewards: bool = False):
+def withdraw(_value: uint256, _user: address = msg.sender):
     """
     @notice Withdraw `_value` LP tokens
     @param _value Number of tokens to withdraw
@@ -339,7 +367,9 @@ def withdraw(_value: uint256, _user: address = msg.sender, _claim_rewards: bool 
     new_balance: uint256 = self.balanceOf[msg.sender] - _value
 
     if self.reward_count != 0:
-        self._checkpoint_rewards(_user, total_supply, _claim_rewards, ZERO_ADDRESS)
+        # We need to checkpoint all of the rewards before affecting the gauge token balance for a user,
+        # but to do it safely we need to skip making external calls. Therefore, we set _claim to False.
+        self._checkpoint_rewards(_user, total_supply, False, ZERO_ADDRESS, [])
 
     total_supply -= _value
 
@@ -571,25 +601,32 @@ def set_rewards_receiver(_receiver: address):
 
 @external
 @nonreentrant('lock')
-def claim_rewards(_addr: address = msg.sender, _receiver: address = ZERO_ADDRESS):
+def claim_rewards(
+    _addr: address = msg.sender,
+    _receiver: address = ZERO_ADDRESS,
+    _reward_indexes: DynArray[uint256, MAX_REWARDS] = []
+):
     """
     @notice Claim available reward tokens for `_addr`
     @param _addr Address to claim for
     @param _receiver Address to transfer rewards to - if set to
                      ZERO_ADDRESS, uses the default reward receiver
                      for the caller
+    @param _reward_indexes Array with indexes of the rewards to be checkpointed (all of them by default)
     """
     if _receiver != ZERO_ADDRESS:
         assert _addr == msg.sender  # dev: cannot redirect when claiming for another user
-    self._checkpoint_rewards(_addr, self.totalSupply, True, _receiver)
+    self._checkpoint_rewards(_addr, self.totalSupply, True, _receiver, _reward_indexes)
 
 
 @external
 def add_reward(_reward_token: address, _distributor: address):
     """
-    @notice Set the active reward contract
+    @notice Set the active reward contract.
+    @dev The reward token cannot be BAL, since it is transferred automatically to the pseudo minter during checkpoints.
     """
     assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+    assert _reward_token != BAL, "CANNOT_ADD_BAL_REWARD"
 
     reward_count: uint256 = self.reward_count
     assert reward_count < MAX_REWARDS
@@ -616,7 +653,8 @@ def set_reward_distributor(_reward_token: address, _distributor: address):
 def deposit_reward_token(_reward_token: address, _amount: uint256):
     assert msg.sender == self.reward_data[_reward_token].distributor
 
-    self._checkpoint_rewards(ZERO_ADDRESS, self.totalSupply, False, ZERO_ADDRESS)
+    # It is safe to checkpoint all the existing rewards as long as `_claim` is set to false (i.e. no external calls).
+    self._checkpoint_rewards(ZERO_ADDRESS, self.totalSupply, False, ZERO_ADDRESS, [])
 
     response: Bytes[32] = raw_call(
         _reward_token,
@@ -689,8 +727,15 @@ def integrate_checkpoint() -> uint256:
 
 @view
 @external
+def bal_token() -> address:
+    return BAL
+
+
+@view
+@external
 def bal_pseudo_minter() -> address:
     return BAL_PSEUDO_MINTER
+
 
 @view
 @external
