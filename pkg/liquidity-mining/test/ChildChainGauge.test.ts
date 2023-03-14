@@ -523,6 +523,88 @@ describe('ChildChainGauge', () => {
       });
     });
 
+    context('with broken rewards', () => {
+      let functionalReward: Contract;
+
+      sharedBeforeEach('add rewards and break token after deposit', async () => {
+        // Add and deposit broken reward
+        const brokenERC20 = await deploy('v2-solidity-utils/BreakableERC20Mock', { args: ['Broken token', 'BRK'] });
+        await vault.authorizerAdaptorEntrypoint
+          .connect(admin)
+          .performAction(
+            gauge.address,
+            gauge.interface.encodeFunctionData('add_reward', [brokenERC20.address, admin.address])
+          );
+        await brokenERC20.mint(admin.address, rewardAmount);
+        await brokenERC20.connect(admin).approve(gauge.address, rewardAmount);
+
+        await gauge.connect(admin).deposit_reward_token(brokenERC20.address, rewardAmount);
+        await brokenERC20.setIsBroken(true);
+
+        // Add and deposit functional reward
+        functionalReward = await deploy('v2-solidity-utils/TestToken', { args: ['Test functionalReward', 'RWRD', 18] });
+        await vault.authorizerAdaptorEntrypoint
+          .connect(admin)
+          .performAction(
+            gauge.address,
+            gauge.interface.encodeFunctionData('add_reward', [functionalReward.address, admin.address])
+          );
+        await functionalReward.mint(admin.address, rewardAmount);
+        await functionalReward.connect(admin).approve(gauge.address, rewardAmount);
+
+        await gauge.connect(admin).deposit_reward_token(functionalReward.address, rewardAmount);
+
+        // Only one user
+        await stakeBPT(bptAmount, bn(0));
+        await advanceToTimestamp((await currentTimestamp()).add(WEEK));
+        claimer = user1;
+      });
+
+      it('reverts claiming broken rewards with explicit index', async () => {
+        await expect(gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [0])).to.be.revertedWith(
+          'BROKEN_TOKEN'
+        );
+      });
+
+      it('reverts claiming broken rewards with implicit indexes', async () => {
+        await expect(claimAll()).to.be.revertedWith('BROKEN_TOKEN');
+      });
+
+      it('can still claim working rewards', async () => {
+        const tx = await gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [1]);
+        const event = expectTransferEvent(
+          await tx.wait(),
+          { from: gauge.address, to: claimer.address },
+          functionalReward.address
+        );
+
+        expect(event.args.value).to.be.almostEqual(rewardAmount);
+      });
+
+      it('can still deposit', async () => {
+        const stake = fp(1000);
+        await BPT.mint(user1.address, stake);
+        await BPT.connect(user1).approve(gauge.address, stake);
+
+        const tx = await gauge.connect(user1)['deposit(uint256)'](stake);
+        expectTransferEvent(await tx.wait(), { from: user1.address, to: gauge.address, value: stake }, BPT.address);
+      });
+
+      it('can still withdraw', async () => {
+        const tx = await gauge.connect(user1)['withdraw(uint256)'](bptAmount);
+        expectTransferEvent(await tx.wait(), { from: gauge.address, to: user1.address, value: bptAmount }, BPT.address);
+      });
+
+      it('can still transfer', async () => {
+        const tx = await gauge.connect(user1)['transfer(address,uint256)'](user2.address, bptAmount);
+        expectTransferEvent(
+          await tx.wait(),
+          { _from: user1.address, _to: user2.address, _value: bptAmount },
+          gauge.address
+        );
+      });
+    });
+
     it('reverts adding BAL as a reward', async () => {
       await expect(
         vault.authorizerAdaptorEntrypoint
