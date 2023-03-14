@@ -565,7 +565,8 @@ contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, Reentran
      * @dev Schedules an execution of `data` at contract `where` with a `delay`
      * allowing only `executors` to invoke the action after the delay.
      *
-     * @dev Doesn't verify that msg.sender has the the right to schedule. Beware.
+     * @dev This performs no permission checks on `msg.sender` of any kind. The caller of this function should perform
+     * any appropriate checks.
      */
     function _scheduleWithDelay(
         address where,
