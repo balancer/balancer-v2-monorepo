@@ -21,7 +21,7 @@ describe('ChildChainGauge', () => {
   let gaugeFactory: Contract, gauge: Contract;
   let pseudoMinter: Contract, veDelegationProxy: Contract;
   let BAL: Contract, VE: Contract, BPT: Contract;
-  let rewards: TokenList;
+  let allRewards: TokenList;
 
   let admin: SignerWithAddress, user1: SignerWithAddress, user2: SignerWithAddress, other: SignerWithAddress;
 
@@ -59,7 +59,7 @@ describe('ChildChainGauge', () => {
     VE = await deploy('v2-solidity-utils/TestToken', { args: ['Voting Escrow', 'veBAL', 18] });
     BPT = await deploy('v2-solidity-utils/TestToken', { args: ['Balancer Pool Test token', 'BPTST', 18] });
 
-    rewards = await TokenList.create(8);
+    allRewards = await TokenList.create(8);
 
     // Using zero address as the implementation will forward the balance queries to VE directly.
     veDelegationProxy = await deploy('VotingEscrowDelegationProxy', {
@@ -299,9 +299,10 @@ describe('ChildChainGauge', () => {
 
     const claim = 'claim_rewards(address,address,uint256[])';
     const claimSelected = () =>
-      gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, rewards.indicesOf(selectedRewards.tokens));
+      gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, allRewards.indicesOf(selectedRewards.tokens));
     const claimAll = () => gauge.connect(claimer)['claim_rewards(address,address)'](claimer.address, ZERO_ADDRESS);
 
+    let addedRewards: TokenList;
     let selectedRewards: TokenList;
     let claimer: SignerWithAddress;
 
@@ -338,7 +339,7 @@ describe('ChildChainGauge', () => {
         // We claim only the selected ones by sending the indices that correspond to them, but we monitor the balance
         // change of all the rewards inconditionally. This way, we ensure that only the selected rewards are transferred
         // and the remaining ones are not affected.
-        await expectBalanceChange(claimFunction, rewards, expectedBalanceChanges);
+        await expectBalanceChange(claimFunction, addedRewards, expectedBalanceChanges);
       });
 
       it('updates claimed balance for claimer', async () => {
@@ -403,7 +404,7 @@ describe('ChildChainGauge', () => {
 
       context('all rewards with no explicit indexes', () => {
         sharedBeforeEach(() => {
-          selectedRewards = rewards;
+          selectedRewards = addedRewards;
         });
 
         itTransfersRewardsToClaimer(claimAll);
@@ -411,7 +412,7 @@ describe('ChildChainGauge', () => {
 
       context('all rewards using indexes', () => {
         sharedBeforeEach(() => {
-          selectedRewards = rewards;
+          selectedRewards = addedRewards;
         });
 
         itTransfersRewardsToClaimer(claimSelected);
@@ -419,7 +420,7 @@ describe('ChildChainGauge', () => {
 
       context('selecting consecutive rewards', () => {
         sharedBeforeEach(() => {
-          selectedRewards = rewards.subset(3, 2);
+          selectedRewards = addedRewards.subset(3, 2);
         });
 
         itTransfersRewardsToClaimer(claimSelected);
@@ -427,7 +428,7 @@ describe('ChildChainGauge', () => {
 
       context('selecting random rewards', () => {
         sharedBeforeEach(() => {
-          selectedRewards = new TokenList([rewards.get(4), rewards.get(7), rewards.get(1)]);
+          selectedRewards = new TokenList([addedRewards.get(4), addedRewards.get(3), addedRewards.get(1)]);
         });
 
         itTransfersRewardsToClaimer(claimSelected);
@@ -435,22 +436,22 @@ describe('ChildChainGauge', () => {
 
       context('selecting the same reward more than once', () => {
         sharedBeforeEach(() => {
-          selectedRewards = new TokenList([rewards.get(4), rewards.get(3), rewards.get(3), rewards.get(3)]);
+          selectedRewards = new TokenList([
+            addedRewards.get(4),
+            addedRewards.get(3),
+            addedRewards.get(3),
+            addedRewards.get(3),
+          ]);
         });
 
         itTransfersRewardsToClaimer(claimSelected);
       });
     }
 
-    sharedBeforeEach('grant add_reward permission to admin', async () => {
-      const action = await actionId(vault.authorizerAdaptorEntrypoint, 'add_reward', gauge.interface);
-      await vault.grantPermissionGlobally(action, admin);
-    });
-
-    context('with all rewards', () => {
+    function itAddsAndClaimsRewards() {
       sharedBeforeEach('add rewards', async () => {
         await Promise.all(
-          rewards.addresses.map((reward) =>
+          addedRewards.addresses.map((reward) =>
             vault.authorizerAdaptorEntrypoint
               .connect(admin)
               .performAction(gauge.address, gauge.interface.encodeFunctionData('add_reward', [reward, admin.address]))
@@ -459,11 +460,11 @@ describe('ChildChainGauge', () => {
       });
 
       sharedBeforeEach('deposit reward tokens and set claimer', async () => {
-        await rewards.mint({ to: admin, amount: rewardAmount });
-        await rewards.approve({ from: admin, to: gauge.address });
+        await addedRewards.mint({ to: admin, amount: rewardAmount });
+        await addedRewards.approve({ from: admin, to: gauge.address });
 
         await Promise.all(
-          rewards.addresses.map((reward) => gauge.connect(admin).deposit_reward_token(reward, rewardAmount))
+          addedRewards.addresses.map((reward) => gauge.connect(admin).deposit_reward_token(reward, rewardAmount))
         );
 
         claimer = user1;
@@ -482,10 +483,31 @@ describe('ChildChainGauge', () => {
       });
 
       it('reverts with explicit invalid index', async () => {
-        await expect(gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [rewards.length])).to.be.revertedWith(
-          'INVALID_REWARD_INDEX'
-        );
+        await expect(
+          gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [addedRewards.length])
+        ).to.be.revertedWith('INVALID_REWARD_INDEX');
       });
+    }
+
+    sharedBeforeEach('grant add_reward permission to admin', async () => {
+      const action = await actionId(vault.authorizerAdaptorEntrypoint, 'add_reward', gauge.interface);
+      await vault.grantPermissionGlobally(action, admin);
+    });
+
+    context('with all rewards', () => {
+      sharedBeforeEach(() => {
+        addedRewards = allRewards;
+      });
+
+      itAddsAndClaimsRewards();
+    });
+
+    context('with some rewards', () => {
+      sharedBeforeEach(() => {
+        addedRewards = allRewards.subset(5);
+      });
+
+      itAddsAndClaimsRewards();
     });
 
     context('with no rewards', () => {
