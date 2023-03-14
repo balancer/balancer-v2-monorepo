@@ -85,14 +85,36 @@ export function checkActionIdUniqueness(network: string): void {
   const expectedDuplicateActionIdsMapping =
     safeReadJsonFile<Record<string, ContractActionIdData>>(expectedCollisionsFilePath);
 
-  if (JSON.stringify(duplicateActionIdsMapping) === JSON.stringify(expectedDuplicateActionIdsMapping)) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sortObject = (obj: Record<string, any>): Record<string, any> =>
+    Object.keys(obj)
+      .sort()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .reduce((acc: Record<string, any>, key: string) => {
+        const val = obj[key];
+        if (typeof val === 'object' && !Array.isArray(val) && val !== null) {
+          acc[key] = sortObject(val);
+        } else {
+          acc[key] = val;
+        }
+        return acc;
+      }, {});
+
+  // If the entries are actually identical, but appear in a different order in the actual and expected files,
+  // then the stringified top-level objects will not match: but each individual instance will match, so
+  // every item in the for loop will "continue". This will still throw an Error and fail, even though there
+  // is no actual problem. To avoid this, sort the files before doing the top-level comparison.
+  if (
+    JSON.stringify(sortObject(duplicateActionIdsMapping)) ===
+    JSON.stringify(sortObject(expectedDuplicateActionIdsMapping))
+  ) {
     logger.success(`Verified that no contracts unexpectedly share action IDs for ${network}`);
   } else {
     for (const [actionId, instances] of Object.entries(duplicateActionIdsMapping)) {
       if (JSON.stringify(instances) === JSON.stringify(expectedDuplicateActionIdsMapping[actionId])) {
-        // We expect some collisions of actionIds for cases in which contracts which use the AuthorizerAdaptor
-        // have contracts which share the same signature. e.g. liquidity gauges and factories.
-        // If the collisions match *exactly* with the expected list of collisions then we can ignore them.
+        // We expect some collisions of actionIds for cases where contracts share the same signature,
+        // such as those using the AuthorizerAdaptor or BatchRelayer. If the collisions match *exactly*
+        // with the expected list of collisions, we can ignore them.
         continue;
       }
 
