@@ -19,6 +19,65 @@ pragma experimental ABIEncoderV2;
  * @dev We need this interface to avoid overriding functions at TimelockAuthorizer
  */
 interface ITimelockAuthorizerManagement {
+    /**
+     * @notice Emitted when a root change is scheduled.
+     */
+    event RootChangeScheduled(address indexed newRoot, uint256 indexed scheduledExecutionId);
+
+    /**
+     * @notice Emitted when an executor is added for a scheduled execution `scheduledExecutionId`.
+     */
+    event ExecutorAdded(uint256 indexed scheduledExecutionId, address indexed executor);
+
+    /**
+     * @notice Emitted when an account is added as a granter for `actionId` in `where`.
+     */
+    event GranterAdded(bytes32 indexed actionId, address indexed account, address indexed where);
+
+    /**
+     * @notice Emitted when an account is removed as a granter `actionId` in `where`.
+     */
+    event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
+
+    /**
+     * @notice Emitted when `account` is added as a revoker in `where`.
+     */
+    event RevokerAdded(address indexed account, address indexed where);
+
+    /**
+     * @notice Emitted when an account is removed as a revoker in `where`.
+     */
+    event RevokerRemoved(address indexed account, address indexed where);
+
+    /**
+     * @notice Emitted when a canceler is added for a scheduled execution `scheduledExecutionId`.
+     */
+    event CancelerAdded(uint256 indexed scheduledExecutionId, address indexed canceler);
+
+    /**
+     * @notice Emitted when a canceler is removed for a scheduled execution `scheduledExecutionId`.
+     */
+    event CancelerRemoved(uint256 indexed scheduledExecutionId, address indexed canceler);
+
+    /**
+     * @notice Emitted when an execution `scheduledExecutionId` is executed.
+     */
+    event ExecutionExecuted(uint256 indexed scheduledExecutionId);
+
+    /**
+     * @notice Emitted when an execution `scheduledExecutionId` is cancelled.
+     */
+    event ExecutionCancelled(uint256 indexed scheduledExecutionId);
+
+    /**
+     * @notice Emitted when a new `root` is set.
+     */
+    event RootSet(address indexed root);
+
+    /**
+     * @notice Emitted when a new `pendingRoot` is set. The new account must claim ownership for it to take effect.
+     */
+    event PendingRootSet(address indexed pendingRoot);
     struct ScheduledExecution {
         address where;
         bytes data;
@@ -224,6 +283,83 @@ interface ITimelockAuthorizerManagement {
  * @dev We need this interface to avoid overriding functions at TimelockAuthorizer
  */
 interface ITimelockAuthorizerPartial {
+    /**
+     * @notice Emitted when a revoke permission is scheduled.
+     */
+    event RevokePermissionScheduled(
+        bytes32 indexed actionId,
+        address indexed account,
+        address indexed where,
+        uint256 scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a grant permission is scheduled.
+     */
+    event GrantPermissionScheduled(
+        bytes32 indexed actionId,
+        address indexed account,
+        address indexed where,
+        uint256 scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a revoke delay change is scheduled.
+     */
+    event RevokeDelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a grant delay change is scheduled.
+     */
+    event GrantDelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a delay change is scheduled.
+     */
+    event DelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a new `delay` is set in order to perform action `actionId`.
+     */
+    event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
+
+    /**
+     * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
+     */
+    event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+
+    /**
+     * @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
+     */
+    event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
+
+    /**
+     * @notice Emitted when a new `delay` is set in order to revoke permission to execute action `actionId`.
+     */
+    event RevokeDelaySet(bytes32 indexed actionId, uint256 delay);
+
+    /**
+     * @notice Emitted when `account` is granted permission to perform action `actionId` in target `where`.
+     */
+    event PermissionGranted(bytes32 indexed actionId, address indexed account, address indexed where);
+
+    /**
+     * @notice Emitted when `account`'s permission to perform action `actionId` in target `where` is revoked.
+     */
+    event PermissionRevoked(bytes32 indexed actionId, address indexed account, address indexed where);
+
     /**
      * @notice Returns the execution delay for action `actionId`.
      */
