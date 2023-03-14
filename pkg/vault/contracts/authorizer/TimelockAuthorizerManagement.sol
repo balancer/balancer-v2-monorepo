@@ -174,7 +174,7 @@ contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, Reentran
     }
 
     /**
-     * @notice Returns true if `account` is the root.
+     * @inheritdoc ITimelockAuthorizer
      */
     function isRoot(address account) public view override returns (bool) {
         return account == _root;
