@@ -34,20 +34,14 @@ import "./TimelockExecutionHelper.sol";
  *
  * See `TimelockAuthorizer`
  */
-abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, ReentrancyGuard {
+abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, ReentrancyGuard {
     using Address for address;
 
-    /**
-     * @notice A sentinel value for `where` that will match any address.
-     */
-    address public constant EVERYWHERE = address(-1);
+    // solhint-disable-next-line const-name-snakecase
+    address private constant _everywhere = address(-1);
 
-    /**
-     * @notice A constant value for `scheduledExecutionId` that will match any execution Id.
-     * Cancelers assigned to this Id will be able to cancel *any* scheduled action,
-     * which is very useful for e.g. emergency response dedicated teams that analyze these.
-     */
-    uint256 public constant GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
+    // solhint-disable-next-line const-name-snakecase
+    uint256 internal constant _global_canceler_scheduled_execution_id = type(uint256).max;
 
     TimelockExecutionHelper private immutable _executionHelper;
     IAuthentication private immutable _vault;
@@ -67,7 +61,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
     // scheduled execution id => account => is canceler
     mapping(uint256 => mapping(address => bool)) private _isCanceler;
 
-    ITimelockAuthorizerManagement.ScheduledExecution[] private _scheduledExecutions;
+    ITimelockAuthorizer.ScheduledExecution[] private _scheduledExecutions;
 
     /**
      * @dev Prevents a TimelockAuthorizer function from being called directly, making it only possible to call it by
@@ -111,6 +105,16 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
         _vault = vault;
         _executionHelper = new TimelockExecutionHelper();
         _rootTransferDelay = rootTransferDelay;
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function EVERYWHERE() public pure override returns (address) {
+        return _everywhere;
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID() public pure override returns (uint256) {
+        return _global_canceler_scheduled_execution_id;
     }
 
     /**
@@ -170,14 +174,14 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
         address account,
         address where
     ) public view override returns (bool) {
-        return _isGranter[actionId][account][where] || _isGranter[actionId][account][EVERYWHERE] || isRoot(account);
+        return _isGranter[actionId][account][where] || _isGranter[actionId][account][EVERYWHERE()] || isRoot(account);
     }
 
     /**
      * @notice Returns true if `account` is allowed to revoke permissions in target `where` for all actions.
      */
     function isRevoker(address account, address where) public view override returns (bool) {
-        return _isRevoker[account][where] || _isRevoker[account][EVERYWHERE] || isRoot(account);
+        return _isRevoker[account][where] || _isRevoker[account][EVERYWHERE()] || isRoot(account);
     }
 
     /**
@@ -187,7 +191,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
         external
         view
         override
-        returns (ITimelockAuthorizerManagement.ScheduledExecution memory)
+        returns (ITimelockAuthorizer.ScheduledExecution memory)
     {
         return _scheduledExecutions[scheduledExecutionId];
     }
@@ -206,9 +210,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
     function canExecute(uint256 scheduledExecutionId) external view override returns (bool) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
 
-
-            ITimelockAuthorizerManagement.ScheduledExecution storage scheduledExecution
-         = _scheduledExecutions[scheduledExecutionId];
+        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         return
             !scheduledExecution.executed &&
             !scheduledExecution.cancelled &&
@@ -222,7 +224,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
     function isCanceler(uint256 scheduledExecutionId, address account) public view override returns (bool) {
         return
             _isCanceler[scheduledExecutionId][account] ||
-            _isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID][account] ||
+            _isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID()][account] ||
             isRoot(account);
     }
 
@@ -288,9 +290,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
     function execute(uint256 scheduledExecutionId) external override nonReentrant returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
 
-
-            ITimelockAuthorizerManagement.ScheduledExecution storage scheduledExecution
-         = _scheduledExecutions[scheduledExecutionId];
+        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
@@ -325,9 +325,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
     function cancel(uint256 scheduledExecutionId) external override {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
 
-
-            ITimelockAuthorizerManagement.ScheduledExecution storage scheduledExecution
-         = _scheduledExecutions[scheduledExecutionId];
+        ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
 
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
@@ -363,7 +361,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
         // The root account is always a canceler, and this cannot be revoked.
         require(!isRoot(account), "CANNOT_REMOVE_ROOT_CANCELER");
 
-        if (_isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID][account]) {
+        if (_isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID()][account]) {
             // If an account is a global canceler, then it must explicitly lose this global privilege. This prevents
             // scenarios where an account has their canceler status revoked over a specific scheduled execution id, but
             // they can still cancel it because they have global permission.
@@ -371,7 +369,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
             // be able to cancel some scheduled executions after losing global privilege. This is considered an unlikely
             // scenario, and would require manual removal of the specific canceler privileges even after removal
             // of the global one.
-            require(scheduledExecutionId == GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, "ACCOUNT_IS_GLOBAL_CANCELER");
+            require(scheduledExecutionId == GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID(), "ACCOUNT_IS_GLOBAL_CANCELER");
         } else {
             // Alternatively, they must currently be a canceler in order to be revoked.
             require(_isCanceler[scheduledExecutionId][account], "ACCOUNT_IS_NOT_CANCELER");
@@ -441,8 +439,8 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
         // single contract from global granters. As mentioned in `addGranter`, it is possible for an account to have
         // both global and specific permissions over a given contract: in this case, the global permission must be
         // removed before the specific ones can be addressed.
-        if (_isGranter[actionId][account][EVERYWHERE]) {
-            require(where == EVERYWHERE, "GRANTER_IS_GLOBAL");
+        if (_isGranter[actionId][account][EVERYWHERE()]) {
+            require(where == EVERYWHERE(), "GRANTER_IS_GLOBAL");
         }
 
         _isGranter[actionId][account][where] = false;
@@ -465,7 +463,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
 
         require(!isRevoker(account, where), "ACCOUNT_IS_ALREADY_REVOKER");
         // Note that it's possible for the `account` to be a revoker in a specific `where`, and
-        // later receive permission over `EVERYWHERE`, resulting in 'duplicate' permissions. While this isn't
+        // later receive permission over `EVERYWHERE()`, resulting in 'duplicate' permissions. While this isn't
         // necessarily an issue, removing the revoker status will require undoing the actions in reverse order.
         // To avoid these issues, it's recommended to remove any prior revoker status over specific contracts before
         // granting an account global revoker.
@@ -493,8 +491,8 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
         // single contract from global revokers. As mentioned in `addRevoker`, it is possible for an account to have
         // both global and specific permissions over a given contract: in this case, the global permission must be
         // removed before the specific ones can be addressed.
-        if (_isRevoker[account][EVERYWHERE]) {
-            require(where == EVERYWHERE, "REVOKER_IS_GLOBAL");
+        if (_isRevoker[account][EVERYWHERE()]) {
+            require(where == EVERYWHERE(), "REVOKER_IS_GLOBAL");
         }
 
         _isRevoker[account][where] = false;
@@ -521,7 +519,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement,
         bool protected = executors.length > 0;
 
         _scheduledExecutions.push(
-            ITimelockAuthorizerManagement.ScheduledExecution({
+            ITimelockAuthorizer.ScheduledExecution({
                 where: where,
                 data: data,
                 executed: false,

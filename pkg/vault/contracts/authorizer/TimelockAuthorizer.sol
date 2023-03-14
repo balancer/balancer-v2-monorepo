@@ -53,13 +53,12 @@ import "./TimelockAuthorizerManagement.sol";
  * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
  * is necessary in order to be able to call these.
  */
-contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, TimelockAuthorizerManagement {
-    // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
-    // an arbitrarily long delay.
-    uint256 public constant MAX_DELAY = 2 * (365 days);
+contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
+    // solhint-disable-next-line const-name-snakecase
+    uint256 private constant _max_delay = 2 * (365 days);
 
-    // We need a minimum delay period to ensure that all delay changes may be properly scrutinised.
-    uint256 public constant MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = 5 days;
+    // solhint-disable-next-line const-name-snakecase
+    uint256 private constant _minimum_change_delay_execution_delay = 5 days;
 
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
@@ -81,6 +80,16 @@ contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, Timelock
     ) TimelockAuthorizerManagement(initialRoot, nextRoot, authorizerAdaptorEntrypoint.getVault(), rootTransferDelay) {
         _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function MAX_DELAY() public pure override returns (uint256) {
+        return _max_delay;
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function MINIMUM_CHANGE_DELAY_EXECUTION_DELAY() public pure override returns (uint256) {
+        return _minimum_change_delay_execution_delay;
     }
 
     /**
@@ -142,7 +151,7 @@ contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, Timelock
     ) public view override returns (bool) {
         return
             _isPermissionGranted[getPermissionId(actionId, account, where)] ||
-            _isPermissionGranted[getPermissionId(actionId, account, EVERYWHERE)];
+            _isPermissionGranted[getPermissionId(actionId, account, EVERYWHERE())];
     }
 
     /**
@@ -252,7 +261,7 @@ contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, Timelock
         address[] memory executors
     ) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
-        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
+        require(newDelay <= MAX_DELAY(), "DELAY_TOO_LARGE");
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_delaysPerActionId[actionId], newDelay);
 
@@ -294,7 +303,7 @@ contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, Timelock
         address[] memory executors
     ) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
-        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
+        require(newDelay <= MAX_DELAY(), "DELAY_TOO_LARGE");
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_grantDelays[actionId], newDelay);
 
@@ -336,7 +345,7 @@ contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, Timelock
         address[] memory executors
     ) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
-        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
+        require(newDelay <= MAX_DELAY(), "DELAY_TOO_LARGE");
 
         uint256 executionDelay = _getDelayChangeExecutionDelay(_revokeDelays[actionId], newDelay);
 
@@ -559,8 +568,8 @@ contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, Timelock
 
         return
             newDelay < currentDelay
-                ? Math.max(currentDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY)
-                : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
+                ? Math.max(currentDelay - newDelay, MINIMUM_CHANGE_DELAY_EXECUTION_DELAY())
+                : MINIMUM_CHANGE_DELAY_EXECUTION_DELAY();
     }
 
     /**

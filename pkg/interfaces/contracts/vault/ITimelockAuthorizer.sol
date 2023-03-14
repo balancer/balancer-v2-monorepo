@@ -18,7 +18,16 @@ pragma experimental ABIEncoderV2;
 /**
  * @dev We need this interface to avoid overriding functions at TimelockAuthorizer
  */
-interface ITimelockAuthorizerManagement {
+interface ITimelockAuthorizer {
+    struct ScheduledExecution {
+        address where;
+        bytes data;
+        bool executed;
+        bool cancelled;
+        bool protected;
+        uint256 executableAt;
+    }
+
     /**
      * @notice Emitted when a root change is scheduled.
      */
@@ -78,14 +87,110 @@ interface ITimelockAuthorizerManagement {
      * @notice Emitted when a new `pendingRoot` is set. The new account must claim ownership for it to take effect.
      */
     event PendingRootSet(address indexed pendingRoot);
-    struct ScheduledExecution {
-        address where;
-        bytes data;
-        bool executed;
-        bool cancelled;
-        bool protected;
-        uint256 executableAt;
-    }
+
+    /**
+     * @notice Emitted when a revoke permission is scheduled.
+     */
+    event RevokePermissionScheduled(
+        bytes32 indexed actionId,
+        address indexed account,
+        address indexed where,
+        uint256 scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a grant permission is scheduled.
+     */
+    event GrantPermissionScheduled(
+        bytes32 indexed actionId,
+        address indexed account,
+        address indexed where,
+        uint256 scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a revoke delay change is scheduled.
+     */
+    event RevokeDelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a grant delay change is scheduled.
+     */
+    event GrantDelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a delay change is scheduled.
+     */
+    event DelayChangeScheduled(
+        bytes32 indexed actionId,
+        uint256 indexed newDelay,
+        uint256 indexed scheduledExecutionId
+    );
+
+    /**
+     * @notice Emitted when a new `delay` is set in order to perform action `actionId`.
+     */
+    event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
+
+    /**
+     * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
+     */
+    event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
+
+    /**
+     * @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
+     */
+    event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
+
+    /**
+     * @notice Emitted when a new `delay` is set in order to revoke permission to execute action `actionId`.
+     */
+    event RevokeDelaySet(bytes32 indexed actionId, uint256 delay);
+
+    /**
+     * @notice Emitted when `account` is granted permission to perform action `actionId` in target `where`.
+     */
+    event PermissionGranted(bytes32 indexed actionId, address indexed account, address indexed where);
+
+    /**
+     * @notice Emitted when `account`'s permission to perform action `actionId` in target `where` is revoked.
+     */
+    event PermissionRevoked(bytes32 indexed actionId, address indexed account, address indexed where);
+
+    /**
+     * @notice A constant value for `scheduledExecutionId` that will match any execution Id.
+     * Cancelers assigned to this Id will be able to cancel *any* scheduled action,
+     * which is very useful for e.g. emergency response dedicated teams that analyze these.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID() external view returns (uint256);
+
+    /**
+     * @notice A sentinel value for `where` that will match any address.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function EVERYWHERE() external view returns (address);
+
+    /**
+     * @notice We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through
+     *         setting an arbitrarily long delay.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function MAX_DELAY() external view returns (uint256);
+
+    /**
+     * @notice We need a minimum delay period to ensure that all delay changes may be properly scrutinised.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function MINIMUM_CHANGE_DELAY_EXECUTION_DELAY() external view returns (uint256);
 
     /**
      * @notice Returns true if `account` is the root.
@@ -161,6 +266,54 @@ interface ITimelockAuthorizerManagement {
      * @notice Schedules an execution to change the root address to `newRoot`.
      */
     function scheduleRootChange(address newRoot, address[] memory executors) external returns (uint256);
+
+    /**
+     * @notice Returns the execution delay for action `actionId`.
+     */
+    function getActionIdDelay(bytes32 actionId) external view returns (uint256);
+
+    /**
+     * @notice Returns the execution delay for granting permission for action `actionId`.
+     */
+    function getActionIdGrantDelay(bytes32 actionId) external view returns (uint256);
+
+    /**
+     * @notice Returns the execution delay for revoking permission for action `actionId`.
+     */
+    function getActionIdRevokeDelay(bytes32 actionId) external view returns (uint256);
+
+    /**
+     * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
+     */
+    function getPermissionId(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external pure returns (bytes32);
+
+    /**
+     * @notice Returns true if `account` has the permission defined by action `actionId` and target `where`.
+     * @dev This function is specific for the strict permission defined by the tuple `(actionId, where)`: `account` may
+     * instead hold the global permission for the action `actionId`, also granting them permission on `where`, but this
+     * function would return false regardless.
+     *
+     * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
+     * a given action.
+     */
+    function isPermissionGrantedOnTarget(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external view returns (bool);
+
+    /**
+     * @notice Returns true if `account` has permission over the action `actionId` in target `where`.
+     */
+    function hasPermission(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external view returns (bool);
 
     /**
      * @notice Sets the pending root address to `pendingRoot`.
@@ -277,136 +430,6 @@ interface ITimelockAuthorizerManagement {
      * doesn't seem like it will ever be required - revokers are typically subDAOs.
      */
     function removeRevoker(address account, address where) external;
-}
-
-/**
- * @dev We need this interface to avoid overriding functions at TimelockAuthorizer
- */
-interface ITimelockAuthorizerPartial {
-    /**
-     * @notice Emitted when a revoke permission is scheduled.
-     */
-    event RevokePermissionScheduled(
-        bytes32 indexed actionId,
-        address indexed account,
-        address indexed where,
-        uint256 scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a grant permission is scheduled.
-     */
-    event GrantPermissionScheduled(
-        bytes32 indexed actionId,
-        address indexed account,
-        address indexed where,
-        uint256 scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a revoke delay change is scheduled.
-     */
-    event RevokeDelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a grant delay change is scheduled.
-     */
-    event GrantDelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a delay change is scheduled.
-     */
-    event DelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to perform action `actionId`.
-     */
-    event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
-     */
-    event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
-     */
-    event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to revoke permission to execute action `actionId`.
-     */
-    event RevokeDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when `account` is granted permission to perform action `actionId` in target `where`.
-     */
-    event PermissionGranted(bytes32 indexed actionId, address indexed account, address indexed where);
-
-    /**
-     * @notice Emitted when `account`'s permission to perform action `actionId` in target `where` is revoked.
-     */
-    event PermissionRevoked(bytes32 indexed actionId, address indexed account, address indexed where);
-
-    /**
-     * @notice Returns the execution delay for action `actionId`.
-     */
-    function getActionIdDelay(bytes32 actionId) external view returns (uint256);
-
-    /**
-     * @notice Returns the execution delay for granting permission for action `actionId`.
-     */
-    function getActionIdGrantDelay(bytes32 actionId) external view returns (uint256);
-
-    /**
-     * @notice Returns the execution delay for revoking permission for action `actionId`.
-     */
-    function getActionIdRevokeDelay(bytes32 actionId) external view returns (uint256);
-
-    /**
-     * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
-     */
-    function getPermissionId(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external pure returns (bytes32);
-
-    /**
-     * @notice Returns true if `account` has the permission defined by action `actionId` and target `where`.
-     * @dev This function is specific for the strict permission defined by the tuple `(actionId, where)`: `account` may
-     * instead hold the global permission for the action `actionId`, also granting them permission on `where`, but this
-     * function would return false regardless.
-     *
-     * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
-     * a given action.
-     */
-    function isPermissionGrantedOnTarget(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view returns (bool);
-
-    /**
-     * @notice Returns true if `account` has permission over the action `actionId` in target `where`.
-     */
-    function hasPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view returns (bool);
 
     /**
      * @notice Sets a new delay `delay` for action `actionId`.
@@ -535,8 +558,4 @@ interface ITimelockAuthorizerPartial {
      * subject to a delay.
      */
     function renouncePermission(bytes32 actionId, address where) external;
-}
-
-interface ITimelockAuthorizer is ITimelockAuthorizerPartial, ITimelockAuthorizerManagement {
-    // solhint-disable-previous-line no-empty-blocks
 }
