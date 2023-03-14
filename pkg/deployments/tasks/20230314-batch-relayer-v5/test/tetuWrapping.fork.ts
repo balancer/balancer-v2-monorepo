@@ -1,12 +1,10 @@
 import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
-
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-
-import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigner } from '../../../src';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
   let task: Task;
@@ -21,7 +19,7 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
   const TETU_CONTROLLER = '0x6678814c273d5088114B6E40cC49C8DB04F9bC29';
 
   let usdtToken: Contract, tetuVault: Contract;
-  let sender: SignerWithAddress;
+  let sender: SignerWithAddress, recipient: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = 100e6;
 
@@ -58,8 +56,9 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
     usdtToken = await task.instanceAt('IERC20', USDT);
     tetuVault = await task.instanceAt('ITetuSmartVault', xUSDT);
     sender = await impersonate(USDT_HOLDER);
+    recipient = await getSigner();
 
-    // Set white list approvals for the batch relayer to interact with the Tetu Smart Vault
+    // Set whitelist approvals for the batch relayer to interact with the Tetu Smart Vault
     const governance = await impersonate(TETU_GOVERNANCE);
 
     const tetuControllerABI = new ethers.utils.Interface([
@@ -70,12 +69,12 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
     await tetuController.connect(governance).changeWhiteListStatus([relayer.address], true);
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+    await vault.connect(recipient).setRelayerApproval(recipient.address, relayer.address, true);
   });
 
   it('should wrap successfully', async () => {
     const balanceOfUSDTBefore = await usdtToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfTetuBefore = await tetuVault.balanceOf(relayer.address);
+    const balanceOfTetuBefore = await tetuVault.balanceOf(recipient.address);
     const expectedBalanceOfTetuAfter = Math.floor((1e6 / (await tetuVault.getPricePerFullShare())) * amountToWrap);
 
     expect(balanceOfTetuBefore).to.be.equal(0);
@@ -87,7 +86,7 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
     const depositIntoTetu = library.interface.encodeFunctionData('wrapTetu', [
       xUSDT,
       sender.address,
-      relayer.address,
+      recipient.address,
       amountToWrap,
       chainedReference,
     ]);
@@ -95,36 +94,35 @@ describeForkTest('TetuWrapping', 'polygon', 37945364, function () {
     await relayer.connect(sender).multicall([depositIntoTetu]);
 
     const balanceOfUSDTAfter = await usdtToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfTetuAfter = await tetuVault.balanceOf(relayer.address);
+    const balanceOfTetuAfter = await tetuVault.balanceOf(recipient.address);
 
-    expect(balanceOfUSDTBefore - balanceOfUSDTAfter).to.be.equal(amountToWrap);
+    expect(balanceOfUSDTBefore.sub(balanceOfUSDTAfter)).to.be.equal(amountToWrap);
     expect(balanceOfTetuAfter).to.be.almostEqual(expectedBalanceOfTetuAfter, 0.000001);
   });
 
   it('should unwrap successfully', async () => {
-    const tetuBalance = await tetuVault.balanceOf(relayer.address);
+    const tetuBalance = await tetuVault.balanceOf(recipient.address);
     const tetuAmountToWithdraw = Math.floor((tetuBalance * (await tetuVault.getPricePerFullShare())) / 1e6);
 
     const balanceOfUSDTBefore = await usdtToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
 
     const withdrawFromTetu = library.interface.encodeFunctionData('unwrapTetu', [
       xUSDT,
-      relayer.address,
+      recipient.address,
       sender.address,
       chainedReference,
       0,
     ]);
 
-    await relayer.connect(sender).multicall([withdrawFromTetu]);
+    await tetuVault.connect(recipient).approve(vault.address, MAX_UINT256);
+
+    await relayer.connect(recipient).multicall([withdrawFromTetu]);
 
     const balanceOfUSDTAfter = await usdtToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfTetuAfter = await tetuVault.balanceOf(relayer.address);
+    const balanceOfTetuAfter = await tetuVault.balanceOf(recipient.address);
 
     expect(balanceOfTetuAfter).to.be.equal(0);
-    expect(balanceOfUSDTAfter - balanceOfUSDTBefore).to.be.almostEqual(tetuAmountToWithdraw, 0.0001);
+    expect(balanceOfUSDTAfter.sub(balanceOfUSDTBefore)).to.be.almostEqual(tetuAmountToWithdraw, 0.0001);
   });
 });
 

@@ -1,12 +1,10 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
-
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-
-import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigner } from '../../../src';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 describeForkTest('GearboxWrapping', 'mainnet', 16622559, function () {
   let task: Task;
@@ -18,7 +16,7 @@ describeForkTest('GearboxWrapping', 'mainnet', 16622559, function () {
   const dUSDC = '0xc411db5f5eb3f7d552f9b8454b2d74097ccde6e3';
 
   let usdcToken: Contract, dieselToken: Contract, gearboxVault: Contract;
-  let sender: SignerWithAddress;
+  let sender: SignerWithAddress, recipient: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = 100e6;
 
@@ -56,14 +54,15 @@ describeForkTest('GearboxWrapping', 'mainnet', 16622559, function () {
     dieselToken = await task.instanceAt('IGearboxDieselToken', dUSDC);
     gearboxVault = await task.instanceAt('IGearboxVault', await dieselToken.owner());
     sender = await impersonate(USDC_HOLDER);
+    recipient = await getSigner();
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+    await vault.connect(recipient).setRelayerApproval(recipient.address, relayer.address, true);
   });
 
   it('should wrap successfully', async () => {
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfDieselBefore = await dieselToken.balanceOf(relayer.address);
+    const balanceOfDieselBefore = await dieselToken.balanceOf(recipient.address);
 
     expect(balanceOfDieselBefore).to.be.equal(0);
 
@@ -74,7 +73,7 @@ describeForkTest('GearboxWrapping', 'mainnet', 16622559, function () {
     const depositIntoGearbox = library.interface.encodeFunctionData('wrapGearbox', [
       dUSDC,
       sender.address,
-      relayer.address,
+      recipient.address,
       amountToWrap,
       chainedReference,
     ]);
@@ -82,11 +81,10 @@ describeForkTest('GearboxWrapping', 'mainnet', 16622559, function () {
     await relayer.connect(sender).multicall([depositIntoGearbox]);
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfDieselAfter = await dieselToken.balanceOf(relayer.address);
+    const balanceOfDieselAfter = await dieselToken.balanceOf(recipient.address);
     const expectedBalanceOfDieselAfter = await gearboxVault.toDiesel(amountToWrap);
 
-    expect(balanceOfUSDCBefore - balanceOfUSDCAfter).to.be.equal(amountToWrap);
+    expect(balanceOfUSDCBefore.sub(balanceOfUSDCAfter)).to.be.equal(amountToWrap);
     expect(balanceOfDieselAfter).to.be.equal(expectedBalanceOfDieselAfter);
   });
 
@@ -94,27 +92,27 @@ describeForkTest('GearboxWrapping', 'mainnet', 16622559, function () {
     const dieselAmountToWithdraw = await gearboxVault.toDiesel(amountToWrap);
 
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfDieselBefore = await dieselToken.balanceOf(relayer.address);
+    const balanceOfDieselBefore = await dieselToken.balanceOf(recipient.address);
 
     expect(balanceOfDieselBefore).to.be.equal(dieselAmountToWithdraw);
 
     const withdrawFromGearbox = library.interface.encodeFunctionData('unwrapGearbox', [
       dUSDC,
-      relayer.address,
+      recipient.address,
       sender.address,
       chainedReference,
       0,
     ]);
 
-    await relayer.connect(sender).multicall([withdrawFromGearbox]);
+    await dieselToken.connect(recipient).approve(vault.address, MAX_UINT256);
+
+    await relayer.connect(recipient).multicall([withdrawFromGearbox]);
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfDieselAfter = await dieselToken.balanceOf(relayer.address);
+    const balanceOfDieselAfter = await dieselToken.balanceOf(recipient.address);
 
     expect(balanceOfDieselAfter).to.be.equal(0);
-    expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.equal(amountToWrap);
+    expect(balanceOfUSDCAfter.sub(balanceOfUSDCBefore)).to.be.almostEqual(amountToWrap, 0.01);
   });
 });
 

@@ -1,12 +1,10 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
-
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-
-import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigner } from '../../../src';
 
 describeForkTest('CompoundV2Wrapping', 'polygon', 40305420, function () {
   let task: Task;
@@ -18,7 +16,7 @@ describeForkTest('CompoundV2Wrapping', 'polygon', 40305420, function () {
   const cBRZ = '0x2e4659b451C3ba2E72D79aAf267cFc09BCCc9d7c';
 
   let brzToken: Contract, cToken: Contract;
-  let sender: SignerWithAddress;
+  let sender: SignerWithAddress, recipient: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = bn(1000e4); // BRZ is 4 decimals
 
@@ -55,25 +53,28 @@ describeForkTest('CompoundV2Wrapping', 'polygon', 40305420, function () {
     brzToken = await task.instanceAt('IERC20', BRZ);
     cToken = await task.instanceAt('IERC20', cBRZ);
     sender = await impersonate(BRZ_HOLDER);
+    recipient = await getSigner();
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+    await vault.connect(recipient).setRelayerApproval(recipient.address, relayer.address, true);
   });
 
   it('should wrap successfully', async () => {
     const balanceOfbrzBefore = await brzToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfcbrzBefore = await cToken.balanceOf(relayer.address);
 
+    const balanceOfcbrzBefore = await cToken.balanceOf(sender.address);
     expect(balanceOfcbrzBefore).to.be.equal(0);
 
     // Approving vault to pull tokens from user.
     await brzToken.connect(sender).approve(vault.address, amountToWrap);
 
+    // Wrap `amountToWrap` BRZ tokens: pull from `sender`, deposit, mint cTokens and transfer to `recipient`.
+    // Store the amount in an output reference.
     chainedReference = toChainedReference(80);
     const depositIntoMidas = library.interface.encodeFunctionData('wrapCompoundV2', [
       cBRZ,
       sender.address,
-      relayer.address,
+      recipient.address,
       amountToWrap,
       chainedReference,
     ]);
@@ -82,32 +83,35 @@ describeForkTest('CompoundV2Wrapping', 'polygon', 40305420, function () {
 
     const balanceOfbrzAfter = await brzToken.balanceOf(sender.address);
     expect(balanceOfbrzBefore.sub(balanceOfbrzAfter)).to.be.equal(amountToWrap);
+
+    const balanceOfcbrzAfter = await cToken.balanceOf(recipient.address);
+    expect(balanceOfcbrzAfter).to.be.gt(0);
   });
 
   it('should unwrap successfully', async () => {
-    const balanceOfbrzBefore = await brzToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const cbrzAmountToWithdraw = await cToken.balanceOf(relayer.address);
-    const balanceOfcbrzBefore = await cToken.balanceOf(relayer.address);
+    const balanceOfbrzBefore = await brzToken.balanceOf(recipient.address);
+    expect(balanceOfbrzBefore).to.be.equal(0);
 
-    expect(balanceOfcbrzBefore).to.be.equal(cbrzAmountToWithdraw);
-
+    // Recipient has cTokens. Unwrap by reading amount from the chained reference,
+    // Pull the cTokens from recipient (sender), burn them, withdraw underlying tokens,
+    // and transfer to recipient.
     const withdrawFromMidas = library.interface.encodeFunctionData('unwrapCompoundV2', [
       cBRZ,
-      relayer.address,
-      sender.address,
+      recipient.address,
+      recipient.address,
       chainedReference,
       0,
     ]);
 
-    await relayer.connect(sender).multicall([withdrawFromMidas]);
+    await cToken.connect(recipient).approve(vault.address, MAX_UINT256);
 
-    const balanceOfbrzAfter = await brzToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfcbrzbAfter = await cToken.balanceOf(relayer.address);
+    await relayer.connect(recipient).multicall([withdrawFromMidas]);
+
+    const balanceOfbrzAfter = await brzToken.balanceOf(recipient.address);
+    const balanceOfcbrzbAfter = await cToken.balanceOf(recipient.address);
 
     expect(balanceOfcbrzbAfter).to.be.equal(0);
-    expect(balanceOfbrzAfter.sub(balanceOfbrzBefore)).to.be.almostEqual(amountToWrap, 0.01);
+    expect(balanceOfbrzAfter).to.be.almostEqual(amountToWrap, 0.01);
   });
 });
 

@@ -1,12 +1,10 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
-
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-
-import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigner } from '../../../src';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 describeForkTest('YearnWrapping', 'mainnet', 16622559, function () {
   let task: Task;
@@ -18,7 +16,7 @@ describeForkTest('YearnWrapping', 'mainnet', 16622559, function () {
   const yvUSDC = '0xa354F35829Ae975e850e23e9615b11Da1B3dC4DE';
 
   let usdcToken: Contract, yearnToken: Contract;
-  let sender: SignerWithAddress;
+  let sender: SignerWithAddress, recipient: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = 100e6;
 
@@ -55,14 +53,15 @@ describeForkTest('YearnWrapping', 'mainnet', 16622559, function () {
     usdcToken = await task.instanceAt('IERC20', USDC);
     yearnToken = await task.instanceAt('IYearnTokenVault', yvUSDC);
     sender = await impersonate(USDC_HOLDER);
+    recipient = await getSigner();
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+    await vault.connect(recipient).setRelayerApproval(recipient.address, relayer.address, true);
   });
 
   it('should wrap successfully', async () => {
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfYearnBefore = await yearnToken.balanceOf(relayer.address);
+    const balanceOfYearnBefore = await yearnToken.balanceOf(recipient.address);
     const expectedBalanceOfYearnAfter = Math.floor((1e6 / (await yearnToken.pricePerShare())) * amountToWrap);
 
     expect(balanceOfYearnBefore).to.be.equal(0);
@@ -74,7 +73,7 @@ describeForkTest('YearnWrapping', 'mainnet', 16622559, function () {
     const depositIntoYearn = library.interface.encodeFunctionData('wrapYearn', [
       yvUSDC,
       sender.address,
-      relayer.address,
+      recipient.address,
       amountToWrap,
       chainedReference,
     ]);
@@ -82,10 +81,9 @@ describeForkTest('YearnWrapping', 'mainnet', 16622559, function () {
     await relayer.connect(sender).multicall([depositIntoYearn]);
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfYearnAfter = await yearnToken.balanceOf(relayer.address);
+    const balanceOfYearnAfter = await yearnToken.balanceOf(recipient.address);
 
-    expect(balanceOfUSDCBefore - balanceOfUSDCAfter).to.be.equal(amountToWrap);
+    expect(balanceOfUSDCBefore.sub(balanceOfUSDCAfter)).to.be.equal(amountToWrap);
     expect(balanceOfYearnAfter).to.be.almostEqual(expectedBalanceOfYearnAfter);
   });
 
@@ -93,27 +91,27 @@ describeForkTest('YearnWrapping', 'mainnet', 16622559, function () {
     const YearnAmountToWithdraw = Math.floor((1e6 / (await yearnToken.pricePerShare())) * amountToWrap);
 
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfYearnBefore = await yearnToken.balanceOf(relayer.address);
+    const balanceOfYearnBefore = await yearnToken.balanceOf(recipient.address);
 
     expect(balanceOfYearnBefore).to.be.almostEqual(YearnAmountToWithdraw);
 
     const withdrawFromYearn = library.interface.encodeFunctionData('unwrapYearn', [
       yvUSDC,
-      relayer.address,
+      recipient.address,
       sender.address,
       chainedReference,
       0,
     ]);
 
-    await relayer.connect(sender).multicall([withdrawFromYearn]);
+    await yearnToken.connect(recipient).approve(vault.address, MAX_UINT256);
+
+    await relayer.connect(recipient).multicall([withdrawFromYearn]);
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfYearnAfter = await yearnToken.balanceOf(relayer.address);
+    const balanceOfYearnAfter = await yearnToken.balanceOf(recipient.address);
 
     expect(balanceOfYearnAfter).to.be.equal(0);
-    expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.almostEqual(amountToWrap);
+    expect(balanceOfUSDCAfter.sub(balanceOfUSDCBefore)).to.be.almostEqual(amountToWrap);
   });
 });
 

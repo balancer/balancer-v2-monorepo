@@ -1,12 +1,9 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
-
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-
-import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigner } from '../../../src';
 
 describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
   let task: Task;
@@ -19,7 +16,7 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
   const USDC_SILO = '0xfccc27aabd0ab7a0b2ad2b7760037b1eab61616b';
 
   let usdcToken: Contract, shareToken: Contract, silo: Contract;
-  let sender: SignerWithAddress;
+  let sender: SignerWithAddress, recipient: SignerWithAddress;
   let chainedReference: BigNumber;
   const amountToWrap = 100e6;
 
@@ -57,14 +54,15 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
     shareToken = await task.instanceAt('IShareToken', sUSDC);
     silo = await task.instanceAt('ISilo', USDC_SILO);
     sender = await impersonate(USDC_HOLDER);
+    recipient = await getSigner();
 
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+    await vault.connect(recipient).setRelayerApproval(recipient.address, relayer.address, true);
   });
 
   it('should wrap successfully', async () => {
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfWrappedBefore = await shareToken.balanceOf(relayer.address);
+    const balanceOfWrappedBefore = await shareToken.balanceOf(recipient.address);
 
     expect(balanceOfWrappedBefore).to.be.equal(0);
 
@@ -75,7 +73,7 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
     const depositIntoSilo = library.interface.encodeFunctionData('wrapShareToken', [
       sUSDC,
       sender.address,
-      relayer.address,
+      recipient.address,
       amountToWrap,
       chainedReference,
     ]);
@@ -83,41 +81,43 @@ describeForkTest('SiloWrapping', 'mainnet', 16622559, function () {
     await relayer.connect(sender).multicall([depositIntoSilo]);
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfWrappedAfter = await shareToken.balanceOf(relayer.address);
+    const balanceOfWrappedAfter = await shareToken.balanceOf(recipient.address);
 
     const estimatedRate = await siloExchangeRate(silo, USDC, shareToken);
 
-    const expectedBalanceOfWrappedAfter = await bn(estimatedRate).mul(amountToWrap);
+    const expectedBalanceOfWrappedAfter = bn(estimatedRate).mul(amountToWrap);
 
-    expect(balanceOfUSDCBefore - balanceOfUSDCAfter).to.be.equal(amountToWrap);
+    expect(balanceOfUSDCBefore.sub(balanceOfUSDCAfter)).to.be.equal(amountToWrap);
     expect(balanceOfWrappedAfter).to.be.almostEqual(expectedBalanceOfWrappedAfter, 0.01);
   });
 
   it('should unwrap successfully', async () => {
     const estimatedRate = await siloExchangeRate(silo, USDC, shareToken);
     const wrappedRate = Math.floor(1e6 / estimatedRate);
-    const amountToWithdraw = Math.floor((wrappedRate * (await shareToken.balanceOf(relayer.address))) / 1e6);
+    const balanceOfWrappedBefore = await shareToken.balanceOf(recipient.address);
+
+    const amountToWithdraw = Math.floor((wrappedRate * balanceOfWrappedBefore) / 1e6);
 
     const balanceOfUSDCBefore = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
 
     const withdrawFromSilo = library.interface.encodeFunctionData('unwrapShareToken', [
       sUSDC,
-      relayer.address,
+      recipient.address,
       sender.address,
       amountToWithdraw,
       chainedReference,
     ]);
 
-    await relayer.connect(sender).multicall([withdrawFromSilo]);
+    await shareToken.connect(recipient).approve(vault.address, amountToWithdraw);
+
+    await relayer.connect(recipient).multicall([withdrawFromSilo]);
 
     const balanceOfUSDCAfter = await usdcToken.balanceOf(sender.address);
-    // Relayer will be the contract receiving the wrapped tokens
-    const balanceOfWrappedAfter = await shareToken.balanceOf(relayer.address);
+    const balanceOfWrappedAfter = await shareToken.balanceOf(recipient.address);
 
-    expect(balanceOfWrappedAfter).to.be.equal(0);
-    expect(balanceOfUSDCAfter - balanceOfUSDCBefore).to.be.almostEqual(amountToWithdraw);
+    expect(balanceOfWrappedBefore.sub(balanceOfWrappedAfter)).to.be.equal(amountToWithdraw);
+    // Because rate is very close to 1
+    expect(balanceOfUSDCAfter.sub(balanceOfUSDCBefore)).to.be.almostEqual(amountToWithdraw);
   });
 });
 
