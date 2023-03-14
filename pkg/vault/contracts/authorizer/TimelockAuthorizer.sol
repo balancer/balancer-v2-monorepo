@@ -149,7 +149,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @inheritdoc ITimelockAuthorizer
+     * @inheritdoc IAuthorizer
      */
     function canPerform(
         bytes32 actionId,
