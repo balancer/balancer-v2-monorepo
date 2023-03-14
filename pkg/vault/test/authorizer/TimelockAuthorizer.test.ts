@@ -1489,6 +1489,16 @@ describe('TimelockAuthorizer', () => {
                   );
                 });
               });
+
+              context('when an executor is specified twice', () => {
+                sharedBeforeEach('set executors', async () => {
+                  executors = [other, other];
+                });
+
+                it('reverts', async () => {
+                  await expect(schedule()).to.be.revertedWith('ALREADY_AN_EXECUTOR');
+                });
+              });
             });
 
             context('when there is no delay set', () => {
