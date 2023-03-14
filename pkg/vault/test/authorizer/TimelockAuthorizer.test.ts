@@ -1496,7 +1496,7 @@ describe('TimelockAuthorizer', () => {
                 });
 
                 it('reverts', async () => {
-                  await expect(schedule()).to.be.revertedWith('ALREADY_AN_EXECUTOR');
+                  await expect(schedule()).to.be.revertedWith('DUPLICATE_EXECUTORS');
                 });
               });
             });
