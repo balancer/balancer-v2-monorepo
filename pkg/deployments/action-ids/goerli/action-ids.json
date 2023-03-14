@@ -953,5 +953,50 @@
         "renameProtocolId(uint256,string)": "0x397a10db2c15733cdb7c0fad6226786d83e216ed46c740257186765f4018bec5"
       }
     }
+  },
+  "20230314-batch-relayer-v5": {
+    "BatchRelayerLibrary": {
+      "useAdaptor": true,
+      "actionIds": {
+        "approveVault(address,uint256)": "0x7e71d5c2d145f4c81011b6407caf19e007135dbc32c6f0f4fc213fad4e299150",
+        "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])": "0x54feb236f9f78c009d49ee155b50671b2a1d23db16c1cdf405a59d46d1e51b1e",
+        "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])": "0x4fce71aaaee5b0e28c0b6975dbaacbecb63706f78b414620684e6abb046b58ef",
+        "gaugeClaimRewards(address[])": "0x997473a433293588efab15f70f22f954797c0b7a3fbbda50589bc00b012c99c3",
+        "gaugeDeposit(address,address,address,uint256)": "0xc56a1d33d405aa23088f3903c85452a9ddf0b4038101058f5ab5b41077ca1ed1",
+        "gaugeMint(address[],uint256)": "0x9ab5aae7bbe5eb6d8035a7bf80b7ad6f8ddcd08139e15e26a723983e43eec4f7",
+        "gaugeSetMinterApproval(bool,address,uint256,uint8,bytes32,bytes32)": "0x27d55f1136bf6d7c2802bd0bab88829c30d5af0f48f6c96f90f272ad65b85b5b",
+        "gaugeWithdraw(address,address,address,uint256)": "0xb65f171df6a700174b28a605a44628ea5fc8dcb0ee9c2d995e15838749d431d2",
+        "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)": "0x5e31bbb459ace7e3dc6f5bf9857b5687b281508f942f502605977ea408185b49",
+        "manageUserBalance((uint8,address,uint256,address,address)[],uint256)": "0x2e05a6c8f54ccb34498ebc128fcd4ae9debd708af102157d030786fdb51e113b",
+        "setRelayerApproval(address,bool,bytes)": "0xcdcf738ebeaa2629e5107d3214c2246116d95e8e507d771614e3ed9e108c00f6",
+        "stakeETH(address,uint256,uint256)": "0x3e5995991fa6590f94a998f5016816175aa4c74c6333a0f55004158c414603e1",
+        "stakeETHAndWrap(address,uint256,uint256)": "0xa78fe983ad4b824ce92b642c9bf4b1f4ca2def1f4e40c778a4cfb10f2b04d29b",
+        "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)": "0xdb12b915d7cecc94c4ea2c61139b80aa641a2d38b5471f09d5335e7bc5bc0148",
+        "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)": "0x56e7b514ac51fd278742f48a75478a98c345fc7fa1ab4100c01bd90b0b36a9fb",
+        "unwrapCompoundV2(address,address,address,uint256,uint256)": "0x4f719564190fa99fcf143abe6af95b04703c51edc4ef56a3718772f5566ab360",
+        "unwrapERC4626(address,address,address,uint256,uint256)": "0x0a644389487c01618a55c33e75980c454d4398fceee9080261ca2d932e9b4585",
+        "unwrapEuler(address,address,address,uint256,uint256)": "0x16604934d0f6959b4116230fcab890e97392376f67f4835f3fd73a9a289cefbc",
+        "unwrapGearbox(address,address,address,uint256,uint256)": "0xe32168dccb54ef6be58d57eaef9f12009c95715ba0210c659c61eecdd25bb8e7",
+        "unwrapReaperVaultToken(address,address,address,uint256,uint256)": "0xfbcd6b11324aff6eba68413afc0ff7c288bf731a17d3c09c7fabbfc3dc741755",
+        "unwrapShareToken(address,address,address,uint256,uint256)": "0x4474e94d6e245963958291bc337fb30e8cb18d3ecf2f8d7fe9bbce1ae7fc3104",
+        "unwrapTetu(address,address,address,uint256,uint256)": "0xf9dea084dc480823fa85784e7b3f2739af7b00a83447d4eb79cfd4fc79cf85f2",
+        "unwrapUnbuttonToken(address,address,address,uint256,uint256)": "0x638fb56d85c32a1e61263f9012ee514b9318c7563a5810b292da737f4b55595a",
+        "unwrapWstETH(address,address,uint256,uint256)": "0xdb07889951437a5d23b60d16407fe8218d9d9fcd73048951d748f24c774d4b17",
+        "unwrapYearn(address,address,address,uint256,uint256)": "0xd660e823c4bc4a49fd362075a75bab7e38f96879761a9711dde3cd847b9c31a1",
+        "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)": "0xf2da0c0a72d250c77c8b3feb9d744e9b70b6077e84ea1648a8e3e1e653942581",
+        "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)": "0x13819141ff0f4cbaec1cb35f7e2310776a0cf4d520511be91360abda2d59909a",
+        "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)": "0xf55a2e940b90ecfc63d6f2d5ab6d9441d5a6b097b72e7c41a5e4fde799d30abb",
+        "wrapCompoundV2(address,address,address,uint256,uint256)": "0x69ac7c034bd9f1c5accc640cc2ce2bac0c3067a08f6eebba9e8687d79463e3df",
+        "wrapERC4626(address,address,address,uint256,uint256)": "0xee23b5186dce1ffdf27eb1474c87ed9d7823790a410d0b6a4b4e1deec743c568",
+        "wrapEuler(address,address,address,address,uint256,uint256)": "0xcdbb628a0edc58cdaab909baaf004f4e3c913bc8686e188c01f7fd2ec5cc8285",
+        "wrapGearbox(address,address,address,uint256,uint256)": "0xda43f6b80b67200c364f3db6138052ec3b28c3dd7b1136661aca7cf9ced63cac",
+        "wrapReaperVaultToken(address,address,address,uint256,uint256)": "0x5f338fc3c403f2299ffada5ae500c87a82c3affda71669647b27190459cdbf3c",
+        "wrapShareToken(address,address,address,uint256,uint256)": "0x66fb73661e97eb2d2564848d9ce80dc7b373aa03e65b65a1bc1c09a475faf528",
+        "wrapStETH(address,address,uint256,uint256)": "0xb613cf0a8971487f11a1ecb75f8ed2ef585a4cc1a6a5b62e3339d07ec71b014e",
+        "wrapTetu(address,address,address,uint256,uint256)": "0x32ae85d68973fa060f6b426b90cb1492644f6e8936c57f013040cabae1e87af3",
+        "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x14990c54a7682af95d01fa41f50fe098e73fbb72c21b59ecd5f6ce0bb2266f18",
+        "wrapYearn(address,address,address,uint256,uint256)": "0x9fa03899abed4cfcb1818a35b9119a9ad7810cd1600917440331a067cf11ffc2"
+      }
+    }
   }
 }

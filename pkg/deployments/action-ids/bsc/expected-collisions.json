@@ -1,33 +1,5 @@
 {
-  "0x2c2d48381025f2538d3009c98716f7e89c28225a73559252433caa24330885fb": [
-    {
-      "taskId": "20210418-vault",
-      "contractName": "BalancerHelpers",
-      "signature": "queryExit(bytes32,address,address,(address[],uint256[],bytes,bool))",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220721-balancer-queries",
-      "contractName": "BalancerQueries",
-      "signature": "queryExit(bytes32,address,address,(address[],uint256[],bytes,bool))",
-      "useAdaptor": true
-    }
-  ],
-  "0xd972b0ea55e93f1ad627c0b544d12659dfd52456acc8e7899690b6bebca50994": [
-    {
-      "taskId": "20210418-vault",
-      "contractName": "BalancerHelpers",
-      "signature": "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220721-balancer-queries",
-      "contractName": "BalancerQueries",
-      "signature": "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))",
-      "useAdaptor": true
-    }
-  ],
-  "0x366943a376e1eee87c125c41e1ebfefefecb7625f9560400b401e08554f12f9d": [
+  "0x7fe1edca3254c64f263f99e0ffac7a17725d46dd820e0b4e40f88dec103d3621": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -41,7 +13,7 @@
       "useAdaptor": true
     }
   ],
-  "0x1c51c12025cad8b59a93f565aba39b7586417548fffa0784034ef4efc2b03994": [
+  "0x24bffb301d67cbf23a640222e2060f1b1aec47ca6375379fef12258a80e83f27": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -55,7 +27,7 @@
       "useAdaptor": true
     }
   ],
-  "0x0033a2b07675761aeb0b878dcdb51e664d1b5071472b3d6773eb903d001c4f22": [
+  "0xbcaef78bd5efeb6e0606ec858715cb82ffdee2d65242dc07e71edba84e9d52fa": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -69,7 +41,7 @@
       "useAdaptor": true
     }
   ],
-  "0x390c7ee687ce5a121a2d012da2c5ede3401e04e9fae81c18087112971b77776a": [
+  "0xa1d11fd06be73233e5b6ebc85a01a9b1644eca69cca02b9ce6ae4f62c7f2d24e": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -83,7 +55,7 @@
       "useAdaptor": true
     }
   ],
-  "0x1ed26eebb9efc5aec3251ec636da5692f56cfebc2f5d06086c43eee7cdf77b23": [
+  "0xa4931319114f8d68e2cd13aca293e5fbfd3ee2d79403f8b07e48b58609c2690e": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -97,7 +69,7 @@
       "useAdaptor": true
     }
   ],
-  "0xaea0e18c34e441f756843cfbe6171de65c63cf98daeb1c4a62658c4891810c8f": [
+  "0x2f93e67cb8953531b6791cce1c9e567f99cce28aef8f4a00ae851077118eeb7f": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -111,7 +83,7 @@
       "useAdaptor": true
     }
   ],
-  "0xede1819d855fb435df8844525fa1e1b1e85e61923c88952d2cae5f93c28494ea": [
+  "0xee3e81dfe8e4dd4fa4f7b8ef77b8568170ee3aea4f9facd0d02ca460759b1921": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -125,7 +97,7 @@
       "useAdaptor": true
     }
   ],
-  "0xda69dae4673e4f75fe2fa61c746ba8b23d7f58d79640acd9a70ec18975772ca3": [
+  "0xd8f743beb755f8ef298f7fc43585f4b0571c6c8f8a89aebfc0e9939b3ac667e4": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -139,7 +111,7 @@
       "useAdaptor": true
     }
   ],
-  "0xaccf83d8621bc59db150cd86e5d7e8a86fd45def71eddfa860d21a3c9b0884f6": [
+  "0x77288baf037e638228b2ad6c9fe46c087395444d86ef310b733ae4b993854a12": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -153,7 +125,7 @@
       "useAdaptor": true
     }
   ],
-  "0x2ce3348a3d7a3d024e4ceed93f96899123aba5ef69f4a0e8fdff68dc6173f8bf": [
+  "0x3f1ea691d337613695895970685fe04aa9842c344e7d4f213e631f1e6e6802cd": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -167,7 +139,7 @@
       "useAdaptor": true
     }
   ],
-  "0xa66222bfe1523c936400ff0873ec8ec9a28e557fd0dd4e2b4f134622658bd2bf": [
+  "0xd4df2ebfb2d967e9771c9cc4880308bde334df4091f9125839ff89304f48b4a7": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -181,7 +153,7 @@
       "useAdaptor": true
     }
   ],
-  "0x6b9313fc3efac9cde6d2bcd2ecdc582e1ff06a33fb0f74ebcb95b01088e98e4f": [
+  "0x43de77ae50112cb1555f6254a75fae9807080a07b529d05fbb744281a939f052": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -195,7 +167,7 @@
       "useAdaptor": true
     }
   ],
-  "0x299942611cfabb9a824ef6fcbb21c88e3e31372809e82a66c53ce3b2c31aff35": [
+  "0xf98485983e5afbd29371a4d03eff73e33f7a2f1aceafc1825c1613f751c86ecc": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -209,7 +181,7 @@
       "useAdaptor": true
     }
   ],
-  "0x1e61bb0248d61e32328afd35243dbcfdc0e4186ca4f1b444bfd9350b681eeb66": [
+  "0xad528811e8fc4520672b0c55daf58c8b75888230a503d770679ef3e1064857fc": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -223,7 +195,7 @@
       "useAdaptor": true
     }
   ],
-  "0xde0c041e406703bbb745d4db99101ebb7b171be13d919f77370fd652c782278b": [
+  "0xc0535136442730af397c3cee4da0c14fb2b01964419e9b6c7a2f8a69e7c08ba3": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -237,7 +209,7 @@
       "useAdaptor": true
     }
   ],
-  "0xca102cfa86bd480e952b610d0dabfe76c47751df20fbbd4297928818adb3a74b": [
+  "0xb168916548935d3e308fe696d57fc96c910470b3ab51d32a78cde7977ebecad8": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -251,7 +223,7 @@
       "useAdaptor": true
     }
   ],
-  "0x8a4cd40e1a2f14f83116beb3a754344844eebd7cdd4bcf3181b765e86e42e171": [
+  "0x0fa1efce150faa8562ec041440e60b67ab3117283cebe81ddf5a4a6aaded470f": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -265,7 +237,7 @@
       "useAdaptor": true
     }
   ],
-  "0xfe699461dc246d04093c97e801fca1dfe7bf29bd63725f9f159d0c5364426379": [
+  "0x6e80655c355051f0498e307741e314b045e10c8f059c1af2d0bd5b21faa8f5b6": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -279,7 +251,7 @@
       "useAdaptor": true
     }
   ],
-  "0xfa9bcc4f89128e741e8d9fef6b33c68da4aba16cac8940235db5705a8c92fbed": [
+  "0xc599f0da741690e624380a9d53de18652505ddd0bcfb64ea2db2e34cee5a0b27": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -293,7 +265,7 @@
       "useAdaptor": true
     }
   ],
-  "0x9cffff4bd644ab27bc1ff66019354dd4bf34dff14aeac978b38288dd8108b597": [
+  "0xaec67663d3107978c276920b54e9e0b6c2ed120a2ece237bcab2152eedc96b0a": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -307,7 +279,7 @@
       "useAdaptor": true
     }
   ],
-  "0xdc095992a61ef91733f4c9c8797ce198484d744abdc54b1db8c9f930b02f7073": [
+  "0xf98239f942e67b02354a2b414733b09fc778c5ec3629a0e6cb25c6c233a47c33": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -321,7 +293,7 @@
       "useAdaptor": true
     }
   ],
-  "0x32a6b68c912f85d8561796231d43bdc6db7036eda77f2f3f9643e58f891aae6b": [
+  "0x859c6d929fe3527d7230b3b5d928f53c71e0f72ec20626352e9073285b97ff32": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -335,7 +307,7 @@
       "useAdaptor": true
     }
   ],
-  "0x44c79f14b79b7ef1bef8e5e53d943945c5d8df1a27fe1c6408bc0884df8ded41": [
+  "0x2e279136eec95421228d68e5cafa8d96e68b44aedda93a882e10dabb04e7fc21": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -349,7 +321,7 @@
       "useAdaptor": true
     }
   ],
-  "0xc90e51726c51526e90d73620145365669f007bec7b0e3821bfbdb0520a5c118f": [
+  "0x5bc3da0fb88ac2ea0993293380b4223128302f4575306d5a585ddd156db06aaa": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -363,7 +335,7 @@
       "useAdaptor": true
     }
   ],
-  "0x5161bd7d2bb7c1ca32df99e222692073ced616bc0ebcfacb82e49f251cfcc263": [
+  "0x26a16874f5722f13cbc3311c2ff8373f183c48bdbdd3ae54e31d82d9412f3dac": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -377,7 +349,7 @@
       "useAdaptor": true
     }
   ],
-  "0x1788a4448d746681dc29939260f2db801b68ab6dde7d8d519b14811a4bdcba36": [
+  "0x9e3de10d50da4d72e4d0a3f9b4d8bb79f2f23ac2d9527332fc40e61f7582d2b9": [
     {
       "taskId": "20220916-batch-relayer-v4",
       "contractName": "BatchRelayerLibrary",
@@ -388,20 +360,6 @@
       "taskId": "20230314-batch-relayer-v5",
       "contractName": "BatchRelayerLibrary",
       "signature": "wrapUnbuttonToken(address,address,address,uint256,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0xf9d27f783f06c33f198165d11f500f70ae99e14c6624f234cac46e1fc1978bec": [
-    {
-      "taskId": "20220404-erc4626-linear-pool-v2",
-      "contractName": "ERC4626LinearPoolFactory",
-      "signature": "create(string,string,address,address,uint256,uint256,address)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220425-unbutton-aave-linear-pool",
-      "contractName": "UnbuttonAaveLinearPoolFactory",
-      "signature": "create(string,string,address,address,uint256,uint256,address)",
       "useAdaptor": true
     }
   ]
