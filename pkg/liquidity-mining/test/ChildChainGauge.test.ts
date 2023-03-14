@@ -530,21 +530,22 @@ describe('ChildChainGauge', () => {
 
     context('with broken rewards', () => {
       let functionalReward: Contract;
+      let flakyReward: Contract;
 
       sharedBeforeEach('add rewards and break token after deposit', async () => {
         // Add and deposit broken reward
-        const brokenERC20 = await deploy('v2-solidity-utils/BreakableERC20Mock', { args: ['Broken token', 'BRK'] });
+        flakyReward = await deploy('v2-solidity-utils/BreakableERC20Mock', { args: ['Broken token', 'BRK'] });
         await vault.authorizerAdaptorEntrypoint
           .connect(admin)
           .performAction(
             gauge.address,
-            gauge.interface.encodeFunctionData('add_reward', [brokenERC20.address, admin.address])
+            gauge.interface.encodeFunctionData('add_reward', [flakyReward.address, admin.address])
           );
-        await brokenERC20.mint(admin.address, rewardAmount);
-        await brokenERC20.connect(admin).approve(gauge.address, rewardAmount);
+        await flakyReward.mint(admin.address, rewardAmount);
+        await flakyReward.connect(admin).approve(gauge.address, rewardAmount);
 
-        await gauge.connect(admin).deposit_reward_token(brokenERC20.address, rewardAmount);
-        await brokenERC20.setIsBroken(true);
+        await gauge.connect(admin).deposit_reward_token(flakyReward.address, rewardAmount);
+        await flakyReward.setIsBroken(true);
 
         // Add and deposit functional reward
         functionalReward = await deploy('v2-solidity-utils/TestToken', { args: ['Test functionalReward', 'RWRD', 18] });
@@ -586,6 +587,31 @@ describe('ChildChainGauge', () => {
         expect(event.args.value).to.be.almostEqual(rewardAmount);
       });
 
+      it('can claim flaky reward if it gets fixed without affecting other claims', async () => {
+        const tx1 = await gauge.connect(claimer)[claim](claimer.address, ZERO_ADDRESS, [1]);
+        const event1 = expectTransferEvent(
+          await tx1.wait(),
+          { from: gauge.address, to: claimer.address },
+          functionalReward.address
+        );
+        expect(event1.args.value).to.be.almostEqual(rewardAmount);
+        const functionalRewardBalanceBeforeClaimAll = await functionalReward.balanceOf(claimer.address);
+
+        // Mock reward fix.
+        await flakyReward.setIsBroken(false);
+
+        // Claim all only gets unclaimed rewards (i.e. the flaky reward that is now fixed)
+        const tx2 = await claimAll();
+        const event2 = expectTransferEvent(
+          await tx2.wait(),
+          { from: gauge.address, to: claimer.address },
+          flakyReward.address
+        );
+        expect(event2.args.value).to.be.almostEqual(rewardAmount);
+        const functionalRewardBalanceAfterClaimAll = await functionalReward.balanceOf(claimer.address);
+        expect(functionalRewardBalanceAfterClaimAll).to.be.eq(functionalRewardBalanceBeforeClaimAll);
+      });
+
       it('can still deposit', async () => {
         const stake = fp(1000);
         await BPT.mint(user1.address, stake);
@@ -608,14 +634,6 @@ describe('ChildChainGauge', () => {
           gauge.address
         );
       });
-    });
-
-    it('reverts adding BAL as a reward', async () => {
-      await expect(
-        vault.authorizerAdaptorEntrypoint
-          .connect(admin)
-          .performAction(gauge.address, gauge.interface.encodeFunctionData('add_reward', [BAL.address, admin.address]))
-      ).to.be.revertedWith('CANNOT_ADD_BAL_REWARD');
     });
 
     it('reverts adding BAL as a reward', async () => {
