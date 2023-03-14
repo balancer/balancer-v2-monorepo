@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Deprecations
+
+- Deprecated `20220916-batch-relayer-v4`.
+
 ## 3.2.0 (2023-02-24)
 
 ### New Networks
