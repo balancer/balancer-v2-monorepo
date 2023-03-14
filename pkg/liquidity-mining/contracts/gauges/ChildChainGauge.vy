@@ -288,7 +288,7 @@ def _checkpoint_rewards(
                         max_outsize=32,
                     )
                     if len(response) != 0:
-                        assert convert(response, bool)
+                        assert convert(response, bool), "TRANSFER_FAILURE"
                     self.claim_data[_user][token] = total_claimed + total_claimable
                 elif new_claimable > 0:
                     self.claim_data[_user][token] = total_claimed + shift(total_claimable, 128)
@@ -459,8 +459,8 @@ def permit(
     @param _s The bytes[32:64] of the valid secp256k1 signature of permit by owner
     @return True, if transaction completes successfully
     """
-    assert _owner != ZERO_ADDRESS
-    assert block.timestamp <= _deadline
+    assert _owner != ZERO_ADDRESS, "INVALID_OWNER"
+    assert block.timestamp <= _deadline, "DEADLINE_EXPIRED"
 
     nonce: uint256 = self.nonces[_owner]
     digest: bytes32 = keccak256(
@@ -473,9 +473,10 @@ def permit(
 
     if _owner.is_contract:
         sig: Bytes[65] = concat(_abi_encode(_r, _s), slice(convert(_v, bytes32), 31, 1))
-        assert ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL
+        assert ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL, "INVALID_SIG"
     else:
-        assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner
+        recovered_address: address = ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256))
+        assert recovered_address == _owner,"INVALID_SIG"
 
     self._allowance[_owner][_spender] = _value
     self.nonces[_owner] = nonce + 1
@@ -538,7 +539,6 @@ def user_checkpoint(addr: address) -> bool:
     @param addr User address
     @return bool success
     """
-    assert msg.sender in [addr, BAL_PSEUDO_MINTER]  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
@@ -615,7 +615,7 @@ def claim_rewards(
     @param _reward_indexes Array with indexes of the rewards to be checkpointed (all of them by default)
     """
     if _receiver != ZERO_ADDRESS:
-        assert _addr == msg.sender  # dev: cannot redirect when claiming for another user
+        assert _addr == msg.sender, "CANNOT_REDIRECT_CLAIM"  # dev: cannot redirect when claiming for another user
     self._checkpoint_rewards(_addr, self.totalSupply, True, _receiver, _reward_indexes)
 
 
@@ -625,12 +625,12 @@ def add_reward(_reward_token: address, _distributor: address):
     @notice Set the active reward contract.
     @dev The reward token cannot be BAL, since it is transferred automatically to the pseudo minter during checkpoints.
     """
-    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR, "SENDER_NOT_ALLOWED"  # dev: only owner
     assert _reward_token != BAL, "CANNOT_ADD_BAL_REWARD"
 
     reward_count: uint256 = self.reward_count
-    assert reward_count < MAX_REWARDS
-    assert self.reward_data[_reward_token].distributor == ZERO_ADDRESS
+    assert reward_count < MAX_REWARDS, "MAX_REWARDS_REACHED"
+    assert self.reward_data[_reward_token].distributor == ZERO_ADDRESS, "REWARD_ALREADY_EXISTS"
 
     self.reward_data[_reward_token].distributor = _distributor
     self.reward_tokens[reward_count] = _reward_token
@@ -641,9 +641,9 @@ def add_reward(_reward_token: address, _distributor: address):
 def set_reward_distributor(_reward_token: address, _distributor: address):
     current_distributor: address = self.reward_data[_reward_token].distributor
 
-    assert msg.sender in [current_distributor, AUTHORIZER_ADAPTOR]
-    assert current_distributor != ZERO_ADDRESS
-    assert _distributor != ZERO_ADDRESS
+    assert msg.sender in [current_distributor, AUTHORIZER_ADAPTOR], "SENDER_NOT_ALLOWED"
+    assert current_distributor != ZERO_ADDRESS, "REWARD_NOT_ADDED"
+    assert _distributor != ZERO_ADDRESS, "INVALID_DISTRIBUTOR"
 
     self.reward_data[_reward_token].distributor = _distributor
 
@@ -651,7 +651,7 @@ def set_reward_distributor(_reward_token: address, _distributor: address):
 @external
 @nonreentrant("lock")
 def deposit_reward_token(_reward_token: address, _amount: uint256):
-    assert msg.sender == self.reward_data[_reward_token].distributor
+    assert msg.sender == self.reward_data[_reward_token].distributor, "SENDER_NOT_ALLOWED"
 
     # It is safe to checkpoint all the existing rewards as long as `_claim` is set to false (i.e. no external calls).
     self._checkpoint_rewards(ZERO_ADDRESS, self.totalSupply, False, ZERO_ADDRESS, [])
@@ -667,7 +667,7 @@ def deposit_reward_token(_reward_token: address, _amount: uint256):
         max_outsize=32,
     )
     if len(response) != 0:
-        assert convert(response, bool)
+        assert convert(response, bool), "TRANSFER_FROM_FAILURE"
 
     period_finish: uint256 = self.reward_data[_reward_token].period_finish
     if block.timestamp >= period_finish:
@@ -686,7 +686,7 @@ def killGauge():
     """
     @notice Kills the gauge so it always yields a rate of 0 and so cannot mint BAL
     """
-    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR, "SENDER_NOT_ALLOWED"  # dev: only owner
 
     self.is_killed = True
 
@@ -696,7 +696,7 @@ def unkillGauge():
     """
     @notice Unkills the gauge so it can mint BAL again
     """
-    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR, "SENDER_NOT_ALLOWED"  # dev: only owner
 
     self.is_killed = False
 
@@ -754,7 +754,7 @@ def authorizer_adaptor() -> address:
 
 @external
 def initialize(_lp_token: address, _version: String[128]):
-    assert self.lp_token == ZERO_ADDRESS  # dev: already initialzed
+    assert self.lp_token == ZERO_ADDRESS, "ALREADY_INITIALIZED"  # dev: already initialzed
 
     self.lp_token = _lp_token
     self.version = _version

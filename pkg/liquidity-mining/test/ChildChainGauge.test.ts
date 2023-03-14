@@ -157,6 +157,11 @@ describe('ChildChainGauge', () => {
           inflationRateBefore.add(balAmountPerWeek.div(nextWeekTimestamp.sub(await currentTimestamp())))
         );
       });
+
+      it('can be performed by any address', async () => {
+        const tx = await gauge.connect(other).user_checkpoint(user1.address);
+        expectEvent.inReceipt(await tx.wait(), 'UpdateLiquidityLimit', { _user: user1.address });
+      });
     });
 
     describe('mint', () => {
