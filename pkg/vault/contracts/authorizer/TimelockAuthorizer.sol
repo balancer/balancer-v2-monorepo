@@ -73,89 +73,12 @@ contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, Timelock
     mapping(bytes32 => bool) private _isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
 
-    /**
-     * @notice Emitted when a revoke permission is scheduled.
-     */
-    event RevokePermissionScheduled(
-        bytes32 indexed actionId,
-        address indexed account,
-        address indexed where,
-        uint256 scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a grant permission is scheduled.
-     */
-    event GrantPermissionScheduled(
-        bytes32 indexed actionId,
-        address indexed account,
-        address indexed where,
-        uint256 scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a revoke delay change is scheduled.
-     */
-    event RevokeDelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a grant delay change is scheduled.
-     */
-    event GrantDelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a delay change is scheduled.
-     */
-    event DelayChangeScheduled(
-        bytes32 indexed actionId,
-        uint256 indexed newDelay,
-        uint256 indexed scheduledExecutionId
-    );
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to perform action `actionId`.
-     */
-    event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when a new execution `scheduledExecutionId` is scheduled.
-     */
-    event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to grant permission to execute action `actionId`.
-     */
-    event GrantDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when a new `delay` is set in order to revoke permission to execute action `actionId`.
-     */
-    event RevokeDelaySet(bytes32 indexed actionId, uint256 delay);
-
-    /**
-     * @notice Emitted when `account` is granted permission to perform action `actionId` in target `where`.
-     */
-    event PermissionGranted(bytes32 indexed actionId, address indexed account, address indexed where);
-
-    /**
-     * @notice Emitted when `account`'s permission to perform action `actionId` in target `where` is revoked.
-     */
-    event PermissionRevoked(bytes32 indexed actionId, address indexed account, address indexed where);
-
     constructor(
         address initialRoot,
         address nextRoot,
         IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
         uint256 rootTransferDelay
-    ) TimelockAuthorizerManagement(initialRoot, nextRoot, authorizerAdaptorEntrypoint, rootTransferDelay) {
+    ) TimelockAuthorizerManagement(initialRoot, nextRoot, authorizerAdaptorEntrypoint.getVault(), rootTransferDelay) {
         _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
     }
@@ -653,5 +576,11 @@ contract TimelockAuthorizer is IAuthorizer, ITimelockAuthorizerPartial, Timelock
     function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
         bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector);
         return delay <= _delaysPerActionId[setAuthorizerActionId];
+    }
+
+    function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
+        // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
+        if (data.length < 4) return bytes4(0);
+        return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
     }
 }
