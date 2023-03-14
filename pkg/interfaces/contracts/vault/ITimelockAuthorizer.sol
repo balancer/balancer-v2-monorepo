@@ -340,6 +340,14 @@ interface ITimelockAuthorizer {
      * scheduled execution is said to be 'unprotected', and can be executed by anyone.
      *
      * Once executed, a scheduled execution cannot be executed again. It also cannot be executed if canceled.
+     *
+     * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
+     * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a
+     * scheduled action during the execution of another scheduled action - an unlikely and convoluted scenario that we
+     * explicitly forbid.
+     *
+     * Note that while `execute` is nonReentrant, other functions are not - indeed, we rely on reentrancy to e.g. call
+     * `setPendingRoot` or `setDelay`.
      */
     function execute(uint256 scheduledExecutionId) external returns (bytes memory result);
 
@@ -455,8 +463,26 @@ interface ITimelockAuthorizer {
     function setRevokeDelay(bytes32 actionId, uint256 delay) external;
 
     /**
-     * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`.
-     * See `schedule` comments.
+     * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`. This makes it impossible to
+     * execute `actionId` without an immutable public on-chain commitment for the execution at least `newDelay` seconds
+     * in advance.
+     *
+     * Critical actions that are expected to be performed by EOAs or multisigs are typically subject to such delays to
+     * allow for public scrutiny.
+     *
+     * How long it will take to make this change will depend on the current and new delays: if increasing by more than
+     * 5 days, then the time difference between the delays must pass. Otherwise, the minimum delay change execution
+     * delay of 5 days must pass instead.
+     *
+     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * case any account can execute it.
+     *
+     * Avoid scheduling multiple delay changes for the same action at the same time, as this makes it harder to reason
+     * about the state of the system. If there is already a scheduled delay change and there is a desire to change the
+     * future delay to some other value, cancel the first scheduled change and schedule a new one.
+     *
+     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
+     * (including global cancelers).
      */
     function scheduleDelayChange(
         bytes32 actionId,
@@ -465,8 +491,26 @@ interface ITimelockAuthorizer {
     ) external returns (uint256);
 
     /**
-     * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`.
-     * See `schedule` comments.
+     * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`. This makes
+     * it impossible to grant permission to execute `actionId` without an immutable public on-chain commitment for the
+     * granting at least `newDelay` seconds in advance.
+     *
+     * Critical actions that are expected to be performed by smart contracts are typically subject to such grant delays
+     * to allow for public scrutiny of new contracts that are granted the permission.
+     *
+     * How long it will take to make this change will depend on the current and new grant delays: if increasing by more
+     * than 5 days, then the time difference between the grant delays must pass. Otherwise, the minimum delay change
+     * execution delay of 5 days must pass instead.
+     *
+     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * case any account can execute it.
+     *
+     * Avoid scheduling multiple grant delay changes for the same action at the same time, as this makes it harder to
+     * reason about the state of the system. If there is already a scheduled grant delay change and there is a desire to
+     * change the future grant delay to some other value, cancel the first scheduled change and schedule a new one.
+     *
+     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
+     * (including global cancelers).
      */
     function scheduleGrantDelayChange(
         bytes32 actionId,
@@ -475,8 +519,27 @@ interface ITimelockAuthorizer {
     ) external returns (uint256);
 
     /**
-     * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`.
-     * See `schedule` comments.
+     * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`. This makes
+     * it impossible to revoke permission to execute `actionId` without an immutable public on-chain commitment for the
+     * revoking at least `newDelay` seconds in advance.
+     *
+     * Critical actions that are performed by smart contracts and to which there is a long term commitment (e.g. minting
+     * of BAL as part of the Liquidity Mining Program) are typically subject to such revoke delays, making it impossible
+     * to disable the system without sufficient notice.
+     *
+     * How long it will take to make this change will depend on the current and new revoke delays: if increasing by more
+     * than 5 days, then the time difference between the revoke delays must pass. Otherwise, the minimum delay change
+     * execution delay of 5 days must pass instead.
+     *
+     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * case any account can execute it.
+     *
+     * Avoid scheduling multiple revoke delay changes for the same action at the same time, as this makes it harder to
+     * reason about the state of the system. If there is already a scheduled revoke delay change and there is a desire
+     * to change the future grant delay to some other value, cancel the first scheduled change and schedule a new one.
+     *
+     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
+     * (including global cancelers).
      */
     function scheduleRevokeDelayChange(
         bytes32 actionId,

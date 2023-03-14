@@ -93,28 +93,28 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Returns the execution delay for action `actionId`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getActionIdDelay(bytes32 actionId) external view override returns (uint256) {
         return _delaysPerActionId[actionId];
     }
 
     /**
-     * @notice Returns the execution delay for granting permission for action `actionId`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getActionIdGrantDelay(bytes32 actionId) external view override returns (uint256) {
         return _grantDelays[actionId];
     }
 
     /**
-     * @notice Returns the execution delay for revoking permission for action `actionId`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getActionIdRevokeDelay(bytes32 actionId) external view override returns (uint256) {
         return _revokeDelays[actionId];
     }
 
     /**
-     * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getPermissionId(
         bytes32 actionId,
@@ -125,13 +125,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Returns true if `account` has the permission defined by action `actionId` and target `where`.
-     * @dev This function is specific for the strict permission defined by the tuple `(actionId, where)`: `account` may
-     * instead hold the global permission for the action `actionId`, also granting them permission on `where`, but this
-     * function would return false regardless.
-     *
-     * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
-     * a given action.
+     * @inheritdoc ITimelockAuthorizer
      */
     function isPermissionGrantedOnTarget(
         bytes32 actionId,
@@ -142,7 +136,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Returns true if `account` has permission over the action `actionId` in target `where`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function hasPermission(
         bytes32 actionId,
@@ -155,12 +149,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Returns true if `account` can perform action `actionId` in target `where`. This will return false for
-     * actions that have a delay associated with them, even if `account` has permission over the action, since `account`
-     * cannot perform the action directly - it must instead schedule a future execution of it via `schedule`.
-     *
-     * @dev All authentications that require the AuthorizerAdaptor must originate from the AuthorizerAdaptorEntrypoint:
-     * requests coming directly from the AuthorizerAdaptor will be rejected.
+     * @inheritdoc ITimelockAuthorizer
      */
     function canPerform(
         bytes32 actionId,
@@ -192,9 +181,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Sets a new delay `delay` for action `actionId`.
-     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
-     * the TimelockExecutionHelper after after calling `scheduleDelayChange`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function setDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         // If changing the `setAuthorizer` delay itself, then we don't need to compare it to its current value for
@@ -208,10 +195,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Sets a new grant action delay `delay` for action `actionId`
-     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
-     * the TimelockExecutor after after calling `scheduleGrantDelayChange`.
-     * Delay has to be shorter than the Authorizer delay.
+     * @inheritdoc ITimelockAuthorizer
      */
     function setGrantDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
@@ -221,10 +205,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Sets a new revoke action delay `delay` for action `actionId`
-     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
-     * the TimelockExecutor after after calling `scheduleRevokeDelayChange`.
-     * Delay has to be shorter than the Authorizer delay.
+     * @inheritdoc ITimelockAuthorizer
      */
     function setRevokeDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
@@ -234,26 +215,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Schedules an execution to set the delay for `actionId`' to `newDelay`. This makes it impossible to
-     * execute `actionId` without an immutable public on-chain commitment for the execution at least `newDelay` seconds
-     * in advance.
-     *
-     * Critical actions that are expected to be performed by EOAs or multisigs are typically subject to such delays to
-     * allow for public scrutiny.
-     *
-     * How long it will take to make this change will depend on the current and new delays: if increasing by more than
-     * 5 days, then the time difference between the delays must pass. Otherwise, the minimum delay change execution
-     * delay of 5 days must pass instead.
-     *
-     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
-     * case any account can execute it.
-     *
-     * Avoid scheduling multiple delay changes for the same action at the same time, as this makes it harder to reason
-     * about the state of the system. If there is already a scheduled delay change and there is a desire to change the
-     * future delay to some other value, cancel the first scheduled change and schedule a new one.
-     *
-     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
-     * (including global cancelers).
+     * @inheritdoc ITimelockAuthorizer
      */
     function scheduleDelayChange(
         bytes32 actionId,
@@ -276,26 +238,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Schedules an execution to set the delay for granting permission over `actionId` to `newDelay`. This makes
-     * it impossible to grant permission to execute `actionId` without an immutable public on-chain commitment for the
-     * granting at least `newDelay` seconds in advance.
-     *
-     * Critical actions that are expected to be performed by smart contracts are typically subject to such grant delays
-     * to allow for public scrutiny of new contracts that are granted the permission.
-     *
-     * How long it will take to make this change will depend on the current and new grant delays: if increasing by more
-     * than 5 days, then the time difference between the grant delays must pass. Otherwise, the minimum delay change
-     * execution delay of 5 days must pass instead.
-     *
-     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
-     * case any account can execute it.
-     *
-     * Avoid scheduling multiple grant delay changes for the same action at the same time, as this makes it harder to
-     * reason about the state of the system. If there is already a scheduled grant delay change and there is a desire to
-     * change the future grant delay to some other value, cancel the first scheduled change and schedule a new one.
-     *
-     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
-     * (including global cancelers).
+     * @inheritdoc ITimelockAuthorizer
      */
     function scheduleGrantDelayChange(
         bytes32 actionId,
@@ -317,27 +260,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Schedules an execution to set the delay for revoking permission over `actionId` to `newDelay`. This makes
-     * it impossible to revoke permission to execute `actionId` without an immutable public on-chain commitment for the
-     * revoking at least `newDelay` seconds in advance.
-     *
-     * Critical actions that are performed by smart contracts and to which there is a long term commitment (e.g. minting
-     * of BAL as part of the Liquidity Mining Program) are typically subject to such revoke delays, making it impossible
-     * to disable the system without sufficient notice.
-     *
-     * How long it will take to make this change will depend on the current and new revoke delays: if increasing by more
-     * than 5 days, then the time difference between the revoke delays must pass. Otherwise, the minimum delay change
-     * execution delay of 5 days must pass instead.
-     *
-     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
-     * case any account can execute it.
-     *
-     * Avoid scheduling multiple revoke delay changes for the same action at the same time, as this makes it harder to
-     * reason about the state of the system. If there is already a scheduled revoke delay change and there is a desire
-     * to change the future grant delay to some other value, cancel the first scheduled change and schedule a new one.
-     *
-     * Only root can call this function, but other accounts may be granted permission to cancel the scheduled execution
-     * (including global cancelers).
+     * @inheritdoc ITimelockAuthorizer
      */
     function scheduleRevokeDelayChange(
         bytes32 actionId,
@@ -359,22 +282,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Schedules an arbitrary execution of `data` in target `where`. Returns a scheduledExecutionId that can be
-     * used to call `execute`, `cancel`, and associated getters such as `getScheduledExecution`.
-     *
-     * If `executors` is an empty array, then any account in the network will be able to initiate the scheduled
-     * execution. If not, only accounts in the `executors` array will be able to call `execute`. It is not possible to
-     * change this after scheduling: the list of executors is immutable, and cannot be changed by any account (including
-     * root).
-     *
-     * The caller of the `schedule` function is automatically made a canceler for the scheduled execution, meaning they
-     * can call the `cancel` function for it. Other accounts, such as root, may also have or be granted permission to
-     * cancel any scheduled execution.
-     *
-     * This is the only way to execute actions in external contracts that have a delay associated with them. Calling
-     * said functions directly will cause `canPerform` to return false, even if the caller has permission. An account
-     * that has permission over an action with a delay cannot call it directly, and must instead schedule a delayed
-     * execution by calling this function.
+     * @inheritdoc ITimelockAuthorizer
      */
     function schedule(
         address where,
@@ -422,9 +330,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Grants a permission to a single `account` at 'where' address.
-     * @dev This function can only be used for actions that have no grant delay. For those that do, use
-     * `scheduleGrantPermission` instead.
+     * @inheritdoc ITimelockAuthorizer
      */
     function grantPermission(
         bytes32 actionId,
@@ -448,8 +354,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Schedules a grant permission to `account` for action `actionId` in target `where`.
-     * See `schedule` comments.
+     * @inheritdoc ITimelockAuthorizer
      */
     function scheduleGrantPermission(
         bytes32 actionId,
@@ -476,9 +381,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Revokes a permission from a single `account` at `where` address.
-     * @dev This function can only be used for actions that have no revoke delay. For those that do, use
-     * `scheduleRevokePermission` instead.
+     * @inheritdoc ITimelockAuthorizer
      */
     function revokePermission(
         bytes32 actionId,
@@ -497,8 +400,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Schedules a revoke permission from `account` for action `actionId` in target `where`.
-     * See `schedule` comments.
+     * @inheritdoc ITimelockAuthorizer
      */
     function scheduleRevokePermission(
         bytes32 actionId,
@@ -525,14 +427,18 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     }
 
     /**
-     * @notice Revokes a permission from the caller for `actionId` at `where` address
-     * @dev Note that the caller can always renounce permissions, even if revoking them would typically be
-     * subject to a delay.
+     * @inheritdoc ITimelockAuthorizer
      */
     function renouncePermission(bytes32 actionId, address where) external override {
         _revokePermission(actionId, msg.sender, where);
     }
 
+    /**
+     * @dev Revokes a permission from `account` for `actionId` at `where` address.
+     *
+     * This performs no permission checks on `msg.sender` of any kind. The caller of this function should perform
+     * any appropriate checks.
+     */
     function _revokePermission(
         bytes32 actionId,
         address account,

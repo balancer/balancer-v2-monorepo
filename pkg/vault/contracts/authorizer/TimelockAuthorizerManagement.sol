@@ -107,67 +107,73 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
         _rootTransferDelay = rootTransferDelay;
     }
 
+    /**
+     * @inheritdoc ITimelockAuthorizer
+     */
     // solhint-disable-next-line func-name-mixedcase
     function EVERYWHERE() public pure override returns (address) {
         return _everywhere;
     }
 
+    /**
+     * @inheritdoc ITimelockAuthorizer
+     */
     // solhint-disable-next-line func-name-mixedcase
     function GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID() public pure override returns (uint256) {
         return _global_canceler_scheduled_execution_id;
     }
 
     /**
-     * inheritdoc ITimelockAuthorizer
+     * @inheritdoc ITimelockAuthorizer
      */
     function isRoot(address account) public view override returns (bool) {
         return account == _root;
     }
 
     /**
-     * @notice Returns true if `account` is the pending root.
+     * @inheritdoc ITimelockAuthorizer
      */
     function isPendingRoot(address account) public view override returns (bool) {
         return account == _pendingRoot;
     }
 
     /**
-     * @notice Returns the delay required to transfer the root address.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getRootTransferDelay() public view override returns (uint256) {
         return _rootTransferDelay;
     }
 
     /**
-     * @notice Returns the vault address.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getVault() public view override returns (address) {
         return address(_vault);
     }
 
     /**
-     * @notice Returns the TimelockExecutionHelper address.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getTimelockExecutionHelper() public view override returns (address) {
         return address(_executionHelper);
     }
 
     /**
-     * @notice Returns the root address.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getRoot() external view override returns (address) {
         return _root;
     }
 
     /**
-     * @notice Returns the currently pending new root address.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getPendingRoot() external view override returns (address) {
         return _pendingRoot;
     }
 
     /**
-     * @notice Returns true if `account` is allowed to grant permissions for action `actionId` in target `where`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function isGranter(
         bytes32 actionId,
@@ -178,14 +184,14 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Returns true if `account` is allowed to revoke permissions in target `where` for all actions.
+     * @inheritdoc ITimelockAuthorizer
      */
     function isRevoker(address account, address where) public view override returns (bool) {
         return _isRevoker[account][where] || _isRevoker[account][EVERYWHERE()] || isRoot(account);
     }
 
     /**
-     * @notice Returns the scheduled execution `scheduledExecutionId`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function getScheduledExecution(uint256 scheduledExecutionId)
         external
@@ -197,15 +203,14 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Returns true if `account` is an executor for `scheduledExecutionId`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function isExecutor(uint256 scheduledExecutionId, address account) public view override returns (bool) {
         return _isExecutor[scheduledExecutionId][account];
     }
 
     /**
-     * @notice Returns true if execution `scheduledExecutionId` can be executed.
-     * Only true if it is not already executed or cancelled, and if the execution delay has passed.
+     * @inheritdoc ITimelockAuthorizer
      */
     function canExecute(uint256 scheduledExecutionId) external view override returns (bool) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
@@ -219,7 +224,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Returns true if `account` is an canceler for `scheduledExecutionId`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function isCanceler(uint256 scheduledExecutionId, address account) public view override returns (bool) {
         return
@@ -229,8 +234,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Schedules an execution to change the root address to `newRoot`.
-     * See `schedule` comments.
+     * @inheritdoc ITimelockAuthorizer
      */
     function scheduleRootChange(address newRoot, address[] memory executors) external override returns (uint256) {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
@@ -245,20 +249,14 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Sets the pending root address to `pendingRoot`.
-     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
-     * the TimelockExecutionHelper after after calling `scheduleRootChange`.
-     *
-     * Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
+     * @inheritdoc ITimelockAuthorizer
      */
     function setPendingRoot(address pendingRoot) external override onlyScheduled {
         _setPendingRoot(pendingRoot);
     }
 
     /**
-     * @notice Transfers root powers from the current to the pending root address.
-     * @dev This function prevents accidentally transferring root to an invalid address.
-     * To become root, the pending root must call this function to ensure that it's able to interact with this contract.
+     * @inheritdoc ITimelockAuthorizer
      */
     function claimRoot() external override {
         address pendingRoot = _pendingRoot;
@@ -270,22 +268,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Executes a scheduled action `scheduledExecutionId`. This is used to execute all scheduled executions,
-     * not only those that originate from `schedule`, but also internal TimelockAuthorizer functions such as
-     * `scheduleRootChange` or `scheduleDelayChange`.
-     *
-     * If any executors were set up when scheduling, `execute` can only be called by them. If none were set, the
-     * scheduled execution is said to be 'unprotected', and can be executed by anyone.
-     *
-     * Once executed, a scheduled execution cannot be executed again. It also cannot be executed if canceled.
-     *
-     * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
-     * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a
-     * scheduled action during the execution of another scheduled action - an unlikely and convoluted scenario that we
-     * explicitly forbid.
-     *
-     * Note that while `execute` is nonReentrant, other functions are not - indeed, we rely on reentrancy to e.g. call
-     * `setPendingRoot` or `setDelay`.
+     * @inheritdoc ITimelockAuthorizer
      */
     function execute(uint256 scheduledExecutionId) external override nonReentrant returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
@@ -315,12 +298,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Cancels a scheduled action `scheduledExecutionId`, which prevents execution via `execute`. Canceling is
-     * irreversible. Scheduled executions that have already been executed cannot be canceled. This is the only way to
-     * prevent a scheduled execution from being executed (assuming there are willing executors).
-     *
-     * The caller must be a canceler, a permission which is managed by the `addCanceler` and `removeCanceler` functions.
-     * Note that root is always a canceler for all scheduled executions.
+     * @inheritdoc ITimelockAuthorizer
      */
     function cancel(uint256 scheduledExecutionId) external override {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
@@ -337,12 +315,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Grants canceler status to `account` for scheduled action `scheduledExecutionId`.
-     * @dev Only the root can add a canceler.
-     *
-     * Note that there are no delays associated with adding or removing cancelers. This is based on the assumption that
-     * any action which a malicious user could exploit to damage the protocol can be mitigated by root.
-     * Root can remove any canceler and reschedule any task
+     * @inheritdoc ITimelockAuthorizer
      */
     function addCanceler(uint256 scheduledExecutionId, address account) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
@@ -350,10 +323,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Remove canceler status from `account` for scheduled action `scheduledExecutionId`.
-     * @dev Only the root can remove a canceler.
-     *
-     * See `addCanceler` comments.
+     * @inheritdoc ITimelockAuthorizer
      */
     function removeCanceler(uint256 scheduledExecutionId, address account) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
@@ -380,19 +350,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Grants granter status to `account` for action `actionId` in target `where`.
-     * @dev Only the root can add granters.
-     *
-     * Note that there are no delays associated with adding or removing granters. This is based on the assumption that
-     * any action which a malicious user could exploit to damage the protocol will have a sufficiently long delay
-     * associated with either granting permission for or exercising that permission such that the root will be able to
-     * reestablish control and cancel either the granting or associated action before it can be executed, and then
-     * remove the granter.
-     *
-     * A malicious granter may also attempt to use their granter status to grant permission to multiple accounts, but
-     * they cannot add new granters. Therefore, the danger posed by a malicious granter is limited and self-
-     * contained. Root can mitigate the situation simply and completely by revoking first their granter status,
-     * and then any permissions granted by that account, knowing there cannot be any more.
+     * @inheritdoc ITimelockAuthorizer
      */
     function addGranter(
         bytes32 actionId,
@@ -413,16 +371,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Revokes granter status from `account` for action `actionId` in target `where`.
-     * @dev Only the root can remove granters.
-     *
-     * Note that there are no delays associated with removing granters. The only instance in which one might be useful
-     * is if we had contracts that were granters, and this was depended upon for operation of the system. This however
-     * doesn't seem like it will ever be required - granters are typically subDAOs.
-     *
-     * After removing a malicious granter, care should be taken to review their actions and remove any permissions
-     * granted by them, or cancel scheduled grants. This should be done *after* removing the granter, at which point
-     * they won't be able to create any more of these.
+     * @inheritdoc ITimelockAuthorizer
      */
     function removeGranter(
         bytes32 actionId,
@@ -448,15 +397,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Grants revoker status to `account` in target `where` for all actions.
-     * @dev Only the root can add revokers.
-     *
-     * Note that there are no delays associated with adding revokers. This is based on the assumption that any
-     * permissions for which revocation from key addresses would be dangerous (e.g. preventing the BalancerMinter from
-     * minting BAL) have sufficiently long delays associated with revoking them that the root will be able to
-     * reestablish control and cancel the revocation before the scheduled revocation can be executed.
-     *
-     * A malicious revoker cannot add new revokers, so root can simply revoke their status once.
+     * @inheritdoc ITimelockAuthorizer
      */
     function addRevoker(address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
@@ -473,12 +414,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     }
 
     /**
-     * @notice Removes revoker status from `account` in target `where` for all actions.
-     * @dev Only the root can remove revokers.
-     *
-     * Note that there are no delays associated with removing revokers.  The only instance in which one might be useful
-     * is if we had contracts that were revoker, and this was depended upon for operation of the system. This however
-     * doesn't seem like it will ever be required - revokers are typically subDAOs.
+     * @inheritdoc ITimelockAuthorizer
      */
     function removeRevoker(address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
@@ -503,7 +439,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
      * @dev Schedules an execution of `data` at contract `where` with a `delay`
      * allowing only `executors` to invoke the action after the delay.
      *
-     * @dev This performs no permission checks on `msg.sender` of any kind. The caller of this function should perform
+     * This performs no permission checks on `msg.sender` of any kind. The caller of this function should perform
      * any appropriate checks.
      */
     function _scheduleWithDelay(
