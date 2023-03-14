@@ -604,7 +604,7 @@ describe('ChildChainGauge', () => {
         );
         expect(event2.args.value).to.be.almostEqual(rewardAmount);
         const functionalRewardBalanceAfterClaimAll = await functionalReward.balanceOf(claimer.address);
-        expect(functionalRewardBalanceAfterClaimAll).to.be.eq(functionalRewardBalanceBeforeClaimAll)
+        expect(functionalRewardBalanceAfterClaimAll).to.be.eq(functionalRewardBalanceBeforeClaimAll);
       });
 
       it('can still deposit', async () => {
