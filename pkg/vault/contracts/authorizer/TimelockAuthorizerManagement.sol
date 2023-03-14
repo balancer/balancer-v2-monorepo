@@ -34,7 +34,7 @@ import "./TimelockExecutionHelper.sol";
  *
  * See `TimelockAuthorizer`
  */
-contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, ReentrancyGuard {
+abstract contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, ReentrancyGuard {
     using Address for address;
 
     /**
@@ -70,66 +70,6 @@ contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, Reentran
     ITimelockAuthorizerManagement.ScheduledExecution[] private _scheduledExecutions;
 
     /**
-     * @notice Emitted when a root change is scheduled.
-     */
-    event RootChangeScheduled(address indexed newRoot, uint256 indexed scheduledExecutionId);
-
-    /**
-     * @notice Emitted when an executor is added for a scheduled execution `scheduledExecutionId`.
-     */
-    event ExecutorAdded(uint256 indexed scheduledExecutionId, address indexed executor);
-
-    /**
-     * @notice Emitted when an account is added as a granter for `actionId` in `where`.
-     */
-    event GranterAdded(bytes32 indexed actionId, address indexed account, address indexed where);
-
-    /**
-     * @notice Emitted when an account is removed as a granter `actionId` in `where`.
-     */
-    event GranterRemoved(bytes32 indexed actionId, address indexed account, address indexed where);
-
-    /**
-     * @notice Emitted when `account` is added as a revoker in `where`.
-     */
-    event RevokerAdded(address indexed account, address indexed where);
-
-    /**
-     * @notice Emitted when an account is removed as a revoker in `where`.
-     */
-    event RevokerRemoved(address indexed account, address indexed where);
-
-    /**
-     * @notice Emitted when a canceler is added for a scheduled execution `scheduledExecutionId`.
-     */
-    event CancelerAdded(uint256 indexed scheduledExecutionId, address indexed canceler);
-
-    /**
-     * @notice Emitted when a canceler is removed for a scheduled execution `scheduledExecutionId`.
-     */
-    event CancelerRemoved(uint256 indexed scheduledExecutionId, address indexed canceler);
-
-    /**
-     * @notice Emitted when an execution `scheduledExecutionId` is executed.
-     */
-    event ExecutionExecuted(uint256 indexed scheduledExecutionId);
-
-    /**
-     * @notice Emitted when an execution `scheduledExecutionId` is cancelled.
-     */
-    event ExecutionCancelled(uint256 indexed scheduledExecutionId);
-
-    /**
-     * @notice Emitted when a new `root` is set.
-     */
-    event RootSet(address indexed root);
-
-    /**
-     * @notice Emitted when a new `pendingRoot` is set. The new account must claim ownership for it to take effect.
-     */
-    event PendingRootSet(address indexed pendingRoot);
-
-    /**
      * @dev Prevents a TimelockAuthorizer function from being called directly, making it only possible to call it by
      * scheduling a delayed execution.
      *
@@ -158,7 +98,7 @@ contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, Reentran
     constructor(
         address initialRoot,
         address nextRoot,
-        IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
+        IAuthentication vault,
         uint256 rootTransferDelay
     ) {
         _setRoot(initialRoot);
@@ -168,13 +108,13 @@ contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, Reentran
         // permission to some other account.
         _setPendingRoot(nextRoot);
 
-        _vault = authorizerAdaptorEntrypoint.getVault();
+        _vault = vault;
         _executionHelper = new TimelockExecutionHelper();
         _rootTransferDelay = rootTransferDelay;
     }
 
     /**
-     * @inheritdoc ITimelockAuthorizer
+     * inheritdoc ITimelockAuthorizer
      */
     function isRoot(address account) public view override returns (bool) {
         return account == _root;
@@ -360,7 +300,7 @@ contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, Reentran
         if (scheduledExecution.protected) {
             // Protected scheduled executions can only be executed by a set of accounts designated by the original
             // scheduler.
-            require(isExecutor(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_EXECUTION_HELPER");
+            require(isExecutor(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_EXECUTOR");
         }
 
         scheduledExecution.executed = true;
@@ -624,11 +564,5 @@ contract TimelockAuthorizerManagement is ITimelockAuthorizerManagement, Reentran
     function _setPendingRoot(address pendingRoot) internal {
         _pendingRoot = pendingRoot;
         emit PendingRootSet(pendingRoot);
-    }
-
-    function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
-        // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
-        if (data.length < 4) return bytes4(0);
-        return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
     }
 }
