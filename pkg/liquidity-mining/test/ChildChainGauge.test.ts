@@ -22,7 +22,7 @@ describe('ChildChainGauge', () => {
   let BAL: Contract, VE: Contract, BPT: Contract;
   let rewards: TokenList;
 
-  let admin: SignerWithAddress, user1: SignerWithAddress, user2: SignerWithAddress;
+  let admin: SignerWithAddress, user1: SignerWithAddress, user2: SignerWithAddress, other: SignerWithAddress;
 
   const version = JSON.stringify({
     name: 'ChildChainGauge',
@@ -42,7 +42,7 @@ describe('ChildChainGauge', () => {
   }
 
   before('setup signers', async () => {
-    [, admin, user1, user2] = await ethers.getSigners();
+    [, admin, user1, user2, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy gauge factory', async () => {
@@ -292,24 +292,29 @@ describe('ChildChainGauge', () => {
     let claimer: SignerWithAddress;
 
     function itTransfersRewardsToClaimer(claimFunction: () => Promise<unknown> = claimSelected) {
-      it("transfers rewards to claimer without affecting other users' rewards", async () => {
-        const claimerStake = await gauge.balanceOf(claimer.address);
-        const gaugeTotalSupply = await gauge.totalSupply();
+      let expectedReward: BigNumber;
 
+      sharedBeforeEach('estimate expected reward', async () => {
         // Claimer rewards are proportional to their BPT stake in the gauge given that staking time is constant for all
         // users.
+        const claimerStake = await gauge.balanceOf(claimer.address);
+        const gaugeTotalSupply = await gauge.totalSupply();
+        expectedReward = rewardAmount.mul(claimerStake).div(gaugeTotalSupply);
+      });
+
+      it("transfers rewards to claimer without affecting other users' rewards", async () => {
         const expectedBalanceChanges = [
           {
             account: gauge.address,
             changes: selectedRewards.reduce((acc, token) => {
-              acc[token.symbol] = ['near', rewardAmount.mul(claimerStake).div(gaugeTotalSupply).mul(-1)]; // Outgoing
+              acc[token.symbol] = ['near', expectedReward.mul(-1)]; // Outgoing
               return acc;
             }, {} as Record<string, Comparison>),
           },
           {
             account: claimer,
             changes: selectedRewards.reduce((acc, token) => {
-              acc[token.symbol] = ['near', rewardAmount.mul(claimerStake).div(gaugeTotalSupply)];
+              acc[token.symbol] = ['near', expectedReward];
               return acc;
             }, {} as Record<string, Comparison>),
           },
@@ -320,6 +325,56 @@ describe('ChildChainGauge', () => {
         // change of all the rewards inconditionally. This way, we ensure that only the selected rewards are transferred
         // and the remaining ones are not affected.
         await expectBalanceChange(claimFunction, rewards, expectedBalanceChanges);
+      });
+
+      it('updates claimed balance for claimer', async () => {
+        const claimedBefore = await Promise.all(
+          selectedRewards.map((token) => gauge.claimed_reward(claimer.address, token.address))
+        );
+        expect(claimedBefore).to.be.deep.eq(Array(selectedRewards.length).fill(0));
+
+        await claimFunction();
+        const claimedAfter = await Promise.all(
+          selectedRewards.map((token) => gauge.claimed_reward(claimer.address, token.address))
+        );
+        expect(claimedAfter).to.be.almostEqual(Array(selectedRewards.length).fill(expectedReward));
+      });
+
+      it('keeps the same claimed balances for others', async () => {
+        const claimedBefore = await Promise.all(
+          selectedRewards.map((token) => gauge.claimed_reward(other.address, token.address))
+        );
+
+        await claimFunction();
+        const claimedAfter = await Promise.all(
+          selectedRewards.map((token) => gauge.claimed_reward(other.address, token.address))
+        );
+        expect(claimedBefore).to.be.deep.eq(claimedAfter);
+      });
+
+      it('updates claimable balance for user', async () => {
+        const claimableBefore = await Promise.all(
+          selectedRewards.map((token) => gauge.claimable_reward(claimer.address, token.address))
+        );
+        expect(claimableBefore).to.be.almostEqual(Array(selectedRewards.length).fill(expectedReward));
+
+        await claimFunction();
+        const claimableAfter = await Promise.all(
+          selectedRewards.map((token) => gauge.claimable_reward(claimer.address, token.address))
+        );
+        expect(claimableAfter).to.be.deep.eq(Array(selectedRewards.length).fill(0));
+      });
+
+      it('keeps the same claimable balances for others', async () => {
+        const claimableBefore = await Promise.all(
+          selectedRewards.map((token) => gauge.claimable_reward(other.address, token.address))
+        );
+
+        await claimFunction();
+        const claimableAfter = await Promise.all(
+          selectedRewards.map((token) => gauge.claimable_reward(other.address, token.address))
+        );
+        expect(claimableAfter).to.be.deep.eq(claimableBefore);
       });
     }
 
