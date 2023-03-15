@@ -55,10 +55,10 @@ import "./TimelockAuthorizerManagement.sol";
  */
 contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     // solhint-disable-next-line const-name-snakecase
-    uint256 private constant _max_delay = 2 * (365 days);
+    uint256 private constant _MAX_DELAY = 2 * (365 days);
 
     // solhint-disable-next-line const-name-snakecase
-    uint256 private constant _minimum_change_delay_execution_delay = 5 days;
+    uint256 private constant _MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = 5 days;
 
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
@@ -84,12 +84,12 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
     // solhint-disable-next-line func-name-mixedcase
     function MAX_DELAY() public pure override returns (uint256) {
-        return _max_delay;
+        return _MAX_DELAY;
     }
 
     // solhint-disable-next-line func-name-mixedcase
     function MINIMUM_CHANGE_DELAY_EXECUTION_DELAY() public pure override returns (uint256) {
-        return _minimum_change_delay_execution_delay;
+        return _MINIMUM_CHANGE_DELAY_EXECUTION_DELAY;
     }
 
     /**

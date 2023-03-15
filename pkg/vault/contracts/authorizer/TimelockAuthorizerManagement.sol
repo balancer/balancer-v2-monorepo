@@ -38,10 +38,10 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     using Address for address;
 
     // solhint-disable-next-line const-name-snakecase
-    address private constant _everywhere = address(-1);
+    address private constant _EVERYWHERE = address(-1);
 
     // solhint-disable-next-line const-name-snakecase
-    uint256 internal constant _global_canceler_scheduled_execution_id = type(uint256).max;
+    uint256 internal constant _GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;
 
     TimelockExecutionHelper private immutable _executionHelper;
     IAuthentication private immutable _vault;
@@ -112,7 +112,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
      */
     // solhint-disable-next-line func-name-mixedcase
     function EVERYWHERE() public pure override returns (address) {
-        return _everywhere;
+        return _EVERYWHERE;
     }
 
     /**
@@ -120,7 +120,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
      */
     // solhint-disable-next-line func-name-mixedcase
     function GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID() public pure override returns (uint256) {
-        return _global_canceler_scheduled_execution_id;
+        return _GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID;
     }
 
     /**
