@@ -1459,9 +1459,7 @@ describe('TimelockAuthorizer', () => {
                   const id = await schedule();
                   await advanceTime(delay);
 
-                  await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith(
-                    'SENDER_IS_NOT_EXECUTION_HELPER'
-                  );
+                  await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
 
                   const receipt = await authorizer.execute(id, { from: executors[0] });
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
@@ -1667,9 +1665,7 @@ describe('TimelockAuthorizer', () => {
             id = await schedule();
             await advanceTime(delay);
 
-            await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith(
-              'SENDER_IS_NOT_EXECUTION_HELPER'
-            );
+            await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
           });
         });
       });
