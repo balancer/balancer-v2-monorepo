@@ -1184,7 +1184,7 @@ contract TimelockAuthorizer is IAuthorizer, ReentrancyGuard {
         );
 
         for (uint256 i = 0; i < executors.length; i++) {
-            // Note that we allow for repeated executors - this is not an issue
+            require(!_isExecutor[scheduledExecutionId][executors[i]], "DUPLICATE_EXECUTORS");
             _isExecutor[scheduledExecutionId][executors[i]] = true;
             emit ExecutorAdded(scheduledExecutionId, executors[i]);
         }
