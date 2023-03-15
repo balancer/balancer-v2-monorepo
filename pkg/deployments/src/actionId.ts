@@ -91,8 +91,8 @@ export function checkActionIdUniqueness(network: string): void {
     for (const [actionId, instances] of Object.entries(duplicateActionIdsMapping)) {
       if (JSON.stringify(instances) === JSON.stringify(expectedDuplicateActionIdsMapping[actionId])) {
         // We expect some collisions of actionIds for cases where contracts share the same signature,
-        // such as those using the AuthorizerAdaptor or BatchRelayer. If the collisions *exactly* match
-        // those in the expected list, we can ignore them.
+        // such as those using the AuthorizerAdaptor. If the collisions *exactly* match those in the
+        // expected list, we can ignore them.
         continue;
       }
 
