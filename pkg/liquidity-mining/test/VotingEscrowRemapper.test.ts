@@ -10,7 +10,7 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ZERO_ADDRESS, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 
-describe.only('VotingEscrowRemapper', function () {
+describe('VotingEscrowRemapper', function () {
   let vault: Vault;
   let smartWalletChecker: Contract;
   let remapper: Contract;
