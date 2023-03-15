@@ -18,6 +18,9 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISmartWalletChecker.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVotingEscrow.sol";
 
+// solhint-disable var-name-mixedcase
+// solhint-disable func-name-mixedcase
+
 /**
  * @dev Mock voting escrow with setters to manipulate its inner state.
  * Points are represented as mappings just for convenience, while keeping the same API for the public members
@@ -54,7 +57,11 @@ contract MockVotingEscrow {
         user_point_epoch[user] = _epoch;
     }
 
-    function setUserPointHistory(address user, uint256 _epoch, IVotingEscrow.Point memory point) external {
+    function setUserPointHistory(
+        address user,
+        uint256 _epoch,
+        IVotingEscrow.Point memory point
+    ) external {
         user_point_history[user][_epoch] = point;
     }
 }
