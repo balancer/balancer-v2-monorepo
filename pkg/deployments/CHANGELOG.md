@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New Deployments
+
+- Deployed `BatchRelayerLibrary` V5 to all networks.
+
 ### Deprecations
 
 - Deprecated `20220916-batch-relayer-v4`.
