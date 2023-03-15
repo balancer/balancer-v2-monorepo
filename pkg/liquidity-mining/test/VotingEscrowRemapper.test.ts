@@ -8,11 +8,13 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ZERO_ADDRESS, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
+import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe.only('VotingEscrowRemapper', function () {
   let vault: Vault;
   let smartWalletChecker: Contract;
   let remapper: Contract;
+  let votingEscrow: Contract;
 
   let admin: SignerWithAddress, local: SignerWithAddress, manager: SignerWithAddress, other: SignerWithAddress;
   let remote: string;
@@ -26,7 +28,7 @@ describe.only('VotingEscrowRemapper', function () {
     vault = await Vault.create({ admin });
 
     smartWalletChecker = await deploy('SmartWalletChecker', { args: [vault.address, []] });
-    const votingEscrow = await deploy('MockVotingEscrow', { args: [smartWalletChecker.address] });
+    votingEscrow = await deploy('MockVotingEscrow', { args: [smartWalletChecker.address] });
 
     remapper = await deploy('VotingEscrowRemapper', { args: [votingEscrow.address, vault.address] });
   });
@@ -101,6 +103,11 @@ describe.only('VotingEscrowRemapper', function () {
         it('does not map the remote address on other chain ids', async () => {
           await doRemap(remote);
           expect(await remapper.getLocalUser(remote, otherChainId)).to.equal(remote);
+        });
+
+        it('defaults the local address in the chain ID to the local address', async () => {
+          await doRemap(remote);
+          expect(await remapper.getLocalUser(local.address, chainId)).to.equal(local.address);
         });
 
         it('emits an AddressMappingUpdated event', async () => {
@@ -179,7 +186,7 @@ describe.only('VotingEscrowRemapper', function () {
         expect(await remapper.getLocalUser(remote, otherChainId)).to.be.eq(local.address);
       });
 
-      it('clears existing remapping manager in target chain ID', async () => {
+      it('clears existing remapping manager', async () => {
         await doClearMap();
         expect(await remapper.getRemappingManager(local.address)).to.be.eq(ZERO_ADDRESS);
       });
@@ -249,6 +256,66 @@ describe.only('VotingEscrowRemapper', function () {
           remapper.connect(other).setNetworkRemappingManager(local.address, manager.address)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
+    });
+  });
+
+  describe('getUserPointOnRemoteChain', () => {
+    const chainId = 37;
+    const otherChainId = 15;
+    const epoch = 23;
+    const point = {
+      bias: 3,
+      slope: -7,
+      ts: 134,
+      blk: 157,
+    };
+
+    sharedBeforeEach(async () => {
+      await smartWalletChecker.connect(admin).allowlistAddress(local.address);
+      await remapper.connect(local).setNetworkRemapping(local.address, remote, chainId);
+
+      // Mock setters
+      await votingEscrow.setUserPointEpoch(local.address, epoch);
+      await votingEscrow.setUserPointHistory(local.address, epoch, point);
+      expect(await votingEscrow.user_point_epoch(local.address)).to.be.eq(epoch);
+      expect(await votingEscrow.user_point_history(local.address, epoch)).to.be.deep.eq(Object.values(point));
+    });
+
+    it('returns user point on remote chain', async () => {
+      expect(await remapper.getUserPointOnRemoteChain(remote, chainId)).to.be.deep.eq(Object.values(point));
+    });
+
+    it('returns user point on local chain', async () => {
+      // `local` maps to `remote` in chain ID, but `getLocalUser(local, chainId)` also maps to `local`.
+      expect(await remapper.getUserPointOnRemoteChain(local.address, chainId)).to.be.deep.eq(Object.values(point));
+    });
+
+    it('returns a null point for other chain ID', async () => {
+      expect(await remapper.getUserPointOnRemoteChain(remote, otherChainId)).to.be.deep.eq(
+        Array(Object.keys(point).length).fill(bn(0))
+      );
+    });
+  });
+
+  describe('getTotalSupplyPoint', () => {
+    const epoch = 123;
+    const point = {
+      bias: 30,
+      slope: -70,
+      ts: 178,
+      blk: 1567,
+    };
+
+    sharedBeforeEach(async () => {
+      // Mock setters
+      await votingEscrow.setEpoch(epoch);
+      await votingEscrow.setPointHistory(epoch, point);
+      expect(await votingEscrow.epoch()).to.be.eq(epoch);
+      expect(await votingEscrow.point_history(epoch)).to.be.deep.eq(Object.values(point));
+    });
+
+    it('returns total supply for epoch', async () => {
+      expect(await remapper.getTotalSupplyPoint()).to.be.deep.eq(Object.values(point));
     });
   });
 });

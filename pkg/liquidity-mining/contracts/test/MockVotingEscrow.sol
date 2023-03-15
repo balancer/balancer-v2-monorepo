@@ -16,8 +16,22 @@ pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISmartWalletChecker.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVotingEscrow.sol";
 
+/**
+ * @dev Mock voting escrow with setters to manipulate its inner state.
+ * Points are represented as mappings just for convenience, while keeping the same API for the public members
+ * as the real voting escrow.
+ */
 contract MockVotingEscrow {
+    uint256 public epoch;
+    // epoch ==> Point
+    mapping(uint256 => IVotingEscrow.Point) public point_history;
+    // user ==> epoch ==> Point
+    mapping(address => mapping(uint256 => IVotingEscrow.Point)) public user_point_history;
+    // user ==> epoch
+    mapping(address => uint256) public user_point_epoch;
+
     ISmartWalletChecker private _smartWalletChecker;
 
     constructor(ISmartWalletChecker smartWalletChecker) {
@@ -26,5 +40,21 @@ contract MockVotingEscrow {
 
     function smart_wallet_checker() external view returns (ISmartWalletChecker) {
         return _smartWalletChecker;
+    }
+
+    function setEpoch(uint256 _epoch) external {
+        epoch = _epoch;
+    }
+
+    function setPointHistory(uint256 _epoch, IVotingEscrow.Point memory point) external {
+        point_history[_epoch] = point;
+    }
+
+    function setUserPointEpoch(address user, uint256 _epoch) external {
+        user_point_epoch[user] = _epoch;
+    }
+
+    function setUserPointHistory(address user, uint256 _epoch, IVotingEscrow.Point memory point) external {
+        user_point_history[user][_epoch] = point;
     }
 }
