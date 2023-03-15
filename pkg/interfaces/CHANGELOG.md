@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 (20223-03-15)
+## 0.4.0 (2023-03-15)
 
 - Added `IERC4626`.
 - Added `IChildChainGauge`.
