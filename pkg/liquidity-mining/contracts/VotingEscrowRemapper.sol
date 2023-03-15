@@ -74,26 +74,28 @@ contract VotingEscrowRemapper is SingletonAuthentication {
 
     /**
      * @notice Returns the local user corresponding to an address on a remote chain.
+     * @dev Reverts if no mapping exists for remote user.
      * @param remoteUser - Address of the user on the remote chain which are querying the local address for.
      * @param chainId - The chain ID of the network which this user is on.
      */
     function getLocalUser(address remoteUser, uint256 chainId) public view returns (address) {
         address localUser = _remoteToLocalAddressMap[chainId][remoteUser];
+        require(localUser != address(0), "Remote user is not remapped");
 
-        // If no remapping exists then we return the `remoteUser`'s address
-        return localUser == address(0) ? remoteUser : localUser;
+        return localUser;
     }
 
     /**
      * @notice Returns the remote user corresponding to an address on the local chain.
+     * @dev Reverts if no mapping exists for local user.
      * @param localUser - Address of the user on the local chain which are querying the remote address for.
      * @param chainId - The chain ID of the network which the remote user is on.
      */
     function getRemoteUser(address localUser, uint256 chainId) public view returns (address) {
         address remoteUser = _localToRemoteAddressMap[chainId][localUser];
+        require(remoteUser != address(0), "Local user is not remapped");
 
-        // If no remapping exists then we return the `localUser`'s address
-        return remoteUser == address(0) ? localUser : remoteUser;
+        return remoteUser;
     }
 
     function getRemappingManager(address localUser) public view returns (address) {
