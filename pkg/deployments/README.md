@@ -66,7 +66,7 @@ Returns an object with all contracts from a deployment and their addresses.
 ## Active Deployments
 
 | Description                                            | Task ID                                                                                              |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+|--------------------------------------------------------|------------------------------------------------------------------------------------------------------|
 | Authorizer, governance contract                        | [`20210418-authorizer`](./tasks/20210418-authorizer)                                                 |
 | Vault, main protocol contract                          | [`20210418-vault`](./tasks/20210418-vault)                                                           |
 | Rate Provider for wstETH                               | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
@@ -110,6 +110,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Merkle Orchard Distributor V2                          | [`20230222-merkle-orchard-v2`](./tasks/20230222-merkle-orchard-v2)                                   |
 | Protocol ID registry                                   | [`20230223-protocol-id-registry`](./tasks/20230223-protocol-id-registry)                             |
 | Batch Relayer V5                                       | [`20230314-batch-relayer-v5`](./tasks/20230314-batch-relayer-v5)                                     |
+| Linear Pools for Silo shareTokens                      | [`20230315-silo-linear-pool`](./tasks/20230315-silo-linear-pool)                                     |
 
 ## Scripts
 

@@ -1,12 +1,11 @@
-import { bn } from '@orbcollective/shared-dependencies/numbers';
-import Task, { TaskMode } from '../../../../../../../linear-pools/pkg/fork-tests/src/task';
-import { TaskRunOptions } from '../../../../../../../linear-pools/pkg/fork-tests/src/task-libraries/types';
+import { bn } from '@balancer-labs/v2-helpers/src/numbers';
+import Task, { TaskMode } from '../../src/task';
+import { TaskRunOptions } from '../../src/types';
 import { SiloLinearPoolDeployment } from './input';
-import { ZERO_ADDRESS } from '@orbcollective/shared-dependencies';
-import * as expectEvent from '@orbcollective/shared-dependencies/expectEvent';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ethers } from 'hardhat';
-import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../../../../../../linear-pools/pkg/fork-tests/src';
-
+import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../src';
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as SiloLinearPoolDeployment;
   const args = [
@@ -16,7 +15,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     input.FactoryVersion,
     input.PoolVersion,
     input.InitialPauseWindowDuration,
-    input.BufferPeriodDuration
+    input.BufferPeriodDuration,
   ];
 
   const factory = await task.deployAndVerify('SiloLinearPoolFactory', args, from, force);
@@ -26,16 +25,23 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // Pools are automatically verified. We however don't run any of this code in CHECK mode, since we don't care about
     // the contracts deployed here. The action IDs will be checked to be correct via a different mechanism.
 
-    // TODO: Fix Mocks
+    // A Silo require a Silo Repository
+    const mockSiloRepoArgs = [0, 0];
+    const mockSiloRepo = await task.deployAndVerify('MockSiloRepository', mockSiloRepoArgs, from, force);
+
+    // shareTokens require a Silo liquidity pool
+    const mockSiloArgs = [mockSiloRepo, input.WETH];
+    const mockSilo = await task.deployAndVerify('MockSilo', mockSiloArgs, from, force);
+
     // SiloLinearPools require an Silo Token
-    const mockShareTokenArgs = ['DO NOT USE - Mock Share Token', 'TEST', 18, input.WETH];
+    const mockShareTokenArgs = ['Mock Share Token', 'TEST', mockSilo, input.WETH, 18];
     const mockShareToken = await task.deployAndVerify('MockShareToken', mockShareTokenArgs, from, force);
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare
     // them here to appease the type system. Those are constructor arguments, but automatically provided by the factory.
     const mockPoolArgs = {
       vault: input.Vault,
-      name: 'DO NOT USE - Mock Linear Pool',
+      name: 'Mock Linear Pool',
       symbol: 'TEST',
       mainToken: input.WETH,
       wrappedToken: mockShareToken.address,
@@ -71,7 +77,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       await task.save({ MockSiloLinearPool: mockPoolAddress });
     }
 
-    const mockSilo = await task.instanceAt('SiloLinearPool', task.output()['MockSilo']);
+    const mockSiloLinearPool = await task.instanceAt('SiloLinearPool', task.output()['MockSilo']);
 
     // In order to verify the Pool's code, we need to complete its constructor arguments by computing the factory
     // provided arguments (asset manager and pause durations).
@@ -80,7 +86,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, task.network);
     const vault = await vaultTask.deployedInstance('Vault');
 
-    const { assetManager: assetManagerAddress } = await vault.getPoolTokenInfo(await mockSilo.getPoolId(), input.WETH);
+    const { assetManager: assetManagerAddress } = await vault.getPoolTokenInfo(await mockSiloLinearPool.getPoolId(), input.WETH);
     mockPoolArgs.assetManager = assetManagerAddress;
 
     // The durations require knowing when the Pool was created, so we look for the timestamp of its creation block.
@@ -99,6 +105,10 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     await task.verify('SiloLinearPool', mockSilo.address, [mockPoolArgs]);
 
     // We can also verify the Asset Manager
-    await task.verify('SiloLinearPoolRebalancer', assetManagerAddress, [input.Vault, input.BalancerQueries, mockShareToken.address]);
+    await task.verify('SiloLinearPoolRebalancer', assetManagerAddress, [
+      input.Vault,
+      input.BalancerQueries,
+      mockShareToken.address,
+    ]);
   }
 };

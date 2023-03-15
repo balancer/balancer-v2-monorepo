@@ -1,5 +1,5 @@
 import Task, { TaskMode } from '../../../../../../../linear-pools/pkg/fork-tests/src/task';
-import { MONTH } from '@orbcollective/shared-dependencies/time';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 export type SiloLinearPoolDeployment = {
   Vault: string;
