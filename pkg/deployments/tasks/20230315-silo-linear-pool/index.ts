@@ -86,7 +86,10 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, task.network);
     const vault = await vaultTask.deployedInstance('Vault');
 
-    const { assetManager: assetManagerAddress } = await vault.getPoolTokenInfo(await mockSiloLinearPool.getPoolId(), input.WETH);
+    const { assetManager: assetManagerAddress } = await vault.getPoolTokenInfo(
+      await mockSiloLinearPool.getPoolId(),
+      input.WETH
+    );
     mockPoolArgs.assetManager = assetManagerAddress;
 
     // The durations require knowing when the Pool was created, so we look for the timestamp of its creation block.
