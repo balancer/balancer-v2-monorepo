@@ -12,20 +12,20 @@ import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/sr
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
-describe('TimelockAuthorizer schedule', () => {
+describe('TimelockAuthorizer execute', () => {
   let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
     granter: SignerWithAddress,
+    executor: SignerWithAddress,
     canceler: SignerWithAddress,
     revoker: SignerWithAddress,
     other: SignerWithAddress,
     from: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, root, nextRoot, granter, canceler, revoker, other] = await ethers.getSigners();
+    [, root, nextRoot, granter, executor, canceler, revoker, other] = await ethers.getSigners();
   });
-
 
   sharedBeforeEach('deploy authorizer', async () => {
     let authorizerContract: Contract;
@@ -430,6 +430,30 @@ describe('TimelockAuthorizer schedule', () => {
     });
   });
 
+  describe('execute', () => {
+    it('can execute an action', async () => {});
+
+    it('action is marked as executed', async () => {});
+
+    context('when the action is protected', () => {
+      it('all executors can execute', async () => {});
+
+      it('other cannot execute', async () => {});
+    });
+
+    it('can be executed by anyone if not protected', async () => {});
+
+    it('emits an event', async () => {});
+
+    it('cannot be executed twice', async () => {});
+
+    it('reverts if action was cancelled', async () => {});
+
+    it('reverts if the delay has not passed', async () => {});
+
+    it('reverts if the scheduled id is invalid', async () => {});
+  });
+
   describe('cancel', () => {
     const delay = DAY;
     let executors: SignerWithAddress[];
@@ -441,89 +465,54 @@ describe('TimelockAuthorizer schedule', () => {
 
       const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
       await authorizer.scheduleAndExecuteDelayChange(protectedFunctionAction, delay, { from: root });
-      await authorizer.grantPermission(protectedFunctionAction, granter, authenticatedContract, { from: root });
+      await authorizer.grantPermission(protectedFunctionAction, executor, authenticatedContract, { from: root });
     });
 
     const schedule = async (): Promise<number> => {
       const data = authenticatedContract.interface.encodeFunctionData('protectedFunction', ['0x']);
-      return authorizer.schedule(authenticatedContract, data, executors || [], { from: granter });
+      const id = await authorizer.schedule(authenticatedContract, data, executors || [], { from: executor });
+      await authorizer.addCanceler(id, canceler, { from: root });
+      return id;
     };
 
-    context('when the given id is valid', () => {
-      let id: BigNumberish;
+    it('cancel the action', async () => {
+      const id = await schedule();
+      await authorizer.cancel(id, { from: canceler });
 
-      function itCancelsTheScheduledAction() {
-        context('when the action was not executed', () => {
-          sharedBeforeEach('schedule execution', async () => {
-            id = await schedule();
-          });
-
-          it('cancels the action', async () => {
-            await authorizer.cancel(id, { from });
-
-            const scheduledExecution = await authorizer.getScheduledExecution(id);
-            expect(scheduledExecution.cancelled).to.be.true;
-          });
-
-          it('emits an event', async () => {
-            const receipt = await authorizer.cancel(id, { from });
-
-            expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
-          });
-
-          it('cannot be cancelled twice', async () => {
-            await authorizer.cancel(id, { from });
-
-            await expect(authorizer.cancel(id, { from })).to.be.revertedWith('ACTION_ALREADY_CANCELLED');
-          });
-        });
-
-        context('when the action was executed', () => {
-          sharedBeforeEach('schedule and execute action', async () => {
-            id = await schedule();
-            await advanceTime(delay);
-            await authorizer.execute(id);
-          });
-
-          it('reverts', async () => {
-            await expect(authorizer.cancel(id, { from })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
-          });
-        });
-      }
-
-      context('when the sender has permission for the requested action', () => {
-        sharedBeforeEach('set sender', async () => {
-          from = granter;
-        });
-
-        itCancelsTheScheduledAction();
-      });
-
-      context('when the sender is root', () => {
-        sharedBeforeEach('set sender', async () => {
-          from = root;
-        });
-
-        itCancelsTheScheduledAction();
-      });
-
-      context('when the sender does not have permission for the requested action', () => {
-        sharedBeforeEach('set sender', async () => {
-          from = other;
-        });
-
-        it('reverts', async () => {
-          id = await schedule();
-
-          await expect(authorizer.cancel(id, { from })).to.be.revertedWith('SENDER_IS_NOT_CANCELER');
-        });
-      });
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.cancelled).to.be.true;
     });
 
-    context('when the given id is not valid', () => {
-      it('reverts', async () => {
-        await expect(authorizer.cancel(100)).to.be.revertedWith('ACTION_DOES_NOT_EXIST');
-      });
+    it('emits an event', async () => {
+      const id = await schedule();
+      const receipt = await authorizer.cancel(id, { from: canceler });
+
+      expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+    });
+
+    it('cannot be cancelled twice', async () => {
+      const id = await schedule();
+      await authorizer.cancel(id, { from: canceler });
+
+      await expect(authorizer.cancel(id, { from: canceler })).to.be.revertedWith('ACTION_ALREADY_CANCELLED');
+    });
+
+    it('reverts if the scheduled id is invalid', async () => {
+      await expect(authorizer.cancel(100)).to.be.revertedWith('ACTION_DOES_NOT_EXIST');
+    });
+
+    it('reverts if action was executed', async () => {
+      const id = await schedule();
+      await advanceTime(delay);
+      await authorizer.execute(id);
+
+      await expect(authorizer.cancel(id, { from: canceler })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
+    });
+
+    it('reverts if sender is not canceler', async () => {
+      const id = await schedule();
+
+      await expect(authorizer.cancel(id, { from: other })).to.be.revertedWith('SENDER_IS_NOT_CANCELER');
     });
   });
 });
