@@ -52,4 +52,6 @@ interface IVotingEscrow is IERC20 {
     function commit_smart_wallet_checker(address newSmartWalletChecker) external;
 
     function apply_smart_wallet_checker() external;
+
+    function locked__end(address user) external view returns (uint256);
 }

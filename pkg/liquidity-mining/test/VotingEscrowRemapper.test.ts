@@ -360,4 +360,17 @@ describe('VotingEscrowRemapper', function () {
       expect(await remapper.getTotalSupplyPoint()).to.be.deep.eq(Object.values(point));
     });
   });
+
+  describe('getLockedEnd', () => {
+    const end = 12345;
+
+    sharedBeforeEach(async () => {
+      await votingEscrow.setLockedEnd(local.address, end);
+      expect(await votingEscrow.locked__end(local.address)).to.be.eq(end);
+    });
+
+    it('returns locked end from voting escrow', async () => {
+      expect(await remapper.getLockedEnd(local.address)).to.be.eq(end);
+    });
+  });
 });

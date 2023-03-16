@@ -11,6 +11,10 @@
 - Refactor: renamed `IBalancerMinter` to `IMainnetBalancerMinter`.
   - `IMainnetBalancerMinter` now implements reduced version of previous `IBalancerMinter` and `ILMGetters`.
 
+### New Features
+
+- Added `locked__end` to `IVotingEscrow`.
+
 ## 0.3.0 (20223-02-08)
 
 ### New Features

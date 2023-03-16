@@ -75,6 +75,14 @@ contract VotingEscrowRemapper is SingletonAuthentication {
     }
 
     /**
+     * @notice Get timestamp when `user`'s lock finishes.
+     * @dev The returned value is taken directly from the voting escrow.
+     */
+    function getLockedEnd(address user) external view returns (uint256) {
+        return _votingEscrow.locked__end(user);
+    }
+
+    /**
      * @notice Returns the local user corresponding to an address on a remote chain.
      * @dev Returns `address(0)` if the remapping does not exist for the given remote user.
      * @param remoteUser - Address of the user on the remote chain which are querying the local address for.

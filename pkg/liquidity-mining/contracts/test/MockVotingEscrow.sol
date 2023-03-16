@@ -34,6 +34,8 @@ contract MockVotingEscrow {
     mapping(address => mapping(uint256 => IVotingEscrow.Point)) public user_point_history;
     // user ==> epoch
     mapping(address => uint256) public user_point_epoch;
+    // user ==> lock's end
+    mapping(address => uint256) public locked__end;
 
     ISmartWalletChecker private _smartWalletChecker;
 
@@ -63,5 +65,9 @@ contract MockVotingEscrow {
         IVotingEscrow.Point memory point
     ) external {
         user_point_history[user][_epoch] = point;
+    }
+
+    function setLockedEnd(address user, uint256 end) external {
+        locked__end[user] = end;
     }
 }
