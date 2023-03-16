@@ -34,14 +34,14 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     const mockSilo = await task.deployAndVerify('MockSilo', mockSiloArgs, from, force);
 
     // SiloLinearPools require an Silo Token
-    const mockShareTokenArgs = ['Mock Share Token', 'TEST', mockSilo, input.WETH, 18];
+    const mockShareTokenArgs = ['DO NOT USE - Mock Share Token', 'TEST', mockSilo, input.WETH, 18];
     const mockShareToken = await task.deployAndVerify('MockShareToken', mockShareTokenArgs, from, force);
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare
     // them here to appease the type system. Those are constructor arguments, but automatically provided by the factory.
     const mockPoolArgs = {
       vault: input.Vault,
-      name: 'Mock Linear Pool',
+      name: 'DO NOT USE - Mock Linear Pool',
       symbol: 'TEST',
       mainToken: input.WETH,
       wrappedToken: mockShareToken.address,
