@@ -19,13 +19,13 @@ import "../interfaces/ISiloRepository.sol";
 import "../interfaces/IInterestRateModel.sol";
 import "./MockInterestRateModel.sol";
 
-import "@orbcollective/shared-dependencies/contracts/MaliciousQueryReverter.sol";
+import "@balancer-labs/v2-pool-utils/contracts/test/MaliciousQueryReverter.sol";
 
 contract MockSiloRepository is ISiloRepository, MaliciousQueryReverter {
     uint256 private _protocolShareFee;
     MockInterestRateModel private immutable _mockModel;
 
-    constructor(uint256 compoundRate, uint256 currentRate)  {
+    constructor(uint256 compoundRate, uint256 currentRate) {
         _mockModel = new MockInterestRateModel(compoundRate, currentRate);
     }
 

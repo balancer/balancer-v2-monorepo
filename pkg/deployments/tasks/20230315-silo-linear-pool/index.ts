@@ -25,7 +25,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // Pools are automatically verified. We however don't run any of this code in CHECK mode, since we don't care about
     // the contracts deployed here. The action IDs will be checked to be correct via a different mechanism.
 
-    // A Silo require a Silo Repository
+    // A Silo requires a Silo Repository
     const mockSiloRepoArgs = [0, 0];
     const mockSiloRepo = await task.deployAndVerify('MockSiloRepository', mockSiloRepoArgs, from, force);
 
