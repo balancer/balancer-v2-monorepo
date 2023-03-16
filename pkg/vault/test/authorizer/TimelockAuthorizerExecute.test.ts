@@ -22,6 +22,8 @@ describe('TimelockAuthorizer execute', () => {
     other: SignerWithAddress,
     account: SignerWithAddress;
 
+  const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
+
   before('setup signers', async () => {
     [, root, nextRoot, executor, canceler, account, user, other] = await ethers.getSigners();
   });
@@ -76,6 +78,19 @@ describe('TimelockAuthorizer execute', () => {
     };
 
     it('schedules a non-protected execution', async () => {
+      const id = await schedule(authenticatedContract);
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.executed).to.be.false;
+      expect(scheduledExecution.data).to.be.equal(data);
+      expect(scheduledExecution.where).to.be.equal(authenticatedContract.address);
+      expect(scheduledExecution.protected).to.be.false;
+      expect(scheduledExecution.executableAt).to.be.at.almostEqual((await currentTimestamp()).add(delay));
+    });
+
+    it('can schedule with a global permission', async () => {
+      await authorizer.revokePermission(action, user, authenticatedContract, { from: root });
+      await authorizer.grantPermission(action, user, EVERYWHERE, { from: root });
       const id = await schedule(authenticatedContract);
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
