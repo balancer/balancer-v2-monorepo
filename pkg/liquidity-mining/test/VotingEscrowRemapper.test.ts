@@ -40,6 +40,7 @@ describe('VotingEscrowRemapper', function () {
   describe('setNetworkRemapping', () => {
     const chainId = 5;
     const otherChainId = 42;
+    let caller: SignerWithAddress;
 
     it('reverts if the local user is not allowed by the smart wallet checker', async () => {
       await expect(remapper.connect(local).setNetworkRemapping(local.address, remote, chainId)).to.be.revertedWith(
@@ -53,26 +54,35 @@ describe('VotingEscrowRemapper', function () {
       });
 
       context('when the caller is the local user', () => {
+        sharedBeforeEach(() => {
+          caller = local;
+        });
+
         itRemapsCorrectly((remoteAddr) =>
-          remapper.connect(local).setNetworkRemapping(local.address, remoteAddr, chainId)
+          remapper.connect(caller).setNetworkRemapping(local.address, remoteAddr, chainId)
         );
+
+        itRevertsIfRemoteUserIsZero();
       });
 
       context('when the caller is the remapping manager for the local user', () => {
         sharedBeforeEach(async () => {
           await vault.grantPermissionGlobally(await actionId(remapper, 'setNetworkRemappingManager'), admin);
           await remapper.connect(admin).setNetworkRemappingManager(local.address, manager.address);
+          caller = manager;
         });
 
         itRemapsCorrectly((remoteAddr) =>
-          remapper.connect(manager).setNetworkRemapping(local.address, remoteAddr, chainId)
+          remapper.connect(caller).setNetworkRemapping(local.address, remoteAddr, chainId)
         );
 
         it('reverts if remapping for another local user', async () => {
-          await expect(
-            remapper.connect(manager).setNetworkRemapping(other.address, remote, chainId)
-          ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(remapper.connect(caller).setNetworkRemapping(other.address, remote, chainId)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
         });
+
+        itRevertsIfRemoteUserIsZero();
       });
 
       context('when the caller is another user', async () => {
@@ -91,9 +101,7 @@ describe('VotingEscrowRemapper', function () {
 
         it('does not map the local address on other chain ids', async () => {
           await doRemap(remote);
-          await expect(remapper.getRemoteUser(local.address, otherChainId)).to.be.revertedWith(
-            'Local user is not remapped'
-          );
+          expect(await remapper.getRemoteUser(local.address, otherChainId)).to.be.eq(ZERO_ADDRESS);
         });
 
         it('maps the remote address to the local address', async () => {
@@ -103,12 +111,12 @@ describe('VotingEscrowRemapper', function () {
 
         it('does not map the remote address on other chain ids', async () => {
           await doRemap(remote);
-          await expect(remapper.getLocalUser(remote, otherChainId)).to.be.revertedWith('Remote user is not remapped');
+          expect(await remapper.getLocalUser(remote, otherChainId)).to.be.eq(ZERO_ADDRESS);
         });
 
         it('does not map the local address in the target chain ID to the local address', async () => {
           await doRemap(remote);
-          await expect(remapper.getLocalUser(local.address, chainId)).to.be.revertedWith('Remote user is not remapped');
+          expect(await remapper.getLocalUser(local.address, chainId)).to.be.eq(ZERO_ADDRESS);
         });
 
         it('emits an AddressMappingUpdated event', async () => {
@@ -128,7 +136,7 @@ describe('VotingEscrowRemapper', function () {
 
           await doRemap(other.address);
           // local <==> other; remote <==> remote (cleared)
-          await expect(remapper.getLocalUser(remote, chainId)).to.be.revertedWith('Remote user is not remapped');
+          expect(await remapper.getLocalUser(remote, chainId)).to.be.eq(ZERO_ADDRESS);
         });
 
         it('reverts if the remote is already taken', async () => {
@@ -136,6 +144,14 @@ describe('VotingEscrowRemapper', function () {
           await remapper.connect(other).setNetworkRemapping(other.address, remote, chainId);
 
           await expect(doRemap(remote)).to.be.revertedWith('Cannot overwrite an existing mapping by another user');
+        });
+      }
+
+      function itRevertsIfRemoteUserIsZero() {
+        it('reverts if remote address is zero', async () => {
+          await expect(
+            remapper.connect(caller).setNetworkRemapping(local.address, ZERO_ADDRESS, chainId)
+          ).to.be.revertedWith('Zero address cannot be used as remote user');
         });
       }
     });
@@ -169,7 +185,7 @@ describe('VotingEscrowRemapper', function () {
 
       it('clears existing local to remote mapping in target chain ID', async () => {
         await doClearMap();
-        await expect(remapper.getRemoteUser(local.address, chainId)).to.be.revertedWith('Local user is not remapped');
+        expect(await remapper.getRemoteUser(local.address, chainId)).to.be.eq(ZERO_ADDRESS);
       });
 
       it('does not clear existing local to remote mapping in other chain ID', async () => {
@@ -179,7 +195,7 @@ describe('VotingEscrowRemapper', function () {
 
       it('clears existing remote to local mapping in target chain ID', async () => {
         await doClearMap();
-        await expect(remapper.getLocalUser(remote, chainId)).to.be.revertedWith('Remote user is not remapped');
+        expect(await remapper.getLocalUser(remote, chainId)).to.be.eq(ZERO_ADDRESS);
       });
 
       it('does not clear existing remote to local mapping in other chain ID', async () => {
@@ -264,11 +280,29 @@ describe('VotingEscrowRemapper', function () {
     const chainId = 37;
     const otherChainId = 15;
     const epoch = 23;
-    const point = {
-      bias: 3,
-      slope: -7,
-      ts: 134,
-      blk: 157,
+
+    // Point to be assigned to `local` address in the voting escrow.
+    const localPoint = {
+      bias: 1,
+      slope: 2,
+      ts: 3,
+      blk: 4,
+    };
+
+    // Point to be assigned to `other` address in the voting escrow.
+    const otherPoint = {
+      bias: 5,
+      slope: 6,
+      ts: 7,
+      blk: 8,
+    };
+
+    // Point to be assigned to `remote` address in the voting escrow.
+    const remotePoint = {
+      bias: 9,
+      slope: 10,
+      ts: 11,
+      blk: 12,
     };
 
     sharedBeforeEach(async () => {
@@ -277,25 +311,31 @@ describe('VotingEscrowRemapper', function () {
 
       // Mock setters
       await votingEscrow.setUserPointEpoch(local.address, epoch);
-      await votingEscrow.setUserPointHistory(local.address, epoch, point);
+      await votingEscrow.setUserPointHistory(local.address, epoch, localPoint);
       expect(await votingEscrow.user_point_epoch(local.address)).to.be.eq(epoch);
-      expect(await votingEscrow.user_point_history(local.address, epoch)).to.be.deep.eq(Object.values(point));
+      expect(await votingEscrow.user_point_history(local.address, epoch)).to.be.deep.eq(Object.values(localPoint));
+
+      await votingEscrow.setUserPointEpoch(other.address, epoch);
+      await votingEscrow.setUserPointHistory(other.address, epoch, otherPoint);
+      expect(await votingEscrow.user_point_epoch(other.address)).to.be.eq(epoch);
+      expect(await votingEscrow.user_point_history(other.address, epoch)).to.be.deep.eq(Object.values(otherPoint));
+
+      await votingEscrow.setUserPointEpoch(remote, epoch);
+      await votingEscrow.setUserPointHistory(remote, epoch, remotePoint);
+      expect(await votingEscrow.user_point_epoch(remote)).to.be.eq(epoch);
+      expect(await votingEscrow.user_point_history(remote, epoch)).to.be.deep.eq(Object.values(remotePoint));
     });
 
-    it('returns user point on remote chain', async () => {
-      expect(await remapper.getUserPointOnRemoteChain(remote, chainId)).to.be.deep.eq(Object.values(point));
+    it('returns user point when a remapping exists', async () => {
+      expect(await remapper.getUserPointOnRemoteChain(remote, chainId)).to.be.deep.eq(Object.values(localPoint));
     });
 
-    it('reverts when remote user is not remapped', async () => {
-      await expect(remapper.getUserPointOnRemoteChain(other.address, chainId)).to.be.revertedWith(
-        'Remote user is not remapped'
-      );
+    it('returns user point when a remapping does not exist', async () => {
+      expect(await remapper.getUserPointOnRemoteChain(other.address, chainId)).to.be.deep.eq(Object.values(otherPoint));
     });
 
-    it('reverts when user is not remapped in another chain ID', async () => {
-      await expect(remapper.getUserPointOnRemoteChain(remote, otherChainId)).to.be.revertedWith(
-        'Remote user is not remapped'
-      );
+    it('returns user point when user is not remapped in another chain ID', async () => {
+      expect(await remapper.getUserPointOnRemoteChain(remote, otherChainId)).to.be.deep.eq(Object.values(remotePoint));
     });
   });
 

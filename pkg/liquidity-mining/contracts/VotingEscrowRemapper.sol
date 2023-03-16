@@ -48,6 +48,7 @@ contract VotingEscrowRemapper is SingletonAuthentication {
     /**
      * @notice Allows querying the veBAL balance of an address on a remote chain.
      * @dev We return the user's balance as a Point to allow extrapolating this into the future.
+     * If no mapping exists for the remote user, it is assumed that its address in the L1 is the same.
      * @param remoteUser - Address of the user on the remote chain which are querying the balance for.
      * @param chainId - The chain ID of the network which this user is on.
      * @return The veBAL balance of `remoteUser` to be used on the specified network.
@@ -57,7 +58,8 @@ contract VotingEscrowRemapper is SingletonAuthentication {
         view
         returns (IVotingEscrow.Point memory)
     {
-        address localUser = getLocalUser(remoteUser, chainId);
+        address localRemap = getLocalUser(remoteUser, chainId);
+        address localUser = localRemap == address(0) ? remoteUser : localRemap;
 
         uint256 userEpoch = _votingEscrow.user_point_epoch(localUser);
         return _votingEscrow.user_point_history(localUser, userEpoch);
@@ -74,28 +76,22 @@ contract VotingEscrowRemapper is SingletonAuthentication {
 
     /**
      * @notice Returns the local user corresponding to an address on a remote chain.
-     * @dev Reverts if no mapping exists for remote user.
+     * @dev Returns `address(0)` if the remapping does not exist for the given remote user.
      * @param remoteUser - Address of the user on the remote chain which are querying the local address for.
      * @param chainId - The chain ID of the network which this user is on.
      */
     function getLocalUser(address remoteUser, uint256 chainId) public view returns (address) {
-        address localUser = _remoteToLocalAddressMap[chainId][remoteUser];
-        require(localUser != address(0), "Remote user is not remapped");
-
-        return localUser;
+        return _remoteToLocalAddressMap[chainId][remoteUser];
     }
 
     /**
      * @notice Returns the remote user corresponding to an address on the local chain.
-     * @dev Reverts if no mapping exists for local user.
+     * @dev Returns `address(0)` if the remapping does not exist for the given local user.
      * @param localUser - Address of the user on the local chain which are querying the remote address for.
      * @param chainId - The chain ID of the network which the remote user is on.
      */
     function getRemoteUser(address localUser, uint256 chainId) public view returns (address) {
-        address remoteUser = _localToRemoteAddressMap[chainId][localUser];
-        require(remoteUser != address(0), "Local user is not remapped");
-
-        return remoteUser;
+        return _localToRemoteAddressMap[chainId][localUser];
     }
 
     function getRemappingManager(address localUser) public view returns (address) {
@@ -119,6 +115,7 @@ contract VotingEscrowRemapper is SingletonAuthentication {
     ) external {
         _require(msg.sender == localUser || msg.sender == _localRemappingManager[localUser], Errors.SENDER_NOT_ALLOWED);
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL can set up a mapping");
+        require(remoteUser != address(0), "Zero address cannot be used as remote user");
 
         // Prevent two local users pointing to the same remote user as this allows easy griefing attacks.
         //
