@@ -13,14 +13,14 @@ import { impersonate } from '../../../src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('L2BalancerPseudoMinter', 'mainnet', 16835500, function () {
+describeForkTest('L2BalancerPseudoMinter', 'arbitrum', 70407500, function () {
   let vault: Contract, authorizer: Contract;
   let pseudoMinter: Contract;
   let admin: SignerWithAddress;
 
   let task: Task;
 
-  const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
+  const GOV_MULTISIG = '0xaf23dc5983230e9eeaf93280e312e57539d098d0';
 
   before('run task', async () => {
     task = new Task('20230316-l2-balancer-pseudo-minter', TaskMode.TEST, getForkedNetwork(hre));
