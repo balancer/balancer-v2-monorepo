@@ -1,5 +1,5 @@
 {
-  "0x02f35da6a02017154367bc4d47bb6c7d06c7533b": [
+  "BALANCER_MAXIS_MULTISIG": [
     {
       "taskId": "20211208-aave-linear-pool",
       "contractName": "AaveLinearPool",
@@ -79,15 +79,81 @@
       "useAdaptor": true
     },
     {
+      "taskId": "20230217-gnosis-root-gauge-factory",
+      "contractName": "GnosisRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220908-weighted-pool-v2",
+      "contractName": "WeightedPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20211202-no-protocol-fee-lbp",
+      "contractName": "NoProtocolFeeLiquidityBootstrappingPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221123-pool-recovery-helper",
+      "contractName": "PoolRecoveryHelper",
+      "signature": "removePoolFactory(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGaugeFactory",
+      "signature": "setArbitrumFees(uint64,uint64,uint64)",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20220628-optimism-root-gauge-factory",
       "contractName": "OptimismRootGaugeFactory",
       "signature": "setOptimismGasLimit(uint32)",
       "useAdaptor": false
     },
     {
+      "taskId": "20220817-aave-rebalanced-linear-pool",
+      "contractName": "AaveLinearPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20211208-stable-phantom-pool",
       "contractName": "StablePhantomPool",
       "signature": "setPaused(bool)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221123-pool-recovery-helper",
+      "contractName": "PoolRecoveryHelper",
+      "signature": "addPoolFactory(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221021-managed-pool",
+      "contractName": "ManagedPoolFactory",
+      "signature": "disable()",
       "useAdaptor": false
     }
   ],
@@ -159,9 +225,33 @@
       "useAdaptor": true
     },
     {
+      "taskId": "20230217-gnosis-root-gauge-factory",
+      "contractName": "GnosisRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230215-single-recipient-gauge-factory-v2",
+      "contractName": "SingleRecipientGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20220725-protocol-fee-percentages-provider",
       "contractName": "ProtocolFeePercentagesProvider",
       "signature": "setFeeTypePercentage(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230208-euler-linear-pool",
+      "contractName": "EulerLinearPool",
+      "signature": "pause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230208-euler-linear-pool",
+      "contractName": "EulerLinearPool",
+      "signature": "enableRecoveryMode()",
       "useAdaptor": false
     },
     {
@@ -177,7 +267,7 @@
       "useAdaptor": false
     }
   ],
-  "0x170027069fd114bff2f57b0fc796df93290c02a6": [
+  "BLABS_EMERGENCY_PAUSE_EOA": [
     {
       "taskId": "20210418-weighted-pool",
       "contractName": "WeightedPool",
@@ -191,7 +281,39 @@
       "useAdaptor": false
     }
   ],
-  "0x239e55f427d44c3cc793f49bfb507ebe76638a2b": [
+  "POOL_RECOVERY_HELPER": [
+    {
+      "taskId": "20230206-composable-stable-pool-v3",
+      "contractName": "ComposableStablePool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220908-weighted-pool-v2",
+      "contractName": "WeightedPool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-weighted-pool-v3",
+      "contractName": "WeightedPool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    }
+  ],
+  "BALANCER_MINTER": [
     {
       "taskId": "20220325-balancer-token-admin",
       "contractName": "BalancerTokenAdmin",
@@ -199,7 +321,7 @@
       "useAdaptor": false
     }
   ],
-  "0x2536dfeecb7a0397cf98edada8486254533b1afa": [
+  "BALANCER_RELAYER_V4": [
     {
       "taskId": "20210418-vault",
       "contractName": "Vault",
@@ -237,20 +359,20 @@
       "useAdaptor": false
     }
   ],
-  "0x2ffb7b215ae7f088ec2530c7aa8e1b24e398f26a": [
-    {
-      "taskId": "20220325-gauge-controller",
-      "contractName": "GaugeController",
-      "signature": "add_gauge(address,int128)",
-      "useAdaptor": true
-    }
-  ],
-  "0x5ef4c5352882b10893b70dbcaa0c000965bd23c5": [
+  "PROTOCOL_FEES_WITHDRAWER": [
     {
       "taskId": "20210418-vault",
       "contractName": "ProtocolFeesCollector",
       "signature": "withdrawCollectedFees(address[],uint256[],address)",
       "useAdaptor": false
+    }
+  ],
+  "GAUGE_ADDER_V3": [
+    {
+      "taskId": "20220325-gauge-controller",
+      "contractName": "GaugeController",
+      "signature": "add_gauge(address,int128)",
+      "useAdaptor": true
     }
   ],
   "LINEAR_POOL_CONTROLLER_BALLER_MULTISIG": [
@@ -281,7 +403,7 @@
       "useAdaptor": false
     }
   ],
-  "0x886a3ec7bcc508b8795990b60fa21f85f9db7948": [
+  "BALANCER_RELAYER_V3": [
     {
       "taskId": "20210418-vault",
       "contractName": "Vault",
@@ -319,7 +441,7 @@
       "useAdaptor": false
     }
   ],
-  "0x97207b095e4d5c9a6e4cfbfcd2c3358e03b90c4a": [
+  "PROTOCOL_FEE_PERCENTAGES_PROVIDER": [
     {
       "taskId": "20210418-vault",
       "contractName": "ProtocolFeesCollector",
@@ -335,9 +457,45 @@
   ],
   "EMERGENCY_SUBDAO_MULTISIG": [
     {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePool",
+      "signature": "pause()",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20220817-aave-rebalanced-linear-pool",
       "contractName": "AaveLinearPool",
       "signature": "pause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221021-managed-pool",
+      "contractName": "ManagedPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-composable-stable-pool-v3",
+      "contractName": "ComposableStablePoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-erc4626-linear-pool-v3",
+      "contractName": "ERC4626LinearPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePool",
+      "signature": "unpause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221207-aave-rebalanced-linear-pool-v3",
+      "contractName": "AaveLinearPool",
+      "signature": "enableRecoveryMode()",
       "useAdaptor": false
     },
     {
@@ -349,7 +507,49 @@
     {
       "taskId": "20220817-aave-rebalanced-linear-pool",
       "contractName": "AaveLinearPool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220817-aave-rebalanced-linear-pool",
+      "contractName": "AaveLinearPool",
       "signature": "unpause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-aave-rebalanced-linear-pool-v4",
+      "contractName": "AaveLinearPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220908-weighted-pool-v2",
+      "contractName": "WeightedPool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220908-weighted-pool-v2",
+      "contractName": "WeightedPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221021-managed-pool",
+      "contractName": "ManagedPool",
+      "signature": "enableRecoveryMode()",
       "useAdaptor": false
     },
     {
@@ -359,9 +559,63 @@
       "useAdaptor": false
     },
     {
+      "taskId": "20230206-weighted-pool-v3",
+      "contractName": "WeightedPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-weighted-pool-v3",
+      "contractName": "WeightedPool",
+      "signature": "pause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220817-aave-rebalanced-linear-pool",
+      "contractName": "AaveLinearPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-composable-stable-pool-v3",
+      "contractName": "ComposableStablePool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221207-aave-rebalanced-linear-pool-v3",
+      "contractName": "AaveLinearPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20220906-composable-stable-pool",
       "contractName": "ComposableStablePool",
       "signature": "unpause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220609-stable-pool-v2",
+      "contractName": "StablePool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230208-euler-linear-pool",
+      "contractName": "EulerLinearPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePoolFactory",
+      "signature": "disable()",
       "useAdaptor": false
     },
     {
@@ -375,9 +629,33 @@
       "contractName": "WeightedPool",
       "signature": "unpause()",
       "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-composable-stable-pool-v3",
+      "contractName": "ComposableStablePool",
+      "signature": "pause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230213-gearbox-linear-pool",
+      "contractName": "GearboxLinearPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230213-yearn-linear-pool",
+      "contractName": "YearnLinearPoolFactory",
+      "signature": "disable()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-weighted-pool-v3",
+      "contractName": "WeightedPool",
+      "signature": "enableRecoveryMode()",
+      "useAdaptor": false
     }
   ],
-  "0xac9f49ef3ab0bbc929f7b1bb0a17e1fca5786251": [
+  "BALANCER_RELAYER_V1": [
     {
       "taskId": "20210418-vault",
       "contractName": "Vault",
@@ -435,6 +713,12 @@
       "useAdaptor": false
     },
     {
+      "taskId": "20230109-gauge-adder-v3",
+      "contractName": "GaugeAdder",
+      "signature": "addArbitrumGauge(address)",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20220325-gauge-adder",
       "contractName": "GaugeAdder",
       "signature": "addEthereumGauge(address)",
@@ -450,6 +734,36 @@
       "taskId": "20220628-gauge-adder-v2",
       "contractName": "GaugeAdder",
       "signature": "addArbitrumGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230223-protocol-id-registry",
+      "contractName": "ProtocolIdRegistry",
+      "signature": "renameProtocolId(uint256,string)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230109-gauge-adder-v3",
+      "contractName": "GaugeAdder",
+      "signature": "addEthereumGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230109-gauge-adder-v3",
+      "contractName": "GaugeAdder",
+      "signature": "addOptimismGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230109-gauge-adder-v3",
+      "contractName": "GaugeAdder",
+      "signature": "addPolygonGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230223-protocol-id-registry",
+      "contractName": "ProtocolIdRegistry",
+      "signature": "registerProtocolId(uint256,string)",
       "useAdaptor": false
     },
     {
@@ -481,7 +795,7 @@
       "useAdaptor": false
     }
   ],
-  "0xdcdbf71a870cc60c6f9b621e28a7d3ffd6dd4965": [
+  "LIDO_RELAYER": [
     {
       "taskId": "20210418-vault",
       "contractName": "Vault",
@@ -527,6 +841,12 @@
       "useAdaptor": false
     },
     {
+      "taskId": "20230208-euler-linear-pool",
+      "contractName": "EulerLinearPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20210418-weighted-pool",
       "contractName": "WeightedPool2Tokens",
       "signature": "setSwapFeePercentage(uint256)",
@@ -539,14 +859,38 @@
       "useAdaptor": false
     },
     {
+      "taskId": "20230206-composable-stable-pool-v3",
+      "contractName": "ComposableStablePool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20220609-stable-pool-v2",
       "contractName": "StablePool",
       "signature": "setSwapFeePercentage(uint256)",
       "useAdaptor": false
     },
     {
+      "taskId": "20230206-erc4626-linear-pool-v3",
+      "contractName": "ERC4626LinearPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230213-yearn-linear-pool",
+      "contractName": "YearnLinearPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20210624-stable-pool",
       "contractName": "StablePool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-weighted-pool-v3",
+      "contractName": "WeightedPool",
       "signature": "setSwapFeePercentage(uint256)",
       "useAdaptor": false
     },
@@ -561,9 +905,21 @@
       "contractName": "WeightedPool",
       "signature": "setSwapFeePercentage(uint256)",
       "useAdaptor": false
+    },
+    {
+      "taskId": "20230213-gearbox-linear-pool",
+      "contractName": "GearboxLinearPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-aave-rebalanced-linear-pool-v4",
+      "contractName": "AaveLinearPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
     }
   ],
-  "0xeb151668006cd04dadd098afd0a82e78f77076c3": [
+  "veBALDeploymentCoordinator": [
     {
       "taskId": "20220325-balancer-token-admin",
       "contractName": "BalancerTokenAdmin",
@@ -573,9 +929,39 @@
   ],
   "SWAP_FEE_CONTROLLER_BALLER_MULTISIG": [
     {
+      "taskId": "20230208-euler-linear-pool",
+      "contractName": "EulerLinearPool",
+      "signature": "setTargets(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210624-stable-pool",
+      "contractName": "StablePool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-erc4626-linear-pool-v3",
+      "contractName": "ERC4626LinearPool",
+      "signature": "setTargets(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20220609-stable-pool-v2",
       "contractName": "StablePool",
       "signature": "startAmplificationParameterUpdate(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230213-yearn-linear-pool",
+      "contractName": "YearnLinearPool",
+      "signature": "setTargets(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230213-gearbox-linear-pool",
+      "contractName": "GearboxLinearPool",
+      "signature": "setTargets(uint256,uint256)",
       "useAdaptor": false
     },
     {
@@ -597,13 +983,61 @@
       "useAdaptor": false
     },
     {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePool",
+      "signature": "startAmplificationParameterUpdate(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-composable-stable-pool-v3",
+      "contractName": "ComposableStablePool",
+      "signature": "startAmplificationParameterUpdate(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20220906-composable-stable-pool",
       "contractName": "ComposableStablePool",
       "signature": "stopAmplificationParameterUpdate()",
       "useAdaptor": false
     },
     {
+      "taskId": "20230206-aave-rebalanced-linear-pool-v4",
+      "contractName": "AaveLinearPool",
+      "signature": "setTargets(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
       "taskId": "20220609-stable-pool-v2",
+      "contractName": "StablePool",
+      "signature": "stopAmplificationParameterUpdate()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210624-stable-pool",
+      "contractName": "StablePool",
+      "signature": "startAmplificationParameterUpdate(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221122-composable-stable-pool-v2",
+      "contractName": "ComposableStablePool",
+      "signature": "stopAmplificationParameterUpdate()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20230206-composable-stable-pool-v3",
+      "contractName": "ComposableStablePool",
+      "signature": "stopAmplificationParameterUpdate()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210624-stable-pool",
       "contractName": "StablePool",
       "signature": "stopAmplificationParameterUpdate()",
       "useAdaptor": false

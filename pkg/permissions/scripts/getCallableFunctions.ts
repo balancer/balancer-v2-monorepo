@@ -38,6 +38,17 @@ const ignoredActionIds: string[] = [
   '0x802db13f34b039826402f87748c166a94c8130bf894f8af7e1144c874b36b76e',
   // Arbitrum BALTokenHolder
   '0xbfa133e7b0ebe7bf8b3f11a17a38c0f4492b428e4fb7fc8b509da63189247b06',
+  // Added to get the permissions:map script to work
+  // AaveLinearPoolFactory.disable()
+  "0x3924d0d790727bf2925421c7e316cfbe3d8b69f26b36b9d7d1c97e32bdeb4947",
+  // AaveLinearPool.pause()
+  "0x1f16abe3860c7a3426659e50f0217af96ac40aa554d8ddaebcb7c399118eeb1b",
+  // AaveLinearPool.unpause()
+  "0xcdd7ab46c8258e8c091144b92a3a1061315e0da3aef7773d859de4ee421fd920",
+  // AaveLinearPool.setTargets()
+  "0x881bd2702150eafb9524fe01e983df0fb0e99eca758c1b3959e46a084cc1618b",
+  // AaveLinearPool.setSwapFeePercentage()
+  "0x0693774dcda5e82a5b5f4255fe8bc7aa5f7ce39cd6b4f9986b116fc4af317450",
 ];
 
 const main = async () => {
