@@ -9,6 +9,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
 import { describeForkTest } from '../../../src/forkTests';
+import { deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 
 export enum SwapKind {
   GivenIn = 0,
@@ -158,7 +159,7 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
       const expectedFactoryVersion = {
         name: 'SiloLinearPoolFactory',
         version: 1,
-        deployment: '20230106-silo-rebalanced-linear-pool',
+        deployment: '20230315-silo-linear-pool',
       };
 
       expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
@@ -168,7 +169,7 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
       const expectedPoolVersion = {
         name: 'SiloLinearPool',
         version: 1,
-        deployment: '20230106-silo-rebalanced-linear-pool',
+        deployment: '20230315-silo-linear-pool',
       };
 
       expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
@@ -346,8 +347,8 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
         MAX_UINT256
       );
 
-      await setCode(USDC_SILO, getExternalPackageArtifact('linear-pools/MockSilo').deployedBytecode);
-      const mockLendingPool = await getExternalPackageDeployedAt('linear-pools/MockSilo', USDC_SILO);
+      await setCode(USDC_SILO, getArtifact('MockSilo').deployedBytecode);
+      const mockLendingPool = await deployedAt('MockSilo', USDC_SILO);
 
       await mockLendingPool.setRevertType(2); // Type 2 is malicious swap query revert
       await expect(rebalancer.rebalance(other.address)).to.be.revertedWith('BAL#357'); // MALICIOUS_QUERY_REVERT
