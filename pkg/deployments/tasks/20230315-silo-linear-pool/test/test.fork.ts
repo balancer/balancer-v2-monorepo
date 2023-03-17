@@ -159,7 +159,7 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
       const expectedFactoryVersion = {
         name: 'SiloLinearPoolFactory',
         version: 1,
-        deployment: '20230106-silo-rebalanced-linear-pool',
+        deployment: '20230315-silo-linear-pool',
       };
 
       expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
@@ -169,7 +169,7 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
       const expectedPoolVersion = {
         name: 'SiloLinearPool',
         version: 1,
-        deployment: '20230106-silo-rebalanced-linear-pool',
+        deployment: '20230315-silo-linear-pool',
       };
 
       expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
