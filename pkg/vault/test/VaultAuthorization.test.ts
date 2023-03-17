@@ -10,6 +10,7 @@ import { ANY_ADDRESS, MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { RelayerAuthorization } from '@balancer-labs/balancer-js';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VaultAuthorization', function () {
   let authorizer: Contract, vault: Contract;
@@ -24,7 +25,7 @@ describe('VaultAuthorization', function () {
 
   sharedBeforeEach('deploy authorizer', async () => {
     const entrypoint = await deploy('MockAuthorizerAdaptorEntrypoint');
-    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, entrypoint.address, MONTH] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, entrypoint.address, MONTH] });
   });
 
   async function deployVault(authorizer: string): Promise<Contract> {
@@ -55,7 +56,7 @@ describe('VaultAuthorization', function () {
 
       sharedBeforeEach('grant permission', async () => {
         action = await actionId(vault, 'setAuthorizer');
-        await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+        await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
       });
 
       it('can change the authorizer to another address', async () => {
@@ -76,7 +77,7 @@ describe('VaultAuthorization', function () {
       });
 
       it('can not change the authorizer if the permission was revoked', async () => {
-        await authorizer.connect(admin).revokePermissions([action], admin.address, [ANY_ADDRESS]);
+        await authorizer.connect(admin).revokePermission(action, admin.address, ANY_ADDRESS);
 
         expect(await authorizer.canPerform(action, admin.address, WHERE)).to.be.false;
 
@@ -114,7 +115,7 @@ describe('VaultAuthorization', function () {
       context('when the sender is allowed by the authorizer', () => {
         sharedBeforeEach('grant permission to sender', async () => {
           const action = await actionId(vault, 'setRelayerApproval');
-          await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
+          await authorizer.connect(admin).grantPermission(action, sender.address, ANY_ADDRESS);
         });
 
         context('when the sender is approved by the user', () => {
@@ -148,7 +149,7 @@ describe('VaultAuthorization', function () {
       context('when the sender is not allowed by the authorizer', () => {
         sharedBeforeEach('revoke permission for sender', async () => {
           const action = await actionId(vault, 'setRelayerApproval');
-          await authorizer.connect(admin).revokePermissions([action], sender.address, [ANY_ADDRESS]);
+          await authorizer.connect(admin).revokePermission(action, sender.address, ANY_ADDRESS);
         });
 
         context('when the sender is approved by the user', () => {
@@ -257,7 +258,7 @@ describe('VaultAuthorization', function () {
 
       sharedBeforeEach('grant permission', async () => {
         action = await actionId(vault, 'setPaused');
-        await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+        await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
       });
 
       it('can pause', async () => {
@@ -276,7 +277,7 @@ describe('VaultAuthorization', function () {
       });
 
       it('cannot pause if the permission is revoked', async () => {
-        await authorizer.connect(admin).revokePermissions([action], admin.address, [ANY_ADDRESS]);
+        await authorizer.connect(admin).revokePermission(action, admin.address, ANY_ADDRESS);
         expect(await authorizer.canPerform(action, admin.address, WHERE)).to.be.false;
         await expect(vault.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });

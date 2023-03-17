@@ -35,7 +35,7 @@ contract TimelockAuthorizerMigrator {
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable newAuthorizer;
 
-    uint256 public rootChangeExecutionId;
+    uint256 private _lastScheduledExecutionId;
 
     struct RoleData {
         address grantee;
@@ -65,47 +65,43 @@ contract TimelockAuthorizerMigrator {
         // Once the migration is complete, the root permission will be transferred to `_root`.
         TimelockAuthorizer _newAuthorizer = new TimelockAuthorizer(
             address(this),
+            _root,
             _authorizerAdaptorEntrypoint,
             CHANGE_ROOT_DELAY
         );
         newAuthorizer = _newAuthorizer;
         oldAuthorizer = _oldAuthorizer;
-        root = _root;
         vault = _authorizerAdaptorEntrypoint.getVault();
+        root = _root;
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
             RoleData memory roleData = _rolesData[i];
             // We require that any permissions being copied from the old Authorizer must exist on the old Authorizer.
             // This simplifies verification of the permissions being added to the new TimelockAuthorizer.
             require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
-            _newAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
+            _newAuthorizer.grantPermission(roleData.role, roleData.grantee, roleData.target);
         }
         for (uint256 i = 0; i < _grantersData.length; i++) {
             // There's no concept of a "granter" on the old Authorizer so we cannot verify these onchain.
             // We must manually verify that these permissions are set sensibly.
-            _newAuthorizer.manageGranter(
-                _grantersData[i].role,
-                _grantersData[i].grantee,
-                _grantersData[i].target,
-                true
-            );
+            _newAuthorizer.addGranter(_grantersData[i].role, _grantersData[i].grantee, _grantersData[i].target);
         }
         for (uint256 i = 0; i < _revokersData.length; i++) {
             // Similarly to granters, we must manually verify that these permissions are set sensibly.
-            _newAuthorizer.manageRevoker(
-                _revokersData[i].role,
-                _revokersData[i].grantee,
-                _revokersData[i].target,
-                true
-            );
+            _newAuthorizer.addRevoker(_revokersData[i].grantee, _revokersData[i].target);
         }
+
+        // We're going to schedule multiple actions, and we want to make sure we later execute them all. However, since
+        // they're incrementing values all we need to do is store the last one, and then execute all ids up to that one
+        // (including it).
+        uint256 lastScheduledExecutionId = 0;
 
         // Setting the initial value for a delay requires us to wait 3 days before we can complete setting it.
         // We schedule them now to ensure that they're ready to execute once `CHANGE_ROOT_DELAY` has passed.
         for (uint256 i = 0; i < _executeDelaysData.length; i++) {
             // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
             require(_executeDelaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
-            _newAuthorizer.scheduleDelayChange(
+            lastScheduledExecutionId = _newAuthorizer.scheduleDelayChange(
                 _executeDelaysData[i].actionId,
                 _executeDelaysData[i].newDelay,
                 _arr(address(this))
@@ -114,46 +110,24 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _grantDelaysData.length; i++) {
             // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
             require(_grantDelaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
-            _newAuthorizer.scheduleDelayChange(
-                _newAuthorizer.getGrantPermissionActionId(_grantDelaysData[i].actionId),
+
+            lastScheduledExecutionId = _newAuthorizer.scheduleGrantDelayChange(
+                _grantDelaysData[i].actionId,
                 _grantDelaysData[i].newDelay,
                 _arr(address(this))
             );
         }
 
-        // Enqueue a root change execution in the new authorizer to set it to the desired root address.
-        // We only allow the migrator to execute this transaction to avoid it being triggered too early.
-        rootChangeExecutionId = _newAuthorizer.scheduleRootChange(_root, _arr(address(this)));
+        _lastScheduledExecutionId = lastScheduledExecutionId;
     }
 
     /**
      * @notice Executes the scheduled setup of delays on the new authorizer
      */
     function executeDelays() external {
-        require(newAuthorizer.canExecute(0), "CANNOT_TRIGGER_DELAYS_MIGRATION_YET");
-        // As execution IDs are sequential, we can just iterate from 0 to the first non-delay (root transfer) execution.
-        for (uint256 i = 0; i < rootChangeExecutionId; i++) {
+        for (uint256 i = 0; i <= _lastScheduledExecutionId; i++) {
             newAuthorizer.execute(i);
         }
-    }
-
-    /**
-     * @notice Begins transfer of root powers from the migrator to the specified address.
-     * @dev The setup of delays on the new authorizer must be executed before calling this function.
-     */
-    function startRootTransfer() external {
-        // Check that the delays have been set up on the new authorizer.
-        // Checking the first delay has been set is sufficient.
-        // This check is shortcircuited if there are no delays to set up (`rootChangeExecutionId == 0`).
-        require(
-            rootChangeExecutionId == 0 || newAuthorizer.getScheduledExecution(0).executed,
-            "DELAYS_NOT_MIGRATED_YET"
-        );
-
-        // Finally trigger the first step of transferring root ownership over the TimelockAuthorizer to `root`.
-        // Before the migration can be finalized, `root` must call `claimRoot` on the `TimelockAuthorizer`.
-        require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
-        newAuthorizer.execute(rootChangeExecutionId);
     }
 
     /**

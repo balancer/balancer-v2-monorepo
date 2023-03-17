@@ -6,7 +6,7 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "lint": "yarn lint:typescript",
-    "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
+    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.6",
@@ -16,7 +16,7 @@
     "decimal.js": "^10.4.2",
     "ethereumjs-util": "^7.1.5",
     "ethers": "^5.7.2",
-    "hardhat": "^2.12.2",
+    "hardhat": "^2.12.5",
     "lodash.frompairs": "^4.0.1",
     "prettier": "^2.7.1",
     "ts-node": "^10.9.1",

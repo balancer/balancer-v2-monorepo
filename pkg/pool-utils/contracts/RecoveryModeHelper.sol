@@ -35,6 +35,7 @@ contract RecoveryModeHelper is IRecoveryModeHelper {
         return _vault;
     }
 
+    /// @inheritdoc IRecoveryModeHelper
     function calcComposableRecoveryAmountsOut(
         bytes32 poolId,
         bytes memory userData,

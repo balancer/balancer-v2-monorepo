@@ -15,16 +15,22 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
-
 import "../BaseGaugeFactory.sol";
 import "./SingleRecipientGauge.sol";
 
-contract SingleRecipientGaugeFactory is BaseGaugeFactory {
-    constructor(IBalancerMinter minter) BaseGaugeFactory(new SingleRecipientGauge(minter)) {
-        // solhint-disable-previous-line no-empty-blocks
+contract SingleRecipientGaugeFactory is Version, BaseGaugeFactory {
+    string private _productVersion;
+
+    constructor(
+        IMainnetBalancerMinter minter,
+        string memory factoryVersion,
+        string memory productVersion
+    ) Version(factoryVersion) BaseGaugeFactory(address(new SingleRecipientGauge(minter))) {
+        _productVersion = productVersion;
+    }
+
+    function getProductVersion() public view returns (string memory) {
+        return _productVersion;
     }
 
     /**
@@ -33,11 +39,22 @@ contract SingleRecipientGaugeFactory is BaseGaugeFactory {
      * suitable before they are added to the GaugeController.
      * @param recipient The address to receive BAL minted from the gauge
      * @param relativeWeightCap The relative weight cap for the created gauge
+     * @param feeDistributorRecipient True if the recipient implements the IFeeDistributor interface and should receive
+     * tokens via the `depositToken` function.
      * @return The address of the deployed gauge
      */
-    function create(address recipient, uint256 relativeWeightCap) external override returns (address) {
+    function create(
+        address recipient,
+        uint256 relativeWeightCap,
+        bool feeDistributorRecipient
+    ) external returns (address) {
         address gauge = _create();
-        SingleRecipientGauge(gauge).initialize(recipient, relativeWeightCap);
+        SingleRecipientGauge(gauge).initialize(
+            recipient,
+            relativeWeightCap,
+            feeDistributorRecipient,
+            getProductVersion()
+        );
         return gauge;
     }
 }

@@ -8,7 +8,7 @@ import { advanceTime, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('TimelockAuthorizerMigrator', () => {
   let root: SignerWithAddress;
@@ -138,27 +138,34 @@ describe('TimelockAuthorizerMigrator', () => {
 
     it('sets up revokers properly', async () => {
       for (const revokerData of revokersData) {
-        expect(await newAuthorizer.isRevoker(revokerData.role, revokerData.grantee, revokerData.target)).to.be.true;
+        expect(await newAuthorizer.isRevoker(revokerData.grantee, revokerData.target)).to.be.true;
       }
     });
 
     it('does not set the new authorizer immediately', async () => {
-      expect(await newAuthorizer.isRoot(migrator.address)).to.be.true;
       expect(await vault.getAuthorizer()).to.be.equal(oldAuthorizer.address);
+    });
+
+    it('sets the migrator as the current root', async () => {
+      expect(await newAuthorizer.isRoot(migrator.address)).to.be.true;
+    });
+
+    it('sets root as the pending root', async () => {
+      expect(await newAuthorizer.getPendingRoot()).to.equal(root.address);
     });
   });
 
   context('executeDelays', () => {
-    context("when MIN_DELAY hasn't passed", () => {
+    context("when MINIMUM_CHANGE_DELAY_EXECUTION_DELAY hasn't passed", () => {
       it('reverts', async () => {
-        await expect(migrator.executeDelays()).to.be.revertedWith('CANNOT_TRIGGER_DELAYS_MIGRATION_YET');
+        await expect(migrator.executeDelays()).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
       });
     });
 
-    context('when MIN_DELAY has passed', () => {
+    context('when MINIMUM_CHANGE_DELAY_EXECUTION_DELAY has passed', () => {
       sharedBeforeEach('advance time', async () => {
-        const MIN_DELAY = await newAuthorizer.MIN_DELAY();
-        await advanceTime(MIN_DELAY);
+        const MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = await newAuthorizer.MINIMUM_CHANGE_DELAY_EXECUTION_DELAY();
+        await advanceTime(MINIMUM_CHANGE_DELAY_EXECUTION_DELAY);
       });
 
       it('sets up delays properly', async () => {
@@ -173,95 +180,34 @@ describe('TimelockAuthorizerMigrator', () => {
         await migrator.executeDelays();
 
         for (const delayData of grantDelaysData) {
-          const grantActionId = await newAuthorizer.getGrantPermissionActionId(delayData.actionId);
-          expect(await newAuthorizer.getActionIdDelay(grantActionId)).to.be.eq(delayData.newDelay);
+          expect(await newAuthorizer.getActionIdGrantDelay(delayData.actionId)).to.be.eq(delayData.newDelay);
         }
       });
     });
   });
 
-  context('startRootTransfer', () => {
-    context("when delays haven't been migrated", () => {
-      it('reverts', async () => {
-        await expect(migrator.startRootTransfer()).to.be.revertedWith('DELAYS_NOT_MIGRATED_YET');
-      });
-    });
-
-    context('when delays have been migrated', () => {
-      sharedBeforeEach('advance time', async () => {
-        const MIN_DELAY = await newAuthorizer.MIN_DELAY();
-        await advanceTime(MIN_DELAY);
-        await migrator.executeDelays();
-      });
-
-      context("when the ROOT_CHANGE_DELAY hasn't passed", () => {
-        it('reverts', async () => {
-          await expect(migrator.startRootTransfer()).to.be.revertedWith('CANNOT_TRIGGER_ROOT_CHANGE_YET');
-        });
-      });
-
-      context('when the ROOT_CHANGE_DELAY has passed', () => {
-        sharedBeforeEach('advance time', async () => {
-          const MIN_DELAY = await newAuthorizer.MIN_DELAY();
-          const ROOT_CHANGE_DELAY = await newAuthorizer.getRootTransferDelay();
-          await advanceTime(ROOT_CHANGE_DELAY.sub(MIN_DELAY));
-        });
-
-        it('executes the first step of the root transfer', async () => {
-          const scheduledExecutionId = await migrator.rootChangeExecutionId();
-
-          const tx = await migrator.startRootTransfer();
-          expectEvent.inIndirectReceipt(await tx.wait(), newAuthorizer.interface, 'ExecutionExecuted', {
-            scheduledExecutionId,
-          });
-
-          expect(await newAuthorizer.getPendingRoot()).to.be.eq(root.address);
-        });
-
-        it('does not complete setting the root transfer', async () => {
-          await migrator.startRootTransfer();
-          expect(await newAuthorizer.isRoot(migrator.address)).to.be.true;
-        });
-
-        it('does not set the new authorizer on the vault', async () => {
-          await migrator.startRootTransfer();
-          expect(await vault.getAuthorizer()).to.be.equal(oldAuthorizer.address);
-        });
-      });
-    });
-  });
-
   context('finalizeMigration', () => {
-    context('when root transfer has been started', () => {
-      sharedBeforeEach('advance time', async () => {
-        const MIN_DELAY = await newAuthorizer.MIN_DELAY();
-        await advanceTime(MIN_DELAY);
-        await migrator.executeDelays();
+    sharedBeforeEach('advance time', async () => {
+      const MINIMUM_CHANGE_DELAY_EXECUTION_DELAY = await newAuthorizer.MINIMUM_CHANGE_DELAY_EXECUTION_DELAY();
+      await advanceTime(MINIMUM_CHANGE_DELAY_EXECUTION_DELAY);
+      await migrator.executeDelays();
+    });
+
+    context('when new root has not claimed ownership over TimelockAuthorizer', () => {
+      it('reverts', async () => {
+        await expect(migrator.finalizeMigration()).to.be.revertedWith('ROOT_NOT_CLAIMED_YET');
+      });
+    });
+
+    context('when new root has claimed ownership over TimelockAuthorizer', () => {
+      sharedBeforeEach('claim root', async () => {
+        await newAuthorizer.connect(root).claimRoot();
       });
 
-      sharedBeforeEach('start root transfer', async () => {
-        const MIN_DELAY = await newAuthorizer.MIN_DELAY();
-        const ROOT_CHANGE_DELAY = await newAuthorizer.getRootTransferDelay();
-        await advanceTime(ROOT_CHANGE_DELAY.sub(MIN_DELAY));
-        await migrator.startRootTransfer();
-      });
+      it('sets the new Authorizer on the Vault', async () => {
+        await migrator.finalizeMigration();
 
-      context('when new root has not claimed ownership over TimelockAuthorizer', () => {
-        it('reverts', async () => {
-          await expect(migrator.finalizeMigration()).to.be.revertedWith('ROOT_NOT_CLAIMED_YET');
-        });
-      });
-
-      context('when new root has claimed ownership over TimelockAuthorizer', () => {
-        sharedBeforeEach('claim root', async () => {
-          await newAuthorizer.connect(root).claimRoot();
-        });
-
-        it('sets the new Authorizer on the Vault', async () => {
-          await migrator.finalizeMigration();
-
-          expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
-        });
+        expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
       });
     });
   });

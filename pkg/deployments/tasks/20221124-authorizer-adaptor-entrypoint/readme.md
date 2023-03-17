@@ -5,9 +5,11 @@ Deployment of the `AuthorizerAdaptorEntrypoint`, a gateway contract created to a
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Polygon mainnet address](./output/polygon.json)
-- [Arbitrum mainnet address](./output/arbitrum.json)
-- [Optimism mainnet address](./output/optimism.json)
-- [BSC mainnet address](./output/bsc.json)
-- [Gnosis mainnet address](./output/gnosis.json)
-- [`AuthorizerAdaptor` artifact](./artifact/AuthorizerAdaptor.json))
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [BSC mainnet addresses](./output/bsc.json)
+- [Gnosis mainnet addresses](./output/gnosis.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
+- [Goerli testnet addresses](./output/goerli.json)
+- [`AuthorizerAdaptorEntrypoint` artifact](./artifact/AuthorizerAdaptorEntrypoint.json)

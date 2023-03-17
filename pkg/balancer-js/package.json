@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/balancer-js",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "JavaScript utilities for interacting with the Balancer Protocol V2",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/balancer-js#readme",
@@ -23,7 +23,7 @@
     "build": "rollup --config rollup.config.ts --configPlugin typescript",
     "dev": "rollup --config rollup.config.ts --configPlugin typescript -w",
     "test": "mocha --extension test.ts -r ts-node/register --recursive",
-    "lint": "eslint ./src --ext .ts --max-warnings 0"
+    "lint": "NODE_NO_WARNINGS=1 eslint ./src --ext .ts --max-warnings 0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^23.0.2",

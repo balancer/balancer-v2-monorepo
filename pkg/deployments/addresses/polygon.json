@@ -194,5 +194,33 @@
   "0xAB093cd16e765b5B23D34030aaFaF026558e0A19": {
     "task": "20221124-authorizer-adaptor-entrypoint",
     "name": "AuthorizerAdaptorEntrypoint"
+  },
+  "0x85a80afee867aDf27B50BdB7b76DA70f1E853062": {
+    "task": "20221122-composable-stable-pool-v2",
+    "name": "ComposableStablePoolFactory"
+  },
+  "0x373b347bc87998b151A5E9B6bB6ca692b766648a": {
+    "task": "20221122-composable-stable-pool-v2",
+    "name": "MockComposableStablePool"
+  },
+  "0x35c425234DC42e7402f54cC54573f77842963a56": {
+    "task": "20221207-aave-rebalanced-linear-pool-v3",
+    "name": "AaveLinearPoolFactory"
+  },
+  "0x1bbfa323155526F54EEc458571Bb5A75e0c41507": {
+    "task": "20221207-aave-rebalanced-linear-pool-v3",
+    "name": "MockAaveLendingPool"
+  },
+  "0xD487eec3EF2Be7a3d06D37F406d878DC7c50deEF": {
+    "task": "20221207-aave-rebalanced-linear-pool-v3",
+    "name": "MockStaticAToken"
+  },
+  "0xFA2C0bd8327C99db5bdE4c9e9E5cbF30946351bb": {
+    "task": "20221207-aave-rebalanced-linear-pool-v3",
+    "name": "MockAaveLinearPool"
+  },
+  "0xa523f47a933d5020b23629ddf689695aa94612dc": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
   }
 }

@@ -7,11 +7,12 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, DAY, receiptTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const NUM_STAGES = 4;
 
 describe('BaseCoordinator', () => {
-  let adaptor: Contract;
+  let authorizerAdaptor: Contract;
   let coordinator: Contract;
   let admin: SignerWithAddress;
 
@@ -20,11 +21,11 @@ describe('BaseCoordinator', () => {
   });
 
   sharedBeforeEach('deploy vault', async () => {
-    ({ authorizerAdaptor: adaptor } = await Vault.create({ admin }));
+    ({ authorizerAdaptor } = await Vault.create({ admin }));
   });
 
   sharedBeforeEach('deploy coordinator', async () => {
-    coordinator = await deploy('TestCoordinator', { args: [adaptor.address] });
+    coordinator = await deploy('TestCoordinator', { args: [authorizerAdaptor.address] });
   });
 
   describe('registerStages', () => {

@@ -9,9 +9,11 @@ async function main() {
 
   await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPool');
 
-  await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPoolFactory');
+  await measureDeployment('v2-pool-weighted/ManagedPool');
 
-  await measureDeployment('v2-pool-weighted/ManagedPoolFactory');
+  await measureDeployment('v2-pool-stable/ComposableStablePool');
+
+  await measureDeployment('v2-standalone-utils/BatchRelayerLibrary');
 }
 
 async function measureDeployment(name: string) {

@@ -4,6 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { bn, fp, FP_100_PCT, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp, WEEK, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('PriceRateCache', () => {
   const rate = pct(FP_100_PCT, Math.random());

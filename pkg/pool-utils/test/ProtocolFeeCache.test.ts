@@ -9,6 +9,9 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 type ProviderFeeIDs = {
   swap: BigNumberish;
@@ -34,16 +37,25 @@ describe('ProtocolFeeCache', () => {
 
     await vault.authorizer
       .connect(admin)
-      .grantPermissions([actionId(vault.protocolFeesProvider, 'setFeeTypePercentage')], admin.address, [
-        vault.protocolFeesProvider.address,
-      ]);
+      .grantPermission(
+        actionId(vault.protocolFeesProvider, 'setFeeTypePercentage'),
+        admin.address,
+        vault.protocolFeesProvider.address
+      );
 
     await vault.authorizer
       .connect(admin)
-      .grantPermissions(
-        [actionId(feesCollector, 'setSwapFeePercentage'), actionId(feesCollector, 'setFlashLoanFeePercentage')],
+      .grantPermission(
+        actionId(feesCollector, 'setFlashLoanFeePercentage'),
         vault.protocolFeesProvider.address,
-        [feesCollector.address, feesCollector.address]
+        feesCollector.address
+      );
+    await vault.authorizer
+      .connect(admin)
+      .grantPermission(
+        actionId(feesCollector, 'setSwapFeePercentage'),
+        vault.protocolFeesProvider.address,
+        feesCollector.address
       );
   });
 
@@ -75,17 +87,38 @@ describe('ProtocolFeeCache', () => {
     it('reverts during deployment', async () => {
       await expect(
         deploy('MockProtocolFeeCache', {
-          args: [vault.protocolFeesProvider.address, { swap: 137, yield: ProtocolFee.SWAP, aum: ProtocolFee.YIELD }],
+          args: [
+            vault.address,
+            vault.protocolFeesProvider.address,
+            { swap: 137, yield: ProtocolFee.SWAP, aum: ProtocolFee.YIELD },
+          ],
           from: admin,
         })
       ).to.be.revertedWith('Non-existent fee type');
     });
   });
 
+  describe('vault access', () => {
+    sharedBeforeEach('deploy fee cache', async () => {
+      protocolFeeCache = await deploy('MockProtocolFeeCache', {
+        args: [
+          vault.address,
+          vault.protocolFeesProvider.address,
+          { swap: ProtocolFee.SWAP, yield: ProtocolFee.YIELD, aum: ProtocolFee.AUM },
+        ],
+        from: admin,
+      });
+    });
+
+    it('stores the Vault', async () => {
+      expect(await protocolFeeCache.vault()).to.eq(vault.address);
+    });
+  });
+
   function itTestsProtocolFeePercentages(providerFeeIds: ProviderFeeIDs): void {
     sharedBeforeEach('deploy fee cache', async () => {
       protocolFeeCache = await deploy('MockProtocolFeeCache', {
-        args: [vault.protocolFeesProvider.address, providerFeeIds],
+        args: [vault.address, vault.protocolFeesProvider.address, providerFeeIds],
         from: admin,
       });
     });

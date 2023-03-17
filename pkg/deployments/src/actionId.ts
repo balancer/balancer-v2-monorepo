@@ -86,16 +86,18 @@ export function checkActionIdUniqueness(network: string): void {
     safeReadJsonFile<Record<string, ContractActionIdData>>(expectedCollisionsFilePath);
 
   if (JSON.stringify(duplicateActionIdsMapping) === JSON.stringify(expectedDuplicateActionIdsMapping)) {
-    logger.success(`Verified that no contracts unexpectedly share action IDs`);
+    logger.success(`Verified that no contracts unexpectedly share action IDs for ${network}`);
   } else {
     for (const [actionId, instances] of Object.entries(duplicateActionIdsMapping)) {
       if (JSON.stringify(instances) === JSON.stringify(expectedDuplicateActionIdsMapping[actionId])) {
-        // We expect some collisions of actionIds for cases in which contracts which use the AuthorizerAdaptor
-        // have contracts which share the same signature. e.g. liquidity gauges and factories.
-        // If the collisions match *exactly* with the expected list of collisions then we can ignore them.
+        // We expect some collisions of actionIds for cases where contracts share the same signature,
+        // such as those using the AuthorizerAdaptor. If the collisions *exactly* match those in the
+        // expected list, we can ignore them.
         continue;
       }
 
+      // If there are unexpected collisions while running `save-action-ids`, this will generate detailed
+      // warning messages. Follow the instructions below to update the `expected-collisions` file.
       logger.warn(`${instances.length} contracts share the action ID: ${actionId}`);
       for (const [index, actionIdInfo] of instances.entries()) {
         const prefix = `  ${index + 1}: ${actionIdInfo.contractName}::${actionIdInfo.signature}`;
@@ -103,9 +105,19 @@ export function checkActionIdUniqueness(network: string): void {
       }
     }
 
-    // Write the new set of collisions to a file so that if we accept them, we can just copy them across.
+    // Write a file called `updated-expected-collisions`, with new entries added to resolve the warnings.
+    //
+    // If there is no `expected-collisions` file for this network, simply review the new file to ensure the
+    // additions are valid, then rename `updated-expected-collisions` to `expected-collisions`.
+    // If there is already an`expected-collisions` file, check the diff, then replace the old file with this one.
+    //
+    // Never make manual changes to the `expected-collisions` file, as this might result in "unsorted"
+    // entries that cause `save-action-ids` to fail with no warnings.
+    //
+    // After renaming or replacing the collisions file, running `save-action-ids` again should
+    // produce no warnings.
     fs.writeFileSync(
-      path.join(actionIdsDir, 'new-collisions.json'),
+      path.join(actionIdsDir, 'updated-expected-collisions.json'),
       JSON.stringify(duplicateActionIdsMapping, null, 2)
     );
     throw Error(`There exist two duplicated action IDs across two separate contracts`);

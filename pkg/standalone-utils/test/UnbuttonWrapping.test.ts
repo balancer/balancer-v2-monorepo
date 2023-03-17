@@ -19,6 +19,7 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const amplFP = (n: number) => fp(n / 10 ** 9);
 
@@ -40,7 +41,7 @@ describe('UnbuttonWrapping', function () {
     });
     ampl = new Token('Mock Ampleforth', 'AMPL', 9, amplContract);
 
-    const wamplContract = await deploy('v2-pool-linear/MockUnbuttonERC20', {
+    const wamplContract = await deploy('MockUnbuttonERC20', {
       args: [ampl.address, 'Mock Wrapped Ampleforth', 'wAMPL'],
     });
     wampl = new Token('wampl', 'wampl', 18, wamplContract);
@@ -62,7 +63,9 @@ describe('UnbuttonWrapping', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS],
+    });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
@@ -72,8 +75,11 @@ describe('UnbuttonWrapping', function () {
       )
     );
     const authorizer = vault.authorizer;
-    const wheres = relayerActionIds.map(() => ANY_ADDRESS);
-    await authorizer.connect(admin).grantPermissions(relayerActionIds, relayer.address, wheres);
+    await Promise.all(
+      relayerActionIds.map((action) => {
+        return authorizer.connect(admin).grantPermission(action, relayer.address, ANY_ADDRESS);
+      })
+    );
 
     // Approve relayer by sender
     await vault.instance.connect(senderUser).setRelayerApproval(senderUser.address, relayer.address, true);

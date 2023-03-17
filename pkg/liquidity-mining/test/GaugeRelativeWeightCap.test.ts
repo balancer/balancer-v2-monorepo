@@ -9,6 +9,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 // This is used for the GaugeControllerMock only.
 enum GaugeType {
@@ -24,8 +25,6 @@ describe('GaugeRelativeWeightCap', () => {
 
   let liquidityGaugeImplementation: Contract;
   let liquidityGaugeFactory: Contract, stakelessGaugeFactory: Contract;
-
-  let factory: Contract;
 
   const defaultRelativeWeightCap = fp(1);
 
@@ -51,7 +50,7 @@ describe('GaugeRelativeWeightCap', () => {
 
   sharedBeforeEach('deploy gauge implementation and factory', async () => {
     const balTokenAdmin = await deploy('MockBalancerTokenAdmin', { args: [vault.address, BAL.address] });
-    const balMinter = await deploy('BalancerMinter', { args: [balTokenAdmin.address, gaugeController.address] });
+    const balMinter = await deploy('MainnetBalancerMinter', { args: [balTokenAdmin.address, gaugeController.address] });
     const adaptor = vault.authorizerAdaptor;
 
     // We won't be using the code that requires the VotingEscrowDelegationProxy so we just use any address, since we
@@ -62,29 +61,57 @@ describe('GaugeRelativeWeightCap', () => {
     liquidityGaugeFactory = await deploy('LiquidityGaugeFactory', { args: [liquidityGaugeImplementation.address] });
     // SingleRecipient is the simplest StakelessGauge, so we test with that instead of using e.g. a mock (which would be
     // identical to SingleRecipient)
-    stakelessGaugeFactory = await deploy('SingleRecipientGaugeFactory', { args: [balMinter.address] });
+    stakelessGaugeFactory = await deploy('SingleRecipientGaugeFactory', { args: [balMinter.address, '', ''] });
   });
 
   sharedBeforeEach('set up permissions', async () => {
     const action = await actionId(adaptorEntrypoint, 'setRelativeWeightCap', liquidityGaugeImplementation.interface);
-    await vault.grantPermissionsGlobally([action], admin);
+    await vault.grantPermissionGlobally(action, admin);
   });
 
+  enum GaugeKind {
+    LiquidityGauge,
+    StakelessGauge,
+  }
+
   describe('LiquidityGaugeV5', () => {
-    beforeEach('use liquidity gauge factory', () => {
-      factory = liquidityGaugeFactory;
-    });
-    testRelativeWeightCapForGauge('LiquidityGaugeV5');
+    testRelativeWeightCapForGauge(GaugeKind.LiquidityGauge);
   });
 
   describe('StakelessGauge', () => {
-    beforeEach('use stakeless gauge factory', () => {
-      factory = stakelessGaugeFactory;
-    });
-    testRelativeWeightCapForGauge('SingleRecipientGauge');
+    testRelativeWeightCapForGauge(GaugeKind.StakelessGauge);
   });
 
-  function testRelativeWeightCapForGauge(contractName: string) {
+  function testRelativeWeightCapForGauge(kind: GaugeKind) {
+    let factory: Contract;
+
+    sharedBeforeEach(async () => {
+      factory = kind == GaugeKind.LiquidityGauge ? liquidityGaugeFactory : stakelessGaugeFactory;
+    });
+
+    async function sendGaugeDeployTx(
+      poolAddress: string,
+      relativeWeightCap: BigNumber = defaultRelativeWeightCap
+    ): Promise<ContractTransaction> {
+      // The LiquidityGauge has one fewer argument (the recipient type). We use 'false' as the recipient type for the
+      // SingleRecipientGauge for a simple EOA recipient.
+
+      return kind == GaugeKind.LiquidityGauge
+        ? factory.create(poolAddress, relativeWeightCap)
+        : factory.create(poolAddress, relativeWeightCap, false);
+    }
+
+    async function deployGauge(
+      poolAddress: string,
+      relativeWeightCap: BigNumber = defaultRelativeWeightCap
+    ): Promise<Contract> {
+      const tx = await sendGaugeDeployTx(poolAddress, relativeWeightCap);
+      const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
+
+      const gaugeAddress = event.args.gauge;
+      return deployedAt(kind == GaugeKind.LiquidityGauge ? 'LiquidityGaugeV5' : 'SingleRecipientGauge', gaugeAddress);
+    }
+
     let gauge: Contract;
     async function setCap(relativeWeightCap: BigNumber): Promise<ContractTransaction> {
       const calldata = gauge.interface.encodeFunctionData('setRelativeWeightCap', [relativeWeightCap]);
@@ -95,7 +122,7 @@ describe('GaugeRelativeWeightCap', () => {
       context('when the initial cap value is too high', () => {
         const maxCap = fp(1.0);
         it('reverts', async () => {
-          await expect(factory.create(token.address, maxCap.add(1))).to.be.revertedWith(
+          await expect(sendGaugeDeployTx(token.address, maxCap.add(1))).to.be.revertedWith(
             'Relative weight cap exceeds allowed absolute maximum'
           );
         });
@@ -104,12 +131,12 @@ describe('GaugeRelativeWeightCap', () => {
       context('when the initial cap value is valid', () => {
         const initialCap = fp(0.75);
         it('emits a RelativeWeightCapChanged event', async () => {
-          const tx = await factory.create(token.address, initialCap);
+          const tx = await sendGaugeDeployTx(token.address, initialCap);
           expectCapChangedEvent(tx, initialCap);
         });
 
         it('sets the initial cap value', async () => {
-          const gauge = await deployedAt(contractName, await deployGauge(factory, token.address, initialCap));
+          const gauge = await deployGauge(token.address, initialCap);
           expect(await gauge.getRelativeWeightCap()).to.be.eq(initialCap);
         });
       });
@@ -129,7 +156,7 @@ describe('GaugeRelativeWeightCap', () => {
       }
 
       sharedBeforeEach('deploy gauge', async () => {
-        gauge = await deployedAt(contractName, await deployGauge(factory, token.address));
+        gauge = await deployGauge(token.address);
       });
 
       context('when the caller is not authorized', () => {
@@ -165,7 +192,7 @@ describe('GaugeRelativeWeightCap', () => {
       const anyTimestamp = bn(1234);
 
       sharedBeforeEach('deploy gauge', async () => {
-        gauge = await deployedAt(contractName, await deployGauge(factory, token.address));
+        gauge = await deployGauge(token.address);
       });
 
       context('when the gauge is not added to the gauge controller', () => {
@@ -213,17 +240,6 @@ describe('GaugeRelativeWeightCap', () => {
         });
       });
     });
-  }
-
-  async function deployGauge(
-    gaugeFactory: Contract,
-    poolAddress: string,
-    relativeWeightCap: BigNumber = defaultRelativeWeightCap
-  ): Promise<string> {
-    const tx = await gaugeFactory.create(poolAddress, relativeWeightCap);
-    const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
-
-    return event.args.gauge;
   }
 
   async function expectCapChangedEvent(tx: ContractTransaction, newCap: BigNumber) {

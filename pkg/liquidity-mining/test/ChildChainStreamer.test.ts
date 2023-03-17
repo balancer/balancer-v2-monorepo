@@ -13,6 +13,7 @@ import { advanceTime, DAY, receiptTimestamp, WEEK } from '@balancer-labs/v2-help
 import { expect } from 'chai';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ChildChainStreamer', () => {
   let vault: Vault;
@@ -57,7 +58,7 @@ describe('ChildChainStreamer', () => {
     sharedBeforeEach('send tokens to streamer', async () => {
       await balToken.mint(streamer, 100);
       const removeRewardRole = await actionId(adaptorEntrypoint, 'remove_reward', streamer.interface);
-      await vault.grantPermissionsGlobally([removeRewardRole], admin);
+      await vault.grantPermissionGlobally(removeRewardRole, admin);
     });
 
     it('allows tokens to be recovered', async () => {
@@ -86,7 +87,7 @@ describe('ChildChainStreamer', () => {
 
     sharedBeforeEach('set up distributor on streamer', async () => {
       const setDistributorActionId = await actionId(adaptorEntrypoint, 'set_reward_distributor', streamer.interface);
-      await vault.grantPermissionsGlobally([setDistributorActionId], admin);
+      await vault.grantPermissionGlobally(setDistributorActionId, admin);
 
       const calldata = streamer.interface.encodeFunctionData('set_reward_distributor', [
         balToken.address,

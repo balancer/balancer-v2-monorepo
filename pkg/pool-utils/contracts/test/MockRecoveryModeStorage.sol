@@ -21,6 +21,10 @@ import "../RecoveryMode.sol";
 abstract contract MockRecoveryModeStorage is RecoveryMode {
     bool private _recoveryMode;
 
+    constructor (IVault vault) RecoveryMode(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     /**
      * @notice Returns whether the pool is in Recovery Mode.
      */

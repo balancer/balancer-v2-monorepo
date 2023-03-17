@@ -129,7 +129,7 @@ __metadata:
     eslint-plugin-mocha-no-only: ^1.1.1
     eslint-plugin-prettier: ^4.2.1
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -162,6 +162,7 @@ __metadata:
   dependencies:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@nomicfoundation/hardhat-network-helpers": ^1.0.6
     "@nomiclabs/hardhat-ethers": ^2.2.1
     "@nomiclabs/hardhat-etherscan": ^3.1.2
@@ -175,11 +176,15 @@ __metadata:
     eslint: ^8.26.0
     eslint-plugin-prettier: ^4.2.1
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
+    hardhat-ignore-warnings: ^0.2.4
     hardhat-local-networks-config-plugin: ^0.0.6
     lodash.range: ^3.2.0
     node-fetch: ^2.6.7
     prettier: ^2.7.1
+    prettier-plugin-solidity: v1.0.0-alpha.59
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   peerDependencies:
@@ -211,7 +216,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     mocha: ^10.1.0
     nodemon: ^2.0.20
@@ -239,7 +244,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereumjs-util: ^7.1.5
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     lodash.frompairs: ^4.0.1
     prettier: ^2.7.1
     ts-node: ^10.9.1
@@ -266,7 +271,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -293,7 +298,7 @@ __metadata:
     "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.2.1
-    "@nomiclabs/hardhat-vyper": ^3.0.1
+    "@nomiclabs/hardhat-vyper": ^3.0.3
     "@nomiclabs/hardhat-waffle": ^2.0.3
     "@types/chai": ^4.3.3
     "@types/lodash": ^4.14.186
@@ -308,7 +313,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     mocha: ^10.1.0
     nodemon: ^2.0.20
@@ -368,7 +373,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -410,7 +415,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -453,7 +458,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -496,7 +501,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -537,7 +542,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -580,7 +585,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     lodash: ^4.17.21
     mocha: ^10.1.0
@@ -618,7 +623,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
-    hardhat: ^2.12.2
+    hardhat: ^2.12.5
     hardhat-ignore-warnings: ^0.2.4
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -2270,9 +2275,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomiclabs/hardhat-vyper@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "@nomiclabs/hardhat-vyper@npm:3.0.1"
+"@nomiclabs/hardhat-vyper@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "@nomiclabs/hardhat-vyper@npm:3.0.3"
   dependencies:
     debug: ^4.1.1
     fs-extra: ^7.0.1
@@ -2281,7 +2286,7 @@ __metadata:
     semver: ^6.3.0
   peerDependencies:
     hardhat: ^2.8.3
-  checksum: f4f203ab516f9f928347ff35ca4737f14b5469b02d13be97be11bb28509837ce2809b0f4538c683af01d82dc831e8638219cf5375c22ac7cd0a72fb506fcf79e
+  checksum: 6c5fa78b993e8093e268f85e3c4d7264a90c389ffd44b7fba5074f02546277fbd7a7d8fe2f9b674cd198dcfd19e300fcffa92023d822c08dab7d0278f734bad1
   languageName: node
   linkType: hard
 
@@ -7759,9 +7764,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"hardhat@npm:^2.12.2":
-  version: 2.12.2
-  resolution: "hardhat@npm:2.12.2"
+"hardhat@npm:^2.12.5":
+  version: 2.12.5
+  resolution: "hardhat@npm:2.12.5"
   dependencies:
     "@ethersproject/abi": ^5.1.2
     "@metamask/eth-sig-util": ^4.0.0
@@ -7823,7 +7828,7 @@ __metadata:
       optional: true
   bin:
     hardhat: internal/cli/cli.js
-  checksum: 2a1d9f239593216e066882a045727514b349534045805f69285f720aad9b896c53c71699998c3ad8cf61804df7356a8f67eb3eb8da9af7f511475ea37aad8fd8
+  checksum: 08aa4a4a648fb88889c68e89eb0a221119764ba6a6e03b96e0e3214d015cf6dca89a6187012c22285187f1b8838d516f8dad1e0a346a9fc4de1e358217f7525b
   languageName: node
   linkType: hard
 

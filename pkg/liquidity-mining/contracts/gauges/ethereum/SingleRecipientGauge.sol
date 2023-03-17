@@ -14,31 +14,54 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IFeeDistributor.sol";
+import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../StakelessGauge.sol";
 
-contract SingleRecipientGauge is StakelessGauge {
+contract SingleRecipientGauge is Version, StakelessGauge {
     using SafeERC20 for IERC20;
 
     address private _recipient;
+    bool private _feeDistributorRecipient;
 
-    constructor(IBalancerMinter minter) StakelessGauge(minter) {
+    // The version of the implementation is irrelevant, so we use an empty string.
+    // The actual gauge version will be set during initialization.
+    constructor(IMainnetBalancerMinter minter) Version("") StakelessGauge(minter) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function initialize(address recipient, uint256 relativeWeightCap) external {
+    function initialize(
+        address recipient,
+        uint256 relativeWeightCap,
+        bool feeDistributorRecipient,
+        string memory version
+    ) external {
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
 
         _recipient = recipient;
+        _feeDistributorRecipient = feeDistributorRecipient;
+        _setVersion(version);
     }
 
-    function getRecipient() external view override returns (address) {
+    function getRecipient() public view override returns (address) {
         return _recipient;
     }
 
+    function isRecipientFeeDistributor() public view returns (bool) {
+        return _feeDistributorRecipient;
+    }
+
     function _postMintAction(uint256 mintAmount) internal override {
-        _balToken.safeTransfer(_recipient, mintAmount);
+        address recipient = getRecipient();
+
+        if (isRecipientFeeDistributor()) {
+            _balToken.safeApprove(recipient, mintAmount);
+            IFeeDistributor(recipient).depositToken(_balToken, mintAmount);
+        } else {
+            _balToken.safeTransfer(recipient, mintAmount);
+        }
     }
 }

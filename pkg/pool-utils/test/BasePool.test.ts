@@ -16,6 +16,7 @@ import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConv
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
@@ -93,7 +94,7 @@ describe('BasePool', function () {
 
     it('tracks authorizer changes in the vault', async () => {
       const action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+      await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
 
       await vault.connect(admin).setAuthorizer(other.address);
 
@@ -180,7 +181,7 @@ describe('BasePool', function () {
           context('when paused', () => {
             sharedBeforeEach('pause pool', async () => {
               const action = await actionId(pool, 'pause');
-              await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+              await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
               await pool.connect(admin).pause();
             });
 
@@ -235,7 +236,7 @@ describe('BasePool', function () {
         context('when the sender has the set fee permission in the authorizer', () => {
           sharedBeforeEach('grant permission', async () => {
             const action = await actionId(pool, 'setSwapFeePercentage');
-            await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
+            await authorizer.connect(admin).grantPermission(action, sender.address, ANY_ADDRESS);
           });
 
           itSetsSwapFeePercentage();
@@ -274,7 +275,7 @@ describe('BasePool', function () {
           context('when the sender has the set fee permission in the authorizer', () => {
             sharedBeforeEach(async () => {
               const action = await actionId(pool, 'setSwapFeePercentage');
-              await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
+              await authorizer.connect(admin).grantPermission(action, sender.address, ANY_ADDRESS);
             });
 
             itRevertsWithUnallowedSender();
@@ -398,9 +399,8 @@ describe('BasePool', function () {
         sharedBeforeEach('grant permission', async () => {
           const pauseAction = await actionId(pool, 'pause');
           const unpauseAction = await actionId(pool, 'unpause');
-          await authorizer
-            .connect(admin)
-            .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
+          await authorizer.connect(admin).grantPermission(pauseAction, sender.address, ANY_ADDRESS);
+          await authorizer.connect(admin).grantPermission(unpauseAction, sender.address, ANY_ADDRESS);
         });
 
         itCanPause();
@@ -440,9 +440,8 @@ describe('BasePool', function () {
           sharedBeforeEach(async () => {
             const pauseAction = await actionId(pool, 'pause');
             const unpauseAction = await actionId(pool, 'unpause');
-            await authorizer
-              .connect(admin)
-              .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
+            await authorizer.connect(admin).grantPermission(pauseAction, sender.address, ANY_ADDRESS);
+            await authorizer.connect(admin).grantPermission(unpauseAction, sender.address, ANY_ADDRESS);
           });
 
           itCanPause();
@@ -538,6 +537,10 @@ describe('BasePool', function () {
         sender = other;
       });
 
+      it('stores the vault (in RecoveryMode contract)', async () => {
+        expect(await pool.vault()).to.equal(vault.address);
+      });
+
       context('when the sender does not have the recovery mode permission in the authorizer', () => {
         itRevertsWithUnallowedSender();
       });
@@ -546,12 +549,8 @@ describe('BasePool', function () {
         sharedBeforeEach('grant permission', async () => {
           const enableRecoveryAction = await actionId(pool, 'enableRecoveryMode');
           const disableRecoveryAction = await actionId(pool, 'disableRecoveryMode');
-          await authorizer
-            .connect(admin)
-            .grantPermissions([enableRecoveryAction, disableRecoveryAction], sender.address, [
-              ANY_ADDRESS,
-              ANY_ADDRESS,
-            ]);
+          await authorizer.connect(admin).grantPermission(enableRecoveryAction, sender.address, ANY_ADDRESS);
+          await authorizer.connect(admin).grantPermission(disableRecoveryAction, sender.address, ANY_ADDRESS);
         });
 
         itCanEnableRecoveryMode();
@@ -591,12 +590,8 @@ describe('BasePool', function () {
           sharedBeforeEach('grant permission', async () => {
             const enableRecoveryAction = await actionId(pool, 'enableRecoveryMode');
             const disableRecoveryAction = await actionId(pool, 'disableRecoveryMode');
-            await authorizer
-              .connect(admin)
-              .grantPermissions([enableRecoveryAction, disableRecoveryAction], sender.address, [
-                ANY_ADDRESS,
-                ANY_ADDRESS,
-              ]);
+            await authorizer.connect(admin).grantPermission(enableRecoveryAction, sender.address, ANY_ADDRESS);
+            await authorizer.connect(admin).grantPermission(disableRecoveryAction, sender.address, ANY_ADDRESS);
           });
 
           itCanEnableRecoveryMode();
@@ -641,7 +636,7 @@ describe('BasePool', function () {
 
         await authorizer
           .connect(admin)
-          .grantPermissions([await actionId(feesCollector, 'setSwapFeePercentage')], admin.address, [ANY_ADDRESS]);
+          .grantPermission(await actionId(feesCollector, 'setSwapFeePercentage'), admin.address, ANY_ADDRESS);
 
         await feesCollector.connect(admin).setSwapFeePercentage(PROTOCOL_SWAP_FEE_PERCENTAGE);
 
@@ -722,9 +717,8 @@ describe('BasePool', function () {
         sharedBeforeEach('enable recovery mode', async () => {
           const enableRecoveryAction = await actionId(pool, 'enableRecoveryMode');
           const disableRecoveryAction = await actionId(pool, 'disableRecoveryMode');
-          await authorizer
-            .connect(admin)
-            .grantPermissions([enableRecoveryAction, disableRecoveryAction], admin.address, [ANY_ADDRESS, ANY_ADDRESS]);
+          await authorizer.connect(admin).grantPermission(enableRecoveryAction, admin.address, ANY_ADDRESS);
+          await authorizer.connect(admin).grantPermission(disableRecoveryAction, admin.address, ANY_ADDRESS);
 
           await pool.connect(admin).enableRecoveryMode();
         });
@@ -785,9 +779,7 @@ describe('BasePool', function () {
 
         context('when paused', () => {
           sharedBeforeEach('pause pool', async () => {
-            await authorizer
-              .connect(admin)
-              .grantPermissions([await actionId(pool, 'pause')], admin.address, [ANY_ADDRESS]);
+            await authorizer.connect(admin).grantPermission(await actionId(pool, 'pause'), admin.address, ANY_ADDRESS);
 
             await pool.connect(admin).pause();
           });

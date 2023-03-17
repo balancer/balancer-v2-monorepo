@@ -5,6 +5,5 @@ Deployment of `BALTokenHolderFactory` which deploys simple contracts which holds
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Kovan testnet addresses](./output/kovan.json)
-- [`BALTokenHolder` artifact](./artifact/BALTokenHolder.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`BALTokenHolderFactory` artifact](./artifact/BALTokenHolderFactory.json)
