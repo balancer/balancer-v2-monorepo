@@ -23,7 +23,7 @@
     "permissions:update": "yarn ts-node scripts/getPermissionedAccounts.ts",
     "permissions:map": "yarn ts-node scripts/getCallableFunctions.ts",
     "permissions:unknown": "yarn ts-node scripts/getUnrecognisedActionIds.ts",
-    "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
+    "lint": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "test": "hardhat test ./**/test/*.ts"
   },
   "devDependencies": {
