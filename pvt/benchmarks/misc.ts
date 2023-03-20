@@ -221,7 +221,9 @@ async function deployPoolFromFactory(
     receipt = await (await factory.connect(args.from).create(...args.parameters, ZERO_BYTES32)).wait();
     event = receipt.events?.find((e) => e.event == 'ManagedPoolCreated');
   } else {
-    receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS, ZERO_BYTES32)).wait();
+    receipt = await (
+      await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS, ZERO_BYTES32)
+    ).wait();
     event = receipt.events?.find((e) => e.event == 'PoolCreated');
   }
 
