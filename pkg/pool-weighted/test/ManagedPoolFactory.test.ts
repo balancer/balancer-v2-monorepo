@@ -15,6 +15,7 @@ import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ManagedPoolParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('ManagedPoolFactory', function () {
   let tokens: TokenList;
@@ -94,7 +95,9 @@ describe('ManagedPoolFactory', function () {
       aumFeeId: ProtocolFee.AUM,
     };
 
-    const receipt = await (await factory.connect(manager).create(poolParams, settingsParams, manager.address)).wait();
+    const receipt = await (
+      await factory.connect(manager).create(poolParams, settingsParams, manager.address, randomBytes(32))
+    ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return deployedAt('ManagedPool', event.args.pool);
