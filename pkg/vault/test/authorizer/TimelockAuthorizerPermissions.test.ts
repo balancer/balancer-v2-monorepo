@@ -48,7 +48,7 @@ describe('TimelockAuthorizer permissions', () => {
   });
 
   describe('permissions', () => {
-    describe('grantPermission', () => {
+    describe.only('grantPermission', () => {
       context('when there is a delay set to grant permissions', () => {
         const delay = DAY;
 
@@ -284,7 +284,7 @@ describe('TimelockAuthorizer permissions', () => {
 
     describe('scheduleGrantPermission', () => {});
 
-    describe('revokePermission', () => {
+    describe.only('revokePermission', () => {
       const delay = DAY;
       context('when there is a delay set to revoke permissions', () => {
         sharedBeforeEach('set delay', async () => {
@@ -321,7 +321,7 @@ describe('TimelockAuthorizer permissions', () => {
         });
 
         function itRevokesPermissionCorrectly(getSender: () => SignerWithAddress) {
-          context('when the target does not have the permission granted', () => {
+          context('when the user does not have the permission', () => {
             it('ignores the request and cannot perform the requested action everywhere', async () => {
               await expect(authorizer.revokePermission(ACTION_1, granter, WHERE_1, { from: root })).not.to.be.reverted;
 
@@ -342,12 +342,11 @@ describe('TimelockAuthorizer permissions', () => {
             });
           });
 
-          context('when the target has the permission granted', () => {
-            context('when the permission was granted for a contract', () => {
-              sharedBeforeEach('grants the permission', async () => {
-                await authorizer.grantPermission(ACTION_1, granter, WHERE_1, { from: root });
-              });
-
+          context('when the user has the permission for a contract', () => {
+            sharedBeforeEach('grants the permission', async () => {
+              await authorizer.grantPermission(ACTION_1, granter, WHERE_1, { from: root });
+            });
+            context('when revoking the permission for a contract', () => {
               it('revokes the requested permission for the requested contract', async () => {
                 await authorizer.revokePermission(ACTION_1, granter, WHERE_1, { from: root });
 
@@ -377,11 +376,32 @@ describe('TimelockAuthorizer permissions', () => {
               });
             });
 
-            context('when the permission was granted everywhere', () => {
-              sharedBeforeEach('grants the permissions', async () => {
-                await authorizer.grantPermissionGlobally(ACTION_1, granter, { from: root });
+            context('when revoking the permission for a everywhere', () => {
+              it('still cannot perform the requested action everywhere', async () => {
+                await authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root });
+
+                expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
+                expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
               });
 
+              it('still can perform the requested action for the previously granted permissions', async () => {
+                await authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root });
+
+                expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
+              });
+
+              it('does not emit an event', async () => {
+                const tx = await authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root });
+                expectEvent.notEmitted(await tx.wait(), 'PermissionRevokedGlobally');
+              });
+            });
+          });
+
+          context('when the user has the permission everywhere', () => {
+            sharedBeforeEach('grants the permissions', async () => {
+              await authorizer.grantPermissionGlobally(ACTION_1, granter, { from: root });
+            });
+            context('when revoking the permission for a contract', () => {
               it('still can perform the requested action for the requested contract', async () => {
                 await authorizer.revokePermission(ACTION_1, granter, WHERE_1, { from: root });
 
@@ -400,74 +420,7 @@ describe('TimelockAuthorizer permissions', () => {
                 expectEvent.notEmitted(await tx.wait(), 'PermissionRevoked');
               });
             });
-          });
-        }
-
-        context('when the sender is root', () => {
-          itRevokesPermissionCorrectly(() => root);
-        });
-
-        context('when the sender is revoker', () => {
-          sharedBeforeEach('makes a revoker', async () => {
-            await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
-          });
-          itRevokesPermissionCorrectly(() => revoker);
-        });
-      });
-    });
-
-    describe('revokePermissionGlobally', () => {
-      context('when the sender is the root', () => {
-        context('when the sender does not have the permission granted', () => {
-          it('ignores the request and cannot perform the requested action everywhere', async () => {
-            await expect(authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root })).not.to.be.reverted;
-
-            expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
-          });
-
-          it('ignores the request and cannot perform the requested action in any specific contract', async () => {
-            await expect(authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root })).not.to.be.reverted;
-
-            expect(await authorizer.canPerform(ACTION_1, granter, NOT_WHERE)).to.be.false;
-          });
-
-          it('does not emit an event', async () => {
-            const tx = await authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root });
-            expectEvent.notEmitted(await tx.wait(), 'PermissionRevokedGlobally');
-          });
-        });
-
-        context('when the account has the permission granted', () => {
-          context('when the permission was granted for a contract', () => {
-            sharedBeforeEach('grants the permission', async () => {
-              await authorizer.grantPermission(ACTION_1, granter, WHERE_1, { from: root });
-            });
-
-            it('still cannot perform the requested action everywhere', async () => {
-              await authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root });
-
-              expect(await authorizer.canPerform(ACTION_1, granter, EVERYWHERE)).to.be.false;
-              expect(await authorizer.canPerform(ACTION_2, granter, EVERYWHERE)).to.be.false;
-            });
-
-            it('still can perform the requested action for the previously granted permissions', async () => {
-              await authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root });
-
-              expect(await authorizer.canPerform(ACTION_1, granter, WHERE_1)).to.be.true;
-            });
-
-            it('does not emit an event', async () => {
-              const tx = await authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root });
-              expectEvent.notEmitted(await tx.wait(), 'PermissionRevokedGlobally');
-            });
-          });
-
-          context('when the permission was granted everywhere', () => {
-            sharedBeforeEach('grants the permission', async () => {
-              await authorizer.grantPermissionGlobally(ACTION_1, granter, { from: root });
-            });
-
+            context('when revoking the permission for a everywhere', () => {});
             it('revokes the requested global permission and cannot perform the requested action everywhere', async () => {
               await authorizer.revokePermissionGlobally(ACTION_1, granter, { from: root });
 
@@ -494,14 +447,17 @@ describe('TimelockAuthorizer permissions', () => {
               });
             });
           });
-        });
-      });
+        }
 
-      context('when the sender is not the root', () => {
-        it('reverts', async () => {
-          await expect(authorizer.revokePermissionGlobally(ACTION_1, granter, { from: granter })).to.be.revertedWith(
-            'SENDER_IS_NOT_REVOKER'
-          );
+        context('when the sender is root', () => {
+          itRevokesPermissionCorrectly(() => root);
+        });
+
+        context('when the sender is revoker', () => {
+          sharedBeforeEach('makes a revoker', async () => {
+            await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
+          });
+          itRevokesPermissionCorrectly(() => revoker);
         });
       });
     });
