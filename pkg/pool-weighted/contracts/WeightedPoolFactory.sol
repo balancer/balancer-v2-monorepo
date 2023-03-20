@@ -39,7 +39,8 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         uint256[] memory normalizedWeights,
         IRateProvider[] memory rateProviders,
         uint256 swapFeePercentage,
-        address owner
+        address owner,
+        bytes32 salt
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -60,7 +61,8 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner
-                )
+                ),
+                salt
             );
     }
 }

@@ -18,6 +18,7 @@ import {
   ManagedPoolParams,
   ManagedPoolRights,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('ManagedPoolFactory', function () {
   let tokens: TokenList;
@@ -98,7 +99,14 @@ describe('ManagedPoolFactory', function () {
     const receipt = await (
       await factory
         .connect(manager)
-        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION, manager.address)
+        .create(
+          newPoolParams,
+          basePoolRights,
+          managedPoolRights,
+          MIN_WEIGHT_CHANGE_DURATION,
+          manager.address,
+          randomBytes(32)
+        )
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');

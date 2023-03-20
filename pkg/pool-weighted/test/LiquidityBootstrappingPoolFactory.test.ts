@@ -10,6 +10,7 @@ import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('LiquidityBootstrappingPoolFactory', function () {
   let tokens: TokenList;
@@ -46,7 +47,8 @@ describe('LiquidityBootstrappingPoolFactory', function () {
         WEIGHTS,
         POOL_SWAP_FEE_PERCENTAGE,
         ZERO_ADDRESS,
-        swapsEnabled
+        swapsEnabled,
+        randomBytes(32)
       )
     ).wait();
 
