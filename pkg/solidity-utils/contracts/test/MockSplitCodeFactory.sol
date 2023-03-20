@@ -36,8 +36,8 @@ contract MockSplitCodeFactory is BaseSplitCodeFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(bytes32 id) external returns (address) {
-        address destination = _create(abi.encode(id));
+    function create(bytes32 id, bytes32 salt) external returns (address) {
+        address destination = _create(abi.encode(id), salt);
         emit ContractCreated(destination);
 
         return destination;

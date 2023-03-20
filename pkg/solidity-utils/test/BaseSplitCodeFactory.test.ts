@@ -4,6 +4,8 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('BasePoolCodeFactory', function () {
   let factory: Contract;
@@ -33,13 +35,13 @@ describe('BasePoolCodeFactory', function () {
   });
 
   it('creates a contract', async () => {
-    const receipt = await (await factory.create(id)).wait();
+    const receipt = await (await factory.create(id, ZERO_BYTES32)).wait();
     expectEvent.inReceipt(receipt, 'ContractCreated');
   });
 
   context('when the creation reverts', () => {
     it('reverts and bubbles up revert reasons', async () => {
-      await expect(factory.create(INVALID_ID)).to.be.revertedWith('NON_ZERO_ID');
+      await expect(factory.create(INVALID_ID, ZERO_BYTES32)).to.be.revertedWith('NON_ZERO_ID');
     });
   });
 
@@ -47,10 +49,18 @@ describe('BasePoolCodeFactory', function () {
     let contract: string;
 
     sharedBeforeEach('create contract', async () => {
-      const receipt = await (await factory.create(id)).wait();
+      const receipt = await (await factory.create(id, ZERO_BYTES32)).wait();
       const event = expectEvent.inReceipt(receipt, 'ContractCreated');
 
       contract = event.args.destination;
+    });
+
+    it('cannot deploy twice with the same salt', async () => {
+      await expect(factory.create(id, ZERO_BYTES32)).to.be.reverted;
+    });
+
+    it('can deploy with a different salt', async () => {
+      await expect(factory.create(id, ONES_BYTES32)).to.not.be.reverted;
     });
 
     it('deploys correct bytecode', async () => {

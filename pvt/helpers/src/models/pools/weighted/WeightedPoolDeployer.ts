@@ -17,6 +17,7 @@ import {
 } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { DAY } from '@balancer-labs/v2-helpers/src/time';
+import { randomBytes } from 'ethers/lib/utils';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -97,7 +98,7 @@ export default {
             pauseWindowDuration,
             bufferPeriodDuration,
             TypesConverter.toAddress(owner),
-            swapEnabledOnStart,
+            swapEnabledOnStart
           ],
           from,
         });
@@ -189,7 +190,8 @@ export default {
           weights,
           swapFeePercentage,
           owner,
-          swapEnabledOnStart
+          swapEnabledOnStart,
+          randomBytes(32)
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -238,7 +240,7 @@ export default {
 
         const tx = await factory
           .connect(from || ZERO_ADDRESS)
-          .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
+          .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS, randomBytes(32));
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
         result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
@@ -256,7 +258,8 @@ export default {
           weights,
           rateProviders,
           swapFeePercentage,
-          owner
+          owner,
+          randomBytes(32)
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');

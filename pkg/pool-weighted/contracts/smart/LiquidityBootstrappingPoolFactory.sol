@@ -39,7 +39,8 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory, FactoryWidePauseW
         uint256[] memory weights,
         uint256 swapFeePercentage,
         address owner,
-        bool swapEnabledOnStart
+        bool swapEnabledOnStart,
+        bytes32 salt
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -56,7 +57,8 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory, FactoryWidePauseW
                     bufferPeriodDuration,
                     owner,
                     swapEnabledOnStart
-                )
+                ),
+                salt
             );
     }
 }

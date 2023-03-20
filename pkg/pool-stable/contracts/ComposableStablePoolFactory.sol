@@ -41,7 +41,8 @@ contract ComposableStablePoolFactory is BasePoolFactory, FactoryWidePauseWindow 
         uint256[] memory tokenRateCacheDurations,
         bool[] memory exemptFromYieldProtocolFeeFlags,
         uint256 swapFeePercentage,
-        address owner
+        address owner,
+        bytes32 salt
     ) external returns (ComposableStablePool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
         return
@@ -63,7 +64,8 @@ contract ComposableStablePoolFactory is BasePoolFactory, FactoryWidePauseWindow 
                             bufferPeriodDuration: bufferPeriodDuration,
                             owner: owner
                         })
-                    )
+                    ),
+                    salt
                 )
             );
     }
