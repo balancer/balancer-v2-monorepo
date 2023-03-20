@@ -41,7 +41,6 @@ contract MockShareToken is TestToken, IShareToken, MaliciousQueryReverter {
     }
 
     function asset() external view override returns (address) {
-        maybeRevertMaliciously();
         return _asset;
     }
 
@@ -51,7 +50,6 @@ contract MockShareToken is TestToken, IShareToken, MaliciousQueryReverter {
     }
 
     function totalSupply() public view override(ERC20, IShareToken) returns (uint256) {
-        maybeRevertMaliciously();
         return _supply;
     }
 
