@@ -98,7 +98,7 @@ export default {
             pauseWindowDuration,
             bufferPeriodDuration,
             TypesConverter.toAddress(owner),
-            swapEnabledOnStart
+            swapEnabledOnStart,
           ],
           from,
         });
@@ -240,7 +240,14 @@ export default {
 
         const tx = await factory
           .connect(from || ZERO_ADDRESS)
-          .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS, randomBytes(32));
+          .create(
+            newPoolParams,
+            basePoolRights,
+            managedPoolRights,
+            DAY,
+            from?.address || ZERO_ADDRESS,
+            randomBytes(32)
+          );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
         result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
