@@ -39,7 +39,8 @@ contract UnbuttonAaveLinearPoolFactory is BasePoolFactory, FactoryWidePauseWindo
         IUnbuttonToken wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
-        address owner
+        address owner,
+        bytes32 salt
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -56,7 +57,8 @@ contract UnbuttonAaveLinearPoolFactory is BasePoolFactory, FactoryWidePauseWindo
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner
-                )
+                ),
+                salt
             )
         );
 

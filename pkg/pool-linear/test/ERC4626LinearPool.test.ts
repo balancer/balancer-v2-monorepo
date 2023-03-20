@@ -13,6 +13,7 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('ERC4626LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, token: Token, rebasingYieldToken: Token, wrappedYieldToken: Token;
@@ -54,7 +55,8 @@ describe('ERC4626LinearPool', function () {
       wrappedYieldToken.address,
       bn(0),
       POOL_SWAP_FEE_PERCENTAGE,
-      owner.address
+      owner.address,
+      randomBytes(32)
     );
 
     const receipt = await tx.wait();

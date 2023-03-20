@@ -12,6 +12,7 @@ import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { setupWrappedTokens } from './UnbuttonAaveLinearPool.test';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('UnbuttonAaveLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
@@ -48,7 +49,8 @@ describe('UnbuttonAaveLinearPoolFactory', function () {
       wrappedToken.address,
       UPPER_TARGET,
       POOL_SWAP_FEE_PERCENTAGE,
-      owner.address
+      owner.address,
+      randomBytes(32)
     );
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'PoolCreated');

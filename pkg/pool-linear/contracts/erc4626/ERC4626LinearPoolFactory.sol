@@ -39,7 +39,8 @@ contract ERC4626LinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         IERC4626 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
-        address owner
+        address owner,
+        bytes32 salt
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -56,7 +57,8 @@ contract ERC4626LinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner
-                )
+                ),
+                salt
             )
         );
 

@@ -48,8 +48,8 @@ contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Reen
         return _lastCreatedPool;
     }
 
-    function _create(bytes memory constructorArgs) internal virtual override returns (address) {
-        address pool = super._create(constructorArgs);
+    function _create(bytes memory constructorArgs, bytes32 salt) internal virtual override returns (address) {
+        address pool = super._create(constructorArgs, salt);
         _lastCreatedPool = pool;
 
         return pool;
@@ -106,7 +106,7 @@ contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Reen
             owner: owner
         });
 
-        AaveLinearPool pool = AaveLinearPool(_create(abi.encode(args)));
+        AaveLinearPool pool = AaveLinearPool(_create(abi.encode(args), rebalancerSalt));
 
         // LinearPools have a separate post-construction initialization step: we perform it here to
         // ensure deployment and initialization are atomic.
