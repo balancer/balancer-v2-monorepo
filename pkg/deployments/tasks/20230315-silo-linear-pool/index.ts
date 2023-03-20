@@ -18,6 +18,13 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     input.BufferPeriodDuration,
   ];
 
+  // Enums needed for Mock Silos interest data
+  enum AssetStatus {
+    Undefined,
+    Active,
+    Removed,
+  }
+
   const factory = await task.deployAndVerify('SiloLinearPoolFactory', args, from, force);
 
   if (task.mode === TaskMode.LIVE) {
@@ -38,31 +45,25 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     const mockShareToken = await task.deployAndVerify('MockShareToken', mockShareTokenArgs, from, force);
 
     // set the totalSupply for share tokens
-    // await mockShareToken.setTotalSupply(fp(1));
-    // await mockSilo.setAssetStorage(
-    //     input.WETH,
-    //     mockShareToken.address,
-    //     mockShareToken.address,
-    //     mockShareToken.address,
-    //     fp(1),
-    //     fp(1),
-    //     fp(1)
-    // );
-    //
-    // enum AssetStatus {
-    //   Undefined,
-    //   Active,
-    //   Removed,
-    // }
-    //
-    // await mockSilo.setInterestData(
-    //     input.WETH, // interestBearingAsset
-    //     0, // harvestedProtocolFees
-    //     0, // protocolFees
-    //     0, // interestRateTimestamp
-    //     AssetStatus.Active // status
-    // );
-    console.log("Set");
+    await mockShareToken.setTotalSupply(fp(1));
+    await mockSilo.setAssetStorage(
+        input.WETH,
+        mockShareToken.address,
+        mockShareToken.address,
+        mockShareToken.address,
+        fp(1),
+        fp(1),
+        fp(1)
+    );
+
+    await mockSilo.setInterestData(
+        input.WETH, // interestBearingAsset
+        0, // harvestedProtocolFees
+        0, // protocolFees
+        0, // interestRateTimestamp
+        AssetStatus.Active // status
+    );
+
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare
     // them here to appease the type system. Those are constructor arguments, but automatically provided by the factory.
     const mockPoolArgs = {
@@ -96,15 +97,15 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
           PROTOCOL_ID
         )
       ).wait();
+
       const event = expectEvent.inReceipt(poolCreationReceipt, 'PoolCreated');
       const mockPoolAddress = event.args.pool;
-      console.log("mockPool address: ", mockPoolAddress);
+
       await saveContractDeploymentTransactionHash(mockPoolAddress, poolCreationReceipt.transactionHash, task.network);
       await task.save({ MockSiloLinearPool: mockPoolAddress });
     }
-    console.log("Code reached");
+
     const mockSiloLinearPool = await task.instanceAt('SiloLinearPool', task.output()['MockSiloLinearPool']);
-    console.log("code reached 2");
     // In order to verify the Pool's code, we need to complete its constructor arguments by computing the factory
     // provided arguments (asset manager and pause durations).
 
