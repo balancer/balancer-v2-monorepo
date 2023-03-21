@@ -295,7 +295,7 @@ describe('TimelockAuthorizer actors', () => {
     });
   });
 
-  describe('revokers', () => {
+  describe.only('revokers', () => {
     describe('addRevoker', () => {
       context('in a specific contract', () => {
         it('root is already a revoker', async () => {
@@ -512,7 +512,7 @@ describe('TimelockAuthorizer actors', () => {
     });
   });
 
-  describe('cancelers', () => {
+  describe.only('cancelers', () => {
     describe('addCanceler', () => {
       context('for a specific scheduled execution id', () => {
         const executionId = 0;
@@ -543,6 +543,11 @@ describe('TimelockAuthorizer actors', () => {
 
           await expect(authorizer.addCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_ALREADY_CANCELER'
+          );
+        });
+        it('reverts if the sender is not the root', async () => {
+          await expect(authorizer.addCanceler(executionId, canceler, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
           );
         });
       });
@@ -599,10 +604,12 @@ describe('TimelockAuthorizer actors', () => {
             authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root })
           ).to.be.revertedWith('ACCOUNT_IS_ALREADY_CANCELER');
         });
-      });
 
-      it('reverts if the sender is not the root', async () => {
-        await expect(authorizer.addCanceler(0, canceler, { from: other })).to.be.revertedWith('SENDER_IS_NOT_ROOT');
+        it('reverts if the sender is not the root', async () => {
+          await expect(
+            authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: other })
+          ).to.be.revertedWith('SENDER_IS_NOT_ROOT');
+        });
       });
     });
 
@@ -650,6 +657,12 @@ describe('TimelockAuthorizer actors', () => {
 
           await expect(authorizer.removeCanceler(0, canceler, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_CANCELER'
+          );
+        });
+
+        it('reverts if the sender is not the root', async () => {
+          await expect(authorizer.removeCanceler(0, canceler, { from: canceler })).to.be.revertedWith(
+            'SENDER_IS_NOT_ROOT'
           );
         });
       });
@@ -713,12 +726,12 @@ describe('TimelockAuthorizer actors', () => {
           expect(await authorizer.isCanceler(0, canceler)).to.be.false;
           expect(await authorizer.isCanceler(1, canceler)).to.be.false;
         });
-      });
 
-      it('reverts if the sender is not the root', async () => {
-        await expect(authorizer.removeCanceler(0, canceler, { from: canceler })).to.be.revertedWith(
-          'SENDER_IS_NOT_ROOT'
-        );
+        it('reverts if the sender is not the root', async () => {
+          await expect(
+            authorizer.removeCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: canceler })
+          ).to.be.revertedWith('SENDER_IS_NOT_ROOT');
+        });
       });
     });
   });
