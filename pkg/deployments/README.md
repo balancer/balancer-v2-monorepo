@@ -112,6 +112,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Batch Relayer V5                                       | [`20230314-batch-relayer-v5`](./tasks/20230314-batch-relayer-v5)                                     |
 | Linear Pools for Silo Tokens                           | [`20230315-silo-linear-pool`](./tasks/20230315-silo-linear-pool)                                     |
 | L2 Balancer Pseudo Minter                              | [`20230316-l2-balancer-pseudo-minter`](./tasks/20230316-l2-balancer-pseudo-minter)                   |
+| Weighted Pool V4                                       | [`20230320-weighted-pool-v4`](./tasks/20230320-weighted-pool-v4)                                     |
 
 ## Scripts
 
