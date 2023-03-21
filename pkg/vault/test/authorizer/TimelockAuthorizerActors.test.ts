@@ -349,7 +349,6 @@ describe('TimelockAuthorizer actors', () => {
       context('in any contract', () => {
         it('root is already a revoker', async () => {
           expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.true;
-          expect(await authorizer.isRevoker(root, EVERYWHERE)).to.be.true;
         });
 
         it('account is a revoker in any contract', async () => {
