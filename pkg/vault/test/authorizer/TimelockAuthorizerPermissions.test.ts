@@ -6,9 +6,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { range } from 'lodash';
 
 describe('TimelockAuthorizer permissions', () => {
   let authorizer: TimelockAuthorizer, vault: Contract;
@@ -16,14 +18,16 @@ describe('TimelockAuthorizer permissions', () => {
     nextRoot: SignerWithAddress,
     revoker: SignerWithAddress,
     granter: SignerWithAddress,
-    user: SignerWithAddress;
+    user: SignerWithAddress,
+    other: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, root, nextRoot, granter, revoker, user] = await ethers.getSigners();
+    [, root, nextRoot, granter, revoker, user, other] = await ethers.getSigners();
   });
 
   const ACTION_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ACTION_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
+  const ACTION_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
 
   const WHERE_1 = ethers.Wallet.createRandom().address;
   const WHERE_2 = ethers.Wallet.createRandom().address;
@@ -275,10 +279,122 @@ describe('TimelockAuthorizer permissions', () => {
     });
   });
 
-  describe('scheduleGrantPermission', () => {});
+  describe.only('scheduleGrantPermission', () => {
+    const delay = DAY;
+
+    sharedBeforeEach('set delay', async () => {
+      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
+      await authorizer.scheduleAndExecuteGrantDelayChange(ACTION_1, delay, { from: root });
+    });
+
+    it('reverts if action has no grant delay', async () => {
+      await expect(authorizer.scheduleGrantPermission(ACTION_2, user, WHERE_1, [], { from: root })).to.be.revertedWith(
+        'ACTION_HAS_NO_GRANT_DELAY'
+      );
+    });
+
+    it('reverts if sender is not granter', async () => {
+      await expect(authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: other })).to.be.revertedWith(
+        'SENDER_IS_NOT_GRANTER'
+      );
+    });
+
+    function itScheduleGrantPermissionCorrectly(getSender: () => SignerWithAddress) {
+      it('schedules a grant permission', async () => {
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        const { executed, data, where, executableAt } = await authorizer.getScheduledExecution(id);
+        expect(executed).to.be.false;
+        expect(data).to.be.equal(
+          authorizer.instance.interface.encodeFunctionData('grantPermission', [ACTION_1, user.address, WHERE_1])
+        );
+        expect(where).to.be.equal(authorizer.address);
+        expect(executableAt).to.equal((await currentTimestamp()).add(delay));
+      });
+
+      it('execution can be unprotected', async () => {
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+        const execution = await authorizer.getScheduledExecution(id);
+
+        expect(execution.protected).to.be.false;
+      });
+
+      it('execution can be protected', async () => {
+        const executors = range(4).map(randomAddress);
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, executors, { from: getSender() });
+        const execution = await authorizer.getScheduledExecution(id);
+
+        expect(execution.protected).to.be.true;
+        await Promise.all(
+          executors.map(async (executor) => expect(await authorizer.isExecutor(id, executor)).to.be.true)
+        );
+      });
+
+      it('granter can cancel the execution', async () => {
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+        expect(await authorizer.isCanceler(id, getSender())).to.be.true;
+
+        const receipt = await authorizer.cancel(id, { from: getSender() });
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+      });
+
+      it('can be executed after the expected delay', async () => {
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        await advanceTime(delay);
+        const receipt = await authorizer.execute(id);
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
+      });
+
+      it('grants the permission when executed', async () => {
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        await advanceTime(delay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.hasPermission(ACTION_1, user, WHERE_1)).to.be.equal(true);
+      });
+
+      it('does not grant any other permissions when executed', async () => {
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        await advanceTime(delay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.hasPermission(ACTION_3, user, WHERE_1)).to.be.equal(false);
+        expect(await authorizer.hasPermission(ACTION_2, user, WHERE_2)).to.be.equal(false);
+      });
+
+      it('emits an event', async () => {
+        const receipt = await authorizer.instance
+          .connect(getSender())
+          .scheduleGrantPermission(ACTION_1, user.address, WHERE_1, []);
+
+        expectEvent.inReceipt(await receipt.wait(), 'GrantPermissionScheduled', {
+          actionId: ACTION_1,
+          account: user.address,
+          where: WHERE_1,
+        });
+      });
+    }
+
+    context('when the sender is root', () => {
+      itScheduleGrantPermissionCorrectly(() => root);
+    });
+
+    context('when the sender is granter', () => {
+      sharedBeforeEach('makes a granter', async () => {
+        await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
+        await authorizer.addGranter(ACTION_2, granter, EVERYWHERE, { from: root });
+      });
+      itScheduleGrantPermissionCorrectly(() => granter);
+    });
+  });
 
   describe('revokePermission', () => {
     const delay = DAY;
+
     context('when there is a delay set to revoke permissions', () => {
       sharedBeforeEach('set delay', async () => {
         const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
