@@ -253,6 +253,12 @@ describe('TimelockAuthorizer execute', () => {
       const where = await authorizer.instance.getTimelockExecutionHelper();
       await expect(schedule(where)).to.be.revertedWith('ATTEMPTING_EXECUTION_HELPER_REENTRANCY');
     });
+
+    it('reverts if data is less than 4 bytes', async () => {
+      await expect(authorizer.schedule(authenticatedContract.address, '0x00', [], { from: user })).to.be.revertedWith(
+        'SENDER_DOES_NOT_HAVE_PERMISSION'
+      );
+    });
   });
 
   describe('execute', () => {
