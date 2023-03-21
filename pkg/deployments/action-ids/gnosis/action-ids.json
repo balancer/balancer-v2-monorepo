@@ -322,5 +322,18 @@
         "toggle_approve_mint(address)": "0xa6150298594be9fdb9f3a836db79e2ac5d086a336f47e9d92a59b603efa92f3a"
       }
     }
+  },
+  "20230316-l2-ve-delegation-proxy": {
+    "NullVotingEscrow": {
+      "useAdaptor": true,
+      "actionIds": {}
+    },
+    "VotingEscrowDelegationProxy": {
+      "useAdaptor": false,
+      "actionIds": {
+        "killDelegation()": "0x9cb98e2303069731b519a5796159ef39c12e97c5d113d273c9ab8999a85d9e4f",
+        "setDelegation(address)": "0x61d367fdef9a156d543288bab90410760d120019702b0559ffb08a3075aa7d42"
+      }
+    }
   }
 }
