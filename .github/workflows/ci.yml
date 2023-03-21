@@ -45,7 +45,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-solidity-utils test
+        run: yarn workspace @balancer-labs/v2-solidity-utils test:fast
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -66,7 +66,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-standalone-utils test
+        run: yarn workspace @balancer-labs/v2-standalone-utils test:fast
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -87,7 +87,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-vault test
+        run: yarn workspace @balancer-labs/v2-vault test:fast
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -108,7 +108,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-pool-utils test
+        run: yarn workspace @balancer-labs/v2-pool-utils test:fast
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -129,7 +129,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-pool-weighted test
+        run: yarn workspace @balancer-labs/v2-pool-weighted test:fast
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -150,7 +150,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-pool-stable test
+        run: yarn workspace @balancer-labs/v2-pool-stable test:fast
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -171,7 +171,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-pool-linear test
+        run: yarn workspace @balancer-labs/v2-pool-linear test:fast
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -192,7 +192,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-liquidity-mining test
+        run: yarn workspace @balancer-labs/v2-liquidity-mining test:fast
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -211,7 +211,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-governance-scripts test
+        run: yarn workspace @balancer-labs/v2-governance-scripts test:fast
 
   test-fork:
     runs-on: ubuntu-latest
@@ -261,4 +261,4 @@ jobs:
           ARBITRUM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT }}
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-deployments test
+        run: yarn workspace @balancer-labs/v2-deployments test:fast
