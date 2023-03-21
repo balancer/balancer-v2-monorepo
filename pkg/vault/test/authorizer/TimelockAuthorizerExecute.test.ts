@@ -39,7 +39,7 @@ describe('TimelockAuthorizer execute', () => {
     authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault.address] });
   });
 
-  describe('schedule', () => {
+  describe.only('schedule', () => {
     const delay = DAY * 5;
     const functionData = '0x0123456789abcdef';
 
@@ -84,7 +84,7 @@ describe('TimelockAuthorizer execute', () => {
       expect(scheduledExecution.data).to.be.equal(data);
       expect(scheduledExecution.where).to.be.equal(authenticatedContract.address);
       expect(scheduledExecution.protected).to.be.false;
-      expect(scheduledExecution.executableAt).to.be.at.almostEqual((await currentTimestamp()).add(delay));
+      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()).add(delay));
     });
 
     it('can schedule with a global permission', async () => {
@@ -97,7 +97,7 @@ describe('TimelockAuthorizer execute', () => {
       expect(scheduledExecution.data).to.be.equal(data);
       expect(scheduledExecution.where).to.be.equal(authenticatedContract.address);
       expect(scheduledExecution.protected).to.be.false;
-      expect(scheduledExecution.executableAt).to.be.at.almostEqual((await currentTimestamp()).add(delay));
+      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()).add(delay));
     });
 
     it('cannot execute the action immediately', async () => {
@@ -149,7 +149,7 @@ describe('TimelockAuthorizer execute', () => {
       expect(scheduledExecution.data).to.be.equal(data);
       expect(scheduledExecution.where).to.be.equal(authenticatedContract.address);
       expect(scheduledExecution.protected).to.be.true;
-      expect(scheduledExecution.executableAt).to.be.at.almostEqual((await currentTimestamp()).add(delay));
+      expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()).add(delay));
     });
 
     it('emits ExecutorAdded events', async () => {

@@ -295,7 +295,7 @@ describe('TimelockAuthorizer actors', () => {
     });
   });
 
-  describe.only('revokers', () => {
+  describe('revokers', () => {
     describe('addRevoker', () => {
       context('in a specific contract', () => {
         it('root is already a revoker', async () => {
@@ -512,7 +512,7 @@ describe('TimelockAuthorizer actors', () => {
     });
   });
 
-  describe.only('cancelers', () => {
+  describe('cancelers', () => {
     describe('addCanceler', () => {
       context('for a specific scheduled execution id', () => {
         const executionId = 0;
