@@ -279,7 +279,7 @@ describe('TimelockAuthorizer permissions', () => {
     });
   });
 
-  describe.only('scheduleGrantPermission', () => {
+  describe('scheduleGrantPermission', () => {
     const delay = DAY;
 
     sharedBeforeEach('set delay', async () => {
@@ -573,7 +573,122 @@ describe('TimelockAuthorizer permissions', () => {
     });
   });
 
-  describe('scheduleRevokePermission', () => {});
+  describe('scheduleRevokePermission', () => {
+    const delay = DAY;
+
+    sharedBeforeEach('set delay', async () => {
+      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay * 2, { from: root });
+      await authorizer.scheduleAndExecuteRevokeDelayChange(ACTION_1, delay, { from: root });
+    });
+
+    it('reverts if action has no revoke delay', async () => {
+      await expect(authorizer.scheduleRevokePermission(ACTION_2, user, WHERE_1, [], { from: root })).to.be.revertedWith(
+        'ACTION_HAS_NO_REVOKE_DELAY'
+      );
+    });
+
+    it('reverts if sender is not revoker', async () => {
+      await expect(
+        authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: other })
+      ).to.be.revertedWith('SENDER_IS_NOT_REVOKER');
+    });
+
+    function itScheduleRevokePermissionCorrectly(getSender: () => SignerWithAddress) {
+      it('schedules a revoke permission', async () => {
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        const { executed, data, where, executableAt } = await authorizer.getScheduledExecution(id);
+        expect(executed).to.be.false;
+        expect(data).to.be.equal(
+          authorizer.instance.interface.encodeFunctionData('revokePermission', [ACTION_1, user.address, WHERE_1])
+        );
+        expect(where).to.be.equal(authorizer.address);
+        expect(executableAt).to.equal((await currentTimestamp()).add(delay));
+      });
+
+      it('execution can be unprotected', async () => {
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+        const execution = await authorizer.getScheduledExecution(id);
+
+        expect(execution.protected).to.be.false;
+      });
+
+      it('execution can be protected', async () => {
+        const executors = range(4).map(randomAddress);
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, executors, { from: getSender() });
+        const execution = await authorizer.getScheduledExecution(id);
+
+        expect(execution.protected).to.be.true;
+        await Promise.all(
+          executors.map(async (executor) => expect(await authorizer.isExecutor(id, executor)).to.be.true)
+        );
+      });
+
+      it('revoker can cancel the execution', async () => {
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+        expect(await authorizer.isCanceler(id, getSender())).to.be.true;
+
+        const receipt = await authorizer.cancel(id, { from: getSender() });
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+      });
+
+      it('can be executed after the expected delay', async () => {
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        await advanceTime(delay);
+        const receipt = await authorizer.execute(id);
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
+      });
+
+      it('revokes the permission when executed', async () => {
+        // grant the premission first
+        await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: root });
+
+        expect(await authorizer.hasPermission(ACTION_1, user, WHERE_1)).to.be.equal(true);
+
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        await advanceTime(delay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.hasPermission(ACTION_1, user, WHERE_1)).to.be.equal(false);
+      });
+
+      it('does not revoke any other permissions when executed', async () => {
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        await advanceTime(delay);
+        await authorizer.execute(id);
+
+        expect(await authorizer.hasPermission(ACTION_3, user, WHERE_1)).to.be.equal(false);
+        expect(await authorizer.hasPermission(ACTION_2, user, WHERE_2)).to.be.equal(false);
+      });
+
+      it('emits an event', async () => {
+        const receipt = await authorizer.instance
+          .connect(getSender())
+          .scheduleRevokePermission(ACTION_1, user.address, WHERE_1, []);
+
+        expectEvent.inReceipt(await receipt.wait(), 'RevokePermissionScheduled', {
+          actionId: ACTION_1,
+          account: user.address,
+          where: WHERE_1,
+        });
+      });
+    }
+
+    context('when the sender is root', () => {
+      itScheduleRevokePermissionCorrectly(() => root);
+    });
+
+    context('when the sender is revoker', () => {
+      sharedBeforeEach('makes a revoker', async () => {
+        await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
+      });
+      itScheduleRevokePermissionCorrectly(() => revoker);
+    });
+  });
 
   describe('renouncePermission', () => {
     context('when the sender does not have the permission', () => {
