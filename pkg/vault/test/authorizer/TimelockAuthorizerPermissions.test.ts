@@ -9,7 +9,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { randomAddress } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 
 describe('TimelockAuthorizer permissions', () => {
@@ -531,30 +531,31 @@ describe('TimelockAuthorizer permissions', () => {
               expectEvent.notEmitted(await tx.wait(), 'PermissionRevoked');
             });
           });
-          context('when revoking the permission for a everywhere', () => {});
-          it('revokes the requested global permission and cannot perform the requested action everywhere', async () => {
-            await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() });
+          context('when revoking the permission for a everywhere', () => {
+            it('revokes the requested global permission and cannot perform the requested action everywhere', async () => {
+              await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() });
 
-            expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
-          });
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+            });
 
-          it('cannot perform the requested action in any specific contract', async () => {
-            await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() });
+            it('cannot perform the requested action in any specific contract', async () => {
+              await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() });
 
-            expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.false;
-            expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
-          });
+              expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+            });
 
-          it('emits an event', async () => {
-            const receipt = await (
-              await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() })
-            ).wait();
+            it('emits an event', async () => {
+              const receipt = await (
+                await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() })
+              ).wait();
 
-            expectEvent.inReceipt(receipt, 'PermissionRevoked', {
-              actionId: ACTION_1,
-              account: user.address,
-              where: TimelockAuthorizer.EVERYWHERE,
+              expectEvent.inReceipt(receipt, 'PermissionRevoked', {
+                actionId: ACTION_1,
+                account: user.address,
+                where: TimelockAuthorizer.EVERYWHERE,
+              });
             });
           });
         });

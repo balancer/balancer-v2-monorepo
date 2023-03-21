@@ -7,7 +7,6 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
@@ -295,7 +294,6 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     context('when the action is protected', () => {
-      sharedBeforeEach('set executors', async () => {});
       it('all executors can execute', async () => {
         const id = await schedule([executor, account]);
         await advanceTime(delay);

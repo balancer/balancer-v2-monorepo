@@ -1,6 +1,5 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -32,14 +31,12 @@ describe('TimelockAuthorizer actors', () => {
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
 
   sharedBeforeEach('deploy authorizer', async () => {
-    let authorizerContract: Contract;
-
-    ({ authorizer: authorizerContract } = await Vault.create({
+    const vault = await Vault.create({
       admin: root,
       nextAdmin: nextRoot.address,
-    }));
+    });
 
-    authorizer = new TimelockAuthorizer(authorizerContract, root);
+    authorizer = new TimelockAuthorizer(vault.authorizer, root);
   });
 
   describe('granters', () => {
