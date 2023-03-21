@@ -165,6 +165,13 @@ describe('TimelockAuthorizer execute', () => {
       }
     });
 
+    it('emits ExecutionScheduled event', async () => {
+      const receipt = await authorizer.instance.connect(user).schedule(authenticatedContract.address, data, []);
+
+      // _scheduledExecutions doesn't have a getter so we can't fetch it before the call
+      expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled', { scheduledExecutionId: 2 });
+    });
+
     it('cannot execute the action immediately', async () => {
       const id = await schedule(authenticatedContract, [executor]);
       await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
