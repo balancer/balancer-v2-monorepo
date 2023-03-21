@@ -111,6 +111,9 @@ Returns an object with all contracts from a deployment and their addresses.
 | Protocol ID registry                                   | [`20230223-protocol-id-registry`](./tasks/20230223-protocol-id-registry)                             |
 | Batch Relayer V5                                       | [`20230314-batch-relayer-v5`](./tasks/20230314-batch-relayer-v5)                                     |
 | Linear Pools for Silo Tokens                           | [`20230315-silo-linear-pool`](./tasks/20230315-silo-linear-pool)                                     |
+| L2 Balancer Pseudo Minter                              | [`20230316-l2-balancer-pseudo-minter`](./tasks/20230316-l2-balancer-pseudo-minter)                   |
+| L2 Voting Escrow Delegation Proxy                      | [`20230316-l2-ve-delegation-proxy`](./tasks/20230316-l2-ve-delegation-proxy)                         |
+| Weighted Pool V4                                       | [`20230320-weighted-pool-v4`](./tasks/20230320-weighted-pool-v4)                                     |
 | Composable Stable Pools V4                             | [`20230320-composable-stable-pool-v4`](./tasks/20230320-composable-stable-pool-v4)                   |
 
 ## Scripts

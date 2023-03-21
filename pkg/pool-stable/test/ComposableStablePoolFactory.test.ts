@@ -11,6 +11,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('ComposableStablePoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
@@ -76,7 +77,8 @@ describe('ComposableStablePoolFactory', function () {
       Array(tokens.length).fill(PRICE_RATE_CACHE_DURATION),
       protocolFeeExemptFlags,
       POOL_SWAP_FEE_PERCENTAGE,
-      owner.address
+      owner.address,
+      randomBytes(32)
     );
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'PoolCreated');
