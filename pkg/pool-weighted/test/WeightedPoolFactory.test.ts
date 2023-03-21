@@ -13,6 +13,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('WeightedPoolFactory', function () {
   let tokens: TokenList;
@@ -57,7 +58,8 @@ describe('WeightedPoolFactory', function () {
         WEIGHTS,
         rateProviders,
         POOL_SWAP_FEE_PERCENTAGE,
-        owner.address
+        owner.address,
+        randomBytes(32)
       )
     ).wait();
 
