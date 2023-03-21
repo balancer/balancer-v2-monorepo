@@ -5,6 +5,7 @@
 ### New Deployments
 
 - Deployed `BatchRelayerLibrary` V5 to all networks.
+- Deployed `ComposableStablePoolFactory` V4 to all networks.
 
 ### Deprecations
 
