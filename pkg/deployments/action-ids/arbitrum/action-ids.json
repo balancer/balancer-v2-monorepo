@@ -537,5 +537,27 @@
         "renameProtocolId(uint256,string)": "0xdc8681b640b547e98ee6f4d708df559b807526d976644c3aca24bc12c4f839c3"
       }
     }
+  },
+  "20230320-weighted-pool-v4": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address,bytes32)": "0xe7a13335b40fd214b7f8ada8dab13cca00bdc08ca9e9f47f1fba66a1a3c55bf6",
+        "disable()": "0x06cafebf5a6142d1acfc442d8a4f2b4d40a7cdfa6c1311679adc8fd679a559a7"
+      }
+    },
+    "WeightedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x129C6402FF88611Aa59BF2e14B39e091822e2C9c",
+      "actionIds": {
+        "disableRecoveryMode()": "0x3f9dc3da8a6332271be3fccd1a107fd3117a1a988666ff673241edc8c12279ac",
+        "enableRecoveryMode()": "0xe184fa0d5bfa8981c4a008826c1302ad4a0235d114bd82980681f620c748abc1",
+        "pause()": "0xd98740b6136649627930e4de42dd9232af00b3ded6023d9d9202b47f0356ff43",
+        "setAssetManagerPoolConfig(address,bytes)": "0x3e872a6ad12d1187c30b8c546282ff4a3873a6d9a0622adb2d0ff00aa116eacd",
+        "setSwapFeePercentage(uint256)": "0x70368640683195889d0f146ab060210f43fbb1c317a87bdf17a4dca8d8feed86",
+        "unpause()": "0x0705bb8a9cab37a9112e507fd5ea1950caa8b4873b253fba1c388e242cffb8bf",
+        "updateProtocolFeePercentageCache()": "0x634a48f15c9fbd33b539e47b521b56f76af45ede9ce090ee133b356047eab25c"
+      }
+    }
   }
 }
