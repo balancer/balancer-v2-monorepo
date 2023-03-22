@@ -14,6 +14,7 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('ProtocolFeeSplitter', function () {
   const defaultRevenueShare = fp(0.1); // 10%
@@ -501,7 +502,8 @@ describe('ProtocolFeeSplitter', function () {
         weights,
         Array(tokens.length).fill(ZERO_ADDRESS),
         swapFeePercentage,
-        owner.address
+        owner.address,
+        randomBytes(32)
       );
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
