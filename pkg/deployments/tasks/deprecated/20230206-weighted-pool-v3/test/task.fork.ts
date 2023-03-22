@@ -11,7 +11,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { getSigner, impersonate, getForkedNetwork, Task, TaskMode, describeForkTest } from '../../../src';
+import { getSigner, impersonate, getForkedNetwork, Task, TaskMode, describeForkTest } from '../../../../src';
 
 describeForkTest('WeightedPool V3', 'mainnet', 16577000, function () {
   let owner: SignerWithAddress,
