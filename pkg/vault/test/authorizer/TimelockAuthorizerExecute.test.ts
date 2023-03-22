@@ -10,6 +10,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizer execute', () => {
   let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
@@ -22,6 +23,7 @@ describe('TimelockAuthorizer execute', () => {
     account: SignerWithAddress;
 
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
+  const GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = MAX_UINT256;
 
   before('setup signers', async () => {
     [, root, nextRoot, executor, canceler, account, user, other] = await ethers.getSigners();
@@ -274,7 +276,7 @@ describe('TimelockAuthorizer execute', () => {
     });
   });
 
-  describe.only('execute', () => {
+  describe('execute', () => {
     const delay = DAY;
     const functionData = '0x0123456789abcdef';
 
@@ -398,7 +400,7 @@ describe('TimelockAuthorizer execute', () => {
     });
   });
 
-  describe('cancel', () => {
+  describe.only('cancel', () => {
     const delay = DAY;
 
     sharedBeforeEach('grant protected function permission with delay', async () => {
@@ -418,9 +420,31 @@ describe('TimelockAuthorizer execute', () => {
       return id;
     };
 
-    it('cancel the action', async () => {
+    it('specific canceler can cancel the action', async () => {
       const id = await schedule();
       await authorizer.cancel(id, { from: canceler });
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.cancelled).to.be.true;
+    });
+
+    it('global canceler can cancel the action', async () => {
+      await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
+      const id = await authorizer.schedule(
+        authenticatedContract,
+        authenticatedContract.interface.encodeFunctionData('protectedFunction', ['0x']),
+        [],
+        { from: user }
+      );
+      await authorizer.cancel(id, { from: canceler });
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.cancelled).to.be.true;
+    });
+
+    it('root canceler can cancel the action', async () => {
+      const id = await schedule();
+      await authorizer.cancel(id, { from: root });
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
       expect(scheduledExecution.cancelled).to.be.true;
