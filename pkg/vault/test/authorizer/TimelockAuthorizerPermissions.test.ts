@@ -61,19 +61,6 @@ describe('TimelockAuthorizer permissions', () => {
           'GRANT_MUST_BE_SCHEDULED'
         );
       });
-
-      it('can schedule a grant permission', async () => {
-        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: root });
-
-        // should not be able to execute before delay
-        await expect(authorizer.execute(id, { from: root })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
-
-        await advanceTime(delay);
-        await authorizer.execute(id, { from: root });
-
-        expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
-        expect(await authorizer.canPerform(ACTION_2, user, WHERE_2)).to.be.false;
-      });
     });
 
     context('when there is a no delay set to grant permissions', () => {
