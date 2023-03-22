@@ -590,5 +590,23 @@
         "renameProtocolId(uint256,string)": "0x5dd6754fa5d8d56f6177c0265c35ab00ee57aa8a190975f1fba56a18796f0aeb"
       }
     }
+  },
+  "20230316-l2-balancer-pseudo-minter": {
+    "L2BalancerPseudoMinter": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addGaugeFactory(address)": "0x71b144ace6b2cd2762fedff00a9e45c9b7b742ee590f9d593c61e48b6c9ad790",
+        "mint(address)": "0x6e7eb27394c8783d3cf3a812720b63d5f91333421593e6e36495ba719bcb5032",
+        "mintFor(address,address)": "0x3f4055068632f12496744c3f128b0c2edeeef0f477bc16c6e01bdaa3985e7430",
+        "mintMany(address[])": "0x4d38bf03e56037a31f2a97d7292257d2cb55f85cabc3c23c149b538424f6bb85",
+        "mintManyFor(address[],address)": "0x2a05b8d96ca3a60f61ec1ef142355a601269a69b0dfd43db7b705e082a988080",
+        "mint_for(address,address)": "0x7ec77596608ef055482d5573c9c678ceb476ce87f10fc7baff1bce7b07f56be7",
+        "mint_many(address[8])": "0xe91ab36ab0c8caea67192b217c9f93b9ec47f5af2a81955661b4fb9950a153ef",
+        "removeGaugeFactory(address)": "0x901a6765ca0c95ded97655a17fa640878a0e4e93b0bd4f30e6754af42bc816b1",
+        "setMinterApproval(address,bool)": "0x137238e6103bef3e9bbcd06c78b66dffd767b5e578ef27c4192589a15f2bd71e",
+        "setMinterApprovalWithSignature(address,bool,address,uint256,uint8,bytes32,bytes32)": "0x1c18fc05607eb7cc9ada96baf6d90287e575938e372f80a610e95cc41cfb55d9",
+        "toggle_approve_mint(address)": "0x74868bba926298fede28d9bab420d7ccdde8e91aa2de5e98cc02a728928eb56a"
+      }
+    }
   }
 }
