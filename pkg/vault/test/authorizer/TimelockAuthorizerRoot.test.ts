@@ -122,6 +122,7 @@ describe('TimelockAuthorizer root', () => {
         await authorizer.claimRoot({ from: user });
         expect(await authorizer.isRoot(root)).to.be.false;
         expect(await authorizer.isRoot(user)).to.be.true;
+        expect(await authorizer.instance.getRoot()).to.be.eq(user.address);
       });
 
       it('resets the pending root address to the zero address', async () => {
@@ -129,6 +130,7 @@ describe('TimelockAuthorizer root', () => {
         expect(await authorizer.isPendingRoot(root)).to.be.false;
         expect(await authorizer.isPendingRoot(user)).to.be.false;
         expect(await authorizer.isPendingRoot(ZERO_ADDRESS)).to.be.true;
+        expect(await authorizer.instance.getPendingRoot()).to.be.eq(ZERO_ADDRESS);
       });
 
       it('emits an event', async () => {
