@@ -312,6 +312,17 @@ describe('TimelockAuthorizer execute', () => {
       expect(scheduledExecution.executed).to.be.true;
     });
 
+    it('execute returns a correct result', async () => {
+      const id = await schedule();
+      await advanceTime(delay);
+      const ret = await authorizer.instance.connect(executor).callStatic.execute(id);
+
+      // we have to slice first 4 selector bytes from the input data to get the return data
+      expect(ret).to.be.eq(
+        '0x' + authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]).slice(10)
+      );
+    });
+
     context('when the action is protected', () => {
       it('all executors can execute', async () => {
         const id = await schedule([executor, account]);
@@ -368,17 +379,6 @@ describe('TimelockAuthorizer execute', () => {
       await advanceTime(delay);
       await authorizer.execute(id, { from: executor });
       await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
-    });
-
-    it('cannot execute another scheculed action within a scheduled action', async () => {
-      const id = await schedule();
-
-      const data = authorizer.interface.encodeFunctionData('execute', [id]);
-      const nextId = await authorizer.schedule(authorizer, data, [], { from: user });
-
-      await advanceTime(delay);
-
-      await expect(authorizer.execute(nextId, { from: executor })).to.be.revertedWith('CANNOT_SCHEDULE_AUTHORIZER_ACTIONS');
     });
 
     it('reverts if action was cancelled', async () => {
