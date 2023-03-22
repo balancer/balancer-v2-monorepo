@@ -43,7 +43,7 @@ contract SeededLiquidityBootstrappingPoolFactory is BasePoolFactory {
     /**
      * @dev Deploys a new `AssetManagedLiquidityBootstrappingPool`.
      */
-    function create(AssetManagedLiquidityBootstrappingPool.NewPoolParams memory poolParams)
+    function create(AssetManagedLiquidityBootstrappingPool.NewPoolParams memory poolParams, bytes32 salt)
         external
         returns (address pool)
     {
@@ -58,7 +58,8 @@ contract SeededLiquidityBootstrappingPoolFactory is BasePoolFactory {
                     bufferPeriodDuration,
                     msg.sender, // manager
                     address(0) // no asset manager
-                )
+                ),
+                salt
             );
     }
 }

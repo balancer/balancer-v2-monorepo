@@ -337,7 +337,7 @@ export default {
           swapEnabledOnStart: swapEnabledOnStart,
         };
 
-        const tx = await factory.create(newPoolParams);
+        const tx = await factory.create(newPoolParams, randomBytes(32));
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
         result = deployedAt('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', event.args.pool);
@@ -371,7 +371,7 @@ export default {
           canUpdateMetadata: true,
         };
 
-        const tx = await factory.create(newPoolParams, basePoolRights, from?.address);
+        const tx = await factory.create(newPoolParams, basePoolRights, from?.address, randomBytes(32));
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
         result = deployedAt('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', event.args.pool);

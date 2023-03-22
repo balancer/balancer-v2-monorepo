@@ -44,7 +44,8 @@ contract UnseededLiquidityBootstrappingPoolFactory is BasePoolFactory {
     function create(
         AssetManagedLiquidityBootstrappingPool.NewPoolParams calldata poolParams,
         BasePoolController.BasePoolRights calldata basePoolRights,
-        address manager
+        address manager,
+        bytes32 salt
     ) external returns (address pool) {
         BasePoolController poolController = new AssetManagedLBPController(
             basePoolRights,
@@ -64,7 +65,8 @@ contract UnseededLiquidityBootstrappingPoolFactory is BasePoolFactory {
                 bufferPeriodDuration,
                 address(poolController), // owner
                 address(poolController) // asset manager
-            )
+            ),
+            salt
         );
 
         poolController.initialize(pool);
