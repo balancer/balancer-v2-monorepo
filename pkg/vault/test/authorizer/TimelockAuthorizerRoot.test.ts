@@ -118,25 +118,23 @@ describe('TimelockAuthorizer root', () => {
         await authorizer.execute(id);
       });
 
-      context('when the sender is the pending root', async () => {
-        it('transfers root powers from the current to the pending root', async () => {
-          await authorizer.claimRoot({ from: user });
-          expect(await authorizer.isRoot(root)).to.be.false;
-          expect(await authorizer.isRoot(user)).to.be.true;
-        });
+      it('transfers root powers from the current to the pending root', async () => {
+        await authorizer.claimRoot({ from: user });
+        expect(await authorizer.isRoot(root)).to.be.false;
+        expect(await authorizer.isRoot(user)).to.be.true;
+      });
 
-        it('resets the pending root address to the zero address', async () => {
-          await authorizer.claimRoot({ from: user });
-          expect(await authorizer.isPendingRoot(root)).to.be.false;
-          expect(await authorizer.isPendingRoot(user)).to.be.false;
-          expect(await authorizer.isPendingRoot(ZERO_ADDRESS)).to.be.true;
-        });
+      it('resets the pending root address to the zero address', async () => {
+        await authorizer.claimRoot({ from: user });
+        expect(await authorizer.isPendingRoot(root)).to.be.false;
+        expect(await authorizer.isPendingRoot(user)).to.be.false;
+        expect(await authorizer.isPendingRoot(ZERO_ADDRESS)).to.be.true;
+      });
 
-        it('emits an event', async () => {
-          const receipt = await authorizer.claimRoot({ from: user });
-          expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: user.address });
-          expectEvent.inReceipt(await receipt.wait(), 'PendingRootSet', { pendingRoot: ZERO_ADDRESS });
-        });
+      it('emits an event', async () => {
+        const receipt = await authorizer.claimRoot({ from: user });
+        expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: user.address });
+        expectEvent.inReceipt(await receipt.wait(), 'PendingRootSet', { pendingRoot: ZERO_ADDRESS });
       });
 
       it('reverts if the sender is not the pending root', async () => {
