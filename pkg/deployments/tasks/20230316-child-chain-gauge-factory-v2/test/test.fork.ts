@@ -11,13 +11,12 @@ import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
-import { ExtraInputs } from '..';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { WEEK, advanceToTimestamp, currentWeekTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('ChildChainGaugeFactoryV2', 'arbitrum', 72180400, function () {
+describeForkTest('ChildChainGaugeFactoryV2', 'arbitrum', 72486400, function () {
   let vault: Contract, authorizer: Contract;
   let gaugeFactory: Contract, pseudoMinter: Contract, veProxy: Contract, gauge: Contract;
   let admin: SignerWithAddress, user1: SignerWithAddress, user2: SignerWithAddress;
@@ -25,7 +24,6 @@ describeForkTest('ChildChainGaugeFactoryV2', 'arbitrum', 72180400, function () {
   let BPT: Contract, BAL: Contract;
 
   let task: Task;
-  let extra: ExtraInputs;
 
   const GOV_MULTISIG = '0xaf23dc5983230e9eeaf93280e312e57539d098d0';
   const RDNT_WETH_POOL = '0x32dF62dc3aEd2cD6224193052Ce665DC18165841';
@@ -53,25 +51,9 @@ describeForkTest('ChildChainGaugeFactoryV2', 'arbitrum', 72180400, function () {
     await advanceToTimestamp((await currentWeekTimestamp()).add(WEEK));
   }
 
-  // TODO: remove this block.
-  before('non-deployed dependencies', async () => {
-    const pseudoMinterTask = new Task('20230316-l2-balancer-pseudo-minter', TaskMode.TEST, getForkedNetwork(hre));
-    await pseudoMinterTask.run({ force: true });
-    pseudoMinter = await pseudoMinterTask.deployedInstance('L2BalancerPseudoMinter');
-
-    const veProxyTask = new Task('20230316-l2-ve-delegation-proxy', TaskMode.TEST, getForkedNetwork(hre));
-    await veProxyTask.run({ force: true });
-    veProxy = await veProxyTask.deployedInstance('VotingEscrowDelegationProxy');
-
-    extra = {
-      VotingEscrowDelegationProxy: veProxy.address,
-      L2BalancerPseudoMinter: pseudoMinter.address,
-    };
-  });
-
   before('run task', async () => {
     task = new Task('20230316-child-chain-gauge-factory-v2', TaskMode.TEST, getForkedNetwork(hre));
-    await task.run({ force: true, extra });
+    await task.run({ force: true });
     gaugeFactory = await task.deployedInstance('ChildChainGaugeFactory');
   });
 
@@ -90,9 +72,11 @@ describeForkTest('ChildChainGaugeFactoryV2', 'arbitrum', 72180400, function () {
     vault = await vaultTask.deployedInstance('Vault');
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
-    // TODO: uncomment this when deployed.
-    // const pseudoMinterTask = new Task('20230316-l2-balancer-pseudo-minter', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    // pseudoMinter = await pseudoMinterTask.deployedInstance('L2BalancerPseudoMinter');
+    const pseudoMinterTask = new Task('20230316-l2-balancer-pseudo-minter', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    pseudoMinter = await pseudoMinterTask.deployedInstance('L2BalancerPseudoMinter');
+
+    const veProxyTask = new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    veProxy = await veProxyTask.deployedInstance('VotingEscrowDelegationProxy');
   });
 
   before('setup tokens', async () => {
