@@ -5,6 +5,7 @@
 ### New Deployments
 
 - Deployed `BatchRelayerLibrary` V5 to all networks.
+- Deployed `L2BalancerPseudoMinter` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 
 ### Deprecations
 
@@ -44,7 +45,6 @@
 - Deployed `MerkleOrchard` V2 to Mainnet, Goerli, Arbitrum and Polygon.
 - Deployed `SingleRecipientGaugeFactory` V2 to Mainnet and Goerli.
 - Deployed `ProtocolIdRegistry` to Mainnet, Goerli, Arbitrum, Polygon, Optimism and Gnosis.
-- Deployed `L2BalancerPseudoMinter` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 
 ### Deprecations
 
