@@ -102,7 +102,7 @@ contract BalancerPoolDataQueries {
      * in most situations and will revert if any query in the multicall reverts, making it difficult to identify
      * pools that need to be filtered from routing. This function returns an array ignoreIdxs that contains the
      * enumerated idxs in the poolIds array that should be filtered out.
-     */ 
+     */
     function getPoolData(bytes32[] memory poolIds, PoolDataQueryConfig memory config)
         external
         view
@@ -242,7 +242,7 @@ contract BalancerPoolDataQueries {
         uint256[] memory rates = new uint256[](poolAddresses.length);
 
         for (uint256 i = 0; i < poolAddresses.length; i++) {
-            rates[i] =  _getPoolRate(poolAddresses[i]);
+            rates[i] = _getPoolRate(poolAddresses[i]);
         }
 
         return rates;
@@ -311,7 +311,6 @@ contract BalancerPoolDataQueries {
 
         return allScalingFactors;
     }
-
 
     /**
      * @dev Our goal is to prevent queries from reverting even if one or more pools are in an invalid/corrupt state.
