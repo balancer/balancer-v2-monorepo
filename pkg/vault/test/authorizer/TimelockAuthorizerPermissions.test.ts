@@ -532,15 +532,15 @@ describe('TimelockAuthorizer permissions', () => {
       });
 
       it('cannot grant the permission in other contracts', async () => {
-        await expect(authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_3, [], { from: granter })).to.be.revertedWith(
-          'SENDER_IS_NOT_GRANTER'
-        );
+        await expect(
+          authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_3, [], { from: granter })
+        ).to.be.revertedWith('SENDER_IS_NOT_GRANTER');
       });
 
       it('cannot grant the permission for other actions', async () => {
-        await expect(authorizer.scheduleGrantPermission(ACTION_3, user, WHERE_1, [], { from: granter })).to.be.revertedWith(
-          'SENDER_IS_NOT_GRANTER'
-        );
+        await expect(
+          authorizer.scheduleGrantPermission(ACTION_3, user, WHERE_1, [], { from: granter })
+        ).to.be.revertedWith('SENDER_IS_NOT_GRANTER');
       });
 
       itScheduleGrantPermissionCorrectly(() => granter);
@@ -707,11 +707,106 @@ describe('TimelockAuthorizer permissions', () => {
         itRevokesPermissionCorrectly(() => root);
       });
 
-      context('when the sender is revoker', () => {
+      context('when the sender is revoker everywhere', () => {
         sharedBeforeEach('makes a revoker', async () => {
           await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
         });
         itRevokesPermissionCorrectly(() => revoker);
+      });
+
+      context('when the sender is revoker for a specific contract', () => {
+        sharedBeforeEach('makes a revoker', async () => {
+          await authorizer.addRevoker(revoker, WHERE_1, { from: root });
+        });
+
+        it('cannot revoke the permission in other contracts', async () => {
+          await expect(authorizer.revokePermission(ACTION_1, user, WHERE_3, { from: revoker })).to.be.revertedWith(
+            'SENDER_IS_NOT_REVOKER'
+          );
+        });
+
+        context('when the user does not have the permission', () => {
+          it('ignores the request and cannot perform the requested action everywhere', async () => {
+            await expect(authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker })).not.to.be.reverted;
+
+            expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_2, user, EVERYWHERE)).to.be.false;
+          });
+
+          it('ignores the request and cannot perform the requested action in any specific contract', async () => {
+            await expect(authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker })).not.to.be.reverted;
+
+            expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+          });
+
+          it('does not emit an event', async () => {
+            const tx = await authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker });
+            expectEvent.notEmitted(await tx.wait(), 'PermissionRevoked');
+          });
+        });
+
+        context('when the user has the permission for a contract', () => {
+          sharedBeforeEach('grants the permission', async () => {
+            await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: root });
+          });
+
+          context('when revoking the permission for a contract', () => {
+            it('revokes the requested permission for the requested contract', async () => {
+              await authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker });
+
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_2, user, WHERE_1)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_2, user, WHERE_2)).to.be.false;
+            });
+
+            it('still cannot perform the requested action everywhere', async () => {
+              await authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker });
+
+              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_2, user, EVERYWHERE)).to.be.false;
+            });
+
+            it('emits an event', async () => {
+              const receipt = await (
+                await authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker })
+              ).wait();
+
+              expectEvent.inReceipt(receipt, 'PermissionRevoked', {
+                actionId: ACTION_1,
+                account: user.address,
+                where: WHERE_1,
+              });
+            });
+          });
+        });
+
+        context('when the user has the permission everywhere', () => {
+          sharedBeforeEach('grants the permissions', async () => {
+            await authorizer.grantPermissionGlobally(ACTION_1, user, { from: root });
+          });
+
+          context('when revoking the permission for a contract', () => {
+            it('still can perform the requested action for the requested contract', async () => {
+              await authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker });
+
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
+            });
+
+            it('still can perform the requested action everywhere', async () => {
+              await authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker });
+
+              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.true;
+            });
+
+            it('does not emit an event', async () => {
+              const tx = await authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker });
+              expectEvent.notEmitted(await tx.wait(), 'PermissionRevoked');
+            });
+          });
+        });
       });
     });
   });
