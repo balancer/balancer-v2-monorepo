@@ -187,7 +187,7 @@ contract BalancerPoolDataQueries {
             rates = getRateForPools(ratePools);
         }
 
-        ignoreIdxs = _getErrorsIdxsFromResults(
+        ignoreIdxs = _getErrorIdxsFromResults(
             poolIds,
             config,
             totalSupplies,
@@ -351,7 +351,7 @@ contract BalancerPoolDataQueries {
         }
     }
 
-    function _getErrorsIdxsFromResults(
+    function _getErrorIdxsFromResults(
         bytes32[] memory poolIds,
         PoolDataQueryConfig memory config,
         uint256[] memory totalSupplies,
