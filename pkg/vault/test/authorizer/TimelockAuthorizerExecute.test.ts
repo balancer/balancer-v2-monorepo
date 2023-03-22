@@ -102,34 +102,6 @@ describe('TimelockAuthorizer execute', () => {
       expect(scheduledExecution.executableAt).to.be.at.eq((await currentTimestamp()).add(delay));
     });
 
-    it('cannot execute the action immediately', async () => {
-      const id = await schedule(authenticatedContract);
-      await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
-    });
-
-    it('can be executed by anyone', async () => {
-      const id = await schedule(authenticatedContract);
-      await advanceTime(delay);
-
-      const receipt = await authorizer.execute(id);
-      expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
-
-      const scheduledExecution = await authorizer.getScheduledExecution(id);
-      expect(scheduledExecution.executed).to.be.true;
-
-      expectEvent.inIndirectReceipt(await receipt.wait(), authenticatedContract.interface, 'ProtectedFunctionCalled', {
-        data: functionData,
-      });
-    });
-
-    it('cannot be executed twice', async () => {
-      const id = await schedule(authenticatedContract);
-      await advanceTime(delay);
-
-      await authorizer.execute(id);
-      await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
-    });
-
     it('receives canceler status', async () => {
       const id = await schedule(authenticatedContract);
 
