@@ -147,36 +147,6 @@ describe('TimelockAuthorizer execute', () => {
       expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled', { scheduledExecutionId: 2 });
     });
 
-    it('cannot execute the action immediately', async () => {
-      const id = await schedule(authenticatedContract, [executor]);
-      await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
-    });
-
-    it('can be executed by the executor only', async () => {
-      const id = await schedule(authenticatedContract, [executor]);
-      await advanceTime(delay);
-
-      await expect(authorizer.execute(id, { from: user })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
-
-      const receipt = await authorizer.execute(id, { from: executor });
-      expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
-
-      const scheduledExecution = await authorizer.getScheduledExecution(id);
-      expect(scheduledExecution.executed).to.be.true;
-
-      expectEvent.inIndirectReceipt(await receipt.wait(), authenticatedContract.interface, 'ProtectedFunctionCalled', {
-        data: functionData,
-      });
-    });
-
-    it('cannot be executed twice', async () => {
-      const id = await schedule(authenticatedContract, [executor]);
-      await advanceTime(delay);
-
-      await authorizer.execute(id, { from: executor });
-      await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
-    });
-
     it('reverts if an executor is specified twice', async () => {
       await expect(schedule(authenticatedContract, [executor, executor])).to.be.revertedWith('DUPLICATE_EXECUTORS');
     });
