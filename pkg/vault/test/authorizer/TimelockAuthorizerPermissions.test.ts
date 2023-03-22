@@ -31,6 +31,7 @@ describe('TimelockAuthorizer permissions', () => {
 
   const WHERE_1 = ethers.Wallet.createRandom().address;
   const WHERE_2 = ethers.Wallet.createRandom().address;
+  const WHERE_3 = ethers.Wallet.createRandom().address;
 
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const NOT_WHERE = ethers.Wallet.createRandom().address;
@@ -262,6 +263,12 @@ describe('TimelockAuthorizer permissions', () => {
           await authorizer.addGranter(ACTION_2, granter, EVERYWHERE, { from: root });
         });
         itGrantsPermissionCorrectly(() => granter);
+
+        it('cannot grant the permission in other actions', async () => {
+          await expect(authorizer.grantPermission(ACTION_3, user, WHERE_1, { from: granter })).to.be.revertedWith(
+            'SENDER_IS_NOT_GRANTER'
+          );
+        });
       });
 
       context('when the sender is granter at a specific contract', () => {
@@ -271,6 +278,18 @@ describe('TimelockAuthorizer permissions', () => {
 
         it('reverts if the sender is not the granter', async () => {
           await expect(authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_GRANTER'
+          );
+        });
+
+        it('cannot grant the permission in other contracts', async () => {
+          await expect(authorizer.grantPermission(ACTION_1, user, WHERE_3, { from: granter })).to.be.revertedWith(
+            'SENDER_IS_NOT_GRANTER'
+          );
+        });
+
+        it('cannot grant the permission for other actions', async () => {
+          await expect(authorizer.grantPermission(ACTION_3, user, WHERE_1, { from: granter })).to.be.revertedWith(
             'SENDER_IS_NOT_GRANTER'
           );
         });
