@@ -105,7 +105,7 @@ export default class BaseWeightedPool extends BasePool {
 
   async estimateGivenIn(params: SwapWeightedPool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    const [tokenIn, tokenOut] = this.tokens.indicesOfTwoTokens(params.in, params.out);
 
     return bn(
       calcOutGivenIn(
@@ -120,7 +120,7 @@ export default class BaseWeightedPool extends BasePool {
 
   async estimateGivenOut(params: SwapWeightedPool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    const [tokenIn, tokenOut] = this.tokens.indicesOfTwoTokens(params.in, params.out);
 
     return bn(
       calcInGivenOut(

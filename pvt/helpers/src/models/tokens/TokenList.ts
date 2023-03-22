@@ -82,7 +82,11 @@ export default class TokenList {
     return typeof token === 'number' ? token : this.tokens.indexOf(token);
   }
 
-  indicesOf(token: number | Token, anotherToken: number | Token): number[] {
+  indicesOf(tokens: (number | Token)[]): number[] {
+    return tokens.map((token) => this.indexOf(token));
+  }
+
+  indicesOfTwoTokens(token: number | Token, anotherToken: number | Token): number[] {
     return [this.indexOf(token), this.indexOf(anotherToken)];
   }
 
