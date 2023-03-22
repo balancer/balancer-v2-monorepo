@@ -346,7 +346,13 @@ describe('TimelockAuthorizer permissions', () => {
         const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
 
         await advanceTime(delay);
-        await authorizer.execute(id);
+        const receipt = await authorizer.execute(id);
+
+        expectEvent.inReceipt(await receipt.wait(), 'PermissionGranted', {
+          actionId: ACTION_1,
+          account: user.address,
+          where: WHERE_1,
+        });
 
         expect(await authorizer.hasPermission(ACTION_3, user, WHERE_1)).to.be.equal(false);
         expect(await authorizer.hasPermission(ACTION_2, user, WHERE_2)).to.be.equal(false);
