@@ -170,7 +170,8 @@ describe('TimelockAuthorizer execute', () => {
     it('emits ExecutionScheduled event', async () => {
       const receipt = await authorizer.instance.connect(user).schedule(authenticatedContract.address, data, []);
 
-      // _scheduledExecutions doesn't have a getter so we can't fetch it before the call
+      // There is no getter to fetch _scheduledExecutions.length so we don't know what the next scheduledExecutionId is
+      // that is why we hardcore value `2`
       expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled', { scheduledExecutionId: 2 });
     });
 
