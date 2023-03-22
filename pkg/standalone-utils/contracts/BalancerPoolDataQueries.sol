@@ -94,6 +94,15 @@ contract BalancerPoolDataQueries {
         vault = _vault;
     }
 
+    /**
+     * @dev Under most circumstances, you will use getPoolData as the main entry point for this contract.
+     * It allows you to fetch various types of pool data for many pools in a single query. The response
+     * is optimized for data out. We return the minimum amount of data from this query to facilitate
+     * faster network requests. getPoolData replaces the generic multicall approach that over fetches data
+     * in most situations and will revert if any query in the multicall reverts, making it difficult to identify
+     * pools that need to be filtered from routing. This function returns an array ignoreIdxs that contains the
+     * enumerated idxs in the poolIds array that should be filtered out.
+     */ 
     function getPoolData(bytes32[] memory poolIds, PoolDataQueryConfig memory config)
         external
         view
@@ -106,7 +115,7 @@ contract BalancerPoolDataQueries {
             uint256[][] memory scalingFactors,
             uint256[] memory amps,
             uint256[] memory rates,
-            uint256[] memory errorIdxs
+            uint256[] memory ignoreIdxs
         )
     {
         uint256 i;
@@ -178,7 +187,7 @@ contract BalancerPoolDataQueries {
             rates = getRateForPools(ratePools);
         }
 
-        errorIdxs = _getErrorsIdxsFromResults(
+        ignoreIdxs = _getErrorsIdxsFromResults(
             poolIds,
             config,
             totalSupplies,
@@ -303,6 +312,14 @@ contract BalancerPoolDataQueries {
         return allScalingFactors;
     }
 
+
+    /**
+     * @dev Our goal is to prevent queries from reverting even if one or more pools are in an invalid/corrupt state.
+     * We wrap each query below in a try/catch block, and return a value of 0 in instances where the query reverts.
+     * We use a 0 value as our sentinel value, but recognize it is possible for pools to return a 0 value in non error
+     * situations (ie: pool is uninitialized). In such situations, it is still appropriate for us to flag the pool to
+     * be ignored.
+     */
     function _getLinearWrappedTokenRate(address poolAddress) internal view returns (uint256) {
         try ILinearPool(poolAddress).getWrappedTokenRate() returns (uint256 rate) {
             return rate;
