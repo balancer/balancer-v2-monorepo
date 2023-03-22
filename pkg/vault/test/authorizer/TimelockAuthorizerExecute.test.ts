@@ -400,7 +400,7 @@ describe('TimelockAuthorizer execute', () => {
     });
   });
 
-  describe.only('cancel', () => {
+  describe('cancel', () => {
     const delay = DAY;
 
     sharedBeforeEach('grant protected function permission with delay', async () => {
