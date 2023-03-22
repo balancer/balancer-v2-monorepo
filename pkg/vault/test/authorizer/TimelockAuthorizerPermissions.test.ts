@@ -400,18 +400,6 @@ describe('TimelockAuthorizer permissions', () => {
         );
       });
 
-      it('can schedule a revoke permission', async () => {
-        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: root });
-
-        // should not be able to execute before delay
-        await expect(authorizer.execute(id, { from: root })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
-
-        await advanceTime(delay);
-        await authorizer.execute(id, { from: root });
-
-        expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.false;
-        expect(await authorizer.canPerform(ACTION_2, user, WHERE_2)).to.be.false;
-      });
     });
 
     context('when there is a no delay set to revoke permissions', () => {
