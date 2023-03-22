@@ -7,6 +7,7 @@
 - Deployed `BatchRelayerLibrary` V5 to all networks.
 - Deployed `L2BalancerPseudoMinter` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 - Deployed `VotingEscrowDelegationProxy` and `NullVotingEscrow` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
+- Deployed `WeightedPoolFactory` V4 to all networks.
 - Deployed `ComposableStablePoolFactory` V4 to all networks.
 
 ### Deprecations
