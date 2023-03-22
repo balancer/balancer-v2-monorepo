@@ -75,7 +75,8 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
     function create(
         ManagedPool.ManagedPoolParams memory params,
         ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams,
-        address owner
+        address owner,
+        bytes32 salt
     ) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -88,6 +89,6 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
             version: getPoolVersion()
         });
 
-        return _create(abi.encode(params, configParams, settingsParams, owner));
+        return _create(abi.encode(params, configParams, settingsParams, owner), salt);
     }
 }

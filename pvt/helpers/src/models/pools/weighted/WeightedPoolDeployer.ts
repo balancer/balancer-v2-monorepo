@@ -11,6 +11,7 @@ import { ManagedPoolParams, RawWeightedPoolDeployment, WeightedPoolDeployment, W
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { ProtocolFee } from '../../vault/types';
 import { MONTH } from '../../../time';
+import { randomBytes } from 'ethers/lib/utils';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -276,7 +277,8 @@ export default {
           swapFeePercentage,
           owner,
           swapEnabledOnStart,
-          weightChangeMode
+          weightChangeMode,
+          randomBytes(32)
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -323,7 +325,7 @@ export default {
 
         const tx = await factory
           .connect(from || ZERO_ADDRESS)
-          .create(poolParams, settingsParams, from?.address || ZERO_ADDRESS);
+          .create(poolParams, settingsParams, from?.address || ZERO_ADDRESS, randomBytes(32));
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
 
@@ -350,7 +352,8 @@ export default {
           weights,
           rateProviders,
           swapFeePercentage,
-          owner
+          owner,
+          randomBytes(32)
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');

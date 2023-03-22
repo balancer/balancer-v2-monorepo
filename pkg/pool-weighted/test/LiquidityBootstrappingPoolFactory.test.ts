@@ -11,6 +11,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { randomBytes } from 'ethers/lib/utils';
 
 import { ValueChangeMode } from '../../../pvt/helpers/src/models/pools/weighted/types';
 
@@ -50,7 +51,8 @@ describe('LiquidityBootstrappingPoolFactory', function () {
         POOL_SWAP_FEE_PERCENTAGE,
         ZERO_ADDRESS,
         swapEnabled,
-        ValueChangeMode.LINEAR_TIME
+        ValueChangeMode.LINEAR_TIME,
+        randomBytes(32)
       )
     ).wait();
 

@@ -89,10 +89,10 @@ abstract contract BasePoolFactory is
         return _protocolFeeProvider;
     }
 
-    function _create(bytes memory constructorArgs) internal virtual override returns (address) {
+    function _create(bytes memory constructorArgs, bytes32 salt) internal virtual override returns (address) {
         _ensureEnabled();
 
-        address pool = super._create(constructorArgs);
+        address pool = super._create(constructorArgs, salt);
 
         _isPoolFromFactory[pool] = true;
 

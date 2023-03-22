@@ -50,7 +50,8 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory {
         uint256 swapFeePercentage,
         address owner,
         bool swapEnabledOnStart,
-        GradualValueChange.ValueChangeMode weightChangeMode
+        GradualValueChange.ValueChangeMode weightChangeMode,
+        bytes32 salt
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -68,7 +69,8 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory {
                     owner,
                     swapEnabledOnStart,
                     weightChangeMode
-                )
+                ),
+                salt
             );
     }
 }
