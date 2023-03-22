@@ -256,12 +256,129 @@ describe('TimelockAuthorizer permissions', () => {
         itGrantsPermissionCorrectly(() => root);
       });
 
-      context('when the sender is granter', () => {
+      context('when the sender is granter everywhere', () => {
         sharedBeforeEach('makes a granter', async () => {
           await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
           await authorizer.addGranter(ACTION_2, granter, EVERYWHERE, { from: root });
         });
         itGrantsPermissionCorrectly(() => granter);
+      });
+
+      context('when the sender is granter at a specific contract', () => {
+        sharedBeforeEach('makes a granter', async () => {
+          await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
+        });
+
+        it('reverts if the sender is not the granter', async () => {
+          await expect(authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_GRANTER'
+          );
+        });
+
+        context('when the target does not have the permission', () => {
+          context('when granting the permission for a contract', () => {
+            it('grants permission to perform the requested action for the requested contract', async () => {
+              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
+            });
+
+            it('does not grant permission to perform the requested action everywhere', async () => {
+              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+
+              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
+            });
+
+            it('does not grant permission to perform the requested actions for other contracts', async () => {
+              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+
+              expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.false;
+            });
+
+            it('emits an event', async () => {
+              const receipt = await (
+                await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter })
+              ).wait();
+
+              expectEvent.inReceipt(receipt, 'PermissionGranted', {
+                actionId: ACTION_1,
+                account: user.address,
+                where: WHERE_1,
+              });
+            });
+          });
+        });
+
+        context('when the target has the permission for a contract', () => {
+          sharedBeforeEach('grant a permission', async () => {
+            await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+          });
+          context('when granting the permission for a contract', () => {
+            it('ignores the request and can still perform the action', async () => {
+              await expect(authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter })).not.to.reverted;
+
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
+            });
+
+            it('does not grant the permission to perform the requested action everywhere', async () => {
+              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+
+              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
+            });
+
+            it('does not grant the permission to perform the requested action for other contracts', async () => {
+              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+
+              expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+            });
+
+            it('does not emit an event', async () => {
+              const tx = await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+              expectEvent.notEmitted(await tx.wait(), 'PermissionGranted');
+            });
+          });
+        });
+
+        context('when the target has the permission for everywhere', () => {
+          sharedBeforeEach('grant the permission', async () => {
+            await authorizer.grantPermissionGlobally(ACTION_1, user, { from: root });
+          });
+
+          context('when granting the permission for a contract', () => {
+            it('grants the permission to perform the requested action for the requested contract', async () => {
+              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
+            });
+
+            it('still can perform the requested actions everywhere', async () => {
+              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+
+              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.true;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
+            });
+
+            it('still can perform the requested actions for other contracts', async () => {
+              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
+
+              expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.true;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
+            });
+
+            it('emits an event', async () => {
+              const receipt = await (
+                await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter })
+              ).wait();
+              expectEvent.inReceipt(receipt, 'PermissionGranted', {
+                actionId: ACTION_1,
+                account: user.address,
+                where: WHERE_1,
+              });
+            });
+          });
+        });
       });
     });
   });
