@@ -512,11 +512,37 @@ describe('TimelockAuthorizer permissions', () => {
       itScheduleGrantPermissionCorrectly(() => root);
     });
 
-    context('when the sender is granter', () => {
+    context('when the sender is granter everywhere', () => {
       sharedBeforeEach('makes a granter', async () => {
         await authorizer.addGranter(ACTION_1, granter, EVERYWHERE, { from: root });
-        await authorizer.addGranter(ACTION_2, granter, EVERYWHERE, { from: root });
       });
+
+      it('cannot grant the permission for other actions', async () => {
+        await expect(
+          authorizer.scheduleGrantPermission(ACTION_3, user, WHERE_1, [], { from: granter })
+        ).to.be.revertedWith('SENDER_IS_NOT_GRANTER');
+      });
+
+      itScheduleGrantPermissionCorrectly(() => granter);
+    });
+
+    context('when the sender is granter for a specific contract', () => {
+      sharedBeforeEach('makes a granter', async () => {
+        await authorizer.addGranter(ACTION_1, granter, WHERE_1, { from: root });
+      });
+
+      it('cannot grant the permission in other contracts', async () => {
+        await expect(authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_3, [], { from: granter })).to.be.revertedWith(
+          'SENDER_IS_NOT_GRANTER'
+        );
+      });
+
+      it('cannot grant the permission for other actions', async () => {
+        await expect(authorizer.scheduleGrantPermission(ACTION_3, user, WHERE_1, [], { from: granter })).to.be.revertedWith(
+          'SENDER_IS_NOT_GRANTER'
+        );
+      });
+
       itScheduleGrantPermissionCorrectly(() => granter);
     });
   });
