@@ -47,21 +47,21 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // set the totalSupply for share tokens
     await mockShareToken.setTotalSupply(fp(1));
     await mockSilo.setAssetStorage(
-        input.WETH,
-        mockShareToken.address,
-        mockShareToken.address,
-        mockShareToken.address,
-        fp(1),
-        fp(1),
-        fp(1)
+      input.WETH,
+      mockShareToken.address,
+      mockShareToken.address,
+      mockShareToken.address,
+      fp(1),
+      fp(1),
+      fp(1)
     );
 
     await mockSilo.setInterestData(
-        input.WETH, // interestBearingAsset
-        0, // harvestedProtocolFees
-        0, // protocolFees
-        0, // interestRateTimestamp
-        AssetStatus.Active // status
+      input.WETH, // interestBearingAsset
+      0, // harvestedProtocolFees
+      0, // protocolFees
+      0, // interestRateTimestamp
+      AssetStatus.Active // status
     );
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare
