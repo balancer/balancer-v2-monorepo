@@ -9,6 +9,7 @@ import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/const
 import { range } from 'lodash';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('PoolRecoveryHelper', function () {
   let vault: Vault;
@@ -113,8 +114,8 @@ describe('PoolRecoveryHelper', function () {
         )
       );
 
-      rateProvider = await deploy('MockRevertingRateProvider', { args: [] });
-      const receipt = await (await factories[1].create([ZERO_ADDRESS, rateProvider.address])).wait();
+      rateProvider = await deploy('MockRevertingRateProvider');
+      const receipt = await (await factories[1].create([ZERO_ADDRESS, rateProvider.address], randomBytes(32))).wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       pool = await deployedAt('MockRecoveryRateProviderPool', event.args.pool);
 

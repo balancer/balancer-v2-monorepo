@@ -78,7 +78,7 @@ chai.use(function (chai, utils) {
   Assertion.addMethod('almostEqual', function (expectedValue: NAry<BigNumberish>, error?: BigNumberish) {
     if (Array.isArray(expectedValue)) {
       const actuals: BigNumberish[] = this._obj;
-      actuals.forEach(async (actual, i) => expectEqualWithError(actual, expectedValue[i], error));
+      actuals.forEach((actual, i) => expectEqualWithError(actual, expectedValue[i], error));
     } else {
       expectEqualWithError(this._obj, expectedValue, error);
     }
@@ -87,7 +87,7 @@ chai.use(function (chai, utils) {
   Assertion.addMethod('almostEqualFp', function (expectedValue: NAry<BigNumberish>, error?: BigNumberish) {
     if (Array.isArray(expectedValue)) {
       const actuals: BigNumberish[] = this._obj;
-      actuals.forEach(async (actual, i) => expectEqualWithError(actual, fp(expectedValue[i]), error));
+      actuals.forEach((actual, i) => expectEqualWithError(actual, fp(expectedValue[i]), error));
     } else {
       expectEqualWithError(this._obj, fp(expectedValue), error);
     }

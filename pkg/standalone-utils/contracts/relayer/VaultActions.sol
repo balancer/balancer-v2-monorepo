@@ -447,9 +447,14 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
+
+    StablePhantomPools can only be exited proportionally when the pool is paused: and the pause window has expired.
+    They have their own enum:
+
+    enum ExitKindPhantom { EXACT_BPT_IN_FOR_TOKENS_OUT }
 */
 
-// Applies to StablePool, MetaStablePool, PhantomStablePool, StablePool V2
+// Applies to StablePool, MetaStablePool, StablePool V2
 library LegacyStablePoolUserData {
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
