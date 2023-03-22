@@ -920,11 +920,24 @@ describe('TimelockAuthorizer permissions', () => {
       itScheduleRevokePermissionCorrectly(() => root);
     });
 
-    context('when the sender is revoker', () => {
+    context('when the sender is revoker everywhere', () => {
       sharedBeforeEach('makes a revoker', async () => {
         await authorizer.addRevoker(revoker, EVERYWHERE, { from: root });
       });
       itScheduleRevokePermissionCorrectly(() => revoker);
+    });
+
+    context('when the sender is revoker for a specific contract', () => {
+      sharedBeforeEach('makes a revoker', async () => {
+        await authorizer.addRevoker(revoker, WHERE_1, { from: root });
+      });
+      itScheduleRevokePermissionCorrectly(() => revoker);
+
+      it('cannot schedule revoke the permission in other contracts', async () => {
+        await expect(
+          authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_3, [], { from: revoker })
+        ).to.be.revertedWith('SENDER_IS_NOT_REVOKER');
+      });
     });
   });
 
