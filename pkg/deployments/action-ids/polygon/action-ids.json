@@ -612,5 +612,62 @@
         "updateProtocolFeePercentageCache()": "0xdec051b02f54fc55ffcf3aeffa01f5f81f09ca8b89c49adda346a8ca98610cff"
       }
     }
+  },
+  "20230320-composable-stable-pool-v4": {
+    "ComposableStablePoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address,bytes32)": "0x33af939ea471d50ab63d5f0ff7fb6303771dde01fac79bbba883086aa2d408f3",
+        "disable()": "0xa544127d0ad449e0603bfabd973ce71e16260ff91463b98f8e17ca841b863671"
+      }
+    },
+    "ComposableStablePool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x0f25823cF786b78696b16536e2F2B9835289AB51",
+      "actionIds": {
+        "disableRecoveryMode()": "0xdb63b0c040446fcfa9503943eff986bc051fb5e7cb8f83a8bcebb7115c535b60",
+        "enableRecoveryMode()": "0x237ec20a8fc896e2ccd593e146cfb897d33a3aec61da4c3a35d5d91e5ff3c5f3",
+        "pause()": "0xad24869d8e59d11e376f5dd5087c9c3e7ecf500f6aa2f0272120b16e2bd1a1ce",
+        "setAssetManagerPoolConfig(address,bytes)": "0xe153a58befd116fa3e481b4c8e5e5b145a353b90786be52455763eb3dbedef03",
+        "setSwapFeePercentage(uint256)": "0xdc4f292a9c37b8bfbaf2dc78ff4d2a53114e770bcb186a21957939f01ffbfe6b",
+        "setTokenRateCacheDuration(address,uint256)": "0x3e0806e59012604f6624320b8c3da0a7d88ad794101eddc8c3e038cad5be4b81",
+        "startAmplificationParameterUpdate(uint256,uint256)": "0x3dc055c2eb0eb929c7bf4eec68903547110bbb0c41c81959c15b122062ce5703",
+        "stopAmplificationParameterUpdate()": "0xe394fbc4dc19aef582d4ee54bbbddddca8bffe39a3af34cb2e8ba09b2bf43b46",
+        "unpause()": "0x549648c2f87197cbc2d5a76225eadef764b4829f2bfae8471a5f29a9503a38f0",
+        "updateProtocolFeePercentageCache()": "0x0cbcf1e7e7b724b042f41f6295e097e1c7f316edc107a22cc2d6297e73d5a878",
+        "updateTokenRateCache(address)": "0xbdabbd5364be45f6a0e1939b36b1f1c2acf9998843a6eeea7c0466a6c8c58cd1"
+      }
+    }
+  },
+  "20230316-l2-balancer-pseudo-minter": {
+    "L2BalancerPseudoMinter": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addGaugeFactory(address)": "0x71b144ace6b2cd2762fedff00a9e45c9b7b742ee590f9d593c61e48b6c9ad790",
+        "mint(address)": "0x6e7eb27394c8783d3cf3a812720b63d5f91333421593e6e36495ba719bcb5032",
+        "mintFor(address,address)": "0x3f4055068632f12496744c3f128b0c2edeeef0f477bc16c6e01bdaa3985e7430",
+        "mintMany(address[])": "0x4d38bf03e56037a31f2a97d7292257d2cb55f85cabc3c23c149b538424f6bb85",
+        "mintManyFor(address[],address)": "0x2a05b8d96ca3a60f61ec1ef142355a601269a69b0dfd43db7b705e082a988080",
+        "mint_for(address,address)": "0x7ec77596608ef055482d5573c9c678ceb476ce87f10fc7baff1bce7b07f56be7",
+        "mint_many(address[8])": "0xe91ab36ab0c8caea67192b217c9f93b9ec47f5af2a81955661b4fb9950a153ef",
+        "removeGaugeFactory(address)": "0x901a6765ca0c95ded97655a17fa640878a0e4e93b0bd4f30e6754af42bc816b1",
+        "setMinterApproval(address,bool)": "0x137238e6103bef3e9bbcd06c78b66dffd767b5e578ef27c4192589a15f2bd71e",
+        "setMinterApprovalWithSignature(address,bool,address,uint256,uint8,bytes32,bytes32)": "0x1c18fc05607eb7cc9ada96baf6d90287e575938e372f80a610e95cc41cfb55d9",
+        "toggle_approve_mint(address)": "0x74868bba926298fede28d9bab420d7ccdde8e91aa2de5e98cc02a728928eb56a"
+      }
+    }
+  },
+  "20230316-l2-ve-delegation-proxy": {
+    "NullVotingEscrow": {
+      "useAdaptor": true,
+      "actionIds": {}
+    },
+    "VotingEscrowDelegationProxy": {
+      "useAdaptor": false,
+      "actionIds": {
+        "killDelegation()": "0x3ae72cdb6fc13b14b2c684bf0575c21a5da9a0878d64d5f6c8ac4836d436352d",
+        "setDelegation(address)": "0xd2a18eaab6c28631d421edd953f276d757b0a3c5f5460535105596ed38d938d4"
+      }
+    }
   }
 }
