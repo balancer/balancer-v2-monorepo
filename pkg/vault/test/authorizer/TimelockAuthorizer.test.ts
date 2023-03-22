@@ -1459,9 +1459,7 @@ describe('TimelockAuthorizer', () => {
                   const id = await schedule();
                   await advanceTime(delay);
 
-                  await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith(
-                    'SENDER_IS_NOT_EXECUTION_HELPER'
-                  );
+                  await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
 
                   const receipt = await authorizer.execute(id, { from: executors[0] });
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
@@ -1487,6 +1485,16 @@ describe('TimelockAuthorizer', () => {
                   await expect(authorizer.execute(id, { from: executors[0] })).to.be.revertedWith(
                     'ACTION_ALREADY_EXECUTED'
                   );
+                });
+              });
+
+              context('when an executor is specified twice', () => {
+                sharedBeforeEach('set executors', async () => {
+                  executors = [other, other];
+                });
+
+                it('reverts', async () => {
+                  await expect(schedule()).to.be.revertedWith('DUPLICATE_EXECUTORS');
                 });
               });
             });
@@ -1657,9 +1665,7 @@ describe('TimelockAuthorizer', () => {
             id = await schedule();
             await advanceTime(delay);
 
-            await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith(
-              'SENDER_IS_NOT_EXECUTION_HELPER'
-            );
+            await expect(authorizer.execute(id, { from: granter })).to.be.revertedWith('SENDER_IS_NOT_EXECUTOR');
           });
         });
       });
