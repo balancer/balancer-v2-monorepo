@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
 enum TotalSupplyType { TOTAL_SUPPLY, VIRTUAL_SUPPLY, ACTUAL_SUPPLY }
@@ -61,7 +62,7 @@ interface IPoolWithAmp {
         );
 }
 
-struct SorPoolDataQueryConfig {
+struct PoolDataQueryConfig {
     bool loadTokenBalanceUpdatesAfterBlock;
     bool loadTotalSupply;
     bool loadSwapFees;
@@ -69,6 +70,7 @@ struct SorPoolDataQueryConfig {
     bool loadNormalizedWeights;
     bool loadScalingFactors;
     bool loadAmps;
+    bool loadRates;
     uint256 blockNumber;
     TotalSupplyType[] totalSupplyTypes;
     SwapFeeType[] swapFeeTypes;
@@ -76,21 +78,23 @@ struct SorPoolDataQueryConfig {
     uint256[] weightedPoolIdxs;
     uint256[] scalingFactorPoolIdxs;
     uint256[] ampPoolIdxs;
+    uint256[] ratePoolIdxs;
 }
 
 /**
- * @dev This contract builds on top of the Balancer V2 architecture to provide useful helpers for SOR
- * (Smart order router) initialization. It allows for bulking actions for many pools at once, with the overall goal
- * to reduce network-in and network-out required for loading necessary onchain data in SOR initialization.
+ * @dev This contract builds on top of the Balancer V2 architecture to provide useful helpers for fetching on chain data
+ * for Balancer pools. It is especially helpful for SOR (Smart order router) initialization. It allows for bulking
+ * actions for many pools at once, with the overall goal to reduce network-in and network-out required for loading
+ * useful onchain data.
  */
-contract BalancerSorQueries {
+contract BalancerPoolDataQueries {
     IVault public immutable vault;
 
     constructor(IVault _vault) {
         vault = _vault;
     }
 
-    function getPoolData(bytes32[] memory poolIds, SorPoolDataQueryConfig memory config)
+    function getPoolData(bytes32[] memory poolIds, PoolDataQueryConfig memory config)
         external
         view
         returns (
@@ -100,7 +104,8 @@ contract BalancerSorQueries {
             uint256[] memory linearWrappedTokenRates,
             uint256[][] memory weights,
             uint256[][] memory scalingFactors,
-            uint256[] memory amps
+            uint256[] memory amps,
+            uint256[] memory rates
         )
     {
         uint256 i;
@@ -161,6 +166,16 @@ contract BalancerSorQueries {
 
             amps = getAmpForPools(ampPools);
         }
+
+        if (config.loadRates) {
+            address[] memory ratePools = new address[](config.ratePoolIdxs.length);
+
+            for (i = 0; i < config.ratePoolIdxs.length; i++) {
+                ratePools[i] = pools[config.ratePoolIdxs[i]];
+            }
+
+            rates = getRateForPools(ratePools);
+        }
     }
 
     function getPoolTokenBalancesWithUpdatesAfterBlock(bytes32[] memory poolIds, uint256 blockNumber)
@@ -201,6 +216,16 @@ contract BalancerSorQueries {
         }
 
         return amps;
+    }
+
+    function getRateForPools(address[] memory poolAddresses) public view returns (uint256[] memory) {
+        uint256[] memory rates = new uint256[](poolAddresses.length);
+
+        for (uint256 i = 0; i < poolAddresses.length; i++) {
+            rates[i] =  _getPoolRate(poolAddresses[i]);
+        }
+
+        return rates;
     }
 
     function getSwapFeePercentageForPools(address[] memory poolAddresses, SwapFeeType[] memory swapFeeTypes)
@@ -286,6 +311,14 @@ contract BalancerSorQueries {
     function _getPoolActualSupply(address poolAddress) internal view returns (uint256) {
         try IPoolWithActualSupply(poolAddress).getActualSupply() returns (uint256 actualSupply) {
             return actualSupply;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _getPoolRate(address poolAddress) internal view returns (uint256) {
+        try IRateProvider(poolAddress).getRate() returns (uint256 rate) {
+            return rate;
         } catch {
             return 0;
         }
