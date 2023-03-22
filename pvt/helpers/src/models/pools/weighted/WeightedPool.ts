@@ -10,6 +10,7 @@ import * as expectEvent from '../../../test/expectEvent';
 import { Account } from '../../types/types';
 import TokenList from '../../tokens/TokenList';
 import { BigNumberish } from '../../../numbers';
+import { randomBytes } from 'ethers/lib/utils';
 
 export default class WeightedPool extends BaseWeightedPool {
   rateProviders: Account[];
@@ -87,7 +88,7 @@ export default class WeightedPool extends BaseWeightedPool {
       from,
     });
 
-    const tx = await factory.create(NAME, SYMBOL, tokens.addresses, weights, rateProviders, swapFeePercentage, owner);
+    const tx = await factory.create(NAME, SYMBOL, tokens.addresses, weights, rateProviders, swapFeePercentage, owner, randomBytes(32));
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return deployedAt('v2-pool-weighted/WeightedPool', event.args.pool);

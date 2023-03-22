@@ -10,6 +10,7 @@ import TokenList from '../../tokens/TokenList';
 import { BigNumberish } from '../../../numbers';
 import { Account } from '../../types/types';
 import * as expectEvent from '../../../test/expectEvent';
+import { randomBytes } from 'ethers/lib/utils';
 
 export default class LiquidityBootstrappingPool extends BaseWeightedPool {
   swapEnabledOnStart: boolean;
@@ -84,7 +85,8 @@ export default class LiquidityBootstrappingPool extends BaseWeightedPool {
       weights,
       swapFeePercentage,
       owner,
-      swapEnabledOnStart
+      swapEnabledOnStart,
+      randomBytes(32)
     );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');

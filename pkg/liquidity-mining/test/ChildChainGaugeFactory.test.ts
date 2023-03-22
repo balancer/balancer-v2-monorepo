@@ -33,8 +33,9 @@ describe('ChildChainGaugeFactory', () => {
       args: [vault.address, mockVE.address, ZERO_ADDRESS],
     });
 
+    const pseudoMinter = await deploy('L2BalancerPseudoMinter', { args: [vault.address, ANY_ADDRESS] });
     gaugeImplementation = await deploy('ChildChainGauge', {
-      args: [ANY_ADDRESS, veDelegationProxy.address, ANY_ADDRESS, vault.authorizerAdaptor.address, productVersion],
+      args: [veDelegationProxy.address, pseudoMinter.address, vault.authorizerAdaptor.address, productVersion],
     });
 
     gaugeFactory = await deploy('ChildChainGaugeFactory', {
