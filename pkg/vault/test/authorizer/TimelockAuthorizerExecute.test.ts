@@ -39,7 +39,7 @@ describe('TimelockAuthorizer execute', () => {
     authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault.address] });
   });
 
-  describe.only('schedule', () => {
+  describe('schedule', () => {
     const delay = DAY * 5;
     const functionData = '0x0123456789abcdef';
 
@@ -274,7 +274,7 @@ describe('TimelockAuthorizer execute', () => {
     });
   });
 
-  describe('execute', () => {
+  describe.only('execute', () => {
     const delay = DAY;
     const functionData = '0x0123456789abcdef';
 
@@ -368,6 +368,17 @@ describe('TimelockAuthorizer execute', () => {
       await advanceTime(delay);
       await authorizer.execute(id, { from: executor });
       await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
+    });
+
+    it('cannot execute another scheculed action within a scheduled action', async () => {
+      const id = await schedule();
+
+      const data = authorizer.interface.encodeFunctionData('execute', [id]);
+      const nextId = await authorizer.schedule(authorizer, data, [], { from: user });
+
+      await advanceTime(delay);
+
+      await expect(authorizer.execute(nextId, { from: executor })).to.be.revertedWith('CANNOT_SCHEDULE_AUTHORIZER_ACTIONS');
     });
 
     it('reverts if action was cancelled', async () => {
