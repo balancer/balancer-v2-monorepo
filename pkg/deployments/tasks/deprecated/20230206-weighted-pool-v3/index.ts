@@ -2,9 +2,9 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../src/network';
-import Task, { TaskMode } from '../../src/task';
-import { TaskRunOptions } from '../../src/types';
+import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../../src/network';
+import Task, { TaskMode } from '../../../src/task';
+import { TaskRunOptions } from '../../../src/types';
 import { WeightedPoolDeployment } from './input';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
