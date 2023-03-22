@@ -9,6 +9,7 @@
 ### Deprecations
 
 - Deprecated `20220916-batch-relayer-v4`.
+- Deprecated `20230206-composable-stable-pool-v3`.
 
 ## 3.2.0 (2023-02-24)
 

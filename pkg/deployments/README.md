@@ -99,7 +99,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | VeBoost V2                                             | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
 | Gauge Registrant V3, supporting the Adaptor entrypoint | [`20230109-gauge-adder-v3`](./tasks/20230109-gauge-adder-v3)                                         |
 | Weighted Pool V3                                       | [`20230206-weighted-pool-v3`](./tasks/20230206-weighted-pool-v3)                                     |
-| Composable Stable Pools V3                             | [`20230206-composable-stable-pool-v3`](./tasks/20230206-composable-stable-pool-v3)                   |
 | Linear Pools for ERC4626 Tokens V3                     | [`20230206-erc4626-linear-pool-v3`](./tasks/20230206-erc4626-linear-pool-v3)                         |
 | Linear Pools for Aave aTokens (with rebalancing) V4    | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/20230206-aave-rebalanced-linear-pool-v4)         |
 | Linear Pools for Euler Tokens                          | [`20230208-euler-linear-pool`](./tasks/20230208-euler-linear-pool)                                   |
@@ -173,3 +172,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Managed Pool                                        | [`20221021-managed-pool`](./tasks/deprecated/20221021-managed-pool)                                     |
 | Composable Stable Pools V2                          | [`20221122-composable-stable-pool-v2`](./tasks/deprecated/20221122-composable-stable-pool-v2)           |
 | Linear Pools for Aave aTokens (with rebalancing) V3 | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |
+| Composable Stable Pools V3                          | [`20230206-composable-stable-pool-v3`](./tasks/deprecated/20230206-composable-stable-pool-v3)           |
