@@ -34,6 +34,7 @@ describe('TimelockAuthorizer permissions', () => {
 
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const NOT_WHERE = ethers.Wallet.createRandom().address;
+  const MINIMUM_EXECUTION_DELAY = 5 * DAY;
 
   sharedBeforeEach('deploy authorizer', async () => {
     let authorizerContract: Contract;
@@ -399,7 +400,6 @@ describe('TimelockAuthorizer permissions', () => {
           'REVOKE_MUST_BE_SCHEDULED'
         );
       });
-
     });
 
     context('when there is a no delay set to revoke permissions', () => {
@@ -672,6 +672,7 @@ describe('TimelockAuthorizer permissions', () => {
   });
 
   describe('renouncePermission', () => {
+    const delay = DAY;
     context('when the sender does not have the permission', () => {
       context('when renouncing the permission for a specific contract', () => {
         it('ignores the request and still cannot perform the requested action everywhere', async () => {
@@ -724,6 +725,22 @@ describe('TimelockAuthorizer permissions', () => {
 
           expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
         });
+
+        it('can revoke even if the permission has a delay', async () => {
+          await authorizer.scheduleAndExecuteDelayChange(await actionId(vault, 'setAuthorizer'), delay, { from: root });
+          const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, delay, [], { from: root });
+          await advanceTime(MINIMUM_EXECUTION_DELAY);
+          await authorizer.execute(id);
+          expect(authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: user })).to.be.revertedWith(
+            'REVOKE_MUST_BE_SCHEDULED'
+          );
+          await authorizer.renouncePermission(ACTION_1, WHERE_1, { from: user });
+
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, user, WHERE_1)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_2, user, WHERE_2)).to.be.false;
+        });
       });
       context('when renouncing the permission for everywhere', () => {
         it('still can perform the requested action for the requested contract', async () => {
@@ -764,6 +781,20 @@ describe('TimelockAuthorizer permissions', () => {
 
       context('when renouncing the permission for everywhere', () => {
         it('revokes the requested permissions everywhere', async () => {
+          await authorizer.renouncePermissionGlobally(ACTION_1, { from: user });
+
+          expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+        });
+
+        it('can revoke even if the permission has a delay', async () => {
+          await authorizer.scheduleAndExecuteDelayChange(await actionId(vault, 'setAuthorizer'), delay, { from: root });
+          const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, delay, [], { from: root });
+          await advanceTime(MINIMUM_EXECUTION_DELAY);
+          await authorizer.execute(id);
+          expect(authorizer.revokePermissionGlobally(ACTION_1, user, { from: user })).to.be.revertedWith(
+            'REVOKE_MUST_BE_SCHEDULED'
+          );
           await authorizer.renouncePermissionGlobally(ACTION_1, { from: user });
 
           expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
