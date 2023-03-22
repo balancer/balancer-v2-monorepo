@@ -22,7 +22,7 @@ describeForkTest('PreseededVotingEscrowDelegation', 'mainnet', 14850000, functio
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
-    task = new Task('preseeded-voting-escrow-delegation', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20220530-preseeded-voting-escrow-delegation', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     delegation = await task.deployedInstance('PreseededVotingEscrowDelegation');
   });
@@ -32,7 +32,7 @@ describeForkTest('PreseededVotingEscrowDelegation', 'mainnet', 14850000, functio
   });
 
   it('proxy can be migrated to delegation', async () => {
-    const delegationProxyTask = new Task('ve-delegation', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    const delegationProxyTask = new Task('20220325-ve-delegation', TaskMode.READ_ONLY, getForkedNetwork(hre));
 
     const delegationProxy = await delegationProxyTask.deployedInstance('VotingEscrowDelegationProxy');
     oldDelegation = await delegationProxyTask.instanceAt(
