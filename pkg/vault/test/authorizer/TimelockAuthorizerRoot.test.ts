@@ -74,9 +74,14 @@ describe('TimelockAuthorizer root', () => {
 
           it('emits an event', async () => {
             const newPendingRoot: SignerWithAddress = getNewPendingRoot();
-            const receipt = await authorizer.instance.connect(root).scheduleRootChange(newPendingRoot.address, []);
+            let receipt = await authorizer.instance.connect(root).scheduleRootChange(newPendingRoot.address, []);
+            const event = expectEvent.inReceipt(await receipt.wait(), 'RootChangeScheduled', {
+              newRoot: newPendingRoot.address,
+            });
 
-            expectEvent.inReceipt(await receipt.wait(), 'RootChangeScheduled', { newRoot: newPendingRoot.address });
+            await advanceTime(ROOT_CHANGE_DELAY);
+            receipt = await authorizer.execute(event.args.scheduledExecutionId);
+            expectEvent.inReceipt(await receipt.wait(), 'PendingRootSet', { pendingRoot: newPendingRoot.address });
           });
         }
 
