@@ -35,7 +35,7 @@ contract MockRecoveryRateProviderPoolFactory is BasePoolFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(IRateProvider[] memory rateProviders) external returns (address) {
-        return _create(abi.encode(getVault(), rateProviders));
+    function create(IRateProvider[] memory rateProviders, bytes32 salt) external returns (address) {
+        return _create(abi.encode(getVault(), rateProviders), salt);
     }
 }
