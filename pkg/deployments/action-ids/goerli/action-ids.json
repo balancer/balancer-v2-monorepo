@@ -874,5 +874,84 @@
         "renameProtocolId(uint256,string)": "0x397a10db2c15733cdb7c0fad6226786d83e216ed46c740257186765f4018bec5"
       }
     }
+  },
+  "20230320-weighted-pool-v4": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address,bytes32)": "0xaba9ffb17b2efad3b545708e13b3f91cbcb70f6b7de76f29d7a2bd85a0750f88",
+        "disable()": "0xd7acda26118b9ff06dd8526d0197d58c0c7ed83074be6d915bff2db42b5581ae"
+      }
+    },
+    "WeightedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x072ED560cc042d7aB1c080a9e4fA8C6f4858dEb3",
+      "actionIds": {
+        "disableRecoveryMode()": "0xd674de2cecb3a543953d0844369358124e617428c5e1bbff8924a84e7e4128fa",
+        "enableRecoveryMode()": "0x8ceae9d0f076b4b0c529529f6bf11832835b93b533445c655b840015f7025e50",
+        "pause()": "0xb9c5dbd31b49d898a12157d05b5f59e61b30533c20fe266652c1017837135f0c",
+        "setAssetManagerPoolConfig(address,bytes)": "0x0bd65c98e2121df958fbdd053552dfab29367bac9f223d282f1c262c89328ff5",
+        "setSwapFeePercentage(uint256)": "0x32725667b078898f78f53e59f45eb1837b34a9469dbe36f9270b674247b23abf",
+        "unpause()": "0xb313b0fd78e09c18baecd229b1f60ba3e28af60010313a2eb6e955e3626d8972",
+        "updateProtocolFeePercentageCache()": "0x851e1de2f8d7c9460da7ecb3137551662eb032a7ac4475ead243e7f5efe9725e"
+      }
+    }
+  },
+  "20230320-composable-stable-pool-v4": {
+    "ComposableStablePoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address,bytes32)": "0x0de6d43e3472be04e8d42c8a41d31e85d6a0973531a1bde49a5393ae99748e70",
+        "disable()": "0xdb0e2ca147bb165fcfd2631fb8cb87ab34aa8fb9d2a81e95334a207f753f0302"
+      }
+    },
+    "ComposableStablePool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x5D343D374A769D1AB102e0418a516DadB08A86E4",
+      "actionIds": {
+        "disableRecoveryMode()": "0xf65bca6198c80a6fc89409c116db12c0427a0b571cd0d2ee5dd614145d006810",
+        "enableRecoveryMode()": "0xf7c36607b85de415dd5d9b2e4c47d42f2093d7338fc8af38b88070683da54da1",
+        "pause()": "0x6464a19f906714393234821d14f9899d08c3c32edac6ac68a28e8e2c444dc372",
+        "setAssetManagerPoolConfig(address,bytes)": "0x18e56c9f67c05b8b685755dffd4fc9910e67297943e0b6f65c721e1894e08325",
+        "setSwapFeePercentage(uint256)": "0xe92c5e92fd07c923b506e4ef7eb29972642a073312f496c812148a15bb6b8967",
+        "setTokenRateCacheDuration(address,uint256)": "0x8518c2cc23c81411457873cc4df8dd9f92946fb21b4b290e3e93467d3f7b4c64",
+        "startAmplificationParameterUpdate(uint256,uint256)": "0x3d1105ece259c9620b4c0b8c8a01554fdbf4efacfe00c648fa8f99a98c7c26bd",
+        "stopAmplificationParameterUpdate()": "0x39e75d95add118410df221d6d408e602d372ebc0e6657e596e87ab948b093408",
+        "unpause()": "0xefca407929bb10cd435a2424c97205e03c8a8757dcdc317cd8c166a0cf7b6067",
+        "updateProtocolFeePercentageCache()": "0xfec3941bcf00df950d453bfc0502e8ff5be0c6ec7e3486d9a755058a9ed084da",
+        "updateTokenRateCache(address)": "0x7890466ffba14a02f161e03ef49578067b54197c84285660df1bffe3173b8d70"
+      }
+    }
+  },
+  "20230316-l2-balancer-pseudo-minter": {
+    "L2BalancerPseudoMinter": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addGaugeFactory(address)": "0x395452eddfaf475cccb315fe68df346df514a07264ba291edb128246b94a936a",
+        "mint(address)": "0xd759419275d7ef0509f7796f85f749c03d1b1ede6aa83603de86181622dc5ae2",
+        "mintFor(address,address)": "0x1913f7295521e22244fffd0820d96dccccfb12ef0883e0cdf0e172936a5726ac",
+        "mintMany(address[])": "0x7ec7bc0bded7496ad076f880c959d4f22ea8ff2cdaec65630f47d2ca239d57b1",
+        "mintManyFor(address[],address)": "0x6a361067be320e78f6609d1f55a0e58af7417c304b6f715eda9c4a1ed89c9079",
+        "mint_for(address,address)": "0x19269e4ba5a045643bcff1e66ed71fea728fc7d8aa35b5568a439d7f5851bc17",
+        "mint_many(address[8])": "0x1fae3cc35a1790a1dad0bbf9adb2d77f3b8c598e6c44fdffd44d2d827ed41a4c",
+        "removeGaugeFactory(address)": "0xd10a81975bf0c68340e10129804be1e3c504a51ac73f693f1905a66da6f067bd",
+        "setMinterApproval(address,bool)": "0xe2a35964068b527c74d9c2356d657b4bcb25f0a5187048aca8c5a3c4ad129ef1",
+        "setMinterApprovalWithSignature(address,bool,address,uint256,uint8,bytes32,bytes32)": "0x96054c75df7d3fc4e904c849c8c864a0588361a817a27372d1ecd9d3cadf9626",
+        "toggle_approve_mint(address)": "0xb467b598ed213da55735ff00766debce9e26658787daaf6d7f19f9d4e1a6af1d"
+      }
+    }
+  },
+  "20230316-l2-ve-delegation-proxy": {
+    "NullVotingEscrow": {
+      "useAdaptor": true,
+      "actionIds": {}
+    },
+    "VotingEscrowDelegationProxy": {
+      "useAdaptor": false,
+      "actionIds": {
+        "killDelegation()": "0x9cc42eef705ce46b44b8e690082030431c6a25a28007df6e9dec3d04ad47cb99",
+        "setDelegation(address)": "0xb37c54f1251a66c91992372dad9df4ea678283452056a1aa1e743b730d469cde"
+      }
+    }
   }
 }
