@@ -105,7 +105,8 @@ contract BalancerPoolDataQueries {
             uint256[][] memory weights,
             uint256[][] memory scalingFactors,
             uint256[] memory amps,
-            uint256[] memory rates
+            uint256[] memory rates,
+            uint256[] memory errorIdxs
         )
     {
         uint256 i;
@@ -176,6 +177,16 @@ contract BalancerPoolDataQueries {
 
             rates = getRateForPools(ratePools);
         }
+
+        errorIdxs = _getErrorsIdxsFromResults(
+            poolIds,
+            config,
+            totalSupplies,
+            swapFees,
+            linearWrappedTokenRates,
+            amps,
+            rates
+        );
     }
 
     function getPoolTokenBalancesWithUpdatesAfterBlock(bytes32[] memory poolIds, uint256 blockNumber)
@@ -322,5 +333,67 @@ contract BalancerPoolDataQueries {
         } catch {
             return 0;
         }
+    }
+
+    function _getErrorsIdxsFromResults(
+        bytes32[] memory poolIds,
+        PoolDataQueryConfig memory config,
+        uint256[] memory totalSupplies,
+        uint256[] memory swapFees,
+        uint256[] memory linearWrappedTokenRates,
+        uint256[] memory amps,
+        uint256[] memory rates
+    ) internal pure returns (uint256[] memory) {
+        bool[] memory errors = new bool[](poolIds.length);
+        uint256 numErrors = 0;
+        uint256 i;
+
+        for (i = 0; i < poolIds.length; i++) {
+            if ((config.loadTotalSupply && totalSupplies[i] == 0) || (config.loadSwapFees && swapFees[i] == 0)) {
+                errors[i] = true;
+            }
+        }
+
+        if (config.loadLinearWrappedTokenRates) {
+            for (i = 0; i < config.linearPoolIdxs.length; i++) {
+                if (linearWrappedTokenRates[i] == 0) {
+                    errors[config.linearPoolIdxs[i]] = true;
+                }
+            }
+        }
+
+        if (config.loadAmps) {
+            for (i = 0; i < config.ampPoolIdxs.length; i++) {
+                if (amps[i] == 0) {
+                    errors[config.ampPoolIdxs[i]] = true;
+                }
+            }
+        }
+
+        if (config.loadRates) {
+            for (i = 0; i < config.ratePoolIdxs.length; i++) {
+                if (rates[i] == 0) {
+                    errors[config.ratePoolIdxs[i]] = true;
+                }
+            }
+        }
+
+        for (i = 0; i < errors.length; i++) {
+            if (errors[i] == true) {
+                numErrors++;
+            }
+        }
+
+        uint256[] memory errorIdxs = new uint256[](numErrors);
+        uint256 idx = 0;
+
+        for (i = 0; i < errors.length; i++) {
+            if (errors[i] == true) {
+                errorIdxs[idx] = i;
+                idx++;
+            }
+        }
+
+        return errorIdxs;
     }
 }
