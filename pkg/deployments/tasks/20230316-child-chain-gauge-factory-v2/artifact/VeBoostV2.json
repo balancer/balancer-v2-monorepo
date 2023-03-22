@@ -1,7 +1,7 @@
 {
-  "_format": "hh-vyper-artifact-1",
+  "_format": "hh-sol-artifact-1",
   "contractName": "VeBoostV2",
-  "sourceName": "contracts/VeBoostV2.vy",
+  "sourceName": "@balancer-labs/liquidity-mining/contracts/VeBoostV2.vy",
   "abi": [
     {
       "name": "Approval",

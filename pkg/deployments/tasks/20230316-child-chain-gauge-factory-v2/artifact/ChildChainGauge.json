@@ -1,7 +1,7 @@
 {
-  "_format": "hh-vyper-artifact-1",
+  "_format": "hh-sol-artifact-1",
   "contractName": "ChildChainGauge",
-  "sourceName": "contracts/gauges/ChildChainGauge.vy",
+  "sourceName": "@balancer-labs/liquidity-mining/contracts/gauges/ChildChainGauge.vy",
   "abi": [
     {
       "name": "Approval",
