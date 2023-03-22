@@ -64,13 +64,12 @@ describe('TimelockAuthorizer permissions', () => {
     });
 
     context('when there is a no delay set to grant permissions', () => {
-      it('reverts if the sender is not the granter', async () => {
-        await expect(authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter })).to.be.revertedWith(
-          'SENDER_IS_NOT_GRANTER'
-        );
-      });
-
       function itGrantsPermissionCorrectly(getSender: () => SignerWithAddress) {
+        it('reverts if the sender is not the granter', async () => {
+          await expect(authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: other })).to.be.revertedWith(
+            'SENDER_IS_NOT_GRANTER'
+          );
+        });
         context('when the target does not have the permission', () => {
           context('when granting the permission for a contract', () => {
             it('grants permission to perform the requested action for the requested contract', async () => {
