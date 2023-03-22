@@ -330,5 +330,36 @@
         "updateTokenRateCache(address)": "0x239964292fa5d300796b3b838154583011a75c01b290076f7fdf482801ef2d22"
       }
     }
+  },
+  "20230316-l2-balancer-pseudo-minter": {
+    "L2BalancerPseudoMinter": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addGaugeFactory(address)": "0xff178bcb549aae01d4613b3ca6c16f1fa42e808cd1bddd210756b3878cfa9268",
+        "mint(address)": "0x97f7f1b521a14f36f1c7cb36dfab49d74185ad3bc0c458fc32ba67da2966415e",
+        "mintFor(address,address)": "0x1fc80cfffac4b9527fe294eca5590653d06d60038a36d9dd27ff9b53f6dcd434",
+        "mintMany(address[])": "0xf7128ccdb3ffa73b88d0f9e71ade9dd02594ea2f47c885fe8b2365ac633386a8",
+        "mintManyFor(address[],address)": "0x7519e151f44d1b50737c56f72f4a1d480041dc4f697253693c8a9a6fe3d3e5d4",
+        "mint_for(address,address)": "0x016d43b0da0e71d158a5e321c48dca28ceac996bea655d07a4a50843437c63b9",
+        "mint_many(address[8])": "0x99ab5a231ad1a48dec22b7db9af36f172133086d2577443ad1ea87652490f368",
+        "removeGaugeFactory(address)": "0xc57999420bd10abd998589ff441a68d6eeb987ae3475a9b72dfb3549122dbd84",
+        "setMinterApproval(address,bool)": "0xdea7a6796e346eda189719616b222c3d819b8c1ae0ad63fdc055f5587444f6ff",
+        "setMinterApprovalWithSignature(address,bool,address,uint256,uint8,bytes32,bytes32)": "0x8e39642ab168f36bd60dbc1f0bd705dcd09de4ba7bb18a7fe3d4f2b4b9075b1a",
+        "toggle_approve_mint(address)": "0xa6150298594be9fdb9f3a836db79e2ac5d086a336f47e9d92a59b603efa92f3a"
+      }
+    }
+  },
+  "20230316-l2-ve-delegation-proxy": {
+    "NullVotingEscrow": {
+      "useAdaptor": true,
+      "actionIds": {}
+    },
+    "VotingEscrowDelegationProxy": {
+      "useAdaptor": false,
+      "actionIds": {
+        "killDelegation()": "0x9cb98e2303069731b519a5796159ef39c12e97c5d113d273c9ab8999a85d9e4f",
+        "setDelegation(address)": "0x61d367fdef9a156d543288bab90410760d120019702b0559ffb08a3075aa7d42"
+      }
+    }
   }
 }
