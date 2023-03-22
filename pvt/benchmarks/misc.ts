@@ -7,7 +7,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { StablePoolEncoder, toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { range } from 'lodash';
@@ -233,10 +233,12 @@ async function deployPoolFromFactory(
   let event;
 
   if (poolName == 'ManagedPool') {
-    receipt = await (await factory.connect(args.from).create(...args.parameters)).wait();
+    receipt = await (await factory.connect(args.from).create(...args.parameters, ZERO_BYTES32)).wait();
     event = receipt.events?.find((e) => e.event == 'PoolCreated');
   } else {
-    receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS)).wait();
+    receipt = await (
+      await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS, ZERO_BYTES32)
+    ).wait();
     event = receipt.events?.find((e) => e.event == 'PoolCreated');
   }
 
