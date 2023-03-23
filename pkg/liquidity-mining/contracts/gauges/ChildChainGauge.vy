@@ -14,6 +14,7 @@ interface ERC20Extended:
 
 interface Minter:
     def minted(_user: address, _gauge: address) -> uint256: view
+    def getBalancerToken() -> address: view
 
 interface ERC1271:
     def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes32: view
@@ -117,7 +118,6 @@ inflation_rate: public(HashMap[uint256, uint256])
 
 @external
 def __init__(
-    _bal_token: address,
     _voting_escrow_delegation_proxy: address,
     _bal_pseudo_minter: address,
     _authorizer_adaptor: address,
@@ -127,9 +127,9 @@ def __init__(
     self.version = _version
     self.factory = 0x000000000000000000000000000000000000dEaD
 
-    BAL = _bal_token
     VE_DELEGATION_PROXY = _voting_escrow_delegation_proxy
     BAL_PSEUDO_MINTER = _bal_pseudo_minter
+    BAL = Minter(_bal_pseudo_minter).getBalancerToken()
     AUTHORIZER_ADAPTOR = _authorizer_adaptor
     BAL_VAULT = AuthorizerAdaptor(_authorizer_adaptor).getVault()
 

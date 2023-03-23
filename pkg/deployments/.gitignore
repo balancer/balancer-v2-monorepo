@@ -1,4 +1,5 @@
 action-ids/**/new-collisions.json
+action-ids/**/updated-expected-collisions.json
 
 # Deployment outputs on local test networks
 test.json
