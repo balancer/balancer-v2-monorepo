@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.0.0 (2023-03-23)
+
+### Breaking Changes
+
+- The `_create` function in `BaseSplitCodeFactory` now uses the `CREATE2` opcode, and takes an extra `salt` argument.
+
 ## 3.0.2 (2023-02-08)
 
 ### Misc
