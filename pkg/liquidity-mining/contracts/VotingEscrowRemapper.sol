@@ -46,6 +46,13 @@ contract VotingEscrowRemapper is SingletonAuthentication {
     }
 
     /**
+     * @notice Returns Voting Escrow contract address.
+     */
+    function getVotingEscrow() public view returns (IVotingEscrow) {
+        return _votingEscrow;
+    }
+
+    /**
      * @notice Allows querying the veBAL balance of an address on a remote chain.
      * @dev We return the user's balance as a Point to allow extrapolating this into the future.
      * If no mapping exists for the remote user, it is assumed that its address in the L1 is the same.
@@ -61,8 +68,9 @@ contract VotingEscrowRemapper is SingletonAuthentication {
         address localRemap = getLocalUser(remoteUser, chainId);
         address localUser = localRemap == address(0) ? remoteUser : localRemap;
 
-        uint256 userEpoch = _votingEscrow.user_point_epoch(localUser);
-        return _votingEscrow.user_point_history(localUser, userEpoch);
+        IVotingEscrow votingEscrow = getVotingEscrow();
+        uint256 userEpoch = votingEscrow.user_point_epoch(localUser);
+        return votingEscrow.user_point_history(localUser, userEpoch);
     }
 
     /**
@@ -70,8 +78,9 @@ contract VotingEscrowRemapper is SingletonAuthentication {
      * @dev We return the total supply as a Point to allow extrapolating this into the future.
      */
     function getTotalSupplyPoint() external view returns (IVotingEscrow.Point memory) {
-        uint256 totalSupplyEpoch = _votingEscrow.epoch();
-        return _votingEscrow.point_history(totalSupplyEpoch);
+        IVotingEscrow votingEscrow = getVotingEscrow();
+        uint256 totalSupplyEpoch = votingEscrow.epoch();
+        return votingEscrow.point_history(totalSupplyEpoch);
     }
 
     /**
@@ -79,7 +88,7 @@ contract VotingEscrowRemapper is SingletonAuthentication {
      * @dev The returned value is taken directly from the voting escrow.
      */
     function getLockedEnd(address user) external view returns (uint256) {
-        return _votingEscrow.locked__end(user);
+        return getVotingEscrow().locked__end(user);
     }
 
     /**
@@ -186,7 +195,7 @@ contract VotingEscrowRemapper is SingletonAuthentication {
      * @param localUser - The address to check against the `SmartWalletChecker`.
      */
     function _isAllowedContract(address localUser) private view returns (bool) {
-        ISmartWalletChecker smartWalletChecker = _votingEscrow.smart_wallet_checker();
+        ISmartWalletChecker smartWalletChecker = getVotingEscrow().smart_wallet_checker();
         return smartWalletChecker.check(localUser);
     }
 }
