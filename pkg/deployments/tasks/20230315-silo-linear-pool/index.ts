@@ -24,7 +24,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     Active,
     Removed,
   }
-
+  
   const factory = await task.deployAndVerify('SiloLinearPoolFactory', args, from, force);
 
   if (task.mode === TaskMode.LIVE) {
@@ -106,6 +106,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     }
 
     const mockSiloLinearPool = await task.instanceAt('SiloLinearPool', task.output()['MockSiloLinearPool']);
+
     // In order to verify the Pool's code, we need to complete its constructor arguments by computing the factory
     // provided arguments (asset manager and pause durations).
 
@@ -120,12 +121,16 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     mockPoolArgs.assetManager = assetManagerAddress;
 
     // The durations require knowing when the Pool was created, so we look for the timestamp of its creation block.
+
     const txHash = await getContractDeploymentTransactionHash(mockSiloLinearPool.address, task.network);
+
     const tx = await ethers.provider.getTransactionReceipt(txHash);
     const poolCreationBlock = await ethers.provider.getBlock(tx.blockNumber);
 
     // With those and the period end times, we can compute the durations.
+
     const { pauseWindowEndTime, bufferPeriodEndTime } = await mockSiloLinearPool.getPausedState();
+
     mockPoolArgs.pauseWindowDuration = pauseWindowEndTime.sub(poolCreationBlock.timestamp);
     mockPoolArgs.bufferPeriodDuration = bufferPeriodEndTime
       .sub(poolCreationBlock.timestamp)

@@ -42,9 +42,11 @@ describeForkTest('veBoostV2', 'mainnet', 16110000, function () {
   });
 
   it('proxy can be migrated to delegation', async () => {
-    const delegationProxy = await new Task('ve-delegation', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance(
-      'VotingEscrowDelegationProxy'
-    );
+    const delegationProxy = await new Task(
+      '20220325-ve-delegation',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    ).deployedInstance('VotingEscrowDelegationProxy');
 
     const authorizer = await new Task(
       '20210418-authorizer',
