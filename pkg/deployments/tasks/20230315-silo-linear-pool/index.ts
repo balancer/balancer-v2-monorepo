@@ -44,7 +44,8 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     const mockShareTokenArgs = ['DO NOT USE - Mock Share Token', 'TEST', mockSilo.address, input.WETH, 18];
     const mockShareToken = await task.deployAndVerify('MockShareToken', mockShareTokenArgs, from, force);
 
-    // set the totalSupply for share tokens
+    // It is necessary to set a total supply for the shareToken, as well as initialize assetStorage and interestData within the mockSilo.
+    // This is done in order to avoid divide by 0 errors when creating a MockSiloLinearPool from the Factory.
     await mockShareToken.setTotalSupply(fp(1));
     await mockSilo.setAssetStorage(
       input.WETH,
