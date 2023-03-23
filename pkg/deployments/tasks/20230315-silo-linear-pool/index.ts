@@ -24,7 +24,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     Active,
     Removed,
   }
-  
+
   const factory = await task.deployAndVerify('SiloLinearPoolFactory', args, from, force);
 
   if (task.mode === TaskMode.LIVE) {
