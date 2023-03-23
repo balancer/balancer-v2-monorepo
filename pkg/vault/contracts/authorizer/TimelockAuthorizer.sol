@@ -48,7 +48,7 @@ import "./TimelockAuthorizerManagement.sol";
  *
  * Note that the TimelockAuthorizer doesn't use reentrancy guard on its external functions.
  * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
- * which executes a scheduled execution and protected by Checks-Effects-Interactions pattern.
+ * which executes a scheduled execution, protected by the Checks-Effects-Interactions pattern.
  * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
  * is necessary in order to be able to call these.
  */
