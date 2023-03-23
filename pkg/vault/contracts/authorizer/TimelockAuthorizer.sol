@@ -314,7 +314,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
 
         uint256 delay = _delaysPerActionId[actionId];
-        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
+        require(delay > 0, "DELAY_IS_NOT_SET");
 
         uint256 scheduledExecutionId = _scheduleWithDelay(where, data, delay, executors);
 
