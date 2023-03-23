@@ -11,7 +11,7 @@ import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { WEEK, advanceToTimestamp, currentTimestamp, currentWeekTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -44,7 +44,8 @@ describeForkTest('ChildChainGaugeFactoryV2', 'arbitrum', 72486400, function () {
   }
 
   async function bridgeBAL(to: string, amount: BigNumberish) {
-    const BAL = await deployedAt('IArbToken', await pseudoMinter.getBalancerToken());
+    const bridgeInterface = ['function bridgeMint(address account, uint256 amount) external'];
+    const BAL = await ethers.getContractAt(bridgeInterface, await pseudoMinter.getBalancerToken());
     await BAL.connect(gateway).bridgeMint(to, amount);
   }
 
@@ -186,9 +187,6 @@ describeForkTest('ChildChainGaugeFactoryV2', 'arbitrum', 72486400, function () {
         });
 
         it('updates claimable tokens', async () => {
-          await pseudoMinter.connect(user1).mint(gauge.address);
-          await pseudoMinter.connect(user2).mint(gauge.address);
-
           expect(await gauge.callStatic.claimable_tokens(user1.address)).to.be.eq(0);
           expect(await gauge.callStatic.claimable_tokens(user2.address)).to.be.eq(0);
         });
@@ -242,9 +240,7 @@ describeForkTest('ChildChainGaugeFactoryV2', 'arbitrum', 72486400, function () {
 
         // In practice, the contract that provides veBAL balances is a third party contract (e.g. Layer Zero).
         mockVE = await deploy('MockVE');
-        const from = admin;
-        const force = true;
-        veBoost = await task.deploy('VeBoostV2', [ZERO_ADDRESS, mockVE.address], from, force);
+        veBoost = await deploy('VeBoostV2', { args: [ZERO_ADDRESS, mockVE.address] });
 
         await bridgeBAL(gauge.address, balPerWeek);
         await setupBoosts(boost.mul(2), boost);
