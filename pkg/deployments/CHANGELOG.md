@@ -9,6 +9,7 @@
 - Deployed `VotingEscrowDelegationProxy` and `NullVotingEscrow` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 - Deployed `WeightedPoolFactory` V4 to all networks.
 - Deployed `ComposableStablePoolFactory` V4 to all networks.
+- Deployed `SiloLinearPoolFactory` to Mainnet and Goerli.
 
 ### Deprecations
 
@@ -50,7 +51,6 @@
 - Deployed `MerkleOrchard` V2 to Mainnet, Goerli, Arbitrum and Polygon.
 - Deployed `SingleRecipientGaugeFactory` V2 to Mainnet and Goerli.
 - Deployed `ProtocolIdRegistry` to Mainnet, Goerli, Arbitrum, Polygon, Optimism and Gnosis.
-- Deployed `SiloLinearPoolFactory` to Mainnet and Goerli.
 
 ### Deprecations
 
