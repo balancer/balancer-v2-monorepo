@@ -1158,5 +1158,27 @@
         "renameProtocolId(uint256,string)": "0x4f3dee5b767f91b4faa9979f01808dd2490fde931a9eb355d5f8e0187826dade"
       }
     }
+  },
+  "20230315-silo-linear-pool": {
+    "SiloLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256)": "0x9a22d4378c33230ecb281994cb345e70bcfec1d833796fb5383f9e695a328bcb",
+        "disable()": "0xdc5aea35fe38930d1a12717dff4f063578452703ace32523cd9cdb24d3e7920a"
+      }
+    },
+    "SiloLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x395d8A1D9aD82B5ABE558F8AbbFe183B27138af4",
+      "actionIds": {
+        "disableRecoveryMode()": "0xe346f6c86992c797907e9b2acf3d8a7c45afc67204a0eb30e075aa822a24857e",
+        "enableRecoveryMode()": "0xc4d951f4e2b18951a2744f120e996aed880151f929157b787c7191357e83e8eb",
+        "initialize()": "0x28beec2c9c11f74d7b8809dd9a0eb7f1260d6674eef97999de3a1495167229e3",
+        "pause()": "0xdc8dd44e2187007fd116033fe27f5c05f03f60b7a890278a0bde44cd26c8d443",
+        "setSwapFeePercentage(uint256)": "0x73364814c846c57eef7f6f65e66d80cff127e5ebc2bff963ffb0bc41523c8fe4",
+        "setTargets(uint256,uint256)": "0xdba6d4f17bbf6139401e935924ba35773f240f3f9bd5bcc70117852fae50ed05",
+        "unpause()": "0xfc3f2e286a91378410f12539a31fcd42aa10460ac2928d1342777b515a579ecd"
+      }
+    }
   }
 }
