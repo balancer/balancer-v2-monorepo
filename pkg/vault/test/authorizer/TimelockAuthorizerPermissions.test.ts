@@ -296,8 +296,6 @@ describe('TimelockAuthorizer permissions', () => {
         });
 
         context('when the target has the permission for a contract', () => {
-          sharedBeforeEach('grant a permission', async () => {});
-
           it('cannot grant the same permission twice', async () => {
             await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
             await expect(authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter })).to.revertedWith(
