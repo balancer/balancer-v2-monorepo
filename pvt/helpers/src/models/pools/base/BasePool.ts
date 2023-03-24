@@ -202,15 +202,23 @@ export default class BasePool {
   private async grantPausePermissions(): Promise<void> {
     const pauseAction = await actionId(this.instance, 'pause');
     const unpauseAction = await actionId(this.instance, 'unpause');
-    await this.vault.grantPermissionGlobally(pauseAction);
-    await this.vault.grantPermissionGlobally(unpauseAction);
+    if (!(await this.vault.hasPermissionGlobally(pauseAction))) {
+      await this.vault.grantPermissionGlobally(pauseAction);
+    }
+    if (!(await this.vault.hasPermissionGlobally(unpauseAction))) {
+      await this.vault.grantPermissionGlobally(unpauseAction);
+    }
   }
 
   private async grantRecoveryPermissions(grantee: SignerWithAddress): Promise<void> {
     const enableRecoveryAction = await actionId(this.instance, 'enableRecoveryMode');
     const disableRecoveryAction = await actionId(this.instance, 'disableRecoveryMode');
-    await this.vault.grantPermissionGlobally(enableRecoveryAction, grantee);
-    await this.vault.grantPermissionGlobally(disableRecoveryAction, grantee);
+    if (!(await this.vault.hasPermissionGlobally(enableRecoveryAction, grantee))) {
+      await this.vault.grantPermissionGlobally(enableRecoveryAction, grantee);
+    }
+    if (!(await this.vault.hasPermissionGlobally(disableRecoveryAction, grantee))) {
+      await this.vault.grantPermissionGlobally(disableRecoveryAction, grantee);
+    }
   }
 
   private async getSigner(from?: SignerWithAddress): Promise<SignerWithAddress> {
