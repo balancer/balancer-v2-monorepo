@@ -1,11 +1,21 @@
 import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-
+import { Artifact } from 'hardhat/types';
 export { Artifact, Libraries } from 'hardhat/types';
 
 import Task from './task';
 
-export const NETWORKS = ['goerli', 'mainnet', 'polygon', 'arbitrum', 'optimism', 'gnosis', 'bsc', 'avalanche'];
+export const NETWORKS = [
+  'goerli',
+  'mainnet',
+  'polygon',
+  'arbitrum',
+  'optimism',
+  'gnosis',
+  'bsc',
+  'avalanche',
+  'zkTestnet',
+];
 
 export type Network = typeof NETWORKS[number];
 
@@ -40,3 +50,11 @@ export type Output = {
 export type RawOutput = {
   [key: string]: string | Contract;
 };
+
+export interface FactoryDeps {
+  [contractHash: string]: string;
+}
+
+export interface ZkSyncArtifact extends Artifact {
+  factoryDeps: FactoryDeps;
+}

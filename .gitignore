@@ -17,6 +17,8 @@ node_modules/
 # Hardhat artifacts
 artifacts/
 cache/
+artifacts-zk/
+cache-zk/
 
 # Build artifacts
 dist/

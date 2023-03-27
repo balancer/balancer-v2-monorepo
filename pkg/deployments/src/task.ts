@@ -8,6 +8,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import logger from './logger';
 import Verifier from './verifier';
 import { deploy, deploymentTxData, instanceAt } from './contracts';
+import { deployZk } from './contractsZk';
+import { ZkSyncArtifact } from './types';
 
 import {
   NETWORKS,
@@ -23,7 +25,7 @@ import {
 } from './types';
 import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
 import { getTaskActionIds } from './actionId';
-import { getArtifactFromContractOutput } from './artifact';
+import { getArtifactFromContractOutput, getZkArtifactFromContractOutput } from './artifact';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 const DEPRECATED_DIRECTORY = path.join(TASKS_DIRECTORY, 'deprecated');
@@ -117,7 +119,12 @@ export default class Task {
     let instance: Contract;
     const output = this.output({ ensure: false });
     if (force || !output[name]) {
-      instance = await deploy(this.artifact(name), args, from, libs);
+      if (this.network.includes('zk')) {
+        const factoryDeps = await this.extractFactoryDeps(this.artifact(name) as ZkSyncArtifact);
+        instance = await deployZk(this.artifact(name) as ZkSyncArtifact, args, from, factoryDeps, libs);
+      } else {
+        instance = await deploy(this.artifact(name), args, from, libs);
+      }
       this.save({ [name]: instance });
       logger.success(`Deployed ${name} at ${instance.address}`);
 
@@ -224,18 +231,24 @@ export default class Task {
   }
 
   buildInfo(fileName: string): BuildInfo {
-    const buildInfoDir = this._dirAt(this.dir(), 'build-info');
+    const buildInfoDir = this.network.includes('zk')
+      ? this._dirAt(this.dir(), 'build-info/zk')
+      : this._dirAt(this.dir(), 'build-info');
     const artifactFile = this._fileAt(buildInfoDir, `${extname(fileName) ? fileName : `${fileName}.json`}`);
     return JSON.parse(fs.readFileSync(artifactFile).toString());
   }
 
   buildInfos(): Array<BuildInfo> {
-    const buildInfoDir = this._dirAt(this.dir(), 'build-info');
+    const buildInfoDir = this.network.includes('zk')
+      ? this._dirAt(this.dir(), 'build-info/zk')
+      : this._dirAt(this.dir(), 'build-info');
     return fs.readdirSync(buildInfoDir).map((fileName) => this.buildInfo(fileName));
   }
 
-  artifact(contractName: string, fileName?: string): Artifact {
-    const buildInfoDir = this._dirAt(this.dir(), 'build-info');
+  artifact(contractName: string, fileName?: string): Artifact | ZkSyncArtifact {
+    const buildInfoDir = this.network.includes('zk')
+      ? this._dirAt(this.dir(), 'build-info/zk')
+      : this._dirAt(this.dir(), 'build-info');
     fileName = fileName ?? contractName;
 
     const builds: {
@@ -249,7 +262,35 @@ export default class Task {
     );
 
     if (!sourceName) throw Error(`Could not find artifact for ${contractName}`);
-    return getArtifactFromContractOutput(sourceName, contractName, builds[sourceName][contractName]);
+    if (this.network.includes('zk')) {
+      return getZkArtifactFromContractOutput(sourceName, contractName, builds[sourceName][contractName]);
+    } else {
+      return getArtifactFromContractOutput(sourceName, contractName, builds[sourceName][contractName]);
+    }
+  }
+
+  async extractFactoryDeps(artifact: ZkSyncArtifact): Promise<string[]> {
+    const visited = new Set<string>();
+    visited.add(`${artifact.sourceName}:${artifact.contractName}`);
+    return await this.extractFactoryDepsRecursive(artifact, visited);
+  }
+
+  private async extractFactoryDepsRecursive(artifact: ZkSyncArtifact, visited: Set<string>): Promise<string[]> {
+    // Load all the dependency bytecodes.
+    // We transform it into an array of bytecodes.
+    const factoryDeps: string[] = [];
+    for (const dependencyHash in artifact.factoryDeps) {
+      const dependencyContract = artifact.factoryDeps[dependencyHash];
+      const dependencyArtifact = this.artifact(dependencyContract.split(':')[1]) as ZkSyncArtifact;
+      factoryDeps.push(dependencyArtifact.bytecode);
+      if (!visited.has(dependencyContract)) {
+        visited.add(dependencyContract);
+        const transitiveDeps = await this.extractFactoryDepsRecursive(dependencyArtifact, visited);
+        factoryDeps.push(...transitiveDeps);
+      }
+    }
+
+    return factoryDeps;
   }
 
   actionId(contractName: string, signature: string): string {

@@ -4,6 +4,7 @@ import path from 'path';
 import logger from './logger';
 import Task from './task';
 import fs from 'fs';
+import { FactoryDeps, ZkSyncArtifact } from './types';
 
 /**
  * Extracts the artifact for the matching contract.
@@ -13,7 +14,9 @@ import fs from 'fs';
  * @param contract - Name of the contract to match. Filename shall be used if undefined.
  */
 export function extractArtifact(task: Task, file?: string, contract?: string): void {
-  const buildInfoDirectory = path.resolve(task.dir(), 'build-info');
+  const buildInfoDirectory = task.network.includes('zk')
+    ? path.resolve(task.dir(), 'build-info/zk')
+    : path.resolve(task.dir(), 'build-info');
   if (existsSync(buildInfoDirectory) && statSync(buildInfoDirectory).isDirectory()) {
     if (file) {
       _extractArtifact(task, file, contract);
@@ -157,4 +160,60 @@ export function getArtifactFromContractOutput(
     linkReferences,
     deployedLinkReferences,
   };
+}
+
+const ZK_ARTIFACT_FORMAT_VERSION = 'hh-zksolc-artifact-1';
+
+/**
+ * Retrieves an ZkArtifact for the given `contractName` from the compilation output.
+ *
+ * @param sourceName The contract's source name.
+ * @param contractName the contract's name.
+ * @param contractOutput the contract's compilation output as emitted by `zksolc`.
+ */
+export function getZkArtifactFromContractOutput(
+  sourceName: string,
+  contractName: string,
+  contractOutput: any
+): ZkSyncArtifact {
+  const evmBytecode = contractOutput.evm && contractOutput.evm.bytecode;
+  let bytecode: string = evmBytecode && evmBytecode.object ? evmBytecode.object : '';
+
+  if (bytecode.slice(0, 2).toLowerCase() !== '0x') {
+    bytecode = `0x${bytecode}`;
+  }
+
+  const evmDeployedBytecode = contractOutput.evm && contractOutput.evm.deployedBytecode;
+  let deployedBytecode: string = evmDeployedBytecode && evmDeployedBytecode.object ? evmDeployedBytecode.object : '';
+
+  if (deployedBytecode.slice(0, 2).toLowerCase() !== '0x') {
+    deployedBytecode = `0x${deployedBytecode}`;
+  }
+
+  const linkReferences = evmBytecode && evmBytecode.linkReferences ? evmBytecode.linkReferences : {};
+  const deployedLinkReferences =
+    evmDeployedBytecode && evmDeployedBytecode.linkReferences ? evmDeployedBytecode.linkReferences : {};
+
+  const factoryDeps: FactoryDeps = {};
+  const entries: Array<[string, string]> = Object.entries(contractOutput.factoryDependencies || {});
+  for (const [hash, dependency] of entries) {
+    factoryDeps[zeroxlify(hash)] = dependency;
+  }
+
+  return {
+    _format: ZK_ARTIFACT_FORMAT_VERSION,
+    contractName,
+    sourceName,
+    abi: contractOutput.abi,
+    bytecode,
+    deployedBytecode,
+    linkReferences,
+    deployedLinkReferences,
+    factoryDeps,
+  };
+}
+
+export function zeroxlify(hex: string): string {
+  hex = hex.toLowerCase();
+  return hex.slice(0, 2) === '0x' ? hex : `0x${hex}`;
 }

@@ -243,6 +243,14 @@ export default {
   vyper: {
     compilers: [{ version: '0.3.1' }, { version: '0.3.3' }],
   },
+  networks: {
+    zkTestnet: {
+      zksync: true,
+      ethNetwork: 'goerli',
+      url: 'https://zksync2-testnet.zksync.dev',
+      verifyURL: 'https://zksync2-testnet-explorer.zksync.dev/contract_verification',
+    },
+  },
   paths: {
     sources: './tasks',
   },
