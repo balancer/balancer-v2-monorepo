@@ -289,7 +289,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
 
         // Note that this is the only place in the entire contract we perform a non-view call to an external contract,
         // i.e. this is the only context in which this contract can be re-entered, and by this point we've already
-        // completed all state transitions. Which satisfies the requirements of the Checks-Effects-Interactions pattern.
+        // completed all state transitions (in other words, we follow the Checks-Effects-Interactions pattern).
         // This results in the scheduled execution being marked as 'executed' during its execution, but that should not
         // be an issue.
         result = _executionHelper.execute(scheduledExecution.where, scheduledExecution.data);
