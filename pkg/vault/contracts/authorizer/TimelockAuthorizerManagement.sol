@@ -467,7 +467,6 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
 
         for (uint256 i = 0; i < executors.length; i++) {
             require(!_isExecutor[scheduledExecutionId][executors[i]], "DUPLICATE_EXECUTORS");
-            // Note that we allow for repeated executors - this is not an issue
             _isExecutor[scheduledExecutionId][executors[i]] = true;
             emit ExecutorAdded(scheduledExecutionId, executors[i]);
         }
