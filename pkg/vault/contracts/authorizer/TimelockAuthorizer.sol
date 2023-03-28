@@ -22,7 +22,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "./TimelockExecutionHelper.sol";
 import "./TimelockAuthorizerManagement.sol";
 
@@ -47,9 +46,9 @@ import "./TimelockAuthorizerManagement.sol";
  *   target contract (where). This identifier is called `permissionId` and is computed as
  *   `keccak256(actionId, account, where)`.
  *
- * Note that the TimelockAuthorizer doesn't make use of reentrancy guards on the majority of external functions.
+ * Note that the TimelockAuthorizer doesn't use reentrancy guard on its external functions.
  * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
- * which executes a scheduled execution and so this is the only protected function.
+ * which executes a scheduled execution, protected by the Checks-Effects-Interactions pattern.
  * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
  * is necessary in order to be able to call these.
  */
@@ -314,7 +313,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
 
         uint256 delay = _delaysPerActionId[actionId];
-        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
+        require(delay > 0, "DELAY_IS_NOT_SET");
 
         uint256 scheduledExecutionId = _scheduleWithDelay(where, data, delay, executors);
 

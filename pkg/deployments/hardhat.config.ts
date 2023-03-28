@@ -1,4 +1,5 @@
 import '@nomiclabs/hardhat-ethers';
+import '@nomiclabs/hardhat-vyper';
 import '@nomiclabs/hardhat-waffle';
 import 'hardhat-local-networks-config-plugin';
 import 'hardhat-ignore-warnings';
@@ -238,6 +239,9 @@ export default {
   solidity: {
     compilers: hardhatBaseConfig.compilers,
     overrides: { ...hardhatBaseConfig.overrides(name) },
+  },
+  vyper: {
+    compilers: [{ version: '0.3.1' }, { version: '0.3.3' }],
   },
   paths: {
     sources: './tasks',
