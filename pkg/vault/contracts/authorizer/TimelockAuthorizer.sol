@@ -309,12 +309,19 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         // this scenario should be impossible: but this check is cheap so we enforce it here as well anyway.
         require(where != getTimelockExecutionHelper(), "ATTEMPTING_EXECUTION_HELPER_REENTRANCY");
 
-        bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
+        // We require data to have a function selector
+        require(data.length >= 4, "DATA_TOO_SHORT");
+        // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
+        bytes4 selector = bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
+
+        bytes32 actionId = IAuthentication(where).getActionId(selector);
         require(hasPermission(actionId, msg.sender, where), "SENDER_DOES_NOT_HAVE_PERMISSION");
 
         uint256 delay = _delaysPerActionId[actionId];
         require(delay > 0, "DELAY_IS_NOT_SET");
 
+        // We do not check if `where` is a contract because it might not be upon
+        // scheduling but it may be deployed later.
         uint256 scheduledExecutionId = _scheduleWithDelay(where, data, delay, executors);
 
         emit ExecutionScheduled(actionId, scheduledExecutionId);
@@ -490,11 +497,5 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
         bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector);
         return delay <= _delaysPerActionId[setAuthorizerActionId];
-    }
-
-    function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
-        // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
-        if (data.length < 4) return bytes4(0);
-        return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
     }
 }
