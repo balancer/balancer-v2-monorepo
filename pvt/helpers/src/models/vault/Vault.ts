@@ -275,44 +275,23 @@ export default class Vault {
     const feeCollector = await this.getFeesCollector();
     const feeProvider = this.protocolFeesProvider;
 
-    if (
-      !(await this.authorizer.hasPermission(
-        actionId(feeProvider, 'setFeeTypePercentage'),
-        this.admin.address,
-        feeProvider.address
-      ))
-    ) {
-      await this.authorizer
-        .connect(this.admin)
-        .grantPermission(actionId(feeProvider, 'setFeeTypePercentage'), this.admin.address, feeProvider.address);
-    }
+    await this.grantPermissionIfNeeded(
+      await actionId(feeProvider, 'setFeeTypePercentage'),
+      this.admin.address,
+      feeProvider.address
+    );
 
-    if (
-      !(await this.authorizer.hasPermission(
-        actionId(feeCollector, 'setSwapFeePercentage'),
-        feeProvider.address,
-        feeCollector.address
-      ))
-    ) {
-      await this.authorizer
-        .connect(this.admin)
-        .grantPermission(actionId(feeCollector, 'setSwapFeePercentage'), feeProvider.address, feeCollector.address);
-    }
-    if (
-      !(await this.authorizer.hasPermission(
-        actionId(feeCollector, 'setFlashLoanFeePercentage'),
-        feeProvider.address,
-        feeCollector.address
-      ))
-    ) {
-      await this.authorizer
-        .connect(this.admin)
-        .grantPermission(
-          actionId(feeCollector, 'setFlashLoanFeePercentage'),
-          feeProvider.address,
-          feeCollector.address
-        );
-    }
+    await this.grantPermissionIfNeeded(
+      await actionId(feeCollector, 'setSwapFeePercentage'),
+      feeProvider.address,
+      feeCollector.address
+    );
+
+    await this.grantPermissionIfNeeded(
+      await actionId(feeCollector, 'setFlashLoanFeePercentage'),
+      feeProvider.address,
+      feeCollector.address
+    );
 
     await feeProvider.connect(this.admin).setFeeTypePercentage(feeType, bn(value));
   }
@@ -323,12 +302,35 @@ export default class Vault {
     return this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS);
   }
 
+  async grantPermissionGloballyIfNeeded(actionId: string, to?: Account): Promise<ContractTransaction | undefined> {
+    if (await this.hasPermissionGlobally(actionId, to)) {
+      return undefined;
+    }
+    return this.grantPermissionGlobally(actionId, to);
+  }
+
   async grantPermissionGlobally(actionId: string, to?: Account): Promise<ContractTransaction> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
     if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS))
       throw Error(`Account ${typeof to === 'string' ? to : to.address} already have global permission for ${actionId}`);
     return this.authorizer.connect(this.admin).grantPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS);
+  }
+
+  async grantPermissionIfNeeded(
+    actionId: string,
+    to: Account,
+    where: Account
+  ): Promise<ContractTransaction | undefined> {
+    if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
+    if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS))
+      throw Error(`Account ${typeof to === 'string' ? to : to.address} already have global permission for ${actionId}`);
+    if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), TypesConverter.toAddress(where))) {
+      return undefined;
+    }
+    return this.authorizer
+      .connect(this.admin)
+      .grantPermission(actionId, TypesConverter.toAddress(to), TypesConverter.toAddress(where));
   }
 
   async setRelayerApproval(user: SignerWithAddress, relayer: Account, approval: boolean): Promise<ContractTransaction> {
