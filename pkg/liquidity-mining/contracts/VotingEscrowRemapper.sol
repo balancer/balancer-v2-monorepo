@@ -21,14 +21,13 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVotingEscrow.so
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 /**
- * @notice This contract allows veBAL holders on Ethereum to designate an address on each L2 to receive its balance.
- * This is intended for smart contract systems where they cannot deploy to the same address on all networks, EOA's are
- * expected to utilise delegation mechanisms on the L2s themselves.
+ * @notice This contract allows veBAL holders on Ethereum to assign their balance to designated addresses on each L2.
+ * This is intended for smart contracts that are not deployed to the same address on all networks. EOA's are
+ * expected to either use the same address, or manage delegation on L2 networks themselves.
  *
- * @dev For each network (chainId) we maintain a mapping between Ethereum (local) and L2 (remote) addresses.
- * Queries for a balance of an address on a remote network are then remapped to the linked local address.
- * A local user can specify their own mapping or a delegate can be set up for them for the situation where the user
- * cannot call this contract.
+ * @dev For each network (chainId), we maintain a mapping between local (Ethereum) and remote (L2) addresses.
+ * This contract remaps balance queries on remote network addresses to their corresponding local addresses.
+ * Users able to call this contract can set their own mappings, or delegate this function to another account if they cannot.
  */
 contract VotingEscrowRemapper is SingletonAuthentication {
     IVotingEscrow private immutable _votingEscrow;
