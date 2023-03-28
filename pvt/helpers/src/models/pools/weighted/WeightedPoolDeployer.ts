@@ -99,6 +99,7 @@ export default {
       case WeightedPoolType.MANAGED_POOL: {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
@@ -111,6 +112,7 @@ export default {
               vault: vault.address,
               protocolFeeProvider: vault.protocolFeesProvider.address,
               weightedMath: math.address,
+              recoveryModeHelper: recoveryModeHelper.address,
               pauseWindowDuration,
               bufferPeriodDuration,
               version: poolVersion,
@@ -139,6 +141,7 @@ export default {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
 
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy('v2-pool-weighted/MockManagedPool', {
           args: [
@@ -151,6 +154,7 @@ export default {
               vault: vault.address,
               protocolFeeProvider: vault.protocolFeesProvider.address,
               weightedMath: math.address,
+              recoveryModeHelper: recoveryModeHelper.address,
               pauseWindowDuration,
               bufferPeriodDuration,
               version: poolVersion,
@@ -179,6 +183,7 @@ export default {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
 
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy('v2-pool-weighted/MockManagedPoolSettings', {
           args: [
@@ -195,6 +200,7 @@ export default {
             vault.address,
             vault.protocolFeesProvider.address,
             math.address,
+            recoveryModeHelper.address,
             assetManagers,
             owner,
           ],
