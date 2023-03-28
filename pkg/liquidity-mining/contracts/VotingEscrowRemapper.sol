@@ -134,11 +134,12 @@ contract VotingEscrowRemapper is SingletonAuthentication {
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL can set up a mapping");
         require(remoteUser != address(0), "Zero address cannot be used as remote user");
 
-        // Prevent two local users pointing to the same remote user as this allows easy griefing attacks.
-        //
-        // Note that this still allows frontrunning attacks, this is mitigated by restricting potential attackers
-        // to the set of contracts which are allowlisted to hold veBAL (and their delegates).
-        // Should one of these entities grief, then Balancer governance can remove them from this allowlist.
+        // Since we keep a 1-to-1 local-remote mapping for each chain, the remote address must not
+        // already be in use by another local user. 
+        // Note that this means that it is possible to frontrun this call to grief a user by taking up their 
+        // selected remote address. This is mitigated somewhat by restricting potential attackers to the
+        // set of contracts that are allowlisted to hold veBAL (and their remapping managers). Should
+        // one of them grief, then Balancer governance can remove them from these allowlists.
         require(
             _remoteToLocalAddressMap[chainId][remoteUser] == address(0),
             "Cannot overwrite an existing mapping by another user"
