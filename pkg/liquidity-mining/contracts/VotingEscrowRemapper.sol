@@ -27,7 +27,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  *
  * @dev For each network (chainId), we maintain a mapping between local (Ethereum) and remote (L2) addresses.
  * This contract remaps balance queries on remote network addresses to their corresponding local addresses.
- * Users able to call this contract can set their own mappings, or delegate this function to another account if they cannot.
+ * Users able to call this contract can set their own mappings, or delegate this function to another account if they
+ * cannot.
  */
 contract VotingEscrowRemapper is SingletonAuthentication {
     IVotingEscrow private immutable _votingEscrow;
@@ -134,8 +135,8 @@ contract VotingEscrowRemapper is SingletonAuthentication {
         require(remoteUser != address(0), "Zero address cannot be used as remote user");
 
         // Since we keep a 1-to-1 local-remote mapping for each chain, the remote address must not
-        // already be in use by another local user. 
-        // Note that this means that it is possible to frontrun this call to grief a user by taking up their 
+        // already be in use by another local user.
+        // Note that this means that it is possible to frontrun this call to grief a user by taking up their
         // selected remote address. This is mitigated somewhat by restricting potential attackers to the
         // set of contracts that are allowlisted to hold veBAL (and their remapping managers). Should
         // one of them grief, then Balancer governance can remove them from these allowlists.
@@ -172,11 +173,12 @@ contract VotingEscrowRemapper is SingletonAuthentication {
      * @notice Clears a local user's mapping for a particular network.
      * @dev This is intended to discourage and also allow recovery from griefing attacks.
      * If griefing occurs then the griefer can be removed from Smart Wallet Checker and have their remappings erased.
+     * The local user can always clear its own mapping, regardless the state of the Smart Wallet Checker.
      * @param localUser - The address of the local user to erase.
      * @param chainId - The chain id of the network to erase.
      */
     function clearNetworkRemapping(address localUser, uint256 chainId) external {
-        require(!_isAllowedContract(localUser), "localUser is still in good standing.");
+        require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing.");
 
         address remoteUser = _localToRemoteAddressMap[chainId][localUser];
 

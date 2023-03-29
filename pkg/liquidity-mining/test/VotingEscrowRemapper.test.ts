@@ -160,29 +160,10 @@ describe('VotingEscrowRemapper', function () {
   describe('clearNetworkRemapping', () => {
     const chainId = 7;
     const otherChainId = 43;
-    const doClearMap = async () => remapper.clearNetworkRemapping(local.address, chainId);
+    let caller: SignerWithAddress;
+    const doClearMap = async () => remapper.connect(caller).clearNetworkRemapping(local.address, chainId);
 
-    context('when local user is not allow-listed', async () => {
-      sharedBeforeEach('setup mapping and denylist user', async () => {
-        await smartWalletChecker.connect(admin).allowlistAddress(local.address);
-        await remapper.connect(local).setNetworkRemapping(local.address, remote, chainId);
-        await remapper.connect(local).setNetworkRemapping(local.address, remote, otherChainId);
-
-        await vault.grantPermissionGlobally(await actionId(remapper, 'setNetworkRemappingManager'), admin);
-        await remapper.connect(admin).setNetworkRemappingManager(local.address, manager.address);
-
-        await smartWalletChecker.connect(admin).denylistAddress(local.address);
-
-        // Verify mapping in chainId
-        expect(await remapper.getRemoteUser(local.address, chainId)).to.be.eq(remote);
-        expect(await remapper.getLocalUser(remote, chainId)).to.be.eq(local.address);
-        // Verify mapping in otherChainId
-        expect(await remapper.getRemoteUser(local.address, otherChainId)).to.be.eq(remote);
-        expect(await remapper.getLocalUser(remote, otherChainId)).to.be.eq(local.address);
-        // Verify remapping manager
-        expect(await remapper.getRemappingManager(local.address)).to.be.eq(manager.address);
-      });
-
+    function itClearsNetworkRemapping() {
       it('clears existing local to remote mapping in target chain ID', async () => {
         await doClearMap();
         expect(await remapper.getRemoteUser(local.address, chainId)).to.be.eq(ZERO_ADDRESS);
@@ -226,15 +207,57 @@ describe('VotingEscrowRemapper', function () {
           delegate: ZERO_ADDRESS,
         });
       });
+    }
+
+    sharedBeforeEach('setup mapping and denylist user', async () => {
+      await smartWalletChecker.connect(admin).allowlistAddress(local.address);
+      await remapper.connect(local).setNetworkRemapping(local.address, remote, chainId);
+      await remapper.connect(local).setNetworkRemapping(local.address, remote, otherChainId);
+
+      await vault.grantPermissionGlobally(await actionId(remapper, 'setNetworkRemappingManager'), admin);
+      await remapper.connect(admin).setNetworkRemappingManager(local.address, manager.address);
+
+      // Verify mapping in chainId
+      expect(await remapper.getRemoteUser(local.address, chainId)).to.be.eq(remote);
+      expect(await remapper.getLocalUser(remote, chainId)).to.be.eq(local.address);
+      // Verify mapping in otherChainId
+      expect(await remapper.getRemoteUser(local.address, otherChainId)).to.be.eq(remote);
+      expect(await remapper.getLocalUser(remote, otherChainId)).to.be.eq(local.address);
+      // Verify remapping manager
+      expect(await remapper.getRemappingManager(local.address)).to.be.eq(manager.address);
+    });
+
+    context('when local user is not allow-listed', async () => {
+      sharedBeforeEach(async () => {
+        await smartWalletChecker.connect(admin).denylistAddress(local.address);
+        caller = other;
+      });
+
+      itClearsNetworkRemapping();
     });
 
     context('when local user is allow-listed', async () => {
       sharedBeforeEach(async () => {
-        await smartWalletChecker.connect(admin).allowlistAddress(local.address);
+        // Address is already allow-listed at this point; it cannot be re-allowed.
+        expect(await smartWalletChecker.check(local.address)).to.be.true;
       });
 
-      it('reverts', async () => {
-        await expect(doClearMap()).to.be.revertedWith('localUser is still in good standing.');
+      context('when caller is anyone but local user', () => {
+        sharedBeforeEach(() => {
+          caller = other;
+        });
+
+        it('reverts', async () => {
+          await expect(doClearMap()).to.be.revertedWith('localUser is still in good standing.');
+        });
+      });
+
+      context('when caller it local user', () => {
+        sharedBeforeEach(() => {
+          caller = local;
+        });
+
+        itClearsNetworkRemapping();
       });
     });
   });
