@@ -1,6 +1,6 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, Wallet } from 'ethers';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -13,10 +13,11 @@ import Task, { TaskMode } from '../../../src/task';
 import { impersonate } from '../../../src/signers';
 import { getForkedNetwork } from '../../../src/test';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
-import { TimelockAuthorizerDeployment } from '../input';
+import { getOnChainRoles, TRANSITION_END_BLOCK, TimelockAuthorizerDeployment } from '../input';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { getSigner } from '../../../src';
 
-describeForkTest('TimelockAuthorizer', 'mainnet', 16926916, function () {
+describeForkTest('TimelockAuthorizer', 'mainnet', TRANSITION_END_BLOCK, function () {
   let input: TimelockAuthorizerDeployment;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
   let root: SignerWithAddress;
@@ -25,9 +26,7 @@ describeForkTest('TimelockAuthorizer', 'mainnet', 16926916, function () {
 
   before('run task', async () => {
     task = new Task('20230403-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
-    console.log('run task')
     await task.run({ force: true });
-    console.log('run task')
     input = task.input() as TimelockAuthorizerDeployment;
     migrator = await task.deployedInstance('TimelockAuthorizerMigrator');
     newAuthorizer = await task.deployedInstance('TimelockAuthorizer');
@@ -51,7 +50,7 @@ describeForkTest('TimelockAuthorizer', 'mainnet', 16926916, function () {
   });
 
   it('migrates all roles properly', async () => {
-    for (const roleData of input.Roles) {
+    for (const roleData of await getOnChainRoles()) {
       expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
     }
   });
@@ -77,14 +76,8 @@ describeForkTest('TimelockAuthorizer', 'mainnet', 16926916, function () {
     }
 
     for (const delayData of input.GrantDelays) {
-      const grantActionId = await newAuthorizer.getGrantPermissionActionId(delayData.actionId);
-      expect(await newAuthorizer.getActionIdDelay(grantActionId)).to.be.eq(delayData.newDelay);
+      expect(await newAuthorizer.getActionIdGrantDelay(delayData.actionId)).to.be.eq(delayData.newDelay);
     }
-  });
-
-  it('starts the root transfer', async () => {
-    await advanceTime(4 * WEEK);
-    await migrator.startRootTransfer();
   });
 
   it('does not set the new authorizer immediately', async () => {
@@ -130,10 +123,11 @@ describeForkTest('TimelockAuthorizer', 'mainnet', 16926916, function () {
 
     expect(await vault.getAuthorizer()).to.be.eq(newAuthorizer.address);
 
-    await newAuthorizer.connect(root).grantPermissions([setAuthorizerActionId], root.address, [vault.address]);
+    await newAuthorizer.connect(root).grantPermission(setAuthorizerActionId, root.address, vault.address);
 
     // Schedule authorizer change
     const nextAuthorizer = '0xaF52695E1bB01A16D33D7194C28C42b10e0Dbec2';
+    console.log('setAuthorizerActionId');
     const tx = await newAuthorizer
       .connect(root)
       .schedule(vault.address, vault.interface.encodeFunctionData('setAuthorizer', [nextAuthorizer]), [root.address]);

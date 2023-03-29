@@ -209,7 +209,9 @@ export const granters: RoleData[] = flatten([
     SingleRecipientGauge.actionId('SingleRecipientGauge', 'checkpoint()'),
   ]),
 ]);
+
 export const revokers: RoleData[] = [];
+
 export const executeDelays: DelayData[] = [
   { actionId: Vault.actionId('Vault', 'setAuthorizer(address)'), newDelay: 30 * DAY },
   {
