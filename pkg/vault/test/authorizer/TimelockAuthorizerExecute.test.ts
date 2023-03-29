@@ -209,12 +209,13 @@ describe('TimelockAuthorizer execute', () => {
     it('reverts if schedule for EOA', async () => {
       // we do not specify reason here because call to an EOA results in the following error:
       // Transaction reverted without a reason
-      await expect(authorizer.schedule(other.address, '0x00', [], { from: user })).to.be.reverted;
+
+      await expect(authorizer.schedule(other.address, functionData, [], { from: user })).to.be.reverted;
     });
 
     it('reverts if data is less than 4 bytes', async () => {
       await expect(authorizer.schedule(authenticatedContract.address, '0x00', [], { from: user })).to.be.revertedWith(
-        'SENDER_DOES_NOT_HAVE_PERMISSION'
+        'DATA_TOO_SHORT'
       );
     });
   });
