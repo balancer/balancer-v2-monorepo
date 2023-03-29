@@ -817,6 +817,7 @@ describe('TimelockAuthorizer permissions', () => {
       });
 
       it('does not revoke any other permissions when executed', async () => {
+        // Grant the permission so we can later revoke it
         await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: root });
         const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
 
