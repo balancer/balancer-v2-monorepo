@@ -9,6 +9,7 @@
 - Deployed `VotingEscrowDelegationProxy` and `NullVotingEscrow` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 - Deployed `WeightedPoolFactory` V4 to all networks.
 - Deployed `ComposableStablePoolFactory` V4 to all networks.
+- Deployed `ChildChainGaugeFactory` and `ChildChainGauge` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 
 ### Deprecations
 

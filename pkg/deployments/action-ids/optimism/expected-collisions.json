@@ -1,19 +1,5 @@
 {
-  "0x527e5a8917fef9f19f55ea7d3f9dc98c00e4836cf918d2af144d2ef91076a53c": [
-    {
-      "taskId": "20211208-aave-linear-pool",
-      "contractName": "AaveLinearPoolFactory",
-      "signature": "create(string,string,address,address,uint256,uint256,address)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220304-erc4626-linear-pool",
-      "contractName": "ERC4626LinearPoolFactory",
-      "signature": "create(string,string,address,address,uint256,uint256,address)",
-      "useAdaptor": true
-    }
-  ],
-  "0x3e45197c029b241e01ec787908e5cacec9ce62d1230009fc362a356331131b5a": [
+  "0xa1fcfa4f107b70052cfbb2e460d99c96f9b18c1197671fe00ab59c32adcddbeb": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "RewardsOnlyGauge",
@@ -27,7 +13,7 @@
       "useAdaptor": true
     }
   ],
-  "0x582a057ac2a6af38d6210cf82d397b1a8e37d0057c9e3c048a431bea266574fb": [
+  "0x1c866c9ea7b119a642f593024ced6088dbde65d041e5d3e826b9ad49b949a64b": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "RewardsOnlyGauge",
@@ -41,7 +27,7 @@
       "useAdaptor": true
     }
   ],
-  "0x1b4a46b44f0b40250b0e39d8dd6d3e554f4cb2b54e4b930f619f1e9e2a5a13a5": [
+  "0x17b18f02fd5498a6aba17d20977b1a8a08f888d821999613fee42f9f9acb0bd9": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "RewardsOnlyGauge",
@@ -55,7 +41,7 @@
       "useAdaptor": true
     }
   ],
-  "0x959d4174ac0236341e6fd7f85e7fed11948a27fa51e44b1ddeb6486b90e908c1": [
+  "0x514b6f05525a3f31c3bde60d063e91e88204c5cdc5b35934513f911943b97fcc": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "RewardsOnlyGauge",
@@ -69,7 +55,7 @@
       "useAdaptor": true
     }
   ],
-  "0x570301d2863e5329b64ec737327d88ae17e23af8794ab92d9fccadea1e14c674": [
+  "0x360a8a15589674642b2125956d96757fc2f06ff1b968333271de16a20e01df05": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "RewardsOnlyGauge",
@@ -83,7 +69,7 @@
       "useAdaptor": true
     }
   ],
-  "0x1b83016646b0a4e0aaf521a2aa574b2a62c83d1d10567379de1dec1c02bd7b1c": [
+  "0x1b288a1f96e75e2fda7a0c1ac5c35a7fd2c5e2e5c425c32152ae01f82545e2da": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "RewardsOnlyGauge",
@@ -97,7 +83,7 @@
       "useAdaptor": true
     }
   ],
-  "0x7e797160239fadbf43f7b4403f0b147757d6a9fe58eeefb888121e0c481f146b": [
+  "0xec9d6185ed79aed8edc19bc6fc25ca544504ab0970d25b191e5279100224502a": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "RewardsOnlyGauge",
@@ -111,7 +97,7 @@
       "useAdaptor": true
     }
   ],
-  "0x363cf2bd771efe16bd206d33a549d4698c4ad202ea6b5bf693722fbe151140a6": [
+  "0xd0090a09f425bba74e6c801fba7c6d15b44147ab0bd319e40076ce07e95168b6": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "ChildChainStreamer",
@@ -125,7 +111,7 @@
       "useAdaptor": true
     }
   ],
-  "0x322d97a0df341a88bf3c100fe4bbda28c2c8a55985af0612371aeba6af9222e6": [
+  "0xaa40669e74603d8e708eac95e60f78c35d5af4f59afdb700675f38c6534809f7": [
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "ChildChainLiquidityGaugeFactory",
