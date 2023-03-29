@@ -68,7 +68,9 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     mapping(bytes32 => uint256) private _revokeDelays;
 
     // External permissions
+    // keccak256(abi.encodePacked(actionId, account, where)) -> isGranted
     mapping(bytes32 => bool) private _isPermissionGranted;
+    // actionId -> delay (in seconds)
     mapping(bytes32 => uint256) private _delaysPerActionId;
 
     constructor(
@@ -353,10 +355,11 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         }
 
         bytes32 permission = getPermissionId(actionId, account, where);
-        if (!_isPermissionGranted[permission]) {
-            _isPermissionGranted[permission] = true;
-            emit PermissionGranted(actionId, account, where);
-        }
+
+        require(!_isPermissionGranted[permission], "PERMISSION_ALREADY_GRANTED");
+
+        _isPermissionGranted[permission] = true;
+        emit PermissionGranted(actionId, account, where);
     }
 
     /**
@@ -451,10 +454,11 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address where
     ) private {
         bytes32 permission = getPermissionId(actionId, account, where);
-        if (_isPermissionGranted[permission]) {
-            _isPermissionGranted[permission] = false;
-            emit PermissionRevoked(actionId, account, where);
-        }
+
+        require(_isPermissionGranted[permission], "PERMISSION_NOT_GRANTED");
+
+        _isPermissionGranted[permission] = false;
+        emit PermissionRevoked(actionId, account, where);
     }
 
     function _getDelayChangeExecutionDelay(uint256 currentDelay, uint256 newDelay) private pure returns (uint256) {
