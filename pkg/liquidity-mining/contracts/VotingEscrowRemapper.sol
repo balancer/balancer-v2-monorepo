@@ -146,29 +146,49 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         address localUser,
         address remoteUser,
         uint256 chainId
-    ) external payable {
+    ) external payable nonReentrant {
         _require(msg.sender == localUser || msg.sender == _localRemappingManager[localUser], Errors.SENDER_NOT_ALLOWED);
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL can set up a mapping");
         require(remoteUser != address(0), "Zero address cannot be used as remote user");
         IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
         require(address(omniVotingEscrow) != address(0), "Omni voting escrow not set");
 
-        // Since we keep a 1-to-1 local-remote mapping for each chain, the remote address must not
-        // already be in use by another local user.
+        // We keep a 1-to-1 local-remote mapping for each chain.
+        // If A --> B (i.e. A in the local chain is remapped to B in the remote chain), to keep the state consistent
+        // the user effectively 'owns' both A and B in both chains.
+        //
+        // This means that whenever a new address is created (assuming A --> B previously):
+        // - The remote address must not already be in use by another local user (C --> B is forbidden).
+        // - The remote address must not be a local address that has already been remapped (C --> A is forbidden).
+        // - The local address must not be the target remote address for another local user (B --> C is forbidden).
+        //
         // Note that this means that it is possible to frontrun this call to grief a user by taking up their
-        // selected remote address. This is mitigated somewhat by restricting potential attackers to the
-        // set of contracts that are allowlisted to hold veBAL (and their remapping managers). Should
+        // selected remote address before they do so. This is mitigated somewhat by restricting potential attackers to
+        // the set of contracts that are allowlisted to hold veBAL (and their remapping managers). Should
         // one of them grief, then Balancer governance can remove them from these allowlists.
+
+        // Assuming A --> B, then C cannot be remapped to B.
+        // To prevent it, we verify that the reverse mapping of B does not exist.
         require(
             _remoteToLocalAddressMap[chainId][remoteUser] == address(0),
             "Cannot overwrite an existing mapping by another user"
         );
 
-        // TODO: confirm this (and test if required).
-        // require(
-        //     _localToRemoteAddressMap[chainId][remoteUser] == address(0),
-        //     "Cannot to remap to an address that is in use locally"
-        // );
+        // TODO: Test.
+        // Assuming A --> B, then C cannot be remapped to A.
+        // To prevent it, we verify that the mapping of A does not exist.
+        require(
+            _localToRemoteAddressMap[chainId][remoteUser] == address(0),
+            "Cannot to remap to an address that is in use locally"
+        );
+
+        // Assuming A --> B, then B cannot be remapped to C.
+        // To prevent it, we verify that the reverse mapping of B does not exist.
+        require(
+            _remoteToLocalAddressMap[chainId][localUser] == address(0),
+            "Cannot to an address that is in use remotely"
+        );
+
 
         // This is a best-effort check: we should not allow griefing the existing balance of an account,
         // because with this remapping we would overwrite it in the target chain ID.
