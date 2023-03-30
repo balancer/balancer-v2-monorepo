@@ -12,4 +12,5 @@ Deployment of the `ProtocolFeePercentagesProvider` contract. It provides a conve
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Base Goerli addresses](./output/basegoerli.json)
 - [`ProtocolFeePercentagesProvider` artifact](./artifact/ProtocolFeePercentagesProvider.json)

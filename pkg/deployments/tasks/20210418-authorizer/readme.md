@@ -14,4 +14,5 @@ This contract is expected to be eventually replaced by one with a) native suppor
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Base Goerli addresses](./output/basegoerli.json)
 - [`Authorizer` artifact](./artifact/Authorizer.json)

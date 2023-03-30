@@ -13,4 +13,5 @@ Supersedes `20230206-weighted-pool-v3`.
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Base Goerli addresses](./output/basegoerli.json)
 - [`WeightedPoolFactory` artifact](./artifact/WeightedPoolFactory.json)
