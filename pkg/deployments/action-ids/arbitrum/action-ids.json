@@ -616,5 +616,35 @@
         "setDelegation(address)": "0xab668cacffdf6f785bcac395e15f5f5b4b109b0320004b24c7c39937e71d585c"
       }
     }
+  },
+  "20230316-child-chain-gauge-factory-v2": {
+    "ChildChainGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "add_reward(address,address)": "0x56245c361d1ed9e55e6f9889e49f36d9991761b712de544f847b557a84ccd62f",
+        "claim_rewards()": "0x91968649430f7ae3ddd77961aae381ea7718e20aea3725fc16a92be8177a7980",
+        "claim_rewards(address)": "0x260da37aeebf8f3f8aa9f352c114ce7c9961629dfbab0299523e02301d92da90",
+        "claim_rewards(address,address)": "0xe3bd909dfff4cffaef97f4f375216900ec20e1690c9f8234ab9d00101675ec0f",
+        "claim_rewards(address,address,uint256[])": "0x730de891a977f0b4b0c773fccf29c5f3aa7e7ca7fa8732820e3e140fabad49b1",
+        "claimable_tokens(address)": "0xf90a050f616da253267156fafbd98d4ca1f4ecc6737427e266c5740e7e275dfb",
+        "deposit(uint256)": "0xc5471dc27ecb4078a3f2cc12480309d946f6984544369303bc9ff2bb1a8e303e",
+        "deposit(uint256,address)": "0xefc8635b1b670cab330cc5b82805765e708fe37f678bd6c79045c3a09ec255ad",
+        "deposit_reward_token(address,uint256)": "0x887154fb599c6c6eae25fba523026c5516eb6871eb59b3b9158508d34170de4f",
+        "initialize(address,string)": "0x343cc63075dbfae7650b2495dbe04a157331c60346611d03b6785c5c01b051d7",
+        "killGauge()": "0x974ac973bc6a04f0e8fef896970a1341c374c2318927ec8e06c8183e8ffcdfbf",
+        "set_reward_distributor(address,address)": "0xa7ed295af0b197c9481510d6c8326ba2e2d17b2c1a89ab1834ac80de9220b60e",
+        "set_rewards_receiver(address)": "0xf0fcfa57d89e7197a1b15f9bc73c4b76cdc0a3d7dfb1a7fcda866dcfe1265379",
+        "unkillGauge()": "0xc84ffbb04eeb8135bc228f1b76e343cc34a6dcc1560ab3d545d8a8b8e6f1d7c1",
+        "user_checkpoint(address)": "0x53b3767c6a97d337d5350b6160b603f2cb60f2661b56e86e17b4ef6e4efb9b7e",
+        "withdraw(uint256)": "0xbbc15eb82e631a665042a77fc37ea62d0e86da7c60222ed9d17299ecc039f0a9",
+        "withdraw(uint256,address)": "0x7569754654bae77e0b1ab677e0dbbd815bd325eb86169569ac7a38223c9a782c"
+      }
+    },
+    "ChildChainGaugeFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(address)": "0xcba3bd68b8c2df80d0366b2640dd6615b7d466b5d39d1f3de311ba249adbbbbf"
+      }
+    }
   }
 }
