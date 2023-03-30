@@ -164,11 +164,16 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
             "Cannot overwrite an existing mapping by another user"
         );
 
-        // TODO: confirm this.
+        // TODO: confirm this (and test if required).
         // require(
         //     _localToRemoteAddressMap[chainId][remoteUser] == address(0),
         //     "Cannot to remap to an address that is in use locally"
         // );
+
+        // This is a best-effort check: we should not allow griefing the existing balance of an account,
+        // because with this remapping we would overwrite it in the target chain ID.
+        // TODO: test.
+        require(_votingEscrow.balanceOf(remoteUser) == 0, "Target remote address has non-zero veBAL balance");
 
         // Clear out the old remote user to avoid orphaned entries.
         address oldRemoteUser = _localToRemoteAddressMap[chainId][localUser];
