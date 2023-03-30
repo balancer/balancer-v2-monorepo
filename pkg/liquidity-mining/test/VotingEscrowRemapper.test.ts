@@ -13,7 +13,7 @@ describe('VotingEscrowRemapper', function () {
   let vault: Vault;
   let smartWalletChecker: Contract;
   let remapper: Contract;
-  let votingEscrow: Contract;
+  let votingEscrow: Contract, omniVotingEscrow: Contract;
 
   let admin: SignerWithAddress, local: SignerWithAddress, manager: SignerWithAddress, other: SignerWithAddress;
   let remote: string;
@@ -28,13 +28,50 @@ describe('VotingEscrowRemapper', function () {
 
     smartWalletChecker = await deploy('SmartWalletChecker', { args: [vault.address, []] });
     votingEscrow = await deploy('MockVotingEscrow', { args: [smartWalletChecker.address] });
+    omniVotingEscrow = await deploy('MockOmniVotingEscrow');
 
     remapper = await deploy('VotingEscrowRemapper', { args: [votingEscrow.address, vault.address] });
   });
 
-  sharedBeforeEach('grant permissions to allow/denylist tokens', async () => {
+  sharedBeforeEach('grant permissions over smart wallet checker', async () => {
     await vault.grantPermissionGlobally(await actionId(smartWalletChecker, 'allowlistAddress'), admin);
     await vault.grantPermissionGlobally(await actionId(smartWalletChecker, 'denylistAddress'), admin);
+  });
+
+  describe('default getters', () => {
+    it('gets voting escrow', async () => {
+      expect(await remapper.getVotingEscrow()).to.be.eq(votingEscrow.address);
+    });
+
+    it('gets null omni voting escrow', async () => {
+      expect(await remapper.getOmniVotingEscrow()).to.be.eq(ZERO_ADDRESS);
+    });
+  });
+
+  describe('setOmniVotingEscrow', () => {
+    context('without permissions', () => {
+      it('reverts', async () => {
+        await expect(remapper.setOmniVotingEscrow(omniVotingEscrow.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+
+    context('with permissions', () => {
+      sharedBeforeEach(async () => {
+        await vault.grantPermissionGlobally(await actionId(remapper, 'setOmniVotingEscrow'), admin);
+      });
+
+      it('sets omni voting escrow', async () => {
+        remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
+        expect(await remapper.getOmniVotingEscrow()).to.be.eq(omniVotingEscrow.address);
+      });
+
+      it('emits an event', async () => {
+        const tx = remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
+        expectEvent.inReceipt(await tx.wait(), 'OmniVotingEscrowUpdated', {
+          newOmniVotingEscrow: omniVotingEscrow.address,
+        });
+      });
+    });
   });
 
   describe('setNetworkRemapping', () => {
@@ -42,15 +79,29 @@ describe('VotingEscrowRemapper', function () {
     const otherChainId = 42;
     let caller: SignerWithAddress;
 
-    it('reverts if the local user is not allowed by the smart wallet checker', async () => {
-      await expect(remapper.connect(local).setNetworkRemapping(local.address, remote, chainId)).to.be.revertedWith(
-        'Only contracts which can hold veBAL can set up a mapping'
-      );
+    sharedBeforeEach(async () => {
+      await vault.grantPermissionGlobally(await actionId(remapper, 'setOmniVotingEscrow'), admin);
     });
 
-    context('when the local user is allowed by the smart wallet checker', () => {
+    context('incorrect setup: deny-listed by smart wallet checker and OmniVotingEscrow unset', () => {
+      it('reverts if the local user is not allowed by the smart wallet checker', async () => {
+        await expect(remapper.connect(local).setNetworkRemapping(local.address, remote, chainId)).to.be.revertedWith(
+          'Only contracts which can hold veBAL can set up a mapping'
+        );
+      });
+
+      it('reverts if local user is allowed by the smart wallet checker, but OmniVotingEscrow is not set', async () => {
+        await smartWalletChecker.connect(admin).allowlistAddress(local.address);
+        await expect(remapper.connect(local).setNetworkRemapping(local.address, remote, chainId)).to.be.revertedWith(
+          'Omni voting escrow not set'
+        );
+      });
+    });
+
+    context('correct setup: allow-listed by smart wallet checker and OmniVotingEscrow set', () => {
       sharedBeforeEach(async () => {
         await smartWalletChecker.connect(admin).allowlistAddress(local.address);
+        remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
       });
 
       context('when the caller is the local user', () => {
