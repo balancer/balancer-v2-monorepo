@@ -171,9 +171,9 @@ describe('VotingEscrowRemapper', function () {
         });
 
         it('emits an AddressMappingUpdated event', async () => {
-          const receipt = await doRemap(remote);
+          const tx = await doRemap(remote);
 
-          expectEvent.inReceipt(await receipt.wait(), 'AddressMappingUpdated', {
+          expectEvent.inReceipt(await tx.wait(), 'AddressMappingUpdated', {
             localUser: local.address,
             remoteUser: remote,
             chainId,
@@ -190,11 +190,25 @@ describe('VotingEscrowRemapper', function () {
           expect(await remapper.getLocalUser(remote, chainId)).to.be.eq(ZERO_ADDRESS);
         });
 
-        it('reverts if the remote is already taken', async () => {
+        it('reverts if the remote is already taken (A --> B, then C cannot map to B)', async () => {
           await smartWalletChecker.connect(admin).allowlistAddress(other.address);
           await remapper.connect(other).setNetworkRemapping(other.address, remote, chainId);
 
           await expect(doRemap(remote)).to.be.revertedWith('Cannot overwrite an existing mapping by another user');
+        });
+
+        it('reverts if local address is mapped somewhere else (A --> B, then C cannot map to A)', async () => {
+          await smartWalletChecker.connect(admin).allowlistAddress(other.address);
+          await remapper.connect(other).setNetworkRemapping(other.address, remote, chainId);
+
+          await expect(doRemap(other.address)).to.be.revertedWith('Cannot remap to an address that is in use locally');
+        });
+
+        it('reverts if local address is the remote address for somebody else (A --> B, then B cannot map to C)', async () => {
+          await smartWalletChecker.connect(admin).allowlistAddress(other.address);
+          await remapper.connect(other).setNetworkRemapping(other.address, local.address, chainId);
+
+          await expect(doRemap(remote)).to.be.revertedWith('Cannot remap to an address that is in use remotely');
         });
       }
 
