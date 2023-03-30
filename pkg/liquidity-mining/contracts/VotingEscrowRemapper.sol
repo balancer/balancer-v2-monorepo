@@ -189,7 +189,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
             "Cannot to an address that is in use remotely"
         );
 
-
         // This is a best-effort check: we should not allow griefing the existing balance of an account,
         // because with this remapping we would overwrite it in the target chain ID.
         // TODO: test.
@@ -258,7 +257,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
      * @param chainId - The chain id of the network to erase.
      */
     function clearNetworkRemapping(address localUser, uint256 chainId) external payable nonReentrant {
-        require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing.");
+        require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing");
         IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
         require(address(omniVotingEscrow) != address(0), "Omni voting escrow not set");
 

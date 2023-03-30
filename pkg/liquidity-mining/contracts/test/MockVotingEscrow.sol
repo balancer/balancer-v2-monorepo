@@ -36,6 +36,8 @@ contract MockVotingEscrow {
     mapping(address => uint256) public user_point_epoch;
     // user ==> lock's end
     mapping(address => uint256) public locked__end;
+    // user ==> balance
+    mapping(address => uint256) public balanceOf;
 
     ISmartWalletChecker private _smartWalletChecker;
 
@@ -69,5 +71,9 @@ contract MockVotingEscrow {
 
     function setLockedEnd(address user, uint256 end) external {
         locked__end[user] = end;
+    }
+
+    function setBalanceOf(address user, uint256 balance) external {
+        balanceOf[user] = balance;
     }
 }
