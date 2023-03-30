@@ -190,7 +190,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
 
         // This is a best-effort check: we should not allow griefing the existing balance of an account,
         // because with this remapping we would overwrite it in the target chain ID.
-        // TODO: test.
         require(_votingEscrow.balanceOf(remoteUser) == 0, "Target remote address has non-zero veBAL balance");
 
         // Clear out the old remote user to avoid orphaned entries.

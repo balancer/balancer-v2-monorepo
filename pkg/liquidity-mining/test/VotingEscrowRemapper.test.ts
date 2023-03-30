@@ -210,6 +210,11 @@ describe('VotingEscrowRemapper', function () {
 
           await expect(doRemap(remote)).to.be.revertedWith('Cannot remap to an address that is in use remotely');
         });
+
+        it('reverts if target remote address has veBAL (griefing)', async () => {
+          await votingEscrow.setBalanceOf(remote, 1);
+          await expect(doRemap(remote)).to.be.revertedWith('Target remote address has non-zero veBAL balance');
+        });
       }
 
       function itRevertsIfRemoteUserIsZero() {
