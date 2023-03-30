@@ -213,7 +213,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
             omniVotingEscrow.sendUserBalance{ value: nativeFee }(
                 oldRemoteUser,
                 uint16(chainId),
-                payable(oldRemoteUser),
+                payable(msg.sender),
                 address(0),
                 ""
             );
@@ -223,7 +223,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         omniVotingEscrow.sendUserBalance{ value: nativeFee }(
             localUser,
             uint16(chainId),
-            payable(localUser),
+            payable(msg.sender),
             address(0),
             ""
         );
@@ -276,14 +276,14 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         omniVotingEscrow.sendUserBalance{ value: nativeFee }(
             localUser,
             uint16(chainId),
-            payable(localUser),
+            payable(msg.sender),
             address(0),
             ""
         );
         omniVotingEscrow.sendUserBalance{ value: nativeFee }(
             remoteUser,
             uint16(chainId),
-            payable(localUser),
+            payable(msg.sender),
             address(0),
             ""
         );
