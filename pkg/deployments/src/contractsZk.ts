@@ -27,7 +27,6 @@ export async function deployZk(
     artifact.bytecode as utils.BytesLike,
     zkSigner
   );
-  console.log(factoryDeps);
   const deployment = await factory.deploy(...args, {
     customData: {
       factoryDeps,

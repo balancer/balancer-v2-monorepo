@@ -41,7 +41,6 @@
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
 import '@matterlabs/hardhat-zksync-solc';
-import 'hardhat-ignore-warnings';
 
 export default {
   solidity: {

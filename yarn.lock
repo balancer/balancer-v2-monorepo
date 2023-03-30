@@ -471,6 +471,9 @@ __metadata:
     "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
+    "@matterlabs/hardhat-zksync-deploy": ^0.6.3
+    "@matterlabs/hardhat-zksync-solc": ^0.3.14
+    "@matterlabs/hardhat-zksync-verify": ^0.1.4
     "@nomiclabs/hardhat-ethers": ^2.2.1
     "@nomiclabs/hardhat-waffle": ^2.0.3
     "@types/chai": ^4.3.3
@@ -501,6 +504,7 @@ __metadata:
     solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
+    zksync-web3: ^0.14.3
   languageName: unknown
   linkType: soft
 
@@ -626,7 +630,7 @@ __metadata:
     solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
-    zksync-web3: ^0.13.1
+    zksync-web3: ^0.14.3
   languageName: unknown
   linkType: soft
 
@@ -15012,15 +15016,6 @@ typescript@^4.0.2:
   version: 0.1.0
   resolution: "yocto-queue@npm:0.1.0"
   checksum: 096c3b40beb2804659539be1605a35c58eb0c85285f94b77b3e924f42ee265c1a40bf9f4153770039517146b469a964d51742395f35ca8135fc9f7e4982b785d
-  languageName: node
-  linkType: hard
-
-"zksync-web3@npm:^0.13.1":
-  version: 0.13.4
-  resolution: "zksync-web3@npm:0.13.4"
-  peerDependencies:
-    ethers: ^5.7.0
-  checksum: e23940dd207f45a13420543a2d60e21553305b51da1b91da2c34c150b45f0b4269e0739454f38b40fafb92ce6205ffcf1b45ea916de964b8ee87214b83f5e362
   languageName: node
   linkType: hard
 
