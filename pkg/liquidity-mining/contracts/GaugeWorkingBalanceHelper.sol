@@ -20,7 +20,6 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVeDelegation.so
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "hardhat/console.sol";
 
 // There is already an IVeDelegation with the first two
 interface IVeDelegationProxy is IVeDelegation {
@@ -29,7 +28,10 @@ interface IVeDelegationProxy is IVeDelegation {
 
 interface IGauge {
     function balanceOf(address user) external view returns (uint256);
+
     function totalSupply() external view returns (uint256);
+
+    // solhint-disable-next-line func-name-mixedcase
     function working_balances(address user) external view returns (uint256);
 }
 
@@ -43,32 +45,34 @@ contract GaugeWorkingBalanceHelper {
     using FixedPoint for uint256;
     using SafeMath for uint256;
 
-    uint256 private constant TOKENLESS_PRODUCTION = 40e17; // 40% (minimum balance, with no veBAL)
+    uint256 private constant _TOKENLESS_PRODUCTION = 40e17; // 40% (minimum balance, with no veBAL)
 
     IVeDelegationProxy private immutable _veDelegationProxy;
     IERC20 private immutable _veBAL;
-    bool private immutable _onMainnet;
+    bool public immutable onMainnet;
 
-    constructor(IVeDelegationProxy veDelegationProxy, bool onMainnet) {
+    constructor(IVeDelegationProxy veDelegationProxy, bool _onMainnet) {
         _veDelegationProxy = veDelegationProxy;
         _veBAL = veDelegationProxy.getVotingEscrow();
-        _onMainnet = onMainnet;
+        onMainnet = _onMainnet;
     }
 
+    /**
+     * @dev Returns the VotingEscrowDelegationProxy.
+     */
     function getVotingEscrowDelegationProxy() external view returns (address) {
         return address(_veDelegationProxy);
     }
 
+    /**
+     * @dev Returns the VotingEscrow contract associated with the proxy.
+     */
     function getVotingEscrow() external view returns (address) {
         return address(_veBAL);
     }
 
-    function onMainnet() public view returns (bool) {
-        return _onMainnet;
-    }
-
     /**
-     * 
+     *
      * @param gauge - address of a gauge (L1 or L2).
      * @param user - address of a user.
      * @return current `working_balance` of the user on this Gauge.
@@ -78,21 +82,19 @@ contract GaugeWorkingBalanceHelper {
         uint256 currentWorkingBalance = gauge.working_balances(user);
 
         uint256 gaugeUserBalance = gauge.balanceOf(user);
-        console.log("Contract: userBalance=%s", gaugeUserBalance);
         uint256 gaugeTotalSupply = gauge.totalSupply();
-        console.log("Contract: gaugeTotalSupply=%s", gaugeTotalSupply);
 
         uint256 veUserBalance = _veDelegationProxy.adjusted_balance_of(user);
-        console.log("Contract: veUserBalance=%s", veUserBalance);
-        uint256 veTotalSupply = onMainnet() ? _veBAL.totalSupply() : _veDelegationProxy.totalSupply();
-        console.log("Contract: veTotalSupply=%s", veTotalSupply);
+        uint256 veTotalSupply = onMainnet ? _veBAL.totalSupply() : _veDelegationProxy.totalSupply();
 
-        uint256 projectedWorkingBalance = gaugeUserBalance.mulDown(TOKENLESS_PRODUCTION);
+        uint256 projectedWorkingBalance = gaugeUserBalance.mulDown(_TOKENLESS_PRODUCTION);
 
         if (veTotalSupply > 0) {
             projectedWorkingBalance = SafeMath.add(
-              projectedWorkingBalance,
-              gaugeTotalSupply.mulDown(veUserBalance).mulDown(TOKENLESS_PRODUCTION.complement()).divDown(veTotalSupply)
+                projectedWorkingBalance,
+                gaugeTotalSupply.mulDown(veUserBalance).mulDown(_TOKENLESS_PRODUCTION.complement()).divDown(
+                    veTotalSupply
+                )
             );
         }
 
