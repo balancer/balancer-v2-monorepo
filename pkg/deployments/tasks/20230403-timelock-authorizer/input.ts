@@ -32,7 +32,7 @@ export async function getOnChainRoles(roles: RoleData[], start: number, end: num
   // remove all the roles not present onchain
   // because some added roles might be removed later
   const onchainRoles: RoleData[] = [];
-  for (let role of roles.concat(grantedRoles)) {
+  for (const role of roles.concat(grantedRoles)) {
     if (await oldAuthorizer.canPerform(role.role, role.grantee, role.target)) {
       onchainRoles.push(role);
     }
