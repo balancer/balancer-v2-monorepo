@@ -346,11 +346,6 @@ describe('VotingEscrowRemapper', function () {
         expect(await remapper.getLocalUser(remote, otherChainId)).to.be.eq(local.address);
       });
 
-      it('clears existing remapping manager', async () => {
-        await doClearMap();
-        expect(await remapper.getRemappingManager(local.address)).to.be.eq(ZERO_ADDRESS);
-      });
-
       it('emits an AddressMappingUpdated event', async () => {
         const tx = await doClearMap();
 
@@ -478,6 +473,14 @@ describe('VotingEscrowRemapper', function () {
         itClearsNetworkRemapping();
       });
     });
+
+    context('when local user is zero address', () => {
+      it('reverts', async () => {
+        await expect(remapper.clearNetworkRemapping(ZERO_ADDRESS, chainId)).to.be.revertedWith(
+          'localUser cannot be zero address'
+        );
+      });
+    });
   });
 
   describe('setNetworkRemappingManager', () => {
@@ -514,72 +517,6 @@ describe('VotingEscrowRemapper', function () {
           remapper.connect(other).setNetworkRemappingManager(local.address, manager.address)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
-    });
-  });
-
-  describe('getUserPointOnRemoteChain', () => {
-    const chainId = 37;
-    const otherChainId = 15;
-    const epoch = 23;
-
-    // Point to be assigned to `local` address in the voting escrow.
-    const localPoint = {
-      bias: 1,
-      slope: 2,
-      ts: 3,
-      blk: 4,
-    };
-
-    // Point to be assigned to `other` address in the voting escrow.
-    const otherPoint = {
-      bias: 5,
-      slope: 6,
-      ts: 7,
-      blk: 8,
-    };
-
-    // Point to be assigned to `remote` address in the voting escrow.
-    const remotePoint = {
-      bias: 9,
-      slope: 10,
-      ts: 11,
-      blk: 12,
-    };
-
-    sharedBeforeEach(async () => {
-      await smartWalletChecker.connect(admin).allowlistAddress(local.address);
-      await vault.grantPermissionGlobally(await actionId(remapper, 'setOmniVotingEscrow'), admin);
-      await remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
-
-      await remapper.connect(local).setNetworkRemapping(local.address, remote, chainId);
-
-      // Mock setters
-      await votingEscrow.setUserPointEpoch(local.address, epoch);
-      await votingEscrow.setUserPointHistory(local.address, epoch, localPoint);
-      expect(await votingEscrow.user_point_epoch(local.address)).to.be.eq(epoch);
-      expect(await votingEscrow.user_point_history(local.address, epoch)).to.be.deep.eq(Object.values(localPoint));
-
-      await votingEscrow.setUserPointEpoch(other.address, epoch);
-      await votingEscrow.setUserPointHistory(other.address, epoch, otherPoint);
-      expect(await votingEscrow.user_point_epoch(other.address)).to.be.eq(epoch);
-      expect(await votingEscrow.user_point_history(other.address, epoch)).to.be.deep.eq(Object.values(otherPoint));
-
-      await votingEscrow.setUserPointEpoch(remote, epoch);
-      await votingEscrow.setUserPointHistory(remote, epoch, remotePoint);
-      expect(await votingEscrow.user_point_epoch(remote)).to.be.eq(epoch);
-      expect(await votingEscrow.user_point_history(remote, epoch)).to.be.deep.eq(Object.values(remotePoint));
-    });
-
-    it('returns user point when a remapping exists', async () => {
-      expect(await remapper.getUserPointOnRemoteChain(remote, chainId)).to.be.deep.eq(Object.values(localPoint));
-    });
-
-    it('returns user point when a remapping does not exist', async () => {
-      expect(await remapper.getUserPointOnRemoteChain(other.address, chainId)).to.be.deep.eq(Object.values(otherPoint));
-    });
-
-    it('returns user point when user is not remapped in another chain ID', async () => {
-      expect(await remapper.getUserPointOnRemoteChain(remote, otherChainId)).to.be.deep.eq(Object.values(remotePoint));
     });
   });
 
