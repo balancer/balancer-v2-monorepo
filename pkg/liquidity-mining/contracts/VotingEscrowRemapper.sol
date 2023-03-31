@@ -65,27 +65,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Allows querying the veBAL balance of an address on a remote chain.
-     * @dev We return the user's balance as a Point to allow extrapolating this into the future.
-     * If no mapping exists for the remote user, it is assumed that its address in the L1 is the same.
-     * @param remoteUser - Address of the user on the remote chain which are querying the balance for.
-     * @param chainId - The chain ID of the network which this user is on.
-     * @return The veBAL balance of `remoteUser` to be used on the specified network.
-     */
-    function getUserPointOnRemoteChain(address remoteUser, uint256 chainId)
-        external
-        view
-        returns (IVotingEscrow.Point memory)
-    {
-        address localRemap = getLocalUser(remoteUser, chainId);
-        address localUser = localRemap == address(0) ? remoteUser : localRemap;
-
-        IVotingEscrow votingEscrow = getVotingEscrow();
-        uint256 userEpoch = votingEscrow.user_point_epoch(localUser);
-        return votingEscrow.user_point_history(localUser, userEpoch);
-    }
-
-    /**
      * @notice Returns the current total supply of veBAL as a Point.
      * @dev We return the total supply as a Point to allow extrapolating this into the future.
      */
@@ -127,7 +106,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         return _localRemappingManager[localUser];
     }
 
-    function setOmniVotingEscrow(IOmniVotingEscrow omniVotingEscrow) external authenticate {
+    function setOmniVotingEscrow(IOmniVotingEscrow omniVotingEscrow) external authenticate nonReentrant {
         _omniVotingEscrow = omniVotingEscrow;
         emit OmniVotingEscrowUpdated(omniVotingEscrow);
     }
@@ -200,6 +179,8 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         _remoteToLocalAddressMap[chainId][remoteUser] = localUser;
         _localToRemoteAddressMap[chainId][localUser] = remoteUser;
 
+        emit AddressMappingUpdated(localUser, remoteUser, uint16(chainId));
+
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
         (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(uint16(chainId), false, "");
@@ -224,7 +205,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
             ""
         );
 
-        emit AddressMappingUpdated(localUser, remoteUser, uint16(chainId));
         // Send back any leftover ETH to the caller.
         uint256 remainingBalance = address(this).balance;
         if (remainingBalance > 0) {
@@ -238,7 +218,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
      * @param localUser - The address of a contract allowlisted on the `SmartWalletChecker`.
      * @param delegate - The address which is allowed to manage remote users to be linked to `localUser`.
      */
-    function setNetworkRemappingManager(address localUser, address delegate) external authenticate {
+    function setNetworkRemappingManager(address localUser, address delegate) external authenticate nonReentrant {
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL may have a delegate");
 
         _localRemappingManager[localUser] = delegate;
@@ -254,15 +234,20 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
      * @param chainId - The chain id of the network to erase.
      */
     function clearNetworkRemapping(address localUser, uint256 chainId) external payable nonReentrant {
+        require(localUser != address(0), "localUser cannot be address(0)");
         require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing");
         IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
         require(address(omniVotingEscrow) != address(0), "Omni voting escrow not set");
 
         address remoteUser = _localToRemoteAddressMap[chainId][localUser];
+        require(remoteUser != address(0), "Remapping to clear does not exist");
 
         _remoteToLocalAddressMap[chainId][remoteUser] = address(0);
         _localToRemoteAddressMap[chainId][localUser] = address(0);
         _localRemappingManager[localUser] = address(0);
+
+        emit AddressMappingUpdated(localUser, address(0), chainId);
+        emit AddressDelegateUpdated(localUser, address(0));
 
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
@@ -282,9 +267,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
             address(0),
             ""
         );
-
-        emit AddressMappingUpdated(localUser, address(0), chainId);
-        emit AddressDelegateUpdated(localUser, address(0));
 
         // Send back any leftover ETH to the caller.
         uint256 remainingBalance = address(this).balance;

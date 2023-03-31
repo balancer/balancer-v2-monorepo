@@ -16,6 +16,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 /**
  * @dev Partial voting escrow bridge interface.
+ * See https://github.com/LayerZero-Labs/lz_gauges/blob/main/contracts/OmniVotingEscrow.sol for reference.
  */
 interface IOmniVotingEscrow {
     function estimateSendUserBalance(
