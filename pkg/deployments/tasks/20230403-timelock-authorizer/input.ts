@@ -29,8 +29,7 @@ export async function getOnChainRoles(roles: RoleData[], start: number, end: num
   // Filter already present roles
   const grantedRoles = await getTransitionRoles(getForkedNetwork(hre), start, end, 'RoleGranted');
 
-  // remove all the roles not present onchain
-  // because some added roles might be removed later
+  // Some roles that were granted might have been later removed, so we filter those out
   const onchainRoles: RoleData[] = [];
   for (const role of roles.concat(grantedRoles)) {
     if (await oldAuthorizer.canPerform(role.role, role.grantee, role.target)) {
