@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Deprecations
+
+- Deprecated `20221202-timelock-authorizer`.
+
 ### New Deployments
 
 - Deployed `BatchRelayerLibrary` V5 to all networks.
