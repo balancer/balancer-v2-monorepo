@@ -15,7 +15,7 @@ const SmartWalletChecker = new Task('20220420-smart-wallet-checker', TaskMode.RE
 const DAO_MULTISIG = '0x171C0fF5943CE5f133130436A29bF61E26516003';
 
 // Start: block that contains the transaction that deployed the `TimelockAuthorizer`.
-// <!-- markdown-link-check-disable --> etherscan.io/tx/0x20eb23f4393fd592240ec788f44fb9658cc6ef487b88398e9b76c910294c4eae <!-- markdown-link-check-enable -->
+// etherscan.io/tx/0x20eb23f4393fd592240ec788f44fb9658cc6ef487b88398e9b76c910294c4eae
 // End: close to the current block at the time the `TimelockAuthorizerMigrator` is deployed.
 // It is expected that no roles were granted to the old authorizer after it.
 export const TRANSITION_START_BLOCK = 8745337;
@@ -24,7 +24,7 @@ export const TRANSITION_END_BLOCK = 8745437;
 export const Root = DAO_MULTISIG;
 
 // Permission fetched from TheGraph
-// <!-- markdown-link-check-disable --> thegraph.com/hosted-service/subgraph/balancer-labs/balancer-authorizer-goerli <!-- markdown-link-check-enable -->
+// thegraph.com/hosted-service/subgraph/balancer-labs/balancer-authorizer-goerli
 const theGraphRoles = [
   {
     id: '0x014d6b43e6c60cd9f1183053447be80d6c6ca5d245f2fd594f23289f1a847769',
