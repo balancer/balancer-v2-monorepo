@@ -202,7 +202,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
 
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
-        // TODO: figure out correct way of bridging.
         (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(uint16(chainId), false, "");
         if (oldRemoteUser != address(0)) {
             // If there was an old mapping, send balance from (local) oldRemoteUser --> (remote) oldRemoteUser
@@ -267,7 +266,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
 
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
-        // TODO: figure out correct way of bridging.
         // Clean up the balance for the old mapping, and bridge the new (default) one.
         (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(uint16(chainId), false, "");
         omniVotingEscrow.sendUserBalance{ value: nativeFee }(
