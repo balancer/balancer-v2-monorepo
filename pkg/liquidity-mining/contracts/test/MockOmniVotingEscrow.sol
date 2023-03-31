@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOmniVotingEscrow.sol";
 
 contract MockOmniVotingEscrow is IOmniVotingEscrow {
-    event SendUserBalance(address user, uint16 chainId, address paymentAddress);
+    event SendUserBalance(address user, uint16 chainId, address refundAddress);
 
     uint256 private _nativeFee;
     uint256 private _zroFee;
@@ -35,10 +35,14 @@ contract MockOmniVotingEscrow is IOmniVotingEscrow {
     function sendUserBalance(
         address _user,
         uint16 _dstChainId,
-        address payable,
-        address _zroPaymentAddress,
+        address payable _refundAddress,
+        address,
         bytes memory
     ) external payable override {
-        emit SendUserBalance(_user, _dstChainId, _zroPaymentAddress);
+        emit SendUserBalance(_user, _dstChainId, _refundAddress);
+    }
+
+    function setNativeFee(uint256 nativeFee) external {
+        _nativeFee = nativeFee;
     }
 }

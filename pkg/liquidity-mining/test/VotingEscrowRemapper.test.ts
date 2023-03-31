@@ -8,6 +8,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ZERO_ADDRESS, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
+import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('VotingEscrowRemapper', function () {
   let vault: Vault;
@@ -113,6 +114,10 @@ describe('VotingEscrowRemapper', function () {
           remapper.connect(caller).setNetworkRemapping(local.address, remoteAddr, chainId)
         );
 
+        itInteractsWithBridge((value) =>
+          remapper.connect(caller).setNetworkRemapping(local.address, remote, chainId, { value })
+        );
+
         itRevertsIfRemoteUserIsZero();
       });
 
@@ -125,6 +130,10 @@ describe('VotingEscrowRemapper', function () {
 
         itRemapsCorrectly((remoteAddr) =>
           remapper.connect(caller).setNetworkRemapping(local.address, remoteAddr, chainId)
+        );
+
+        itInteractsWithBridge((value) =>
+          remapper.connect(caller).setNetworkRemapping(local.address, remote, chainId, { value })
         );
 
         it('reverts if remapping for another local user', async () => {
@@ -214,6 +223,79 @@ describe('VotingEscrowRemapper', function () {
         it('reverts if target remote address has veBAL (griefing)', async () => {
           await votingEscrow.setBalanceOf(remote, 1);
           await expect(doRemap(remote)).to.be.revertedWith('Target remote address has non-zero veBAL balance');
+        });
+      }
+
+      function itInteractsWithBridge(doRemap: (value: BigNumberish) => Promise<ContractTransaction>) {
+        describe('bridge interaction', () => {
+          const nativeFee = 20;
+
+          sharedBeforeEach(async () => {
+            await omniVotingEscrow.setNativeFee(nativeFee);
+          });
+
+          context('when the value sent does not cover the minimum fee amount', () => {
+            it('reverts with single bridge / no pre-existing remapping', async () => {
+              await expect(doRemap(nativeFee - 1)).to.be.reverted;
+            });
+
+            it('reverts with double bridge / pre-existing remapping', async () => {
+              await remapper
+                .connect(local)
+                .setNetworkRemapping(local.address, other.address, chainId, { value: nativeFee });
+
+              await expect(doRemap(nativeFee * 2 - 1)).to.be.reverted;
+            });
+          });
+
+          context('when the value sent covers the minimum fee amount', () => {
+            it('bridges only the remapped address if there was no pre-existing one', async () => {
+              const tx = await doRemap(nativeFee);
+              expectEvent.inIndirectReceipt(
+                await tx.wait(),
+                omniVotingEscrow.interface,
+                'SendUserBalance',
+                {
+                  user: local.address,
+                  chainId,
+                  refundAddress: caller.address,
+                },
+                omniVotingEscrow.address,
+                1
+              );
+            });
+
+            it('bridges the remapped address and clears the pre-existing one', async () => {
+              await remapper
+                .connect(local)
+                .setNetworkRemapping(local.address, other.address, chainId, { value: nativeFee });
+
+              const receipt = await (await doRemap(nativeFee * 2)).wait();
+              expectEvent.inIndirectReceipt(
+                receipt,
+                omniVotingEscrow.interface,
+                'SendUserBalance',
+                {
+                  user: local.address,
+                  chainId,
+                  refundAddress: caller.address,
+                },
+                omniVotingEscrow.address
+              );
+
+              expectEvent.inIndirectReceipt(
+                receipt,
+                omniVotingEscrow.interface,
+                'SendUserBalance',
+                {
+                  user: other.address,
+                  chainId,
+                  refundAddress: caller.address,
+                },
+                omniVotingEscrow.address
+              );
+            });
+          });
         });
       }
 
