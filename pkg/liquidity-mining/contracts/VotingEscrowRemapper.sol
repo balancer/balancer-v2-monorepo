@@ -181,8 +181,8 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
             "Cannot remap to an address that is in use locally"
         );
 
-        // Assuming A --> B, then B cannot be remapped to C.
-        // To prevent it, we verify that the reverse mapping of B does not exist.
+        // B cannot be mapped from (i.e. be a local) if a prior A --> B mapping exists.
+        // To prevent it, we verify that the reverse mapping of our local does not exist.
         require(
             _remoteToLocalAddressMap[chainId][localUser] == address(0),
             "Cannot remap to an address that is in use remotely"
