@@ -234,7 +234,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
      * @param chainId - The chain id of the network to erase.
      */
     function clearNetworkRemapping(address localUser, uint256 chainId) external payable nonReentrant {
-        require(localUser != address(0), "localUser cannot be address(0)");
+        require(localUser != address(0), "localUser cannot be zero address");
         require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing");
         IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
         require(address(omniVotingEscrow) != address(0), "Omni voting escrow not set");
@@ -244,7 +244,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
 
         _remoteToLocalAddressMap[chainId][remoteUser] = address(0);
         _localToRemoteAddressMap[chainId][localUser] = address(0);
-        _localRemappingManager[localUser] = address(0);
 
         emit AddressMappingUpdated(localUser, address(0), chainId);
         emit AddressDelegateUpdated(localUser, address(0));
