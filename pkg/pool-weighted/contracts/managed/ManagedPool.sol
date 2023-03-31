@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryModeHelper.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
@@ -59,6 +60,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
     IExternalWeightedMath private immutable _weightedMath;
+    IRecoveryModeHelper private immutable _recoveryModeHelper;
     string private _version;
 
     struct ManagedPoolParams {
@@ -71,6 +73,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         IVault vault;
         IProtocolFeePercentagesProvider protocolFeeProvider;
         IExternalWeightedMath weightedMath;
+        IRecoveryModeHelper recoveryModeHelper;
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         string version;
@@ -99,6 +102,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider)
     {
         _weightedMath = configParams.weightedMath;
+        _recoveryModeHelper = configParams.recoveryModeHelper;
         _version = configParams.version;
     }
 
@@ -108,6 +112,10 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
 
     function _getWeightedMath() internal view returns (IExternalWeightedMath) {
         return _weightedMath;
+    }
+
+    function _getRecoveryModeHelper() internal view returns (IRecoveryModeHelper) {
+        return _recoveryModeHelper;
     }
 
     // Virtual Supply
@@ -721,23 +729,11 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     }
 
     function _doRecoveryModeExit(
-        uint256[] memory balances,
+        uint256[] memory,
         uint256 totalSupply,
         bytes memory userData
-    ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
-        // total supply to correctly distribute Pool assets proportionally.
-        // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
-        // this would allow a user to recursively exit the pool using BPT they received from the previous exit.
-
-        uint256 virtualSupply;
-        (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
-
-        bptAmountIn = userData.recoveryModeExit();
-        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, virtualSupply, bptAmountIn);
-
-        // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
-        amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
+    ) internal view override returns (uint256, uint256[] memory) {
+        return _getRecoveryModeHelper().calcComposableRecoveryAmountsOut(getPoolId(), userData, totalSupply);
     }
 
     /**

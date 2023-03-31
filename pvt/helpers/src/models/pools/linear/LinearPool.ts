@@ -197,8 +197,8 @@ export default class LinearPool extends BasePool {
   async pause(): Promise<void> {
     const pauseAction = await actionId(this.instance, 'pause');
     const unpauseAction = await actionId(this.instance, 'unpause');
-    await this.vault.grantPermissionGlobally(pauseAction);
-    await this.vault.grantPermissionGlobally(unpauseAction);
+    await this.vault.grantPermissionGloballyIfNeeded(pauseAction);
+    await this.vault.grantPermissionGloballyIfNeeded(unpauseAction);
     await this.instance.pause();
   }
 }
