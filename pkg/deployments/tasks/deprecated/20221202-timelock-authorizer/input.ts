@@ -1,4 +1,4 @@
-import Task, { TaskMode } from '../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { DelayData, RoleData } from './input/types';
 import {
   root as mainnetRoot,
