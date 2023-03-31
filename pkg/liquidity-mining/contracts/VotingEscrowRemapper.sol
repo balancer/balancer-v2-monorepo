@@ -168,7 +168,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         // one of them grief, then Balancer governance can remove them from these allowlists.
 
         // B cannot be remapped to (i.e. be a remote) if a prior A --> B mapping exists.
-        // To prevent it, we verify that the reverse mapping of B does not exist.
+        // To prevent it, we verify that the reverse mapping of our remote does not exist.
         require(
             _remoteToLocalAddressMap[chainId][remoteUser] == address(0),
             "Cannot overwrite an existing mapping by another user"
