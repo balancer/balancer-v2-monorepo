@@ -174,8 +174,8 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
             "Cannot overwrite an existing mapping by another user"
         );
 
-        // Assuming A --> B, then C cannot be remapped to A.
-        // To prevent it, we verify that the mapping of A does not exist.
+        // A cannot be remapped to (i.e. be a remote) if a prior A --> B mapping exists.
+        // To prevent it, we verify that the mapping of our remote does not exist.
         require(
             _localToRemoteAddressMap[chainId][remoteUser] == address(0),
             "Cannot remap to an address that is in use locally"
