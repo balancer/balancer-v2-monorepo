@@ -17,7 +17,6 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVeDelegation.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
@@ -31,8 +30,11 @@ interface IGauge {
 
     function totalSupply() external view returns (uint256);
 
-    // solhint-disable-next-line func-name-mixedcase
+    // solhint-disable func-name-mixedcase
     function working_balances(address user) external view returns (uint256);
+
+    function working_supply() external view returns (uint256);
+    // solhint-enable func-name-mixedcase
 }
 
 /**
@@ -43,9 +45,8 @@ interface IGauge {
  */
 contract GaugeWorkingBalanceHelper {
     using FixedPoint for uint256;
-    using SafeMath for uint256;
 
-    uint256 private constant _TOKENLESS_PRODUCTION = 40e17; // 40% (minimum balance, with no veBAL)
+    uint256 private constant _TOKENLESS_PRODUCTION = 40e16; // 40% (minimum balance, with no veBAL)
 
     IVeDelegationProxy private immutable _veDelegationProxy;
     IERC20 private immutable _veBAL;
@@ -75,31 +76,35 @@ contract GaugeWorkingBalanceHelper {
      *
      * @param gauge - address of a gauge (L1 or L2).
      * @param user - address of a user.
-     * @return current `working_balance` of the user on this Gauge.
-     * @return projected `working_balance` of the user, if `user_checkpoint` were called.
+     * @return ratio of the current `working_balance` of the user to the current `working_supply` of the gauge.
+     * @return ratio of the projected `working_balance` of the user (after `user_checkpoint`),
+     *         to the projected `working_supply` of the gauge.
      */
     function getWorkingBalances(IGauge gauge, address user) external view returns (uint256, uint256) {
-        uint256 currentWorkingBalance = gauge.working_balances(user);
-
         uint256 gaugeUserBalance = gauge.balanceOf(user);
-        uint256 gaugeTotalSupply = gauge.totalSupply();
-
-        uint256 veUserBalance = _veDelegationProxy.adjusted_balance_of(user);
+        uint256 projectedWorkingBalance = gaugeUserBalance.mulDown(_TOKENLESS_PRODUCTION);
         uint256 veTotalSupply = onMainnet ? _veBAL.totalSupply() : _veDelegationProxy.totalSupply();
 
-        uint256 projectedWorkingBalance = gaugeUserBalance.mulDown(_TOKENLESS_PRODUCTION);
-
         if (veTotalSupply > 0) {
-            projectedWorkingBalance = SafeMath.add(
-                projectedWorkingBalance,
+            uint256 veUserBalance = _veDelegationProxy.adjusted_balance_of(user);
+            uint256 gaugeTotalSupply = gauge.totalSupply();
+
+            projectedWorkingBalance = projectedWorkingBalance.add(
                 gaugeTotalSupply.mulDown(veUserBalance).mulDown(_TOKENLESS_PRODUCTION.complement()).divDown(
                     veTotalSupply
                 )
             );
+
+            projectedWorkingBalance = Math.min(gaugeUserBalance, projectedWorkingBalance);
         }
 
-        projectedWorkingBalance = Math.min(gaugeUserBalance, projectedWorkingBalance);
+        uint256 currentWorkingBalance = gauge.working_balances(user);
+        uint256 currentWorkingSupply = gauge.working_supply();
+        uint256 projectedWorkingSupply = currentWorkingSupply.add(projectedWorkingBalance.sub(currentWorkingBalance));
 
-        return (currentWorkingBalance, projectedWorkingBalance);
+        return (
+            currentWorkingBalance.divDown(currentWorkingSupply),
+            projectedWorkingBalance.divDown(projectedWorkingSupply)
+        );
     }
 }

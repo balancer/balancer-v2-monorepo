@@ -84,21 +84,26 @@ describe('GaugeWorkingBalanceHelper', () => {
 
     function itComputesWorkingBalances() {
       async function createLockForUser(
-        user: SignerWithAddress,
+        account: SignerWithAddress,
         amount: BigNumberish,
         lockDuration: BigNumberish
       ): Promise<void> {
-        await bpt8020.mint(user, amount);
-        await bpt8020.approve(votingEscrow, amount, { from: user });
+        await bpt8020.mint(account, amount);
+        await bpt8020.approve(votingEscrow, amount, { from: account });
         const now = await currentTimestamp();
-        await votingEscrow.connect(user).create_lock(amount, now.add(lockDuration));
+        await votingEscrow.connect(account).create_lock(amount, now.add(lockDuration));
       }
 
-      async function depositIntoGauge(user: SignerWithAddress, stakeAmount: BigNumberish) {
-        await pool.connect(admin).mint(user.address, stakeAmount);
-        await pool.connect(user).approve(gauge.address, stakeAmount);
-        await gauge.connect(user)['deposit(uint256)'](stakeAmount);
+      async function depositIntoGauge(account: SignerWithAddress, stakeAmount: BigNumberish) {
+        await pool.connect(admin).mint(account.address, stakeAmount);
+        await pool.connect(account).approve(gauge.address, stakeAmount);
+        await gauge.connect(account)['deposit(uint256)'](stakeAmount);
       }
+
+      sharedBeforeEach('deposit into gauge', async () => {
+        await depositIntoGauge(user, fp(5));
+        await depositIntoGauge(other, fp(10));
+      });
 
       sharedBeforeEach('lock BPT into VotingEscrow', async () => {
         const bptAmount = fp(10);
@@ -107,12 +112,9 @@ describe('GaugeWorkingBalanceHelper', () => {
         await createLockForUser(other, bptAmount.mul(2), 365 * DAY);
 
         expect(await votingEscrow['balanceOf(address)'](user.address)).to.be.gt(0, 'zero veBAL balance');
-        expect(await votingEscrow['totalSupply()']()).to.be.gt(0, 'zero veBAL supply');
-      });
+        expect(await votingEscrow['balanceOf(address)'](other.address)).to.be.gt(0, 'zero veBAL balance');
 
-      sharedBeforeEach('deposit into gauge', async () => {
-        await depositIntoGauge(user, fp(5));
-        await depositIntoGauge(other, fp(10));
+        expect(await votingEscrow['totalSupply()']()).to.be.gt(0, 'zero veBAL supply');
       });
 
       it('computes values', async () => {
