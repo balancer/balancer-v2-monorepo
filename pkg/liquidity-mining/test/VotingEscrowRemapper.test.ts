@@ -415,17 +415,12 @@ describe('VotingEscrowRemapper', function () {
       await remapper.connect(local).setNetworkRemapping(local.address, remote, chainId);
       await remapper.connect(local).setNetworkRemapping(local.address, remote, otherChainId);
 
-      await vault.grantPermissionGlobally(await actionId(remapper, 'setNetworkRemappingManager'), admin);
-      await remapper.connect(admin).setNetworkRemappingManager(local.address, manager.address);
-
       // Verify mapping in chainId
       expect(await remapper.getRemoteUser(local.address, chainId)).to.be.eq(remote);
       expect(await remapper.getLocalUser(remote, chainId)).to.be.eq(local.address);
       // Verify mapping in otherChainId
       expect(await remapper.getRemoteUser(local.address, otherChainId)).to.be.eq(remote);
       expect(await remapper.getLocalUser(remote, otherChainId)).to.be.eq(local.address);
-      // Verify remapping manager
-      expect(await remapper.getRemappingManager(local.address)).to.be.eq(manager.address);
     });
 
     context('when local user is not allow-listed', async () => {
@@ -478,6 +473,14 @@ describe('VotingEscrowRemapper', function () {
       it('reverts', async () => {
         await expect(remapper.clearNetworkRemapping(ZERO_ADDRESS, chainId)).to.be.revertedWith(
           'localUser cannot be zero address'
+        );
+      });
+    });
+
+    context('when local user is not remapped', () => {
+      it('reverts', async () => {
+        await expect(remapper.connect(other).clearNetworkRemapping(other.address, chainId)).to.be.revertedWith(
+          'Remapping to clear does not exist'
         );
       });
     });
