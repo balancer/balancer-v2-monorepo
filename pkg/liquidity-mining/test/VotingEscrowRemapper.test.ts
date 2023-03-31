@@ -265,6 +265,15 @@ describe('VotingEscrowRemapper', function () {
               );
             });
 
+            it('returns the unspent ETH', async () => {
+              const balanceBefore = await ethers.provider.getBalance(caller.address);
+              const receipt = await (await doRemap(nativeFee * 1000)).wait();
+              const ethSpentOnGas = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+              expect(await ethers.provider.getBalance(caller.address)).to.be.eq(
+                balanceBefore.sub(ethSpentOnGas).sub(nativeFee)
+              );
+            });
+
             it('bridges the remapped address and clears the pre-existing one', async () => {
               await remapper
                 .connect(local)
@@ -313,7 +322,8 @@ describe('VotingEscrowRemapper', function () {
     const chainId = 7;
     const otherChainId = 43;
     let caller: SignerWithAddress;
-    const doClearMap = async () => remapper.connect(caller).clearNetworkRemapping(local.address, chainId);
+    const doClearMap = async (value = 0) =>
+      remapper.connect(caller).clearNetworkRemapping(local.address, chainId, { value });
 
     function itClearsNetworkRemapping() {
       it('clears existing local to remote mapping in target chain ID', async () => {
@@ -384,6 +394,20 @@ describe('VotingEscrowRemapper', function () {
             refundAddress: caller.address,
           },
           omniVotingEscrow.address
+        );
+      });
+
+      it('returns the unspent ETH', async () => {
+        const nativeFee = 30;
+        await omniVotingEscrow.setNativeFee(nativeFee);
+
+        const balanceBefore = await ethers.provider.getBalance(caller.address);
+        const receipt = await (await doClearMap(nativeFee * 1000)).wait();
+        const ethSpentOnGas = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+
+        // There are two brige calls, so the value spent is native fee * 2.
+        expect(await ethers.provider.getBalance(caller.address)).to.be.eq(
+          balanceBefore.sub(ethSpentOnGas).sub(nativeFee * 2)
         );
       });
     }
