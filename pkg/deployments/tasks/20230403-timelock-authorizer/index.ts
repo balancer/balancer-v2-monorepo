@@ -4,15 +4,13 @@ import { getOnChainRoles, TimelockAuthorizerDeployment } from './input';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as TimelockAuthorizerDeployment;
-
-  console.log('migrator');
   const migrator = await task.deployAndVerify(
     'TimelockAuthorizerMigrator',
     [
       input.Root,
       input.Authorizer,
       input.AuthorizerAdaptorEntrypoint,
-      await getOnChainRoles(),
+      await getOnChainRoles(input.Roles, input.TRANSITION_START_BLOCK, input.TRANSITION_END_BLOCK),
       input.Granters,
       input.Revokers,
       input.ExecuteDelays,
@@ -22,7 +20,6 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     force
   );
 
-  console.log('authorizer');
   const authorizer = await task.instanceAt('TimelockAuthorizer', await migrator.newAuthorizer());
   const authorizerArgs = [migrator.address, input.AuthorizerAdaptorEntrypoint, await migrator.CHANGE_ROOT_DELAY()];
 

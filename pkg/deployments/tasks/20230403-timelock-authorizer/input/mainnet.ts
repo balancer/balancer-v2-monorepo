@@ -58,7 +58,14 @@ const BLABS_OPS_MULTISIG = '0x02f35dA6A02017154367Bc4d47bb6c7D06C7533B';
 const BLABS_VEBAL_MULTISIG = '0xd2eb7bd802a7ca68d9acd209bec4e664a9abdd7b';
 const GAUNTLET_FEE_SETTER = '0xe4a8ed6c1d8d048bd29a00946bfcf2db10e7923b';
 
-export const root = DAO_MULTISIG;
+// Start: block that contains the transaction that deployed the `TimelockAuthorizer`.
+// https://etherscan.io/tx/0x20eb23f4393fd592240ec788f44fb9658cc6ef487b88398e9b76c910294c4eae
+// End: close to the current block at the time the `TimelockAuthorizerMigrator` is deployed.
+// It is expected that no roles were granted to the old authorizer after it.
+export const TRANSITION_START_BLOCK = 16085047;
+export const TRANSITION_END_BLOCK = 16926916;
+
+export const Root = DAO_MULTISIG;
 
 const batchRelayerPermissions = [
   BalancerRelayer.output().BalancerRelayer,
@@ -195,7 +202,7 @@ const feesAndTargetsPermissions: RoleData[] = flatten([
   ]),
 ]);
 
-export const roles: RoleData[] = flatten([
+export const Roles: RoleData[] = flatten([
   ...batchRelayerPermissions,
   ...lidoRelayerPermissions,
   ...gnosisProtocolRelayerPermissions,
@@ -204,15 +211,15 @@ export const roles: RoleData[] = flatten([
   ...feesAndTargetsPermissions,
 ]);
 
-export const granters: RoleData[] = flatten([
+export const Granters: RoleData[] = flatten([
   createRoleData(BLABS_OPS_MULTISIG, EVERYWHERE, [
     SingleRecipientGauge.actionId('SingleRecipientGauge', 'checkpoint()'),
   ]),
 ]);
 
-export const revokers: RoleData[] = [];
+export const Revokers: RoleData[] = [];
 
-export const executeDelays: DelayData[] = [
+export const ExecuteDelays: DelayData[] = [
   { actionId: Vault.actionId('Vault', 'setAuthorizer(address)'), newDelay: 30 * DAY },
   {
     actionId: SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
@@ -228,7 +235,7 @@ export const executeDelays: DelayData[] = [
   },
 ];
 
-export const grantDelays: DelayData[] = [
+export const GrantDelays: DelayData[] = [
   {
     actionId: BalancerTokenAdmin.actionId('BalancerTokenAdmin', 'mint(address,uint256)'),
     newDelay: 30 * DAY,
