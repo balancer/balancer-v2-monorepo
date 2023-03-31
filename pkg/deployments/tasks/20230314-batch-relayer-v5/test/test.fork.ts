@@ -1,4 +1,4 @@
-import hre from 'hardhat';
+import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
@@ -7,6 +7,7 @@ import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { defaultAbiCoder } from '@ethersproject/abi/lib/abi-coder';
 import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describeForkTest('BatchRelayerLibrary', 'mainnet', 15485000, function () {
   let task: Task;
@@ -24,6 +25,11 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 15485000, function () {
   const ETH_DAI_GAUGE = '0x4ca6AC0509E6381Ca7CD872a6cdC0Fbf00600Fa1';
 
   const STAKED_ETH_STETH_HOLDER = '0x4B581dedA2f2C0650C3dFC506C86a8C140d9f699';
+
+  // The holder also holds RETH_STABLE_GAUGE tokens
+  const RETH_STABLE_GAUGE = '0x79eF6103A513951a3b25743DB509E267685726B7';
+
+  const TRANSFER_EXTERNAL_USER_BALANCE_OP_KIND = 3;
 
   const CHAINED_REFERENCE_PREFIX = 'ba10';
   function toChainedReference(key: BigNumberish): BigNumber {
@@ -144,5 +150,40 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 15485000, function () {
     await relayer.connect(sender).multicall([unstakeCalldata, exitCalldata, joinCalldata, stakeCalldata]);
 
     expect(await destinationGauge.balanceOf(sender.address)).to.be.gt(0);
+  });
+
+  it('sender can update their gauge liquidity limits', async () => {
+    const tx = await relayer.connect(sender).multicall([
+      library.interface.encodeFunctionData('manageUserBalance', [
+        [RETH_STABLE_GAUGE, ETH_STETH_GAUGE].map((gauge) => ({
+          kind: TRANSFER_EXTERNAL_USER_BALANCE_OP_KIND,
+          asset: gauge,
+          amount: 1, // The amount must be non-zero to trigger the token trasnfer and liquidity limit update
+          sender: sender.address,
+          recipient: sender.address,
+        })),
+        0,
+      ]),
+    ]);
+
+    const gaugeInterface = new ethers.utils.Interface([
+      'event UpdateLiquidityLimit(address indexed user, uint256 original_balance, uint256 original_supply, uint256 working_balance, uint256 working_supply)',
+    ]);
+
+    expectEvent.inIndirectReceipt(
+      await tx.wait(),
+      gaugeInterface,
+      'UpdateLiquidityLimit',
+      { user: sender.address },
+      RETH_STABLE_GAUGE
+    );
+
+    expectEvent.inIndirectReceipt(
+      await tx.wait(),
+      gaugeInterface,
+      'UpdateLiquidityLimit',
+      { user: sender.address },
+      ETH_STETH_GAUGE
+    );
   });
 });
