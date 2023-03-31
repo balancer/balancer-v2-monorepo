@@ -157,7 +157,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         // If A --> B (i.e. A in the local chain is remapped to B in the remote chain), to keep the state consistent
         // the user effectively 'owns' both A and B in both chains.
         //
-        // This means that whenever a new address is created (assuming A --> B previously):
+        // This means that whenever a new remapping is created (assuming A --> B previously):
         // - The remote address must not already be in use by another local user (C --> B is forbidden).
         // - The remote address must not be a local address that has already been remapped (C --> A is forbidden).
         // - The local address must not be the target remote address for another local user (B --> C is forbidden).
