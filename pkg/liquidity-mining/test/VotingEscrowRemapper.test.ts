@@ -359,6 +359,33 @@ describe('VotingEscrowRemapper', function () {
           delegate: ZERO_ADDRESS,
         });
       });
+
+      it('bridges the local and the remote addresses', async () => {
+        const receipt = await (await doClearMap()).wait();
+        expectEvent.inIndirectReceipt(
+          receipt,
+          omniVotingEscrow.interface,
+          'SendUserBalance',
+          {
+            user: local.address,
+            chainId,
+            refundAddress: caller.address,
+          },
+          omniVotingEscrow.address
+        );
+
+        expectEvent.inIndirectReceipt(
+          receipt,
+          omniVotingEscrow.interface,
+          'SendUserBalance',
+          {
+            user: remote,
+            chainId,
+            refundAddress: caller.address,
+          },
+          omniVotingEscrow.address
+        );
+      });
     }
 
     sharedBeforeEach('setup mapping and denylist user', async () => {
