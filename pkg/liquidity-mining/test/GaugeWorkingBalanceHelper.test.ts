@@ -64,11 +64,11 @@ describe('GaugeWorkingBalanceHelper', () => {
     let gaugeFactory: Contract;
     let gauge: Contract;
 
-    async function deployHelper(mainnet: boolean) {
-      workingBalanceHelper = await deploy('GaugeWorkingBalanceHelper', { args: [veDelegationProxy.address, mainnet] });
+    async function deployHelper(readTotalSupplyFromVE: boolean) {
+      workingBalanceHelper = await deploy('GaugeWorkingBalanceHelper', { args: [veDelegationProxy.address, readTotalSupplyFromVE] });
     }
 
-    function itStoresParameters(mainnet: boolean) {
+    function itStoresParameters(readTotalSupplyFromVE: boolean) {
       it('stores the veDelegationProxy', async () => {
         expect(await workingBalanceHelper.getVotingEscrowDelegationProxy()).to.equal(veDelegationProxy.address);
       });
@@ -78,7 +78,7 @@ describe('GaugeWorkingBalanceHelper', () => {
       });
 
       it('indicates the network', async () => {
-        expect(await workingBalanceHelper.onMainnet()).to.equal(mainnet);
+        expect(await workingBalanceHelper.readTotalSupplyFromVE()).to.equal(readTotalSupplyFromVE);
       });
     }
 

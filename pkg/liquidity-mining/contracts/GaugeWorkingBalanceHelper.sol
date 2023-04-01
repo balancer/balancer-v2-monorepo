@@ -50,12 +50,12 @@ contract GaugeWorkingBalanceHelper {
 
     IVeDelegationProxy private immutable _veDelegationProxy;
     IERC20 private immutable _veBAL;
-    bool public immutable onMainnet;
+    bool public immutable readTotalSupplyFromVE;
 
-    constructor(IVeDelegationProxy veDelegationProxy, bool _onMainnet) {
+    constructor(IVeDelegationProxy veDelegationProxy, bool _readTotalSupplyFromVE) {
         _veDelegationProxy = veDelegationProxy;
         _veBAL = veDelegationProxy.getVotingEscrow();
-        onMainnet = _onMainnet;
+        readTotalSupplyFromVE = _readTotalSupplyFromVE;
     }
 
     /**
@@ -83,7 +83,7 @@ contract GaugeWorkingBalanceHelper {
     function getWorkingBalances(IGauge gauge, address user) external view returns (uint256, uint256) {
         uint256 gaugeUserBalance = gauge.balanceOf(user);
         uint256 projectedWorkingBalance = gaugeUserBalance.mulDown(_TOKENLESS_PRODUCTION);
-        uint256 veTotalSupply = onMainnet ? _veBAL.totalSupply() : _veDelegationProxy.totalSupply();
+        uint256 veTotalSupply = readTotalSupplyFromVE ? _veBAL.totalSupply() : _veDelegationProxy.totalSupply();
 
         if (veTotalSupply > 0) {
             uint256 veUserBalance = _veDelegationProxy.adjusted_balance_of(user);
