@@ -5,7 +5,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, fpMul, FP_ONE, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
@@ -24,6 +24,9 @@ describe('GaugeWorkingBalanceHelper', () => {
   let pool: Contract;
   let boost: Contract;
   let gaugeController: Contract;
+  let gaugeImplementation: Contract;
+  let gaugeFactory: Contract;
+  let gauge: Contract;
 
   before('setup signers', async () => {
     [, admin, user, other] = await ethers.getSigners();
@@ -59,144 +62,262 @@ describe('GaugeWorkingBalanceHelper', () => {
     });
   });
 
-  describe('getWorkingBalances', () => {
-    let gaugeImplementation: Contract;
-    let gaugeFactory: Contract;
-    let gauge: Contract;
+  async function deployHelper(readTotalSupplyFromVE: boolean) {
+    workingBalanceHelper = await deploy('GaugeWorkingBalanceHelper', {
+      args: [veDelegationProxy.address, readTotalSupplyFromVE],
+    });
+  }
 
-    async function deployHelper(readTotalSupplyFromVE: boolean) {
-      workingBalanceHelper = await deploy('GaugeWorkingBalanceHelper', { args: [veDelegationProxy.address, readTotalSupplyFromVE] });
+  function itStoresParameters(readTotalSupplyFromVE: boolean) {
+    it('stores the veDelegationProxy', async () => {
+      expect(await workingBalanceHelper.getVotingEscrowDelegationProxy()).to.equal(veDelegationProxy.address);
+    });
+
+    it('stores the votingEscrow', async () => {
+      expect(await workingBalanceHelper.getVotingEscrow()).to.equal(votingEscrow.address);
+    });
+
+    it('indicates the network', async () => {
+      expect(await workingBalanceHelper.readTotalSupplyFromVE()).to.equal(readTotalSupplyFromVE);
+    });
+  }
+
+  function itComputesWorkingBalances() {
+    const TOKENLESS_PRODUCTION = fp(0.4);
+    const MAX_BALANCE_RATIO = FP_ONE.div(TOKENLESS_PRODUCTION);
+    const LOCK_PERIOD = 365 * DAY;
+
+    async function createLockForUser(
+      account: SignerWithAddress,
+      amount: BigNumberish,
+      lockDuration: BigNumberish
+    ): Promise<void> {
+      await bpt8020.mint(account, amount);
+      await bpt8020.approve(votingEscrow, amount, { from: account });
+      const now = await currentTimestamp();
+      await votingEscrow.connect(account).create_lock(amount, now.add(lockDuration));
     }
 
-    function itStoresParameters(readTotalSupplyFromVE: boolean) {
-      it('stores the veDelegationProxy', async () => {
-        expect(await workingBalanceHelper.getVotingEscrowDelegationProxy()).to.equal(veDelegationProxy.address);
-      });
+    async function depositIntoGauge(account: SignerWithAddress, stakeAmount: BigNumberish) {
+      await pool.connect(admin).mint(account.address, stakeAmount);
+      await pool.connect(account).approve(gauge.address, stakeAmount);
+      await gauge.connect(account)['deposit(uint256)'](stakeAmount);
+    }
 
-      it('stores the votingEscrow', async () => {
-        expect(await workingBalanceHelper.getVotingEscrow()).to.equal(votingEscrow.address);
-      });
+    function currentEqualsProjected() {
+      it('projected ratio should equal current', async () => {
+        const [current, projected] = await workingBalanceHelper.getWorkingBalanceRatios(gauge.address, user.address);
 
-      it('indicates the network', async () => {
-        expect(await workingBalanceHelper.readTotalSupplyFromVE()).to.equal(readTotalSupplyFromVE);
+        // Ensure we have equal balances (that are non-zero)
+        expect(projected).to.eq(current);
+        expect(projected).to.gt(0);
       });
     }
 
-    function itComputesWorkingBalances() {
-      async function createLockForUser(
-        account: SignerWithAddress,
-        amount: BigNumberish,
-        lockDuration: BigNumberish
-      ): Promise<void> {
-        await bpt8020.mint(account, amount);
-        await bpt8020.approve(votingEscrow, amount, { from: account });
-        const now = await currentTimestamp();
-        await votingEscrow.connect(account).create_lock(amount, now.add(lockDuration));
-      }
+    function projectedIsMaxedOut() {
+      it(`projected ratio should be greater than current by the maximum ratio (${fromFp(
+        MAX_BALANCE_RATIO
+      )})`, async () => {
+        const [current, projected] = await workingBalanceHelper.getWorkingBalanceRatios(gauge.address, user.address);
 
-      async function depositIntoGauge(account: SignerWithAddress, stakeAmount: BigNumberish) {
-        await pool.connect(admin).mint(account.address, stakeAmount);
-        await pool.connect(account).approve(gauge.address, stakeAmount);
-        await gauge.connect(account)['deposit(uint256)'](stakeAmount);
-      }
+        // Ensure we have equal balances (that are non-zero)
+        expect(projected).to.eq(fpMul(current, MAX_BALANCE_RATIO));
+        expect(projected).to.be.gt(0);
+      });
+    }
 
-      sharedBeforeEach('deposit into gauge', async () => {
-        await depositIntoGauge(user, fp(5));
-        await depositIntoGauge(other, fp(10));
+    function projectedIsSlightlyIncreased() {
+      it(`projected ratio should be greater than current, but by less than the maximum ratio (${fromFp(
+        MAX_BALANCE_RATIO
+      )})`, async () => {
+        const [current, projected] = await workingBalanceHelper.getWorkingBalanceRatios(gauge.address, user.address);
+
+        // Ensure we have equal balances (that are non-zero)
+        expect(projected).to.eq(fpMul(current, MAX_BALANCE_RATIO));
+        expect(projected).to.be.gt(0);
+      });
+    }
+
+    function projectedIsGreatlyIncreased() {
+      const THRESHOLD = 90;
+
+      it(`projected ratio should be greater than current, but less than (${THRESHOLD} %)`, async () => {
+        const [current, projected] = await workingBalanceHelper.getWorkingBalanceRatios(gauge.address, user.address);
+
+        // Ensure we have equal balances (that are non-zero)
+        expect(projected).to.be.gt(current);
+        expect(projected).to.be.gt(0);
+        expect(projected).to.be.lt(fpMul(current, fp(THRESHOLD / 100)));
+      });
+    }
+
+    function currentShouldAlmostEqualProjected() {
+      it('projected ratio should be close to, but less than current', async () => {
+        const [current, projected] = await workingBalanceHelper.getWorkingBalanceRatios(gauge.address, user.address);
+
+        // Ensure we have equal balances (that are non-zero)
+        expect(projected).to.almostEqual(current);
+        expect(projected).to.be.gt(0);
+        expect(projected).to.be.lessThanOrEqual(current);
+      });
+    }
+
+    function itBehavesCorrectlyOverTime() {
+      context.skip('when checkpointed', () => {
+        sharedBeforeEach('checkpoint user', async () => {
+          await gauge.connect(user).user_checkpoint(user.address);
+        });
+
+        currentShouldAlmostEqualProjected();
       });
 
-      sharedBeforeEach('lock BPT into VotingEscrow', async () => {
-        const bptAmount = fp(10);
+      context.skip('when time is advanced', () => {
+        sharedBeforeEach('advance time', async () => {
+          await advanceTime(LOCK_PERIOD * 0.8);
+        });
+
+        projectedIsGreatlyIncreased();
+      });
+    }
+
+    context.skip('with no veBAL', () => {
+      const stakeAmount = fp(5);
+
+      sharedBeforeEach('deposit', async () => {
+        depositIntoGauge(user, stakeAmount);
+      });
+
+      currentEqualsProjected();
+    });
+
+    describe.skip('with a veBAL monopoly', () => {
+      const stakeAmount = fp(5);
+      const bptAmount = fp(10);
+
+      sharedBeforeEach('deposit', async () => {
+        await depositIntoGauge(user, stakeAmount);
+        await createLockForUser(user, bptAmount, LOCK_PERIOD);
+      });
+
+      projectedIsMaxedOut();
+
+      itBehavesCorrectlyOverTime();
+    });
+
+    describe.skip('with just a little veBAL', () => {
+      const stakeAmount = fp(5);
+      const bptAmount = fp(10);
+
+      sharedBeforeEach('deposit', async () => {
+        // Another person stakes 100x as much
+        await depositIntoGauge(user, stakeAmount);
+        await depositIntoGauge(other, stakeAmount.mul(100));
 
         await createLockForUser(user, bptAmount, 365 * DAY);
-        await createLockForUser(other, bptAmount.mul(2), 365 * DAY);
-
-        expect(await votingEscrow['balanceOf(address)'](user.address)).to.be.gt(0, 'zero veBAL balance');
-        expect(await votingEscrow['balanceOf(address)'](other.address)).to.be.gt(0, 'zero veBAL balance');
-
-        expect(await votingEscrow['totalSupply()']()).to.be.gt(0, 'zero veBAL supply');
+        await createLockForUser(other, bptAmount.mul(100), 365 * DAY);
       });
 
-      it('computes values', async () => {
-        const [current, projected] = await workingBalanceHelper.getWorkingBalances(gauge.address, user.address);
-        expect(projected).to.gt(current);
-      });
+      projectedIsSlightlyIncreased();
 
-      it('values change over time', async () => {
-        await advanceTime(180 * DAY);
-        await gauge.connect(user).user_checkpoint(user.address);
-
-        const [current, projected] = await workingBalanceHelper.getWorkingBalances(gauge.address, user.address);
-        expect(projected).to.almostEqual(current);
-      });
-    }
-
-    context('on L1', () => {
-      const relativeWeightCap = fp(0.1);
-
-      sharedBeforeEach('deploy helper', async () => {
-        await deployHelper(true);
-      });
-
-      itStoresParameters(true);
-
-      sharedBeforeEach('deploy gauge and factory', async () => {
-        const balTokenAdmin = await deploy('MockBalancerTokenAdmin', { args: [vault.address, BAL.address] });
-        const balMinter = await deploy('MainnetBalancerMinter', {
-          args: [balTokenAdmin.address, gaugeController.address],
-        });
-
-        gaugeImplementation = await deploy('LiquidityGaugeV5', {
-          args: [balMinter.address, veDelegationProxy.address, adaptor.address],
-        });
-        gaugeFactory = await deploy('LiquidityGaugeFactory', { args: [gaugeImplementation.address] });
-
-        const tx = await gaugeFactory.create(pool.address, relativeWeightCap);
-        const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
-
-        gauge = await deployedAt('LiquidityGaugeV5', event.args.gauge);
-      });
-
-      itComputesWorkingBalances();
+      itBehavesCorrectlyOverTime();
     });
 
-    context('on L2', () => {
-      const version = JSON.stringify({
-        name: 'ChildChainGauge',
-        version: '0',
-        deployment: 'test-deployment',
-      });
-
-      let pseudoMinter: Contract;
-
-      sharedBeforeEach('deploy helper', async () => {
-        await deployHelper(false);
-      });
-
-      itStoresParameters(false);
-
-      sharedBeforeEach('deploy gauge and factory', async () => {
-        pseudoMinter = await deploy('L2BalancerPseudoMinter', { args: [vault.address, BAL.address] });
-
-        gaugeImplementation = await deploy('ChildChainGauge', {
-          args: [veDelegationProxy.address, pseudoMinter.address, adaptor.address, version],
-        });
-        gaugeFactory = await deploy('ChildChainGaugeFactory', {
-          args: [gaugeImplementation.address, version, version],
-        });
-
-        await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin.address);
-        await pseudoMinter.connect(admin).addGaugeFactory(gaugeFactory.address);
-      });
-
-      sharedBeforeEach('create gauge', async () => {
-        const tx = await gaugeFactory.create(pool.address);
-        const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
-
-        gauge = await deployedAt('ChildChainGauge', event.args.gauge);
-      });
-
-      itComputesWorkingBalances();
+    sharedBeforeEach('deposit into gauge', async () => {
+      await depositIntoGauge(user, fp(5));
+      await depositIntoGauge(other, fp(10));
     });
+
+    sharedBeforeEach('lock BPT into VotingEscrow', async () => {
+      const bptAmount = fp(10);
+
+      await createLockForUser(user, bptAmount, 365 * DAY);
+      await createLockForUser(other, bptAmount.mul(2), 365 * DAY);
+
+      expect(await votingEscrow['balanceOf(address)'](user.address)).to.be.gt(0, 'zero veBAL balance');
+      expect(await votingEscrow['balanceOf(address)'](other.address)).to.be.gt(0, 'zero veBAL balance');
+
+      expect(await votingEscrow['totalSupply()']()).to.be.gt(0, 'zero veBAL supply');
+    });
+
+    it('computes values', async () => {
+      const [current, projected] = await workingBalanceHelper.getWorkingBalanceRatios(gauge.address, user.address);
+      expect(projected).to.gt(current);
+    });
+
+    it('values change over time', async () => {
+      await advanceTime(180 * DAY);
+      await gauge.connect(user).user_checkpoint(user.address);
+
+      const [current, projected] = await workingBalanceHelper.getWorkingBalanceRatios(gauge.address, user.address);
+      expect(projected).to.almostEqual(current);
+    });
+  }
+
+  context('on L1', () => {
+    const relativeWeightCap = fp(0.1);
+
+    sharedBeforeEach('deploy helper', async () => {
+      await deployHelper(true);
+    });
+
+    itStoresParameters(true);
+
+    sharedBeforeEach('deploy gauge and factory', async () => {
+      const balTokenAdmin = await deploy('MockBalancerTokenAdmin', { args: [vault.address, BAL.address] });
+      const balMinter = await deploy('MainnetBalancerMinter', {
+        args: [balTokenAdmin.address, gaugeController.address],
+      });
+
+      gaugeImplementation = await deploy('LiquidityGaugeV5', {
+        args: [balMinter.address, veDelegationProxy.address, adaptor.address],
+      });
+      gaugeFactory = await deploy('LiquidityGaugeFactory', { args: [gaugeImplementation.address] });
+
+      const tx = await gaugeFactory.create(pool.address, relativeWeightCap);
+      const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
+
+      gauge = await deployedAt('LiquidityGaugeV5', event.args.gauge);
+    });
+
+    itComputesWorkingBalances();
+  });
+
+  context('on L2', () => {
+    const version = JSON.stringify({
+      name: 'ChildChainGauge',
+      version: '0',
+      deployment: 'test-deployment',
+    });
+
+    let pseudoMinter: Contract;
+
+    sharedBeforeEach('deploy helper', async () => {
+      await deployHelper(false);
+    });
+
+    itStoresParameters(false);
+
+    sharedBeforeEach('deploy gauge and factory', async () => {
+      pseudoMinter = await deploy('L2BalancerPseudoMinter', { args: [vault.address, BAL.address] });
+
+      gaugeImplementation = await deploy('ChildChainGauge', {
+        args: [veDelegationProxy.address, pseudoMinter.address, adaptor.address, version],
+      });
+      gaugeFactory = await deploy('ChildChainGaugeFactory', {
+        args: [gaugeImplementation.address, version, version],
+      });
+
+      await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin.address);
+      await pseudoMinter.connect(admin).addGaugeFactory(gaugeFactory.address);
+    });
+
+    sharedBeforeEach('create gauge', async () => {
+      const tx = await gaugeFactory.create(pool.address);
+      const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
+
+      gauge = await deployedAt('ChildChainGauge', event.args.gauge);
+    });
+
+    itComputesWorkingBalances();
   });
 });

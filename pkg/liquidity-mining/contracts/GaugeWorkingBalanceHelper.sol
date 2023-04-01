@@ -80,7 +80,7 @@ contract GaugeWorkingBalanceHelper {
      * @return ratio of the projected `working_balance` of the user (after `user_checkpoint`),
      *         to the projected `working_supply` of the gauge.
      */
-    function getWorkingBalances(IGauge gauge, address user) external view returns (uint256, uint256) {
+    function getWorkingBalanceRatios(IGauge gauge, address user) external view returns (uint256, uint256) {
         uint256 gaugeUserBalance = gauge.balanceOf(user);
         uint256 projectedWorkingBalance = gaugeUserBalance.mulDown(_TOKENLESS_PRODUCTION);
         uint256 veTotalSupply = readTotalSupplyFromVE ? _veBAL.totalSupply() : _veDelegationProxy.totalSupply();
