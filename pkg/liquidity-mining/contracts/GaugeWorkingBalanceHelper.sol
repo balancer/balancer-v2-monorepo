@@ -20,7 +20,6 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVeDelegation.so
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-// There is already an IVeDelegation with the first two
 interface IVeDelegationProxy is IVeDelegation {
     function getVotingEscrow() external view returns (IERC20);
 }
@@ -42,20 +41,28 @@ interface IGauge {
  * @dev The `working_balance` can range between 40% and 100% of the nominal user balance on a gauge, depending on the
  * veBAL "voting power" of the user. This value generally decays over time, but will increase with additional veBAL
  * locking.
+ *
+ * Also compute the working balance ratios: balance/supply, which is more informative when deciding whether
+ * it would be advantageous for the user to checkpoint a gauge.
  */
 contract GaugeWorkingBalanceHelper {
     using FixedPoint for uint256;
 
-    uint256 private constant _TOKENLESS_PRODUCTION = 40e16; // 40% (minimum balance, with no veBAL)
+    // 40% (minimum balance, with no veBAL)
+    uint256 private constant _TOKENLESS_PRODUCTION = 40e16;
 
     IVeDelegationProxy private immutable _veDelegationProxy;
     IERC20 private immutable _veBAL;
-    bool public immutable readTotalSupplyFromVE;
 
-    constructor(IVeDelegationProxy veDelegationProxy, bool _readTotalSupplyFromVE) {
+    // The veBAL user balance always comes from the proxy (on L1 and L2), but versions deployed to some
+    // networks require the total supply of veBAL to come from the VotingEscrow instead.
+    bool private immutable _readTotalSupplyFromVE;
+
+    constructor(IVeDelegationProxy veDelegationProxy, bool readTotalSupplyFromVE) {
         _veDelegationProxy = veDelegationProxy;
         _veBAL = veDelegationProxy.getVotingEscrow();
-        readTotalSupplyFromVE = _readTotalSupplyFromVE;
+
+        _readTotalSupplyFromVE = readTotalSupplyFromVE;
     }
 
     /**
@@ -73,20 +80,31 @@ contract GaugeWorkingBalanceHelper {
     }
 
     /**
+     * @dev Returns whether the total supply will be read from the VotingEscrow contract. If false,
+     * it will be read from the delegation proxy instead.
+     */
+    function readsTotalSupplyFromVE() external view returns (bool) {
+        return _readTotalSupplyFromVE;
+    }
+
+    /**
+     * @dev The gauge allocates 60% of the emissions it receives to veBAL holders, which it accomplishes by computing
+     * an effective "working" balance for each user, starting with 40% of the true balance (i.e., BPT deposited in
+     * the gauge), and adding a "boost" proportional to that user's share of the total voting power.
      *
      * @param gauge - address of a gauge (L1 or L2).
      * @param user - address of a user.
-     * @return ratio of the current `working_balance` of the user to the current `working_supply` of the gauge.
-     * @return ratio of the projected `working_balance` of the user (after `user_checkpoint`),
-     *         to the projected `working_supply` of the gauge.
+     * @return current and projected balances.
      */
-    function getWorkingBalanceRatios(IGauge gauge, address user) external view returns (uint256, uint256) {
+    function getWorkingBalances(IGauge gauge, address user) public view returns (uint256, uint256) {
         uint256 gaugeUserBalance = gauge.balanceOf(user);
         uint256 projectedWorkingBalance = gaugeUserBalance.mulDown(_TOKENLESS_PRODUCTION);
-        uint256 veTotalSupply = readTotalSupplyFromVE ? _veBAL.totalSupply() : _veDelegationProxy.totalSupply();
+        IVeDelegationProxy proxy = _veDelegationProxy;
+
+        uint256 veTotalSupply = _readTotalSupplyFromVE ? _veBAL.totalSupply() : proxy.totalSupply();
 
         if (veTotalSupply > 0) {
-            uint256 veUserBalance = _veDelegationProxy.adjusted_balance_of(user);
+            uint256 veUserBalance = proxy.adjusted_balance_of(user);
             uint256 gaugeTotalSupply = gauge.totalSupply();
 
             projectedWorkingBalance = projectedWorkingBalance.add(
@@ -98,13 +116,38 @@ contract GaugeWorkingBalanceHelper {
             projectedWorkingBalance = Math.min(gaugeUserBalance, projectedWorkingBalance);
         }
 
-        uint256 currentWorkingBalance = gauge.working_balances(user);
-        uint256 currentWorkingSupply = gauge.working_supply();
-        uint256 projectedWorkingSupply = currentWorkingSupply.add(projectedWorkingBalance.sub(currentWorkingBalance));
+        return (gauge.working_balances(user), projectedWorkingBalance);
+    }
 
-        return (
-            currentWorkingBalance.divDown(currentWorkingSupply),
-            projectedWorkingBalance.divDown(projectedWorkingSupply)
-        );
+    /**
+     * @dev There is also a "working" supply, needed to ensure that all the emissions are allocated.
+     * Compute and return the balance/supply ratios. This captures the behavior of other users, and more
+     * accurately reflects this user's relative position.
+     *
+     * @param gauge - address of a gauge (L1 or L2).
+     * @param user - address of a user.
+     * @return ratio of the current `working_balance` of the user to the current `working_supply` of the gauge.
+     * @return ratio of the projected `working_balance` of the user (after `user_checkpoint`),
+     *         to the projected `working_supply` of the gauge.
+     */
+    function getWorkingBalanceToSupplyRatios(IGauge gauge, address user) external view returns (uint256, uint256) {
+        (uint256 currentWorkingBalance, uint256 projectedWorkingBalance) = getWorkingBalances(gauge, user);
+        uint256 currentWorkingSupply = gauge.working_supply();
+
+        if (projectedWorkingBalance == currentWorkingBalance) {
+            // If the balances are equal, the supply values will also be equal, so just compute the ratio once.
+            uint256 ratio = currentWorkingBalance.divDown(currentWorkingSupply);
+
+            return (ratio, ratio);
+        } else {
+            uint256 projectedWorkingSupply = currentWorkingSupply.add(
+                projectedWorkingBalance.sub(currentWorkingBalance)
+            );
+
+            return (
+                currentWorkingBalance.divDown(currentWorkingSupply),
+                projectedWorkingBalance.divDown(projectedWorkingSupply)
+            );
+        }
     }
 }
