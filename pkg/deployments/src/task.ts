@@ -158,15 +158,13 @@ export default class Task {
     // the runtime code, it can actually be quite tricky to produce matching runtime code.
     //
     // What we do instead is check for both runtime code and constructor execution (including constructor arguments) by
-    // looking at the transaction in which the contract was deployed. The data of this transaction will be the contract
-    // creation code followed by the abi-encoded constructor arguments, which we can compare against what the task would
-    // attempt to deploy. In this way, we are testing the task's build info, inputs and deployment code.
+    // looking at the transaction in which the contract was deployed, which can be found in the /deployment-txs directory.
+    // The data of this transaction will be the contract creation code followed by the abi-encoded constructor arguments,
+    // which we can compare against what the task would attempt to deploy. In this way, we are testing the task's build
+    // info, inputs and deployment code.
     //
     // The only thing we're not checking is what account deployed the contract, but our code does not have dependencies
     // on the deployer.
-    //
-    // The only problem with the approach described above is that it is not easy to find the transaction in which a
-    // contract is deployed. However, Tenderly has a dedicated endpoint for this.
 
     const { ethers } = await import('hardhat');
 
