@@ -451,7 +451,7 @@ describe('VotingEscrowRemapper', function () {
         });
       });
 
-      context('when caller it local user', () => {
+      context('when caller is local user', () => {
         sharedBeforeEach(() => {
           caller = local;
         });
