@@ -544,48 +544,48 @@ const theGraphRoles = [
 export const GrantDelays: DelayData[] = [
   {
     actionId: BalancerTokenAdmin.actionId('BalancerTokenAdmin', 'mint(address,uint256)'),
-    newDelay: 30 * DAY,
+    newDelay: 2 * DAY,
   },
   {
     actionId: GaugeController.actionId('GaugeController', 'add_gauge(address,int128)'),
-    newDelay: 14 * DAY,
+    newDelay: 1 * DAY,
   },
   {
     actionId: GaugeController.actionId('GaugeController', 'add_gauge(address,int128,uint256)'),
-    newDelay: 14 * DAY,
+    newDelay: 1 * DAY,
   },
   // BALTokenHolder.withdrawFunds(address, uint256) (veBAL BALTokenHolder)
   // Note this actionId can't be pulled from the json file as the BALTokenHolder is not listed there.
-  { actionId: '0x79922681fd17c90b4f3409d605f5b059ffcbcef7b5440321ae93b87f3b5c1c78', newDelay: 7 * DAY },
+  { actionId: '0x79922681fd17c90b4f3409d605f5b059ffcbcef7b5440321ae93b87f3b5c1c78', newDelay: 0.25 * DAY },
   {
     actionId: Vault.actionId('Vault', 'setRelayerApproval(address,address,bool)'),
-    newDelay: 7 * DAY,
+    newDelay: 0.25 * DAY,
   },
   {
     actionId: Vault.actionId(
       'Vault',
       'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
     ),
-    newDelay: 7 * DAY,
+    newDelay: 0.25 * DAY,
   },
   {
     actionId: Vault.actionId('Vault', 'joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
-    newDelay: 7 * DAY,
+    newDelay: 0.25 * DAY,
   },
   {
     actionId: Vault.actionId(
       'Vault',
       'swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)'
     ),
-    newDelay: 7 * DAY,
+    newDelay: 0.25 * DAY,
   },
   {
     actionId: Vault.actionId('Vault', 'exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
-    newDelay: 7 * DAY,
+    newDelay: 0.25 * DAY,
   },
   {
     actionId: Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
-    newDelay: 7 * DAY,
+    newDelay: 0.25 * DAY,
   },
 ];
 
