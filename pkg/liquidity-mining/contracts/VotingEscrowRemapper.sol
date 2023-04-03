@@ -66,7 +66,8 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
 
     /**
      * @notice Returns the current total supply of veBAL as a Point.
-     * @dev We return the total supply as a Point to allow extrapolating this into the future.
+     * @dev We return the total supply as a Point to allow extrapolating this into the future. Note that this extrapolation will
+     * become invalid when crossing weeks, since we're not taking into account veBAL locks that expire then.
      */
     function getTotalSupplyPoint() external view returns (IVotingEscrow.Point memory) {
         IVotingEscrow votingEscrow = getVotingEscrow();
