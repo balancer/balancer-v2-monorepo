@@ -247,7 +247,6 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         _localToRemoteAddressMap[chainId][localUser] = address(0);
 
         emit AddressMappingUpdated(localUser, address(0), chainId);
-        emit AddressDelegateUpdated(localUser, address(0));
 
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
