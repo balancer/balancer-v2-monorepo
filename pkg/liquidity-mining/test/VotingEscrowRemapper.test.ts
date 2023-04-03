@@ -236,7 +236,7 @@ describe('VotingEscrowRemapper', function () {
 
           context('when the value sent does not cover the minimum fee amount', () => {
             it('reverts with single bridge / no pre-existing remapping', async () => {
-              await expect(doRemap(nativeFee - 1)).to.be.reverted;
+              await expect(doRemap(nativeFee - 1)).to.be.revertedWith('Insufficient ETH to bridge user balance');
             });
 
             it('reverts with double bridge / pre-existing remapping', async () => {
@@ -244,7 +244,7 @@ describe('VotingEscrowRemapper', function () {
                 .connect(local)
                 .setNetworkRemapping(local.address, other.address, chainId, { value: nativeFee });
 
-              await expect(doRemap(nativeFee * 2 - 1)).to.be.reverted;
+              await expect(doRemap(nativeFee * 2 - 1)).to.be.revertedWith('Insufficient ETH to bridge user balance');
             });
           });
 

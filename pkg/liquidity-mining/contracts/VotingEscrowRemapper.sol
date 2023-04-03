@@ -186,6 +186,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         // omni voting escrow will rely on the correct mappings to bridge the balances.
         (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(uint16(chainId), false, "");
         if (oldRemoteUser != address(0)) {
+            require(msg.value >= nativeFee * 2, "Insufficient ETH to bridge user balance");
             // If there was an old mapping, send balance from (local) oldRemoteUser --> (remote) oldRemoteUser
             // This should clean up the existing bridged balance from localUser --> oldRemoteUser.
             omniVotingEscrow.sendUserBalance{ value: nativeFee }(
@@ -195,6 +196,8 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
                 address(0),
                 ""
             );
+        } else {
+            require(msg.value >= nativeFee, "Insufficient ETH to bridge user balance");
         }
 
         // Bridge balance for new mapping localUser --> remoteUser.
@@ -252,6 +255,8 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         // omni voting escrow will rely on the correct mappings to bridge the balances.
         // Clean up the balance for the old mapping, and bridge the new (default) one.
         (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(uint16(chainId), false, "");
+        require(msg.value >= nativeFee * 2, "Insufficient ETH to bridge user balance");
+
         omniVotingEscrow.sendUserBalance{ value: nativeFee }(
             localUser,
             uint16(chainId),
