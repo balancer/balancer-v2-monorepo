@@ -600,13 +600,13 @@ export const Granters: RoleData[] = [];
 export const Revokers: RoleData[] = [];
 
 export const ExecuteDelays: DelayData[] = [
-  { actionId: Vault.actionId('Vault', 'setAuthorizer(address)'), newDelay: 30 * DAY },
+  { actionId: Vault.actionId('Vault', 'setAuthorizer(address)'), newDelay: 2 * DAY },
   {
     actionId: SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
-    newDelay: 7 * DAY,
+    newDelay: 1 * DAY,
   },
   {
     actionId: VotingEscrowDelegationProxy.actionId('VotingEscrowDelegationProxy', 'setDelegation(address)'),
-    newDelay: 14 * DAY,
+    newDelay: 0.25 * DAY,
   },
 ];
