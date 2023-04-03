@@ -1,6 +1,6 @@
 import Task from '../../src/task';
 import { TaskRunOptions } from '../../src/types';
-import { getOnChainRoles, TimelockAuthorizerDeployment } from './input';
+import { TimelockAuthorizerDeployment } from './input';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as TimelockAuthorizerDeployment;
@@ -10,7 +10,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       input.Root,
       input.Authorizer,
       input.AuthorizerAdaptorEntrypoint,
-      await getOnChainRoles(input.Roles, input.TRANSITION_START_BLOCK, input.TRANSITION_END_BLOCK),
+      input.Roles,
       input.Granters,
       input.Revokers,
       input.ExecuteDelays,

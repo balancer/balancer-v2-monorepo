@@ -12,10 +12,10 @@ import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { impersonate } from '../../../src/signers';
 import { getForkedNetwork } from '../../../src/test';
-import { getOnChainRoles, TimelockAuthorizerDeployment, default as input } from '../input';
+import { TimelockAuthorizerDeployment, default as input } from '../input';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-function doForkTestsOnNetwork(network, block) {
+function doForkTestsOnNetwork(network: string, block: number) {
   describeForkTest(`TimelockAuthorizer ${network}`, network, block, function () {
     let input: TimelockAuthorizerDeployment;
     let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
@@ -48,11 +48,7 @@ function doForkTestsOnNetwork(network, block) {
     });
 
     it('migrates all roles properly', async () => {
-      for (const roleData of await getOnChainRoles(
-        input.Roles,
-        input.TRANSITION_START_BLOCK,
-        input.TRANSITION_END_BLOCK
-      )) {
+      for (const roleData of input.Roles) {
         expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
       }
     });
