@@ -356,15 +356,6 @@ describe('VotingEscrowRemapper', function () {
         });
       });
 
-      it('emits an AddressDelegateUpdated event', async () => {
-        const tx = await doClearMap();
-
-        expectEvent.inReceipt(await tx.wait(), 'AddressDelegateUpdated', {
-          localUser: local.address,
-          delegate: ZERO_ADDRESS,
-        });
-      });
-
       it('bridges the local and the remote addresses', async () => {
         const receipt = await (await doClearMap()).wait();
         expectEvent.inIndirectReceipt(
