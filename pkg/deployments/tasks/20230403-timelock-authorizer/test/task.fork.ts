@@ -28,7 +28,6 @@ function doForkTestsOnNetwork(network: string, block: number) {
       input = task.input() as TimelockAuthorizerDeployment;
       migrator = await task.deployedInstance('TimelockAuthorizerMigrator');
       newAuthorizer = await task.deployedInstance('TimelockAuthorizer');
-      newAuthorizer = await task.deployedInstance('TimelockAuthorizer');
 
       root = await impersonate(input.Root, fp(100));
     });
