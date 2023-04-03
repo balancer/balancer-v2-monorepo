@@ -44,6 +44,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
 
     event OmniVotingEscrowUpdated(IOmniVotingEscrow indexed newOmniVotingEscrow);
     event AddressMappingUpdated(address indexed localUser, address indexed remoteUser, uint256 indexed chainId);
+    event RemoteAddressMappingCleared(address indexed remoteUser, uint256 indexed chainId);
     event AddressDelegateUpdated(address indexed localUser, address indexed delegate);
 
     constructor(IVotingEscrow votingEscrow, IVault vault) SingletonAuthentication(vault) {
@@ -66,8 +67,9 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
 
     /**
      * @notice Returns the current total supply of veBAL as a Point.
-     * @dev We return the total supply as a Point to allow extrapolating this into the future. Note that this extrapolation will
-     * become invalid when crossing weeks, since we're not taking into account veBAL locks that expire then.
+     * @dev We return the total supply as a Point to allow extrapolating this into the future. Note that this
+     * extrapolation will become invalid when crossing weeks, since we're not taking into account veBAL locks that
+     * expire then.
      */
     function getTotalSupplyPoint() external view returns (IVotingEscrow.Point memory) {
         IVotingEscrow votingEscrow = getVotingEscrow();
@@ -174,7 +176,10 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
 
         // Clear out the old remote user to avoid orphaned entries.
         address oldRemoteUser = _localToRemoteAddressMap[chainId][localUser];
-        _remoteToLocalAddressMap[chainId][oldRemoteUser] = address(0);
+        if (oldRemoteUser != address(0)) {
+            _remoteToLocalAddressMap[chainId][oldRemoteUser] = address(0);
+            emit RemoteAddressMappingCleared(oldRemoteUser, chainId);
+        }
 
         // Set up new remapping.
         _remoteToLocalAddressMap[chainId][remoteUser] = localUser;
@@ -250,6 +255,7 @@ contract VotingEscrowRemapper is SingletonAuthentication, ReentrancyGuard {
         _localToRemoteAddressMap[chainId][localUser] = address(0);
 
         emit AddressMappingUpdated(localUser, address(0), chainId);
+        emit RemoteAddressMappingCleared(remoteUser, chainId);
 
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.

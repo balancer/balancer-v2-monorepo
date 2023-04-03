@@ -189,6 +189,21 @@ describe('VotingEscrowRemapper', function () {
           });
         });
 
+        it('does not emit RemoteAddressMappingCleared event when this is a new mapping', async () => {
+          const tx = await doRemap(remote);
+          expectEvent.notEmitted(await tx.wait(), 'RemoteAddressMappingCleared');
+        });
+
+        it('emits RemoteAddressMappingCleared event when this is a remapping', async () => {
+          await doRemap(other.address);
+          const tx = await doRemap(remote);
+
+          expectEvent.inReceipt(await tx.wait(), 'RemoteAddressMappingCleared', {
+            remoteUser: other.address,
+            chainId,
+          });
+        });
+
         it('clears previous entries', async () => {
           await doRemap(remote);
           // local <==> remote
@@ -352,6 +367,15 @@ describe('VotingEscrowRemapper', function () {
         expectEvent.inReceipt(await tx.wait(), 'AddressMappingUpdated', {
           localUser: local.address,
           remoteUser: ZERO_ADDRESS,
+          chainId,
+        });
+      });
+
+      it('emits an RemoteAddressMappingCleared event', async () => {
+        const tx = await doClearMap();
+
+        expectEvent.inReceipt(await tx.wait(), 'RemoteAddressMappingCleared', {
+          remoteUser: remote,
           chainId,
         });
       });
