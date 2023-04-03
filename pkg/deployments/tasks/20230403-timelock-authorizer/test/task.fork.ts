@@ -98,31 +98,34 @@ function doForkTestsOnNetwork(network, block) {
       expect(await newAuthorizer.isRoot(migrator.address)).to.be.false;
     });
 
-    it('allows minting after the migration', async () => {
-      const balancerMinterTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
-      const balancerMinter = await balancerMinterTask.deployedInstance('BalancerMinter');
+    // we mint only on mainnet
+    if (network == 'mainnet') {
+      it('allows minting after the migration', async () => {
+        const balancerMinterTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
+        const balancerMinter = await balancerMinterTask.deployedInstance('BalancerMinter');
 
-      const balancerTokenAdminTask = new Task(
-        '20220325-balancer-token-admin',
-        TaskMode.READ_ONLY,
-        getForkedNetwork(hre)
-      );
-      const balancerTokenAdmin = await balancerTokenAdminTask.deployedInstance('BalancerTokenAdmin');
+        const balancerTokenAdminTask = new Task(
+          '20220325-balancer-token-admin',
+          TaskMode.READ_ONLY,
+          getForkedNetwork(hre)
+        );
+        const balancerTokenAdmin = await balancerTokenAdminTask.deployedInstance('BalancerTokenAdmin');
 
-      const tokensTask = new Task('00000000-tokens', TaskMode.READ_ONLY, getForkedNetwork(hre));
-      const balAddress = tokensTask.output().BAL;
-      const balancerToken = await balancerTokenAdminTask.instanceAt('IERC20', balAddress);
+        const tokensTask = new Task('00000000-tokens', TaskMode.READ_ONLY, getForkedNetwork(hre));
+        const balAddress = tokensTask.output().BAL;
+        const balancerToken = await balancerTokenAdminTask.instanceAt('IERC20', balAddress);
 
-      const balancerMinterSigner = await impersonate(balancerMinter.address, fp(100));
+        const balancerMinterSigner = await impersonate(balancerMinter.address, fp(100));
 
-      const tx = await balancerTokenAdmin.connect(balancerMinterSigner).mint(balancerMinter.address, 100);
+        const tx = await balancerTokenAdmin.connect(balancerMinterSigner).mint(balancerMinter.address, 100);
 
-      expectEvent.inIndirectReceipt(await tx.wait(), balancerToken.interface, 'Transfer', {
-        from: ZERO_ADDRESS,
-        to: balancerMinter.address,
-        value: 100,
+        expectEvent.inIndirectReceipt(await tx.wait(), balancerToken.interface, 'Transfer', {
+          from: ZERO_ADDRESS,
+          to: balancerMinter.address,
+          value: 100,
+        });
       });
-    });
+    }
 
     it('allows migrating the authorizer address again', async () => {
       const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
