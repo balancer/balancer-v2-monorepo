@@ -18,7 +18,7 @@ export type TimelockAuthorizerDeployment = {
 export default {
   Authorizer,
   AuthorizerAdaptorEntrypoint,
-  networks: ['mainnet', 'goerli'],
+  networks: ['goerli'],
   mainnet: require('./input/mainnet'),
   goerli: require('./input/goerli'),
 };
