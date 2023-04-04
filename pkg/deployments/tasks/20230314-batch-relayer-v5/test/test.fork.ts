@@ -8,6 +8,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { defaultAbiCoder } from '@ethersproject/abi/lib/abi-coder';
 import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describeForkTest('BatchRelayerLibrary', 'mainnet', 15485000, function () {
   let task: Task;
@@ -74,7 +75,7 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 15485000, function () {
     await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
   });
 
-  before('approve relayer by the user', async () => {
+  sharedBeforeEach('approve relayer by the user', async () => {
     await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
   });
 
