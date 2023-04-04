@@ -113,6 +113,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | L2 Voting Escrow Delegation Proxy                      | [`20230316-l2-ve-delegation-proxy`](./tasks/20230316-l2-ve-delegation-proxy)                         |
 | Weighted Pool V4                                       | [`20230320-weighted-pool-v4`](./tasks/20230320-weighted-pool-v4)                                     |
 | Composable Stable Pools V4                             | [`20230320-composable-stable-pool-v4`](./tasks/20230320-composable-stable-pool-v4)                   |
+| Voting Escrow Remapper                                 | [`20230403-vebal-remapper`](./tasks/20230403-vebal-remapper)                                         |
 
 ## Scripts
 
