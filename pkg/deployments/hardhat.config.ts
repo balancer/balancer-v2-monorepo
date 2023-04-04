@@ -19,7 +19,7 @@ import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import logger, { Logger } from './src/logger';
-import { checkActionIds, checkActionIdUniqueness, saveActionIds } from './src/actionId';
+import { checkActionIds, checkActionIdUniqueness, saveActionIds, getActionIdInfo } from './src/actionId';
 import { saveContractDeploymentAddresses } from './src/network';
 import { name } from './package.json';
 
@@ -209,6 +209,17 @@ task('check-action-ids', `Check that contract action-ids correspond the expected
       }
     }
     checkActionIdUniqueness(hre.network.name);
+  });
+
+task('get-action-id-info', `Returns all the matches for the given actionId`)
+  .addPositionalParam('id', 'ActionId to use for the lookup')
+  .setAction(async (args: { id: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+    Logger.setDefaults(false, args.verbose || false);
+    logger.log(`Looking for action ID info on ${hre.network.name}...`, '');
+
+    const actionIdInfo = await getActionIdInfo(args.id, hre.network.name);
+    logger.log(`Found the following matches:`, '');
+    console.log(actionIdInfo);
   });
 
 task('build-address-lookup', `Build a lookup table from contract addresses to the relevant deployment`)
