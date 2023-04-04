@@ -16,12 +16,14 @@ pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
 import "./IAuthorizerAdaptor.sol";
+import "./ISmartWalletChecker.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
 // solhint-disable func-name-mixedcase
 
-interface IVotingEscrow {
+interface IVotingEscrow is IERC20 {
     struct Point {
         int128 bias;
         int128 slope; // - dweight / dt
@@ -30,6 +32,8 @@ interface IVotingEscrow {
     }
 
     function epoch() external view returns (uint256);
+
+    function balanceOf(address user, uint256 timestamp) external view returns (uint256);
 
     function totalSupply(uint256 timestamp) external view returns (uint256);
 
@@ -43,9 +47,11 @@ interface IVotingEscrow {
 
     function admin() external view returns (IAuthorizerAdaptor);
 
-    function smart_wallet_checker() external view returns (address);
+    function smart_wallet_checker() external view returns (ISmartWalletChecker);
 
     function commit_smart_wallet_checker(address newSmartWalletChecker) external;
 
     function apply_smart_wallet_checker() external;
+
+    function locked__end(address user) external view returns (uint256);
 }
