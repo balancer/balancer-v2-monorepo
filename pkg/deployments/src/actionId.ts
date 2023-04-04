@@ -8,7 +8,19 @@ import Task, { TaskMode } from './task';
 
 export const ACTION_ID_DIRECTORY = path.join(__dirname, '../action-ids');
 
-export type ContractActionIdData = { useAdaptor: boolean; factoryOutput?: string; actionIds: Record<string, string> };
+export type RoleData = {
+  role: string;
+  grantee: string;
+  target: string;
+};
+
+// Define a type alias with a more meaningful name
+export type ActionIdData = Record<string, string>;
+
+export type TaskActionIds = Record<string, ContractActionIdData>;
+
+export type ContractActionIdData = { useAdaptor: boolean; factoryOutput?: string; actionIds: ActionIdData };
+
 type ActionIdInfo = {
   taskId: string;
   contractName: string;
@@ -22,9 +34,9 @@ function safeReadJsonFile<T>(filePath: string): Record<string, T> {
   return fileExists ? JSON.parse(fs.readFileSync(filePath).toString()) : {};
 }
 
-export function getTaskActionIds(task: Task): Record<string, ContractActionIdData> {
+export function getTaskActionIds(task: Task): TaskActionIds {
   const filePath = path.join(ACTION_ID_DIRECTORY, task.network, 'action-ids.json');
-  const actionIdFileContents = safeReadJsonFile<Record<string, ContractActionIdData>>(filePath);
+  const actionIdFileContents = safeReadJsonFile<TaskActionIds>(filePath);
   return actionIdFileContents[task.id];
 }
 
@@ -39,7 +51,7 @@ export async function saveActionIds(task: Task, contractName: string, factoryOut
   const filePath = path.join(actionIdsDir, 'action-ids.json');
 
   // Load the existing content if any exists.
-  const newFileContents = safeReadJsonFile<Record<string, ContractActionIdData>>(filePath);
+  const newFileContents = safeReadJsonFile<TaskActionIds>(filePath);
 
   // Write the new entry.
   newFileContents[task.id] = newFileContents[task.id] ?? {};
@@ -77,13 +89,12 @@ export function checkActionIdUniqueness(network: string): void {
   const actionIdsDir = path.join(ACTION_ID_DIRECTORY, network);
 
   const filePath = path.join(actionIdsDir, 'action-ids.json');
-  const actionIdFileContents = safeReadJsonFile<Record<string, ContractActionIdData>>(filePath);
+  const actionIdFileContents = safeReadJsonFile<TaskActionIds>(filePath);
 
   const duplicateActionIdsMapping = getDuplicateActionIds(actionIdFileContents);
 
   const expectedCollisionsFilePath = path.join(actionIdsDir, 'expected-collisions.json');
-  const expectedDuplicateActionIdsMapping =
-    safeReadJsonFile<Record<string, ContractActionIdData>>(expectedCollisionsFilePath);
+  const expectedDuplicateActionIdsMapping = safeReadJsonFile<TaskActionIds>(expectedCollisionsFilePath);
 
   if (JSON.stringify(duplicateActionIdsMapping) === JSON.stringify(expectedDuplicateActionIdsMapping)) {
     logger.success(`Verified that no contracts unexpectedly share action IDs for ${network}`);
@@ -128,7 +139,7 @@ export async function getActionIds(
   task: Task,
   contractName: string,
   factoryOutput?: string
-): Promise<{ useAdaptor: boolean; actionIds: Record<string, string> }> {
+): Promise<{ useAdaptor: boolean; actionIds: ActionIdData }> {
   const artifact = task.artifact(contractName);
 
   const { ignoredFunctions } = safeReadJsonFile<string[]>(path.join(ACTION_ID_DIRECTORY, 'ignored-functions.json'));
@@ -178,7 +189,7 @@ async function getActionIdSource(
 async function getActionIdsFromSource(
   contractFunctions: [string, FunctionFragment][],
   actionIdSource: Contract
-): Promise<Record<string, string>> {
+): Promise<ActionIdData> {
   const functionActionIds = await Promise.all(
     contractFunctions.map(async ([signature, contractFunction]) => {
       const functionSelector = Interface.getSighash(contractFunction);
@@ -189,9 +200,7 @@ async function getActionIdsFromSource(
   return Object.fromEntries(functionActionIds);
 }
 
-function getDuplicateActionIds(
-  actionIdFileContents: Record<string, Record<string, ContractActionIdData>>
-): Record<string, ActionIdInfo[]> {
+function getDuplicateActionIds(actionIdFileContents: Record<string, TaskActionIds>): Record<string, ActionIdInfo[]> {
   // Reverse the mapping of `contractName -> signature -> actionId` to be `actionId -> [contractName, signature][]`.
   // This simplifies checking for duplicate actionIds to just reading the length of the arrays.
   const actionIdsMapping: Record<string, ActionIdInfo[]> = Object.entries(actionIdFileContents)
@@ -226,4 +235,30 @@ async function checkFactoryOutput(task: Task, contractName: string, factoryOutpu
   if (!(await factory.isPoolFromFactory(factoryOutput))) {
     throw Error(`The contract at ${factoryOutput} is not an instance of a ${contractName}`);
   }
+}
+
+export async function getActionIdInfo(actionId: string, network: string): Promise<ActionIdInfo[]> {
+  // read network JSON file from action-ids dir
+  const tasks = safeReadJsonFile<TaskActionIds>(path.join(ACTION_ID_DIRECTORY, network, 'action-ids.json'));
+  // filter all the entries which have the same actionId
+  // and map them to an array of ActionIdInfo
+  const entries = Object.entries(tasks)
+    .filter(([, taskData]) =>
+      Object.values(taskData).some((contractData) =>
+        Object.entries(contractData.actionIds).some(([, hash]) => hash == actionId)
+      )
+    )
+    .map(([taskId, taskData]) => {
+      const contracts = Object.entries(taskData).filter(([, contractData]) =>
+        Object.entries(contractData.actionIds).some(([, hash]) => hash == actionId)
+      )!;
+      return contracts.map(([contractName, contractData]) => ({
+        taskId,
+        contractName,
+        useAdaptor: contractData.useAdaptor,
+        signature: Object.entries(contractData.actionIds).find(([, hash]) => hash == actionId)![0],
+      }));
+    })
+    .flat();
+  return entries;
 }
