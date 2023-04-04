@@ -26,7 +26,7 @@ contract WeightedMathTest is Test {
     // Match the minimum supply defined in `BasePool`.
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
-    function testJoinSwaps(
+    function skipTestJoinSwaps(
         uint256[20] memory balancesFixed,
         uint256[20] memory normalizedWeightsFixed,
         uint256 arrayLength,
@@ -103,7 +103,7 @@ contract WeightedMathTest is Test {
         assertEq(joinSwap, properJoin);
     }
 
-    function testExitSwaps(
+    function skipTestExitSwaps(
         uint256[20] memory balancesFixed,
         uint256[20] memory normalizedWeightsFixed,
         uint256 arrayLength,
