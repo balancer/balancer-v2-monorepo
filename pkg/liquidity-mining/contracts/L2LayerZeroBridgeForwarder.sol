@@ -25,7 +25,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  * @dev The delegation contract can be set so that e.g. Child Chain Gauges are updated automatically whenever there is
  * a veBAL balance update.
  */
-contract L2LayerZeroBridgeForwarder is SingletonAuthentication {
+contract L2LayerZeroBridgeForwarder is IL2LayerZeroDelegation, SingletonAuthentication {
     event DelegationImplementationUpdated(IL2LayerZeroDelegation indexed newImplementation);
 
     IL2LayerZeroDelegation private _delegation;
@@ -44,7 +44,7 @@ contract L2LayerZeroBridgeForwarder is SingletonAuthentication {
     /**
      * @notice Hook to be called whenever the veBAL balance of a user is updated.
      */
-    function onVeBalBridged(address user) external {
+    function onVeBalBridged(address user) external override {
         if (_delegation != IL2LayerZeroDelegation(0)) {
             _delegation.onVeBalBridged(user);
         }
