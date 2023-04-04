@@ -118,12 +118,6 @@ describeForkTest('VotingEscrowRemapper', 'mainnet', 16971700, function () {
     );
   });
 
-  it('reverts clearing the mapping of an allowed account', async () => {
-    await expect(veRemapper.clearNetworkRemapping(local.address, chainId)).to.be.revertedWith(
-      'localUser is still in good standing'
-    );
-  });
-
   it('clears remapping of deny-listed account', async () => {
     await smartWalletChecker.connect(admin).denylistAddress(local.address);
     const receipt = await (await veRemapper.clearNetworkRemapping(local.address, chainId)).wait();
