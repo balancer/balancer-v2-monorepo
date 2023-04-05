@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVaultReentrancyLib.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+
 contract VaultReentrancyLib is IVaultReentrancyLib {
     IVault private immutable _vault;
 
@@ -30,8 +32,17 @@ contract VaultReentrancyLib is IVaultReentrancyLib {
     }
 
     /// @inheritdoc IVaultReentrancyLib
-    function ensureNotInVaultContext() external override {
-        IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
-        _vault.manageUserBalance(noop);
+    function ensureNotInVaultContext() external view override {
+        //IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
+        //_vault.manageUserBalance(noop);
+        bytes32 REENTRANCY_ERROR_HASH = keccak256(abi.encodeWithSignature("Error(string)", "BAL#400"));
+
+        // read-only re-entrancy protection - this call is always unsuccessful but we need to make sure
+        // it didn't fail due to a re-entrancy attack
+        (, bytes memory revertData) = address(_vault).staticcall(
+            abi.encodeWithSelector(_vault.manageUserBalance.selector, new address[](0))
+        );
+
+        _require(keccak256(revertData) != REENTRANCY_ERROR_HASH, Errors.REENTRANCY);
     }
 }

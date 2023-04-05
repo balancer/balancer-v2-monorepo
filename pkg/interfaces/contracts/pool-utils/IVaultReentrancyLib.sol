@@ -32,5 +32,5 @@ interface IVaultReentrancyLib {
      * here (https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345), those functions are unsafe,
      * and subject to manipulation that may result in loss of funds.
      */
-    function ensureNotInVaultContext() external;
+    function ensureNotInVaultContext() external view;
 }
