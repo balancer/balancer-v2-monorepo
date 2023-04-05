@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryModeHelper.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IComposablePoolTokenLib.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -28,6 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/lib/ComposablePoolLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
 import "./ManagedPoolSettings.sol";
+import "./ComposablePoolTokenLib.sol";
 
 /**
  * @title Managed Pool
@@ -61,6 +63,8 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
     IExternalWeightedMath private immutable _weightedMath;
     IRecoveryModeHelper private immutable _recoveryModeHelper;
+    IComposablePoolTokenLib private immutable _composablePoolTokenLib;
+
     string private _version;
 
     struct ManagedPoolParams {
@@ -104,6 +108,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     {
         _weightedMath = configParams.weightedMath;
         _recoveryModeHelper = configParams.recoveryModeHelper;
+        _composablePoolTokenLib = new ComposablePoolTokenLib(this);
         _version = configParams.version;
     }
 
@@ -743,10 +748,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
      * internal functions outside of the swap/join/exit hooks.
      */
     function _getPoolTokens() internal view override returns (IERC20[] memory, uint256[] memory) {
-        (IERC20[] memory registeredTokens, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(
-            getPoolId()
-        );
-        return ComposablePoolLib.dropBpt(registeredTokens, registeredBalances);
+        return _composablePoolTokenLib.getPoolTokens();
     }
 
     // Circuit Breakers

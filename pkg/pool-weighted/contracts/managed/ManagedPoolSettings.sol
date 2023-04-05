@@ -878,7 +878,6 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     }
 
     // Misc
-    // bytes4 selector = bytes4(keccak256(bytes("foo(uint256,bool)")));
     
     /**
      * @dev Enumerates all ownerOnly functions in Managed Pool.
