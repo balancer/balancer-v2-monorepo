@@ -76,6 +76,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     struct ManagedPoolConfigParams {
         IVault vault;
         IProtocolFeePercentagesProvider protocolFeeProvider;
+        IVaultReentrancyLib vaultReentrancyLib;
         IExternalWeightedMath weightedMath;
         IRecoveryModeHelper recoveryModeHelper;
         IManagedPoolOwnerOnlyLib ownerOnlyLib;
@@ -106,8 +107,8 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         )
         ManagedPoolSettings(
             settingsParams,
-            configParams.vault,
             configParams.protocolFeeProvider,
+            configParams.vaultReentrancyLib,
             configParams.ownerOnlyLib
         )
     {

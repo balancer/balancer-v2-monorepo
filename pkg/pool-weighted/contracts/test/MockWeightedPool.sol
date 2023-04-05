@@ -19,13 +19,10 @@ import "../WeightedPool.sol";
 
 contract MockWeightedPool is WeightedPool {
     constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
+        WeightedPoolParams memory params,
+        WeightedPoolConfigParams memory configParams,
         address owner
-    ) WeightedPool(params, vault, protocolFeeProvider, pauseWindowDuration, bufferPeriodDuration, owner) {
+    ) WeightedPool(params, configParams, owner) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

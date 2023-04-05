@@ -41,7 +41,9 @@ import "../ExternalWeightedMath.sol";
 contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory {
     IExternalWeightedMath private immutable _weightedMath;
     IRecoveryModeHelper private immutable _recoveryModeHelper;
+    IVaultReentrancyLib private immutable _vaultReentrancyLib;
     IManagedPoolOwnerOnlyLib private immutable _ownerOnlyLib;
+
     string private _poolVersion;
 
     constructor(
@@ -63,6 +65,7 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
     {
         _weightedMath = new ExternalWeightedMath();
         _recoveryModeHelper = new RecoveryModeHelper(vault);
+        _vaultReentrancyLib = new VaultReentrancyLib(vault);
         _ownerOnlyLib = new ManagedPoolOwnerOnlyLib(address(this));
         _poolVersion = poolVersion;
     }
@@ -77,6 +80,10 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
 
     function getRecoveryModeHelper() external view returns (IRecoveryModeHelper) {
         return _recoveryModeHelper;
+    }
+
+    function getVaultReentrancyLib() external view returns (IVaultReentrancyLib) {
+        return _vaultReentrancyLib;
     }
 
     function getOwnerOnlyLib() external view returns (IManagedPoolOwnerOnlyLib) {
@@ -97,6 +104,7 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
         ManagedPool.ManagedPoolConfigParams memory configParams = ManagedPool.ManagedPoolConfigParams({
             vault: getVault(),
             protocolFeeProvider: getProtocolFeePercentagesProvider(),
+            vaultReentrancyLib: _vaultReentrancyLib,
             weightedMath: _weightedMath,
             recoveryModeHelper: _recoveryModeHelper,
             ownerOnlyLib: _ownerOnlyLib,

@@ -73,6 +73,7 @@ contract ComposableStablePool is
     struct NewPoolParams {
         IVault vault;
         IProtocolFeePercentagesProvider protocolFeeProvider;
+        IVaultReentrancyLib vaultReentrancyLib;
         string name;
         string symbol;
         IERC20[] tokens;
@@ -104,7 +105,7 @@ contract ComposableStablePool is
         ComposableStablePoolStorage(_extractStorageParams(params))
         ComposableStablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(
-            params.vault,
+            params.vaultReentrancyLib,
             params.protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )

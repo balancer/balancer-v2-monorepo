@@ -27,6 +27,8 @@ contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolFactory 
     string private _version;
     string private _poolVersion;
 
+    IVaultReentrancyLib private immutable _vaultReentrancyLib;
+
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
@@ -45,6 +47,9 @@ contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolFactory 
     {
         _version = factoryVersion;
         _poolVersion = poolVersion;
+
+        // Create in the factory to ensure it uses the same Vault as the pools.
+        _vaultReentrancyLib = new VaultReentrancyLib(vault);
     }
 
     function version() external view override returns (string memory) {
@@ -53,6 +58,10 @@ contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolFactory 
 
     function getPoolVersion() public view override returns (string memory) {
         return _poolVersion;
+    }
+
+    function getVaultReentrancyLib() external view returns (IVaultReentrancyLib) {
+        return _vaultReentrancyLib;
     }
 
     /**
@@ -78,6 +87,7 @@ contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolFactory 
                         ComposableStablePool.NewPoolParams({
                             vault: getVault(),
                             protocolFeeProvider: getProtocolFeePercentagesProvider(),
+                            vaultReentrancyLib: _vaultReentrancyLib,
                             name: name,
                             symbol: symbol,
                             tokens: tokens,

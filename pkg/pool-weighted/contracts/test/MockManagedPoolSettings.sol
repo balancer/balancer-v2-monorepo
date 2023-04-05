@@ -51,7 +51,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
             30 days,
             owner
         )
-        ManagedPoolSettings(settingsParams, configParams.vault, configParams.protocolFeeProvider, configParams.ownerOnlyLib)
+        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider, new VaultReentrancyLib(configParams.vault), configParams.ownerOnlyLib)
     {
         _weightedMath = configParams.weightedMath;
         _recoveryModeHelper = configParams.recoveryModeHelper;

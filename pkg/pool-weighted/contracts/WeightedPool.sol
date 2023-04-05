@@ -59,7 +59,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     uint256 internal immutable _normalizedWeight6;
     uint256 internal immutable _normalizedWeight7;
 
-    struct NewPoolParams {
+    struct WeightedPoolParams {
         string name;
         string symbol;
         IERC20[] tokens;
@@ -69,29 +69,34 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 swapFeePercentage;
     }
 
+    struct WeightedPoolConfigParams {
+        IVault vault;
+        IProtocolFeePercentagesProvider protocolFeeProvider;
+        IVaultReentrancyLib vaultReentrancyLib;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+    }
+
     constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
+        WeightedPoolParams memory params,
+        WeightedPoolConfigParams memory configParams,
         address owner
     )
         BaseWeightedPool(
-            vault,
+            configParams.vault,
             params.name,
             params.symbol,
             params.tokens,
             params.assetManagers,
             params.swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
+            configParams.pauseWindowDuration,
+            configParams.bufferPeriodDuration,
             owner,
             false
         )
         ProtocolFeeCache(
-            vault,
-            protocolFeeProvider,
+            configParams.vaultReentrancyLib,
+            configParams.protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )
         WeightedPoolProtocolFees(params.tokens.length, params.rateProviders)

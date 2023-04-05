@@ -22,6 +22,8 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "./WeightedPool.sol";
 
 contract WeightedPoolFactory is BasePoolFactory {
+    IVaultReentrancyLib private immutable _vaultReentrancyLib;
+
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
@@ -36,7 +38,7 @@ contract WeightedPoolFactory is BasePoolFactory {
             type(WeightedPool).creationCode
         )
     {
-        // solhint-disable-previous-line no-empty-blocks
+        _vaultReentrancyLib = new VaultReentrancyLib(vault);
     }
 
     /**
@@ -57,7 +59,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         return
             _create(
                 abi.encode(
-                    WeightedPool.NewPoolParams({
+                    WeightedPool.WeightedPoolParams({
                         name: name,
                         symbol: symbol,
                         tokens: tokens,
@@ -66,10 +68,13 @@ contract WeightedPoolFactory is BasePoolFactory {
                         assetManagers: new address[](tokens.length), // Don't allow asset managers,
                         swapFeePercentage: swapFeePercentage
                     }),
-                    getVault(),
-                    getProtocolFeePercentagesProvider(),
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
+                    WeightedPool.WeightedPoolConfigParams({
+                        vault: getVault(),
+                        protocolFeeProvider: getProtocolFeePercentagesProvider(),
+                        vaultReentrancyLib: _vaultReentrancyLib,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration
+                    }),
                     owner
                 ),
                 salt
