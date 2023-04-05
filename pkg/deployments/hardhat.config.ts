@@ -215,11 +215,12 @@ task('get-action-id-info', `Returns all the matches for the given actionId`)
   .addPositionalParam('id', 'ActionId to use for the lookup')
   .setAction(async (args: { id: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
     Logger.setDefaults(false, args.verbose || false);
-    logger.log(`Looking for action ID info on ${hre.network.name}...`, '');
+    logger.info(`Looking for action ID info on ${hre.network.name}...`);
 
     const actionIdInfo = await getActionIdInfo(args.id, hre.network.name);
-    logger.log(`Found the following matches:`, '');
-    console.log(actionIdInfo);
+    logger.info(`Found the following matches:`);
+    logger.info(JSON.stringify(actionIdInfo, null, 2));
+    process.stdout.write(JSON.stringify(actionIdInfo, null, 2));
   });
 
 task('build-address-lookup', `Build a lookup table from contract addresses to the relevant deployment`)
