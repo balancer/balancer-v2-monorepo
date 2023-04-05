@@ -21,6 +21,22 @@ describe('ManagedPool owner only actions', () => {
     const math = await deploy('ExternalWeightedMath');
     const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
+
+    const factory = await deploy('ManagedPoolFactory', {
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        'factoryVersion',
+        'poolVersion',
+        0,
+        0,
+      ],
+      libraries: {
+        CircuitBreakerLib: circuitBreakerLib.address,
+        ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+      },
+    });
+    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [factory.address]});
     pool = await deploy('MockManagedPool', {
       args: [
         { name: '', symbol: '', assetManagers: new Array(2).fill(ZERO_ADDRESS) },
@@ -29,6 +45,7 @@ describe('ManagedPool owner only actions', () => {
           protocolFeeProvider: vault.getFeesProvider().address,
           weightedMath: math.address,
           recoveryModeHelper: recoveryModeHelper.address,
+          ownerOnlyLib: ownerOnlyLib.address,
           pauseWindowDuration: 0,
           bufferPeriodDuration: 0,
           version: '',

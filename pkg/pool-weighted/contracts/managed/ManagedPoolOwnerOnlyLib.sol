@@ -16,8 +16,6 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IManagedPoolOwnerOnlyLib.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
-
 contract ManagedPoolOwnerOnlyLib is IManagedPoolOwnerOnlyLib {
     bytes32 private immutable _actionIdDisambiguator;
 
@@ -28,7 +26,7 @@ contract ManagedPoolOwnerOnlyLib is IManagedPoolOwnerOnlyLib {
 
     function isOwnerOnlyAction(bytes32 actionId) external view override returns (bool) {
        return
-            (actionId == getActionId(bytes4(keccak256(bytes("updateWeightsGradually(uint256,uint256,uint256[],uint256[]"))))) ||
+            (actionId == getActionId(bytes4(keccak256(bytes("updateWeightsGradually(uint256,uint256,address[],uint256[]"))))) ||
             (actionId == getActionId(bytes4(keccak256(bytes("updateSwapFeeGradually(uint256,uint256,uint256,uint256)"))))) ||
             (actionId == getActionId(bytes4(keccak256(bytes("setJoinExitEnabled(bool)"))))) ||
             (actionId == getActionId(bytes4(keccak256(bytes("setSwapEnabled(bool)"))))) ||
