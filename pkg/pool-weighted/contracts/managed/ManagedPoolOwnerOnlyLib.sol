@@ -28,7 +28,7 @@ contract ManagedPoolOwnerOnlyLib is IManagedPoolOwnerOnlyLib {
         // solhint-disable max-line-length
         // prettier-ignore
         return
-            (actionId == _getActionId(bytes4(keccak256(bytes("updateWeightsGradually(uint256,uint256,address[],uint256[]"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("updateWeightsGradually(uint256,uint256,address[],uint256[])"))))) ||
             (actionId == _getActionId(bytes4(keccak256(bytes("updateSwapFeeGradually(uint256,uint256,uint256,uint256)"))))) ||
             (actionId == _getActionId(bytes4(keccak256(bytes("setJoinExitEnabled(bool)"))))) ||
             (actionId == _getActionId(bytes4(keccak256(bytes("setSwapEnabled(bool)"))))) ||

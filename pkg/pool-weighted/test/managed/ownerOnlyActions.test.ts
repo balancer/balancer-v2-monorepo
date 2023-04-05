@@ -29,6 +29,10 @@ describe('ManagedPool owner only actions', () => {
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
       },
     });
+    const signer = (await ethers.getSigners())[0];
+    // Can't use the factory one, since the pool is deployed manually
+    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [signer.address]});
+    
     pool = await deploy('MockManagedPool', {
       args: [
         { name: '', symbol: '', assetManagers: new Array(2).fill(ZERO_ADDRESS) },
@@ -37,7 +41,7 @@ describe('ManagedPool owner only actions', () => {
           protocolFeeProvider: vault.getFeesProvider().address,
           weightedMath: math.address,
           recoveryModeHelper: recoveryModeHelper.address,
-          ownerOnlyLib: await factory.getOwnerOnlyLib(),
+          ownerOnlyLib: ownerOnlyLib.address,
           pauseWindowDuration: 0,
           bufferPeriodDuration: 0,
           version: '',
