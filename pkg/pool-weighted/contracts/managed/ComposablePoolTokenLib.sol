@@ -23,7 +23,11 @@ contract ComposablePoolTokenLib is IComposablePoolTokenLib {
     IERC20 private immutable _pool;
     bytes32 private immutable _poolId;
 
-    constructor(IERC20 pool, IVault vault, bytes32 poolId) {
+    constructor(
+        IERC20 pool,
+        IVault vault,
+        bytes32 poolId
+    ) {
         _pool = pool;
         _vault = vault;
         _poolId = poolId;

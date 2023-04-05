@@ -23,20 +23,13 @@ describe('ManagedPool owner only actions', () => {
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
 
     const factory = await deploy('ManagedPoolFactory', {
-      args: [
-        vault.address,
-        vault.getFeesProvider().address,
-        'factoryVersion',
-        'poolVersion',
-        0,
-        0,
-      ],
+      args: [vault.address, vault.getFeesProvider().address, 'factoryVersion', 'poolVersion', 0, 0],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
       },
     });
-    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [factory.address]});
+    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [factory.address] });
     pool = await deploy('MockManagedPool', {
       args: [
         { name: '', symbol: '', assetManagers: new Array(2).fill(ZERO_ADDRESS) },

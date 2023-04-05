@@ -126,7 +126,12 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         _getVaultReentrancyLib().ensureNotInVaultContext();
     }
 
-    constructor(ManagedPoolSettingsParams memory params, IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, IManagedPoolOwnerOnlyLib ownerOnlyLib)
+    constructor(
+        ManagedPoolSettingsParams memory params,
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        IManagedPoolOwnerOnlyLib ownerOnlyLib
+    )
         ProtocolFeeCache(
             vault,
             protocolFeeProvider,
@@ -879,7 +884,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     }
 
     // Misc
-    
+
     /**
      * @dev Enumerates all ownerOnly functions in Managed Pool.
      */

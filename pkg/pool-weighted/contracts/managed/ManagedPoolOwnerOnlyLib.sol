@@ -25,21 +25,23 @@ contract ManagedPoolOwnerOnlyLib is IManagedPoolOwnerOnlyLib {
     }
 
     function isOwnerOnlyAction(bytes32 actionId) external view override returns (bool) {
-       return
-            (actionId == getActionId(bytes4(keccak256(bytes("updateWeightsGradually(uint256,uint256,address[],uint256[]"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("updateSwapFeeGradually(uint256,uint256,uint256,uint256)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("setJoinExitEnabled(bool)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("setSwapEnabled(bool)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("addAllowedAddress(address)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("removeAllowedAddress(address)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("setMustAllowlistLPs(bool)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("addToken(address,address,uint256,uint256,address)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("removeToken(address,uint256,address)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("setManagementAumFeePercentage(uint256)"))))) ||
-            (actionId == getActionId(bytes4(keccak256(bytes("setCircuitBreakers(address[],uint256[],uint256[],uint256[])")))));
+        // solhint-disable max-line-length
+        // prettier-ignore
+        return
+            (actionId ==_getActionId(bytes4(keccak256(bytes("updateWeightsGradually(uint256,uint256,address[],uint256[]"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("updateSwapFeeGradually(uint256,uint256,uint256,uint256)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("setJoinExitEnabled(bool)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("setSwapEnabled(bool)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("addAllowedAddress(address)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("removeAllowedAddress(address)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("setMustAllowlistLPs(bool)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("addToken(address,address,uint256,uint256,address)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("removeToken(address,uint256,address)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("setManagementAumFeePercentage(uint256)"))))) ||
+            (actionId == _getActionId(bytes4(keccak256(bytes("setCircuitBreakers(address[],uint256[],uint256[],uint256[])")))));
     }
 
-    function getActionId(bytes4 selector) private view returns (bytes32) {
+    function _getActionId(bytes4 selector) private view returns (bytes32) {
         // Each external function is dynamically assigned an action identifier as the hash of the disambiguator and the
         // function selector. Disambiguation is necessary to avoid potential collisions in the function selectors of
         // multiple contracts.
