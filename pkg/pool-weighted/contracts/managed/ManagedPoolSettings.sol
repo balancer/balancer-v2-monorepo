@@ -38,6 +38,7 @@ import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolAumStorageLib.sol";
 import "./ManagedPoolTokenStorageLib.sol";
 import "./ManagedPoolAddRemoveTokenLib.sol";
+import "./ManagedPoolOwnerOnlyLib.sol";
 
 /**
  * @title Managed Pool Settings
@@ -92,6 +93,8 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
+    IManagedPoolOwnerOnlyLib private immutable _ownerOnlyLib;
+
     struct ManagedPoolSettingsParams {
         IERC20[] tokens;
         uint256[] normalizedWeights;
@@ -123,7 +126,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         VaultReentrancyLib.ensureNotInVaultContext(getVault());
     }
 
-    constructor(ManagedPoolSettingsParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
+    constructor(ManagedPoolSettingsParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider, IManagedPoolOwnerOnlyLib ownerOnlyLib)
         ProtocolFeeCache(
             protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: params.aumFeeId })
@@ -134,6 +137,8 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         _require(totalTokens <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length);
+
+        _ownerOnlyLib = ownerOnlyLib;
 
         // Validate and set initial fees
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
@@ -873,23 +878,13 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     }
 
     // Misc
-
+    // bytes4 selector = bytes4(keccak256(bytes("foo(uint256,bool)")));
+    
     /**
      * @dev Enumerates all ownerOnly functions in Managed Pool.
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
-        return
-            (actionId == getActionId(ManagedPoolSettings.updateWeightsGradually.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.updateSwapFeeGradually.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setJoinExitEnabled.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setSwapEnabled.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.addAllowedAddress.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.removeAllowedAddress.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setCircuitBreakers.selector));
+        return _ownerOnlyLib.isOwnerOnlyAction(actionId);
     }
 
     /**

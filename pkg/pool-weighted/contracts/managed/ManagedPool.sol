@@ -74,6 +74,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         IProtocolFeePercentagesProvider protocolFeeProvider;
         IExternalWeightedMath weightedMath;
         IRecoveryModeHelper recoveryModeHelper;
+        IManagedPoolOwnerOnlyLib ownerOnlyLib;
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         string version;
@@ -99,7 +100,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
             configParams.bufferPeriodDuration,
             owner
         )
-        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider)
+        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider, configParams.ownerOnlyLib)
     {
         _weightedMath = configParams.weightedMath;
         _recoveryModeHelper = configParams.recoveryModeHelper;

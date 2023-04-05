@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-pool-utils/contracts/RecoveryModeHelper.sol";
 
 import "../managed/ManagedPoolSettings.sol";
+import "../managed/ManagedPoolOwnerOnlyLib.sol";
 import "../ExternalWeightedMath.sol";
 
 contract MockManagedPoolSettings is ManagedPoolSettings {
@@ -25,20 +26,26 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
 
     ExternalWeightedMath private immutable _weightedMath;
     RecoveryModeHelper private immutable _recoveryModeHelper;
+    ManagedPoolOwnerOnlyLib private immutable _ownerOnlyLib;
+
+    struct ManagedPoolConfigSettings {
+        IVault vault;
+        IProtocolFeePercentagesProvider protocolFeeProvider;
+        ExternalWeightedMath weightedMath;
+        RecoveryModeHelper recoveryModeHelper;
+        ManagedPoolOwnerOnlyLib ownerOnlyLib;
+    }
 
     constructor(
         ManagedPoolSettingsParams memory settingsParams,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        ExternalWeightedMath weightedMath,
-        RecoveryModeHelper recoveryModeHelper,
+        ManagedPoolConfigSettings memory configParams,
         address[] memory assetManagers,
         address owner
     )
         NewBasePool(
-            vault,
+            configParams.vault,
             PoolRegistrationLib.registerPoolWithAssetManagers(
-                vault,
+                configParams.vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
                 settingsParams.tokens,
                 assetManagers
@@ -49,10 +56,11 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
             30 days,
             owner
         )
-        ManagedPoolSettings(settingsParams, protocolFeeProvider)
+        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider, configParams.ownerOnlyLib)
     {
-        _weightedMath = weightedMath;
-        _recoveryModeHelper = recoveryModeHelper;
+        _weightedMath = configParams.weightedMath;
+        _recoveryModeHelper = configParams.recoveryModeHelper;
+        _ownerOnlyLib = configParams.ownerOnlyLib;
     }
 
     function getVirtualSupply() external view returns (uint256) {

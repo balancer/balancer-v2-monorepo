@@ -23,6 +23,7 @@ import "@balancer-labs/v2-pool-utils/contracts/RecoveryModeHelper.sol";
 import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
 import "./ManagedPool.sol";
+import "./ManagedPoolOwnerOnlyLib.sol";
 import "../ExternalWeightedMath.sol";
 
 /**
@@ -40,6 +41,7 @@ import "../ExternalWeightedMath.sol";
 contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory {
     IExternalWeightedMath private immutable _weightedMath;
     IRecoveryModeHelper private immutable _recoveryModeHelper;
+    IManagedPoolOwnerOnlyLib private immutable _ownerOnlyLib;
     string private _poolVersion;
 
     constructor(
@@ -61,6 +63,7 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
     {
         _weightedMath = new ExternalWeightedMath();
         _recoveryModeHelper = new RecoveryModeHelper(vault);
+        _ownerOnlyLib = new ManagedPoolOwnerOnlyLib(address(this));
         _poolVersion = poolVersion;
     }
 
@@ -92,6 +95,7 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
             protocolFeeProvider: getProtocolFeePercentagesProvider(),
             weightedMath: _weightedMath,
             recoveryModeHelper: _recoveryModeHelper,
+            ownerOnlyLib: _ownerOnlyLib,
             pauseWindowDuration: pauseWindowDuration,
             bufferPeriodDuration: bufferPeriodDuration,
             version: getPoolVersion()
