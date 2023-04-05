@@ -178,7 +178,6 @@ abstract contract ProtocolFeeCache is IProtocolFeeCache, RecoveryMode {
         emit ProtocolFeePercentageCacheUpdated(feeCache);
     }
 
-
     // Needed for access by derived pools.
     function _getVaultReentrancyLib() internal view returns (IVaultReentrancyLib) {
         return _vaultReentrancyLib;

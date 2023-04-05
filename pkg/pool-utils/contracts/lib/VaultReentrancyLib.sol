@@ -33,8 +33,14 @@ contract VaultReentrancyLib is IVaultReentrancyLib {
 
     /// @inheritdoc IVaultReentrancyLib
     function ensureNotInVaultContext() external view override {
-        //IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
-        //_vault.manageUserBalance(noop);
+        // Perform the following operation to trigger the Vault's reentrancy guard.
+        // Use a static call so that it can be a view function (even though the
+        // function is non-view).
+        //
+        // IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
+        // _vault.manageUserBalance(noop);
+
+        // solhint-disable-next-line var-name-mixedcase
         bytes32 REENTRANCY_ERROR_HASH = keccak256(abi.encodeWithSignature("Error(string)", "BAL#400"));
 
         // read-only re-entrancy protection - this call is always unsuccessful but we need to make sure
