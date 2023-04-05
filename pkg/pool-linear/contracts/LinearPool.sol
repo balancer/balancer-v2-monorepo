@@ -144,7 +144,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
      */
     function _ensureNotInVaultContext() private view {
-        _getVaultReentrancyLib().ensureNotInVaultContext();
+        _vaultReentrancyLib.ensureNotInVaultContext();
     }
 
     constructor(
@@ -196,10 +196,6 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         _setSwapFeePercentage(swapFeePercentage);
 
         _vaultReentrancyLib = new VaultReentrancyLib(vault);
-    }
-
-    function _getVaultReentrancyLib() private view returns (IVaultReentrancyLib) {
-        return _vaultReentrancyLib;
     }
 
     /**
