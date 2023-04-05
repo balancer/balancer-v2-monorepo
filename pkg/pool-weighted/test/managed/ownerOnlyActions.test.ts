@@ -21,24 +21,19 @@ describe('ManagedPool owner only actions', () => {
     const math = await deploy('ExternalWeightedMath');
     const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
+    const vaultReentrancyLib = await deploy('VaultReentrancyLib', { args: [vault.address] });
 
-    const factory = await deploy('ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, 'factoryVersion', 'poolVersion', 0, 0],
-      libraries: {
-        CircuitBreakerLib: circuitBreakerLib.address,
-        ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
-      },
-    });
     const signer = (await ethers.getSigners())[0];
     // Can't use the factory one, since the pool is deployed manually
-    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [signer.address]});
-    
+    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [signer.address] });
+
     pool = await deploy('MockManagedPool', {
       args: [
         { name: '', symbol: '', assetManagers: new Array(2).fill(ZERO_ADDRESS) },
         {
           vault: vault.address,
           protocolFeeProvider: vault.getFeesProvider().address,
+          vaultReentrancyLib: vaultReentrancyLib.address,
           weightedMath: math.address,
           recoveryModeHelper: recoveryModeHelper.address,
           ownerOnlyLib: ownerOnlyLib.address,
