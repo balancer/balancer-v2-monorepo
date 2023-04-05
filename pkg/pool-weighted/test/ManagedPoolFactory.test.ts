@@ -110,10 +110,6 @@ describe('ManagedPoolFactory', function () {
       pool = await createPool();
     });
 
-    it.only('works', () => {
-      expect(true).to.be.true;
-    });
-    
     it('sets the vault', async () => {
       expect(await pool.getVault()).to.equal(vault.address);
     });

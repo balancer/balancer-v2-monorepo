@@ -101,6 +101,8 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
             version: getPoolVersion()
         });
 
-        return _create(abi.encode(params, configParams, settingsParams, owner), salt);
+        pool = _create(abi.encode(params, configParams, settingsParams, owner), salt);
+
+        ManagedPool(pool).initComposablePoolTokenLib();
     }
 }

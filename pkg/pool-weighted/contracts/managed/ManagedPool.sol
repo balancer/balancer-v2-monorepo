@@ -63,7 +63,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
     IExternalWeightedMath private immutable _weightedMath;
     IRecoveryModeHelper private immutable _recoveryModeHelper;
-    IComposablePoolTokenLib private immutable _composablePoolTokenLib;
+    IComposablePoolTokenLib private _composablePoolTokenLib;
 
     string private _version;
 
@@ -108,8 +108,14 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     {
         _weightedMath = configParams.weightedMath;
         _recoveryModeHelper = configParams.recoveryModeHelper;
-        _composablePoolTokenLib = new ComposablePoolTokenLib(this);
         _version = configParams.version;
+    }
+
+    // This requires the poolId, which is not accessible during construction
+    function initComposablePoolTokenLib() external {
+        if (_composablePoolTokenLib == IComposablePoolTokenLib(0)) {
+            _composablePoolTokenLib = new ComposablePoolTokenLib(IERC20(this), getVault(), getPoolId());
+        }
     }
 
     function version() external view override returns (string memory) {

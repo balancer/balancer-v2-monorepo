@@ -20,13 +20,13 @@ import "./ManagedPool.sol";
 
 contract ComposablePoolTokenLib is IComposablePoolTokenLib {
     IVault private immutable _vault;
-    bytes32 private immutable _poolId;
     IERC20 private immutable _pool;
+    bytes32 private immutable _poolId;
 
-    constructor(ManagedPool pool) {
+    constructor(IERC20 pool, IVault vault, bytes32 poolId) {
         _pool = pool;
-        _vault = pool.getVault();
-        _poolId = pool.getPoolId();
+        _vault = vault;
+        _poolId = poolId;
     }
 
     function getPoolTokens() external view override returns (IERC20[] memory, uint256[] memory) {
