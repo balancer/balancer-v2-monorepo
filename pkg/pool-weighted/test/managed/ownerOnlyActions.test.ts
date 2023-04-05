@@ -29,7 +29,6 @@ describe('ManagedPool owner only actions', () => {
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
       },
     });
-    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [factory.address] });
     pool = await deploy('MockManagedPool', {
       args: [
         { name: '', symbol: '', assetManagers: new Array(2).fill(ZERO_ADDRESS) },
@@ -38,7 +37,7 @@ describe('ManagedPool owner only actions', () => {
           protocolFeeProvider: vault.getFeesProvider().address,
           weightedMath: math.address,
           recoveryModeHelper: recoveryModeHelper.address,
-          ownerOnlyLib: ownerOnlyLib.address,
+          ownerOnlyLib: await factory.getOwnerOnlyLib(),
           pauseWindowDuration: 0,
           bufferPeriodDuration: 0,
           version: '',

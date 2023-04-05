@@ -79,6 +79,10 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
         return _recoveryModeHelper;
     }
 
+    function getOwnerOnlyLib() external view returns (IManagedPoolOwnerOnlyLib) {
+        return _ownerOnlyLib;
+    }
+
     /**
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
