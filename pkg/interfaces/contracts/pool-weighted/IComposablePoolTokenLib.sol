@@ -17,5 +17,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "../solidity-utils/openzeppelin/IERC20.sol";
 
 interface IComposablePoolTokenLib {
+    function getVirtualSupply() external view returns (uint256);
+
     function getPoolTokens() external view returns (IERC20[] memory, uint256[] memory);
 }

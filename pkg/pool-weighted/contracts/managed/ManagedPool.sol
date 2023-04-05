@@ -124,6 +124,9 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         return _recoveryModeHelper;
     }
 
+    function _getComposablePoolTokenLib() internal view returns (IComposablePoolTokenLib) {
+        return _composablePoolTokenLib;
+    }
     // Virtual Supply
 
     /**
@@ -138,11 +141,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
      * inputs, which is the preferred approach whenever possible, as it avoids extra calls to the Vault.
      */
     function _getVirtualSupply() internal view override returns (uint256) {
-        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
-        // We don't need to use SafeMath here as the Vault restricts token balances to be less than 2**112.
-        // This ensures that `cash + managed` cannot overflow and the Pool's balance of BPT cannot exceed the total
-        // supply so we cannot underflow either.
-        return totalSupply() - (cash + managed);
+        return _getComposablePoolTokenLib().getVirtualSupply();
     }
 
     // Swap Hooks
@@ -748,7 +747,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
      * internal functions outside of the swap/join/exit hooks.
      */
     function _getPoolTokens() internal view override returns (IERC20[] memory, uint256[] memory) {
-        return _composablePoolTokenLib.getPoolTokens();
+        return _getComposablePoolTokenLib().getPoolTokens();
     }
 
     // Circuit Breakers

@@ -21,8 +21,10 @@ import "./ManagedPool.sol";
 contract ComposablePoolTokenLib is IComposablePoolTokenLib {
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
+    IERC20 private immutable _pool;
 
     constructor(ManagedPool pool) {
+        _pool = pool;
         _vault = pool.getVault();
         _poolId = pool.getPoolId();
     }
@@ -31,5 +33,13 @@ contract ComposablePoolTokenLib is IComposablePoolTokenLib {
         (IERC20[] memory registeredTokens, uint256[] memory registeredBalances, ) = _vault.getPoolTokens(_poolId);
 
         return ComposablePoolLib.dropBpt(registeredTokens, registeredBalances);
+    }
+
+    function getVirtualSupply() external view override returns (uint256) {
+        (uint256 cash, uint256 managed, , ) = _vault.getPoolTokenInfo(_poolId, _pool);
+        // We don't need to use SafeMath here as the Vault restricts token balances to be less than 2**112.
+        // This ensures that `cash + managed` cannot overflow and the Pool's balance of BPT cannot exceed the total
+        // supply so we cannot underflow either.
+        return _pool.totalSupply() - (cash + managed);
     }
 }
