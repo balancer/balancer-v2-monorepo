@@ -117,7 +117,10 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         _version = configParams.version;
     }
 
-    // This requires the poolId, which is not accessible during construction
+    /**
+     * @dev This must be called after deployment (e.g., by the factory). The poolId is immutable, and therefore
+     * not available during construction.
+     */
     function initComposablePoolTokenLib() external {
         if (_composablePoolTokenLib == IComposablePoolTokenLib(0)) {
             _composablePoolTokenLib = new ComposablePoolTokenLib(IERC20(this), getVault(), getPoolId());

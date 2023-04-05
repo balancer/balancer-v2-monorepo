@@ -115,6 +115,8 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
 
         pool = _create(abi.encode(params, configParams, settingsParams, owner), salt);
 
+        // This deploys the ComposablePoolTokenLib for this pool. Has to be done after construction,
+        // so that the poolId is available.
         ManagedPool(pool).initComposablePoolTokenLib();
     }
 }
