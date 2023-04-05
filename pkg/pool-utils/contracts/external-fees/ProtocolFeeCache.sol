@@ -76,11 +76,12 @@ abstract contract ProtocolFeeCache is IProtocolFeeCache, RecoveryMode {
     }
 
     IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
+    IVaultReentrancyLib private immutable _vaultReentrancyLib;
     bytes32 private immutable _feeIds;
 
     bytes32 private _feeCache;
 
-    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs) {
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs) {
         _protocolFeeProvider = protocolFeeProvider;
 
         bytes32 feeIds = WordCodec.encodeUint(providerFeeIDs.swap, _SWAP_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH) |
@@ -90,6 +91,8 @@ abstract contract ProtocolFeeCache is IProtocolFeeCache, RecoveryMode {
         _feeIds = feeIds;
 
         _updateProtocolFeeCache(protocolFeeProvider, feeIds);
+
+        _vaultReentrancyLib = new VaultReentrancyLib(vault);
     }
 
     /**
@@ -135,7 +138,7 @@ abstract contract ProtocolFeeCache is IProtocolFeeCache, RecoveryMode {
 
     /// @inheritdoc IProtocolFeeCache
     function updateProtocolFeePercentageCache() external override {
-        VaultReentrancyLib.ensureNotInVaultContext(_getVault());
+        _getVaultReentrancyLib().ensureNotInVaultContext();
 
         _beforeProtocolFeeCacheUpdate();
 
@@ -169,5 +172,9 @@ abstract contract ProtocolFeeCache is IProtocolFeeCache, RecoveryMode {
         _feeCache = feeCache;
 
         emit ProtocolFeePercentageCacheUpdated(feeCache);
+    }
+
+    function _getVaultReentrancyLib() internal view returns (IVaultReentrancyLib) {
+        return _vaultReentrancyLib;
     }
 }

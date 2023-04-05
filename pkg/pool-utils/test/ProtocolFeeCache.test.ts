@@ -109,10 +109,6 @@ describe('ProtocolFeeCache', () => {
         from: admin,
       });
     });
-
-    it('stores the Vault', async () => {
-      expect(await protocolFeeCache.vault()).to.eq(vault.address);
-    });
   });
 
   function itTestsProtocolFeePercentages(providerFeeIds: ProviderFeeIDs): void {

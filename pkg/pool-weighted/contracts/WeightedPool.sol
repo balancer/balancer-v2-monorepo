@@ -90,6 +90,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
             false
         )
         ProtocolFeeCache(
+            vault,
             protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )

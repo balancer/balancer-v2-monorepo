@@ -122,7 +122,6 @@ abstract contract BasePool is
         BalancerPoolToken(name, symbol, vault)
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
-        RecoveryMode(vault)
     {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);

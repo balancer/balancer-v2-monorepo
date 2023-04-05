@@ -44,23 +44,27 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
     )
         NewBasePool(
             configParams.vault,
-            PoolRegistrationLib.registerPoolWithAssetManagers(
-                configParams.vault,
-                IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                settingsParams.tokens,
-                assetManagers
-            ),
+            _registeredPoolId(configParams.vault, settingsParams.tokens, assetManagers),
             "MockManagedPoolName",
             "MockManagedPoolSymbol",
             90 days,
             30 days,
             owner
         )
-        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider, configParams.ownerOnlyLib)
+        ManagedPoolSettings(settingsParams, configParams.vault, configParams.protocolFeeProvider, configParams.ownerOnlyLib)
     {
         _weightedMath = configParams.weightedMath;
         _recoveryModeHelper = configParams.recoveryModeHelper;
         _ownerOnlyLib = configParams.ownerOnlyLib;
+    }
+
+    function _registeredPoolId(IVault vault, IERC20[] memory tokens, address[] memory assetManagers) private returns (bytes32) {
+        return PoolRegistrationLib.registerPoolWithAssetManagers(
+                vault,
+                IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+                tokens,
+                assetManagers
+            );
     }
 
     function getVirtualSupply() external view returns (uint256) {

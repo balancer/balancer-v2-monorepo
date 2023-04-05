@@ -123,11 +123,12 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
      * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
      */
     function _ensureNotInVaultContext() private {
-        VaultReentrancyLib.ensureNotInVaultContext(getVault());
+        _getVaultReentrancyLib().ensureNotInVaultContext();
     }
 
-    constructor(ManagedPoolSettingsParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider, IManagedPoolOwnerOnlyLib ownerOnlyLib)
+    constructor(ManagedPoolSettingsParams memory params, IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, IManagedPoolOwnerOnlyLib ownerOnlyLib)
         ProtocolFeeCache(
+            vault,
             protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: params.aumFeeId })
         )

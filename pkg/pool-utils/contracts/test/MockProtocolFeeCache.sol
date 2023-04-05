@@ -24,8 +24,7 @@ contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs)
         Authentication(bytes32(uint256(address(this))))
         BasePoolAuthorization(msg.sender)
-        ProtocolFeeCache(protocolFeeProvider, providerFeeIDs)
-        MockRecoveryModeStorage(vault)
+        ProtocolFeeCache(vault, protocolFeeProvider, providerFeeIDs)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -46,10 +45,6 @@ contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
 
     function _getAuthorizer() internal pure override returns (IAuthorizer) {
         return IAuthorizer(address(0));
-    }
-
-    function vault() external view returns (IVault) {
-        return _getVault();
     }
 
     function _doRecoveryModeExit(

@@ -30,6 +30,7 @@ contract MockReentrancyPool is BaseGeneralPool {
     using WeightedPoolUserData for bytes;
 
     uint256 private immutable _totalTokens;
+    IVaultReentrancyLib private immutable _vaultReentrancyLib;
 
     event ProtectedFunctionCalled();
 
@@ -59,6 +60,7 @@ contract MockReentrancyPool is BaseGeneralPool {
         )
     {
         _totalTokens = tokens.length;
+        _vaultReentrancyLib = new VaultReentrancyLib(vault);
     }
 
     /**
@@ -66,7 +68,7 @@ contract MockReentrancyPool is BaseGeneralPool {
      * during a Vault operation (join/swap/exit).
      */
     function protectedFunction() public {
-        VaultReentrancyLib.ensureNotInVaultContext(getVault());
+        _vaultReentrancyLib.ensureNotInVaultContext();
 
         emit ProtectedFunctionCalled();
     }

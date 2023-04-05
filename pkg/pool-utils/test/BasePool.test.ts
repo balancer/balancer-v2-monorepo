@@ -537,10 +537,6 @@ describe('BasePool', function () {
         sender = other;
       });
 
-      it('stores the vault (in RecoveryMode contract)', async () => {
-        expect(await pool.vault()).to.equal(vault.address);
-      });
-
       context('when the sender does not have the recovery mode permission in the authorizer', () => {
         itRevertsWithUnallowedSender();
       });

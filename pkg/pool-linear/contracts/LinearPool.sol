@@ -104,6 +104,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     // [ recovery | swap  fee | upper target |  lower target | reserved ]
     // [ MSB                                                        LSB ]
 
+    IVaultReentrancyLib private immutable _vaultReentrancyLib;
+
     uint256 private constant _TARGET_SCALING = 1e18;
 
     uint256 private constant _TARGET_BITS = 32;
@@ -142,7 +144,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
      */
     function _ensureNotInVaultContext() private {
-        VaultReentrancyLib.ensureNotInVaultContext(getVault());
+        _getVaultReentrancyLib().ensureNotInVaultContext();
     }
 
     constructor(
@@ -192,6 +194,12 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
         // Set the initial swap fee percentage.
         _setSwapFeePercentage(swapFeePercentage);
+
+        _vaultReentrancyLib = new VaultReentrancyLib(vault);
+    }
+
+    function _getVaultReentrancyLib() private view returns (IVaultReentrancyLib) {
+        return _vaultReentrancyLib;
     }
 
     /**

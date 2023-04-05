@@ -104,6 +104,7 @@ contract ComposableStablePool is
         ComposableStablePoolStorage(_extractStorageParams(params))
         ComposableStablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(
+            params.vault,
             params.protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )

@@ -104,7 +104,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
             configParams.bufferPeriodDuration,
             owner
         )
-        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider, configParams.ownerOnlyLib)
+        ManagedPoolSettings(settingsParams, configParams.vault, configParams.protocolFeeProvider, configParams.ownerOnlyLib)
     {
         _weightedMath = configParams.weightedMath;
         _recoveryModeHelper = configParams.recoveryModeHelper;
