@@ -20,4 +20,7 @@ interface IComposablePoolTokenLib {
     function getVirtualSupply() external view returns (uint256);
 
     function getPoolTokens() external view returns (IERC20[] memory, uint256[] memory);
+
+    // Called by the pool on initialization, to ensure the contract passed in is configured correctly.
+    function validatePool(address pool) external;
 }

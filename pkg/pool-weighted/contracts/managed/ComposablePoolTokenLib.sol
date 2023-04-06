@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IComposablePoolTokenLib.sol";
-
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "./ManagedPool.sol";
 
 contract ComposablePoolTokenLib is IComposablePoolTokenLib {
@@ -45,5 +45,14 @@ contract ComposablePoolTokenLib is IComposablePoolTokenLib {
         // This ensures that `cash + managed` cannot overflow and the Pool's balance of BPT cannot exceed the total
         // supply so we cannot underflow either.
         return _pool.totalSupply() - (cash + managed);
+    }
+
+    function validatePool(address pool) external view override {
+        ManagedPool managedPool = ManagedPool(pool);
+
+        _require(
+            pool == address(_pool) && managedPool.getVault() == _vault && managedPool.getPoolId() == _poolId,
+            Errors.SHOULD_NOT_HAPPEN
+        );
     }
 }
