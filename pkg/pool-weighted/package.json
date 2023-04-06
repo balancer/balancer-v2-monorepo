@@ -51,6 +51,7 @@
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.2",
     "hardhat": "^2.12.5",
+    "hardhat-contract-sizer": "^2.8.0",
     "hardhat-ignore-warnings": "^0.2.4",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",

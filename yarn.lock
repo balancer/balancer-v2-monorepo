@@ -486,6 +486,7 @@ __metadata:
     ethereum-waffle: ^3.4.4
     ethers: ^5.7.2
     hardhat: ^2.12.5
+    hardhat-contract-sizer: ^2.8.0
     hardhat-ignore-warnings: ^0.2.4
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -624,6 +625,13 @@ __metadata:
     typescript: ^4.0.2
   languageName: unknown
   linkType: soft
+
+"@colors/colors@npm:1.5.0":
+  version: 1.5.0
+  resolution: "@colors/colors@npm:1.5.0"
+  checksum: 152768b41b5f73c77552acb8e2921729674b83c835ba509b4b990fcb0eea6109fd14fd51ae5dd8531c6a1f93b01988d35083c1205a970906de704ee891300a7c
+  languageName: node
+  linkType: hard
 
 "@cspotcode/source-map-support@npm:^0.8.0":
   version: 0.8.1
@@ -4971,6 +4979,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cli-table3@npm:^0.6.0":
+  version: 0.6.3
+  resolution: "cli-table3@npm:0.6.3"
+  dependencies:
+    "@colors/colors": 1.5.0
+    string-width: ^4.2.0
+  dependenciesMeta:
+    "@colors/colors":
+      optional: true
+  checksum: d3996c75ef20d74bcb617743f8def66cf6679f8cba088e41cf74bf39cef00c3a45ad7c1386587ee30d3b1b4edc43a4d2e340c44578024c996347cb250247207a
+  languageName: node
+  linkType: hard
+
 "cli-width@npm:^2.0.0":
   version: 2.2.1
   resolution: "cli-width@npm:2.2.1"
@@ -7723,6 +7744,19 @@ __metadata:
     ajv: ^6.12.3
     har-schema: ^2.0.0
   checksum: 01b905cdaa7632c926a962c8127a77b98387935ef3aa0b44dae871eae2592ba6da948a3bdbb3eeceb90fa1599300f16716e50147965a7ea7c4e7c4e57ac69727
+  languageName: node
+  linkType: hard
+
+"hardhat-contract-sizer@npm:^2.8.0":
+  version: 2.8.0
+  resolution: "hardhat-contract-sizer@npm:2.8.0"
+  dependencies:
+    chalk: ^4.0.0
+    cli-table3: ^0.6.0
+    strip-ansi: ^6.0.0
+  peerDependencies:
+    hardhat: ^2.0.0
+  checksum: cb550c3bac83c6a6c78f47399b0e88cb7471506232d66e1fe430956eebd98a1cc6340fc1fa2f5c1e63fc47b49b7bdcb1b5a8a95fd6800cdf5abeb3f045e0bb37
   languageName: node
   linkType: hard
 
