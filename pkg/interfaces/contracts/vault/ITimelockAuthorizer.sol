@@ -26,6 +26,12 @@ interface ITimelockAuthorizer {
         bool cancelled;
         bool protected;
         uint256 executableAt;
+        address scheduledBy;
+        uint256 scheduledAt;
+        address executedBy;
+        uint256 executedAt;
+        address cancelledBy;
+        uint256 cancelledAt;
     }
 
     /**

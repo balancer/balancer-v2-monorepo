@@ -201,6 +201,32 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         return _scheduledExecutions[scheduledExecutionId];
     }
 
+    function getNumScheduledExecutions() external view returns (uint256) {
+        return _scheduledExecutions.length;
+    }
+
+    function getScheduledExecutions(uint256 offset, uint256 limit, bool reverseOrder)
+        external
+        view
+        returns (ITimelockAuthorizer.ScheduledExecution[] memory items)
+    {
+        require(offset < _scheduledExecutions.length, "INVALID_OFFSET");
+      
+        uint256 rest = _scheduledExecutions.length - offset;
+        uint256 size = rest > limit ? limit : rest;
+        items = new ITimelockAuthorizer.ScheduledExecution[](size);
+
+        if (reverseOrder) {
+            for (uint256 i = rest - 1; i >= rest - size; i--) {
+                items[i] = _scheduledExecutions[i];
+            }
+        } else {
+            for (uint256 i = offset; i < offset + size; i++) {
+                items[i] = _scheduledExecutions[i];
+            }
+        }
+    }
+
     /**
      * @inheritdoc ITimelockAuthorizer
      */
@@ -286,6 +312,9 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         }
 
         scheduledExecution.executed = true;
+        scheduledExecution.executedBy = msg.sender;
+        // solhint-disable-next-line not-rely-on-time
+        scheduledExecution.executedAt = block.timestamp;
 
         // Note that this is the only place in the entire contract we perform a non-view call to an external contract,
         // i.e. this is the only context in which this contract can be re-entered, and by this point we've already
@@ -310,6 +339,10 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         require(isCanceler(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_CANCELER");
 
         scheduledExecution.cancelled = true;
+        scheduledExecution.cancelledBy = msg.sender;
+        // solhint-disable-next-line not-rely-on-time
+        scheduledExecution.cancelledAt = block.timestamp;
+
         emit ExecutionCancelled(scheduledExecutionId);
     }
 
@@ -460,7 +493,14 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
                 executed: false,
                 cancelled: false,
                 protected: protected,
-                executableAt: executableAt
+                executableAt: executableAt,
+                scheduledBy: msg.sender,
+                // solhint-disable-next-line not-rely-on-time
+                scheduledAt: block.timestamp,
+                executedBy: address(0),
+                executedAt: 0,
+                cancelledBy: address(0),
+                cancelledAt: 0
             })
         );
 
