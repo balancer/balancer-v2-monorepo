@@ -19,6 +19,6 @@ export default {
   Authorizer,
   AuthorizerAdaptorEntrypoint,
   networks: ['goerli'],
-  mainnet: require('./input/mainnet'),
-  goerli: require('./input/goerli'),
+  mainnet: require('./input/mainnet.ts'),
+  goerli: require('./input/goerli.ts'),
 };
