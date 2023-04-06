@@ -1,8 +1,7 @@
+import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
-
 import * as expectEvent from '../../../test/expectEvent';
 import { deploy, deployedAt } from '../../../contract';
-
 import Vault from '../../vault/Vault';
 import WeightedPool from './WeightedPool';
 import VaultDeployer from '../../vault/VaultDeployer';
@@ -12,9 +11,15 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { ProtocolFee } from '../../vault/types';
 import { MONTH } from '../../../time';
 import { randomBytes } from 'ethers/lib/utils';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
+let deployer: SignerWithAddress;
+
+before('setup signers', async () => {
+  [deployer] = await ethers.getSigners();
+});
 
 export default {
   async deploy(params: RawWeightedPoolDeployment): Promise<WeightedPool> {
@@ -101,6 +106,9 @@ export default {
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const vaultReentrancyLib = await deploy('v2-pool-utils/VaultReentrancyLib', { args: [vault.address] });
+        const ownerOnlyLib = await deploy('v2-pool-weighted/ManagedPoolOwnerOnlyLib', { args: [deployer.address] });
+
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -111,10 +119,12 @@ export default {
             {
               vault: vault.address,
               protocolFeeProvider: vault.protocolFeesProvider.address,
+              vaultReentrancyLib: vaultReentrancyLib.address,
               weightedMath: math.address,
               recoveryModeHelper: recoveryModeHelper.address,
-              pauseWindowDuration,
-              bufferPeriodDuration,
+              ownerOnlyLib: ownerOnlyLib.address,
+              pauseWindowDuration: pauseWindowDuration,
+              bufferPeriodDuration: bufferPeriodDuration,
               version: poolVersion,
             },
             {
@@ -124,7 +134,6 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
             owner,
@@ -139,10 +148,12 @@ export default {
       }
       case WeightedPoolType.MOCK_MANAGED_POOL: {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
-
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const vaultReentrancyLib = await deploy('v2-pool-utils/VaultReentrancyLib', { args: [vault.address] });
+        const ownerOnlyLib = await deploy('v2-pool-weighted/ManagedPoolOwnerOnlyLib', { args: [deployer.address] });
+
         result = deploy('v2-pool-weighted/MockManagedPool', {
           args: [
             {
@@ -153,10 +164,12 @@ export default {
             {
               vault: vault.address,
               protocolFeeProvider: vault.protocolFeesProvider.address,
+              vaultReentrancyLib: vaultReentrancyLib.address,
               weightedMath: math.address,
               recoveryModeHelper: recoveryModeHelper.address,
-              pauseWindowDuration,
-              bufferPeriodDuration,
+              ownerOnlyLib: ownerOnlyLib.address,
+              pauseWindowDuration: pauseWindowDuration,
+              bufferPeriodDuration: bufferPeriodDuration,
               version: poolVersion,
             },
             {
@@ -166,7 +179,6 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
             owner,
@@ -185,6 +197,9 @@ export default {
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const vaultReentrancyLib = await deploy('v2-pool-utils/VaultReentrancyLib', { args: [vault.address] });
+        const ownerOnlyLib = await deploy('v2-pool-weighted/ManagedPoolOwnerOnlyLib', { args: [deployer.address] });
+
         result = deploy('v2-pool-weighted/MockManagedPoolSettings', {
           args: [
             {
@@ -194,13 +209,19 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
-            vault.address,
-            vault.protocolFeesProvider.address,
-            math.address,
-            recoveryModeHelper.address,
+            {
+              vault: vault.address,
+              protocolFeeProvider: vault.protocolFeesProvider.address,
+              vaultReentrancyLib: vaultReentrancyLib.address,
+              weightedMath: math.address,
+              recoveryModeHelper: recoveryModeHelper.address,
+              ownerOnlyLib: ownerOnlyLib.address,
+              pauseWindowDuration: pauseWindowDuration,
+              bufferPeriodDuration: bufferPeriodDuration,
+              version: poolVersion,
+            },
             assetManagers,
             owner,
           ],
@@ -213,6 +234,8 @@ export default {
         break;
       }
       default: {
+        const vaultReentrancyLib = await deploy('v2-pool-utils/VaultReentrancyLib', { args: [vault.address] });
+
         result = deploy('v2-pool-weighted/WeightedPool', {
           args: [
             {
@@ -224,10 +247,13 @@ export default {
               assetManagers: assetManagers,
               swapFeePercentage: swapFeePercentage,
             },
-            vault.address,
-            vault.protocolFeesProvider.address,
-            pauseWindowDuration,
-            bufferPeriodDuration,
+            {
+              vault: vault.address,
+              protocolFeeProvider: vault.protocolFeesProvider.address,
+              vaultReentrancyLib: vaultReentrancyLib.address,
+              pauseWindowDuration: pauseWindowDuration,
+              bufferPeriodDuration: bufferPeriodDuration,
+            },
             owner,
           ],
           from,

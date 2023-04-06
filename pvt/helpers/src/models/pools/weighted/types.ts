@@ -209,6 +209,12 @@ export type ManagedPoolRights = {
 };
 
 export type ManagedPoolParams = {
+  name: string;
+  symbol: string;
+  assetManagers: string[];
+};
+
+export type ManagedPoolSettingsParams = {
   tokens: string[];
   normalizedWeights: BigNumberish[];
   swapFeePercentage: BigNumberish;
@@ -216,6 +222,18 @@ export type ManagedPoolParams = {
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
   aumFeeId: BigNumberish;
+};
+
+export type ManagedPoolConfigParams = {
+  vault: string;
+  protocolFeeProvider: string;
+  vaultReentrancyLib: string;
+  weightedMath: string;
+  recoveryModeHelper: string;
+  ownerOnlyLib: string;
+  pauseWindowDuration: BigNumber;
+  bufferPeriodDuration: BigNumber;
+  version: string;
 };
 
 export type CircuitBreakerState = {

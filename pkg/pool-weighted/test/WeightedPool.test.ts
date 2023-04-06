@@ -116,6 +116,7 @@ describe('WeightedPool', function () {
 
     sharedBeforeEach('deploy pool', async () => {
       const vault = await Vault.create();
+      const vaultReentrancyLib = await deploy('v2-pool-utils/VaultReentrancyLib', { args: [vault.address] });
 
       pool = await deploy('MockWeightedPool', {
         args: [
@@ -128,11 +129,13 @@ describe('WeightedPool', function () {
             assetManagers: new Array(2).fill(ZERO_ADDRESS),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
           },
-
-          vault.address,
-          vault.getFeesProvider().address,
-          0,
-          0,
+          {
+            vault: vault.address,
+            protocolFeeProvider: vault.getFeesProvider().address,
+            vaultReentrancyLib: vaultReentrancyLib.address,
+            pauseWindowDuration: 0,
+            bufferPeriodDuration: 0,
+          },
           ZERO_ADDRESS,
         ],
       });

@@ -40,12 +40,14 @@ export default {
     } = params;
 
     const owner = TypesConverter.toAddress(params.owner);
+    const vaultReentrancyLib = await deploy('v2-pool-utils/VaultReentrancyLib', { args: [vault.address] });
 
     return deploy('v2-pool-stable/MockComposableStablePool', {
       args: [
         {
           vault: vault.address,
           protocolFeeProvider: vault.getFeesProvider().address,
+          vaultReentrancyLib: vaultReentrancyLib.address,
           name: NAME,
           symbol: SYMBOL,
           tokens: tokens.addresses,
