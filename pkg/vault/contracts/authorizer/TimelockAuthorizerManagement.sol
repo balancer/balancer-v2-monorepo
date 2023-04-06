@@ -216,13 +216,11 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         uint256 size = rest > limit ? limit : rest;
         items = new ITimelockAuthorizer.ScheduledExecution[](size);
 
-        if (reverseOrder) {
-            for (uint256 i = rest - 1; i >= rest - size; i--) {
-                items[i] = _scheduledExecutions[i];
-            }
-        } else {
-            for (uint256 i = offset; i < offset + size; i++) {
-                items[i] = _scheduledExecutions[i];
+        for (uint256 i = 0; i < size; i++) {
+            if (reverseOrder) {
+                items[i] = _scheduledExecutions[rest - i - 1];
+            } else {
+                items[i] = _scheduledExecutions[offset + i];
             }
         }
     }
