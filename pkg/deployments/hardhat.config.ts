@@ -19,9 +19,19 @@ import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import logger, { Logger } from './src/logger';
-import { checkActionIds, checkActionIdUniqueness, saveActionIds, getActionIdInfo } from './src/actionId';
+import {
+  checkActionIds,
+  checkActionIdUniqueness,
+  saveActionIds,
+  getActionIdInfo,
+  fetchTheGraphPermissions,
+} from './src/actionId';
 import { saveContractDeploymentAddresses } from './src/network';
 import { name } from './package.json';
+
+const THEGRAPHURLS: { [key: string]: string } = {
+  goerli: 'https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-authorizer-goerli',
+};
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -218,10 +228,35 @@ task('get-action-id-info', `Returns all the matches for the given actionId`)
     logger.info(`Looking for action ID info on ${hre.network.name}...`);
 
     const actionIdInfo = await getActionIdInfo(args.id, hre.network.name);
-    logger.info(`Found the following matches:`);
-    logger.info(JSON.stringify(actionIdInfo, null, 2));
-    process.stdout.write(JSON.stringify(actionIdInfo, null, 2));
+    if (!!actionIdInfo) {
+      logger.log(`Found the following matches:`, '');
+      logger.log(JSON.stringify(actionIdInfo, null, 2), '');
+      process.stdout.write(JSON.stringify(actionIdInfo, null, 2));
+    } else {
+      logger.log(`No entries found for the actionId`, '');
+    }
   });
+
+task('get-action-ids-info', `Reconstructs all the permissions from TheGraph AP and action-ids files`).setAction(
+  async (args: { verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+    Logger.setDefaults(false, args.verbose || false);
+    logger.log(`Fetching permissions using TheGraph API on ${hre.network.name}...`, '');
+
+    const permissions = await fetchTheGraphPermissions(THEGRAPHURLS[hre.network.name]);
+
+    const infos = (
+      await Promise.all(permissions.map((permission) => getActionIdInfo(permission.action.id, hre.network.name)))
+    ).map((info, index) => ({
+      ...info,
+      grantee: permissions[index].account,
+      actionId: permissions[index].action.id,
+      txHash: permissions[index].txHash,
+    }));
+    logger.log(`Found the following matches:`, '');
+    logger.log(JSON.stringify(infos, null, 2), '');
+    process.stdout.write(JSON.stringify(infos, null, 2));
+  }
+);
 
 task('build-address-lookup', `Build a lookup table from contract addresses to the relevant deployment`)
   .addOptionalParam('id', 'Specific task ID')
