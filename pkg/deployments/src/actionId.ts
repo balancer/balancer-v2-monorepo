@@ -4,6 +4,8 @@ import fs from 'fs';
 import { padEnd } from 'lodash';
 import path from 'path';
 import logger from './logger';
+import { request, gql } from 'graphql-request';
+
 import Task, { TaskMode } from './task';
 
 export const ACTION_ID_DIRECTORY = path.join(__dirname, '../action-ids');
@@ -21,12 +23,21 @@ export type TaskActionIds = Record<string, ContractActionIdData>;
 
 export type ContractActionIdData = { useAdaptor: boolean; factoryOutput?: string; actionIds: ActionIdData };
 
-type ActionIdInfo = {
+export type ActionIdInfo = {
   taskId: string;
   contractName: string;
   signature: string;
   useAdaptor: boolean;
 };
+
+interface TheGraphPermissionEntry {
+  id: string;
+  account: string;
+  action: {
+    id: string;
+  };
+  txHash: string;
+}
 
 function safeReadJsonFile<T>(filePath: string): Record<string, T> {
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
@@ -237,7 +248,8 @@ async function checkFactoryOutput(task: Task, contractName: string, factoryOutpu
   }
 }
 
-export async function getActionIdInfo(actionId: string, network: string): Promise<ActionIdInfo[]> {
+/** Returns full info for a given actionId and network */
+export async function getActionIdInfo(actionId: string, network: string): Promise<ActionIdInfo | undefined> {
   // read network JSON file from action-ids dir
   const tasks = safeReadJsonFile<TaskActionIds>(path.join(ACTION_ID_DIRECTORY, network, 'action-ids.json'));
   // filter all the entries which have the same actionId
@@ -257,8 +269,28 @@ export async function getActionIdInfo(actionId: string, network: string): Promis
         contractName,
         useAdaptor: contractData.useAdaptor,
         signature: Object.entries(contractData.actionIds).find(([, hash]) => hash == actionId)![0],
+        actionId,
       }));
     })
     .flat();
-  return entries;
+  // we return first entry because all the collisions are verified by scripts
+  return entries[0];
+}
+
+export async function fetchTheGraphPermissions(url: string): Promise<TheGraphPermissionEntry[]> {
+  const query = gql`
+    query {
+      permissions {
+        id
+        account
+        action {
+          id
+        }
+        txHash
+      }
+    }
+  `;
+
+  const data = await request<{ permissions: TheGraphPermissionEntry[] }>(url, query);
+  return data.permissions;
 }
