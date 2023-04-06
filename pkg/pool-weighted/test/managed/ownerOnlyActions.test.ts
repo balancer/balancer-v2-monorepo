@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { Interface } from 'ethers/lib/utils';
@@ -10,9 +11,15 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 describe('ManagedPool owner only actions', () => {
+  let deployer: SignerWithAddress;
   let pool: Contract;
+
+  before('setup signers', async () => {
+    [deployer] = await ethers.getSigners();
+  });
 
   sharedBeforeEach('deploy pool', async () => {
     const vault = await Vault.create();
@@ -23,9 +30,8 @@ describe('ManagedPool owner only actions', () => {
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
     const vaultReentrancyLib = await deploy('VaultReentrancyLib', { args: [vault.address] });
 
-    const signer = (await ethers.getSigners())[0];
-    // Can't use the factory one, since the pool is deployed manually
-    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [signer.address] });
+    // Has to be initialized with the same account that will deploy the pool, so it will use the same disambiguator
+    const ownerOnlyLib = await deploy('ManagedPoolOwnerOnlyLib', { args: [deployer.address] });
 
     pool = await deploy('MockManagedPool', {
       args: [
