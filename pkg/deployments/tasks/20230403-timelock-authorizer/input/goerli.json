@@ -1,0 +1,527 @@
+[
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0xc149e88b59429ded7f601ab52ecd62331cac006ae07c16543439ed138dcb8d34",
+    "grantee": "0x7b9b6f094dc2bd1c12024b0d9cc63d6993be1888",
+    "txHash": "0x737deb63336a007f7283437e6c05e7877ad1c65554f2002a7dfa8bed63e3301b"
+  },
+  {
+    "taskId": "20220325-balancer-token-admin",
+    "contractName": "BalancerTokenAdmin",
+    "useAdaptor": false,
+    "signature": "activate()",
+    "actionId": "0x193789981465ebf36f4c335742c2f7d5eb973fae73b724abe4efb1677f374ba7",
+    "grantee": "0x2122a7fcc2eebf59cdf532ebfd197d56343e34a0",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+    "actionId": "0xeba777d811cd36c06d540d7ff2ed18ed042fd67bbf7c9afcf88c818c7ee6b498",
+    "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
+    "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+    "actionId": "0xeba777d811cd36c06d540d7ff2ed18ed042fd67bbf7c9afcf88c818c7ee6b498",
+    "grantee": "0x4b1635c7d3d1fc353298f92083e82df69e1e9158",
+    "txHash": "0x1c2c959e93480d6d682f0f2a68b244043cc19a377566ad6791f7c0430448d4d9"
+  },
+  {
+    "taskId": "20220325-gauge-adder",
+    "contractName": "GaugeAdder",
+    "useAdaptor": false,
+    "signature": "addArbitrumGauge(address)",
+    "actionId": "0x15b9b1632a6b213be2605774ec758d803ccbe6ccc63890b9c8d9db4919b52832",
+    "grantee": "0x3babebfd684506a5b47701ee231a53427ad413ef",
+    "txHash": "0x1732a69c44dfaf337a767f0e7b5386344fa3178b9c694553a6ba6ae8e0f3a6c4"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0x3ff9e4de013546219b242e84ec6504fa5fbf38a304d44867952f64938a514525",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "setRelayerApproval(address,address,bool)",
+    "actionId": "0x0014a06d322ff07fcc02b12f93eb77bb76e28cdee4fc0670b9dec98d24bbfec8",
+    "grantee": "0x4b1635c7d3d1fc353298f92083e82df69e1e9158",
+    "txHash": "0xb06ae9efea790d6ea8e8a8fcde33ce5d683ffb9450090d374910372b72e4da89"
+  },
+  {
+    "taskId": "20220325-gauge-adder",
+    "contractName": "GaugeAdder",
+    "useAdaptor": false,
+    "signature": "addEthereumGauge(address)",
+    "actionId": "0xce5365a1997f2bf34c1961ac02d4bf6ad23b9f44d4c14a217a4df348b0dfd4cf",
+    "grantee": "0x3babebfd684506a5b47701ee231a53427ad413ef",
+    "txHash": "0x1732a69c44dfaf337a767f0e7b5386344fa3178b9c694553a6ba6ae8e0f3a6c4"
+  },
+  {
+    "grantee": "0x4b1635c7d3d1fc353298f92083e82df69e1e9158",
+    "actionId": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1af0",
+    "txHash": "0xd0fd95e43b840c7b10d36caf0bf79170a0d68bc376cb9dc1af67b82c20783438"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0xc149e88b59429ded7f601ab52ecd62331cac006ae07c16543439ed138dcb8d34",
+    "grantee": "0x4b1635c7d3d1fc353298f92083e82df69e1e9158",
+    "txHash": "0x91e1e1647943eb3a7f43f41e3ab2b7219cf8fd9d883e212e79f0700090805316"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+    "actionId": "0x1282ab709b2b70070f829c46bc36f76b32ad4989fecb2fcb09a1b3ce00bbfc30",
+    "grantee": "0x4b1635c7d3d1fc353298f92083e82df69e1e9158",
+    "txHash": "0xf8d4fb2126f33fc517b9950ccd199e6ba658631e0abfa0e10d9d5545741e54a5"
+  },
+  {
+    "taskId": "20220325-gauge-adder",
+    "contractName": "GaugeAdder",
+    "useAdaptor": false,
+    "signature": "addPolygonGauge(address)",
+    "actionId": "0x809e834888be70d2521a7587ac1e1a90868b67632c47eb9ad77aa1181d33adba",
+    "grantee": "0x3babebfd684506a5b47701ee231a53427ad413ef",
+    "txHash": "0x1732a69c44dfaf337a767f0e7b5386344fa3178b9c694553a6ba6ae8e0f3a6c4"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+    "actionId": "0x1282ab709b2b70070f829c46bc36f76b32ad4989fecb2fcb09a1b3ce00bbfc30",
+    "grantee": "0x2fb8ad26fadc971464a17407e9213d1a22befc8a",
+    "txHash": "0xe5d296c5e1f261b47268aebf82b65a2ea182d6101e37b196a2e1ad787518e727"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0xe82fca7fd9eb6591902d7a05b72294a683fbe649176226b09bed677446546634",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "taskId": "20220325-mainnet-gauge-factory",
+    "contractName": "LiquidityGaugeV5",
+    "useAdaptor": true,
+    "signature": "killGauge()",
+    "actionId": "0x38f12558087095621293389b35508390a03d17855b55b2394ce67b3c47d4463d",
+    "grantee": "0x3b1836c09fdae0a7c2848f99b2584aebd6a36876",
+    "txHash": "0xcf396873b2175efb35faf53f90818464e87c0b8ddcb874b5a4286202bbd080fe"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+    "actionId": "0x1282ab709b2b70070f829c46bc36f76b32ad4989fecb2fcb09a1b3ce00bbfc30",
+    "grantee": "0x00e695aa8000df01b8dc8401b4c34fba5d56bbb2",
+    "txHash": "0xc3ab135a662ddb28735102c43439aca5840176d53ed3fe158fdf0c45aa3e9c27"
+  },
+  {
+    "taskId": "20220420-smart-wallet-checker",
+    "contractName": "SmartWalletChecker",
+    "useAdaptor": false,
+    "signature": "denylistAddress(address)",
+    "actionId": "0xfa01325e2a9c77cda6b403aebfca7b8308d967df009e17ac6b42ba6d18088cfd",
+    "grantee": "0x10a19e7ee7d7f8a52822f6817de8ea18204f2e4f",
+    "txHash": "0x0dd4c07bdba9d4ae977e43ee2d784722a1f5b26c4547379d29e708460123658c"
+  },
+  {
+    "taskId": "20220325-mainnet-gauge-factory",
+    "contractName": "LiquidityGaugeV5",
+    "useAdaptor": true,
+    "signature": "add_reward(address,address)",
+    "actionId": "0x6b5e3750e9adcbd4a75428ed3fc6d2d3fc8a52866660ad3778d3f8c33108edff",
+    "grantee": "0x3babebfd684506a5b47701ee231a53427ad413ef",
+    "txHash": "0x112dc09e4819b11e8d768b7749b3c81ebd0e1cf042e5933dbba4e67ecdc14f42"
+  },
+  {
+    "taskId": "20220325-gauge-controller",
+    "contractName": "GaugeController",
+    "useAdaptor": true,
+    "signature": "add_gauge(address,int128)",
+    "actionId": "0xf0a77343972ffaea6782864c7880d1cee9576736637f7702cb0a922223208118",
+    "grantee": "0x3b1836c09fdae0a7c2848f99b2584aebd6a36876",
+    "txHash": "0x70b3f9ff51e827da3b3369f0547df85745ba091e1907385f88776249e9418307"
+  },
+  {
+    "taskId": "20220325-mainnet-gauge-factory",
+    "contractName": "LiquidityGaugeV5",
+    "useAdaptor": true,
+    "signature": "killGauge()",
+    "actionId": "0x38f12558087095621293389b35508390a03d17855b55b2394ce67b3c47d4463d",
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "txHash": "0xff9653677fca74cbef95289e9fb4b65198378b8ac70447c515e058eda5b14dce"
+  },
+  {
+    "taskId": "20220325-gauge-adder",
+    "contractName": "GaugeAdder",
+    "useAdaptor": false,
+    "signature": "addEthereumGauge(address)",
+    "actionId": "0xce5365a1997f2bf34c1961ac02d4bf6ad23b9f44d4c14a217a4df348b0dfd4cf",
+    "grantee": "0x3b1836c09fdae0a7c2848f99b2584aebd6a36876",
+    "txHash": "0xfcd0056a75ebfbdd0437ce1b2eadf8a00252dc1d136c41ca5d764e438e6a1b1d"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+    "actionId": "0xeba777d811cd36c06d540d7ff2ed18ed042fd67bbf7c9afcf88c818c7ee6b498",
+    "grantee": "0x7b9b6f094dc2bd1c12024b0d9cc63d6993be1888",
+    "txHash": "0x2b1518b6d15ef31b2f83669c7bd4da7b7feb01b77657d8d5df519467cbabe063"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0xc149e88b59429ded7f601ab52ecd62331cac006ae07c16543439ed138dcb8d34",
+    "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
+    "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0x78ad1b68d148c070372f8643c4648efbb63c6a8a338f3c24714868e791367653",
+    "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
+    "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
+  },
+  {
+    "taskId": "20220325-mainnet-gauge-factory",
+    "contractName": "LiquidityGaugeV5",
+    "useAdaptor": true,
+    "signature": "unkillGauge()",
+    "actionId": "0x5e7938ef4e6a59634c9800645277831eda1a30b5efd9ec55235154211f9e2941",
+    "grantee": "0x3b1836c09fdae0a7c2848f99b2584aebd6a36876",
+    "txHash": "0xa7591499e4495d65c277edd72c7e246a279c243b9c96182e4605136b1ed49a95"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0x78ad1b68d148c070372f8643c4648efbb63c6a8a338f3c24714868e791367653",
+    "grantee": "0x4b1635c7d3d1fc353298f92083e82df69e1e9158",
+    "txHash": "0x8017dc0e1700b99eccc3f0b67a9266cccd5cb46bb237f725510d70b3329f0934"
+  },
+  {
+    "taskId": "20220420-smart-wallet-checker",
+    "contractName": "SmartWalletChecker",
+    "useAdaptor": false,
+    "signature": "denylistAddress(address)",
+    "actionId": "0xfa01325e2a9c77cda6b403aebfca7b8308d967df009e17ac6b42ba6d18088cfd",
+    "grantee": "0x3babebfd684506a5b47701ee231a53427ad413ef",
+    "txHash": "0xfe7eff0251d797eb3708b25c5af5a4f3c753ccf91842b8d46dddd6d6d21d9d12"
+  },
+  {
+    "grantee": "0x2fb8ad26fadc971464a17407e9213d1a22befc8a",
+    "actionId": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1af0",
+    "txHash": "0xef939986bea3a1c65a9b96a9bdd87ec2a244fac4fc37e41d6a1aecfa0b4acf90"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)",
+    "actionId": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1aff",
+    "grantee": "0x7b9b6f094dc2bd1c12024b0d9cc63d6993be1888",
+    "txHash": "0x737deb63336a007f7283437e6c05e7877ad1c65554f2002a7dfa8bed63e3301b"
+  },
+  {
+    "grantee": "0x171c0ff5943ce5f133130436a29bf61e26516003",
+    "actionId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "txHash": "0x6260f3974f7cd6a8dd44193096c78b6f542404df52932ca5273063421e84de7c"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0xc149e88b59429ded7f601ab52ecd62331cac006ae07c16543439ed138dcb8d34",
+    "grantee": "0x00e695aa8000df01b8dc8401b4c34fba5d56bbb2",
+    "txHash": "0xc182a8d8f5c3abfb11dda5ab860afe0684fdc64691161842e54d7af252445881"
+  },
+  {
+    "taskId": "20220325-mainnet-gauge-factory",
+    "contractName": "LiquidityGaugeV5",
+    "useAdaptor": true,
+    "signature": "set_reward_distributor(address,address)",
+    "actionId": "0x75f03d945d74639aa78784e5071604aa86c170a9f4c32bdf428231d560be70b7",
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0x78ad1b68d148c070372f8643c4648efbb63c6a8a338f3c24714868e791367653",
+    "grantee": "0x2fb8ad26fadc971464a17407e9213d1a22befc8a",
+    "txHash": "0x95e1ac9a704e7c903a36e6d35894f4e2aa4518c69bc3a4cf1fdcc62ce8502e9b"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0x78ad1b68d148c070372f8643c4648efbb63c6a8a338f3c24714868e791367653",
+    "grantee": "0x00e695aa8000df01b8dc8401b4c34fba5d56bbb2",
+    "txHash": "0x17c9446a90ca686c35efb177266d33610674a618af13aa3f1c482429f2737256"
+  },
+  {
+    "taskId": "20220325-balancer-token-admin",
+    "contractName": "BalancerTokenAdmin",
+    "useAdaptor": false,
+    "signature": "mint(address,uint256)",
+    "actionId": "0x2315d78651468c46e4eb3cfca481a165fc94d355f1e38cb4e8c60fefdda8f86b",
+    "grantee": "0xdf0399539a72e2689b8b2dd53c3c2a0883879fdd",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0xde60916cf9b3b92856551e42810a66cb98fdcb8d645bb8bc4632f98217edaf4f",
+    "txHash": "0xb5afe57b38fde8920ec9d4e90e2af862a8db6317bc174b600aa39a69fe753f53"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+    "actionId": "0x1282ab709b2b70070f829c46bc36f76b32ad4989fecb2fcb09a1b3ce00bbfc30",
+    "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
+    "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+    "actionId": "0xeba777d811cd36c06d540d7ff2ed18ed042fd67bbf7c9afcf88c818c7ee6b498",
+    "grantee": "0x00e695aa8000df01b8dc8401b4c34fba5d56bbb2",
+    "txHash": "0x4e1a71cd15c0124265e9c686c8af9fc84c3fcefade60d416f7fccb1b11ca1078"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0xb0f6952d18a23822467f133002cf1bf129c2825a911874b6e1d3cf59ab0d514e",
+    "txHash": "0xa680d6e22a3713f075cf158f32acc4da91f382fb4b0e366788034406fc52428f"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "setRelayerApproval(address,address,bool)",
+    "actionId": "0x0014a06d322ff07fcc02b12f93eb77bb76e28cdee4fc0670b9dec98d24bbfec8",
+    "grantee": "0x7b9b6f094dc2bd1c12024b0d9cc63d6993be1888",
+    "txHash": "0x737deb63336a007f7283437e6c05e7877ad1c65554f2002a7dfa8bed63e3301b"
+  },
+  {
+    "grantee": "0xe9b190404d42784d5c9de20032af43133bd28c28",
+    "actionId": "0x40b63abf617c319059e63b6ca5293a8551ac35d578bfcf576b5cb81d32823bc0",
+    "txHash": "0x3b08acd8f28757dabcff50901d6d5edfbb21f164e0f546d6bbdd58e812b585eb"
+  },
+  {
+    "taskId": "20220420-smart-wallet-checker",
+    "contractName": "SmartWalletChecker",
+    "useAdaptor": false,
+    "signature": "allowlistAddress(address)",
+    "actionId": "0x552cf8a9722ea54b6fc81eef9df54cbbb0bdd80c1bdacf23d965b7bf7bd9f431",
+    "grantee": "0x171c0ff5943ce5f133130436a29bf61e26516003",
+    "txHash": "0x7787d3473cb9e8826a9495217f1d27105c4a86a847e1fd051de6cb05a2f99f43"
+  },
+  {
+    "taskId": "20220325-mainnet-gauge-factory",
+    "contractName": "LiquidityGaugeV5",
+    "useAdaptor": true,
+    "signature": "add_reward(address,address)",
+    "actionId": "0x6b5e3750e9adcbd4a75428ed3fc6d2d3fc8a52866660ad3778d3f8c33108edff",
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+    "actionId": "0xeba777d811cd36c06d540d7ff2ed18ed042fd67bbf7c9afcf88c818c7ee6b498",
+    "grantee": "0xc92e8bdf79f0507f65a392b0ab4667716bfe0110",
+    "txHash": "0xc8d38f1cf55ad39528e3b982dffec303553be87f175dfc0aa034dfa990e96eae"
+  },
+  {
+    "grantee": "0x0000a3b4db46aed2e20255f08557e9ba98a0c966",
+    "actionId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "txHash": "0x64b8eadc875a8613f5835c7f115314a10226240eb24f067d4bd823f89daa418b"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0x40b63abf617c319059e63b6ca5293a8551ac35d578bfcf576b5cb81d32823bc0",
+    "txHash": "0x03cbfb3a248cd920852da777ceb000a03e4ffd655eee6740a8a21f5ff6091aad"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0xc149e88b59429ded7f601ab52ecd62331cac006ae07c16543439ed138dcb8d34",
+    "grantee": "0x2fb8ad26fadc971464a17407e9213d1a22befc8a",
+    "txHash": "0xaa9627298193969232392592889f6687296f34361f6c6df51eded61d7e5caa4f"
+  },
+  {
+    "grantee": "0x10ede1ab2ec74d261c15ea02926d5a4e868c8f76",
+    "actionId": "0x05a6026e8447722ad2634c95e7a4e6321fbe41e0b19b632c7da35e2cf334f03d",
+    "txHash": "0x33561e70d5083c24d5785faf125ca07c042cc519863cff541fe47b5ad04df0f9"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0x518e42b5077d93c9686c907c98cefb63fc94601083a71f03edec50a40ff5ef62",
+    "txHash": "0x3872efa061566f3fd285b7a712b583e3cb72fcab0f932fa3043c10acfc3fc429"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0xa7bbb6bfa6fb1edcac4443deaa3585deed2396db466176b580b40ff3403ee8b4",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "taskId": "20220325-gauge-controller",
+    "contractName": "GaugeController",
+    "useAdaptor": true,
+    "signature": "change_type_weight(int128,uint256)",
+    "actionId": "0x152991b33a10294e25bee98ea5904acd66ba104e55686c0e5c2b7c60c8b5587a",
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "txHash": "0x2e40675d875f177ca088375b43dce9647ffcc40e465e3886a1bd2c88d965646a"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+    "actionId": "0x78ad1b68d148c070372f8643c4648efbb63c6a8a338f3c24714868e791367653",
+    "grantee": "0x7b9b6f094dc2bd1c12024b0d9cc63d6993be1888",
+    "txHash": "0x737deb63336a007f7283437e6c05e7877ad1c65554f2002a7dfa8bed63e3301b"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0xd05e92727c3137b6414e73900467692daf41d632b51b799fbfed05899bff5e4a",
+    "txHash": "0x92a5a28650cfa54789551fdd104dd9de88e15bcd42a2530c9d8c4324b2e2d0d1"
+  },
+  {
+    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
+    "actionId": "0xbc0b729159c77668a876ba12976d49c499667d908b035c2a559771c52de48d39",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "taskId": "20220420-smart-wallet-checker",
+    "contractName": "SmartWalletChecker",
+    "useAdaptor": false,
+    "signature": "allowlistAddress(address)",
+    "actionId": "0x552cf8a9722ea54b6fc81eef9df54cbbb0bdd80c1bdacf23d965b7bf7bd9f431",
+    "grantee": "0x10a19e7ee7d7f8a52822f6817de8ea18204f2e4f",
+    "txHash": "0x0dd4c07bdba9d4ae977e43ee2d784722a1f5b26c4547379d29e708460123658c"
+  },
+  {
+    "taskId": "20220420-smart-wallet-checker",
+    "contractName": "SmartWalletChecker",
+    "useAdaptor": false,
+    "signature": "allowlistAddress(address)",
+    "actionId": "0x552cf8a9722ea54b6fc81eef9df54cbbb0bdd80c1bdacf23d965b7bf7bd9f431",
+    "grantee": "0x3babebfd684506a5b47701ee231a53427ad413ef",
+    "txHash": "0xfe7eff0251d797eb3708b25c5af5a4f3c753ccf91842b8d46dddd6d6d21d9d12"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "setRelayerApproval(address,address,bool)",
+    "actionId": "0x0014a06d322ff07fcc02b12f93eb77bb76e28cdee4fc0670b9dec98d24bbfec8",
+    "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
+    "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+    "actionId": "0x1282ab709b2b70070f829c46bc36f76b32ad4989fecb2fcb09a1b3ce00bbfc30",
+    "grantee": "0xc92e8bdf79f0507f65a392b0ab4667716bfe0110",
+    "txHash": "0xc8d38f1cf55ad39528e3b982dffec303553be87f175dfc0aa034dfa990e96eae"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)",
+    "actionId": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1aff",
+    "grantee": "0x00e695aa8000df01b8dc8401b4c34fba5d56bbb2",
+    "txHash": "0x4e1a71cd15c0124265e9c686c8af9fc84c3fcefade60d416f7fccb1b11ca1078"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+    "actionId": "0x1282ab709b2b70070f829c46bc36f76b32ad4989fecb2fcb09a1b3ce00bbfc30",
+    "grantee": "0x7b9b6f094dc2bd1c12024b0d9cc63d6993be1888",
+    "txHash": "0x737deb63336a007f7283437e6c05e7877ad1c65554f2002a7dfa8bed63e3301b"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "setRelayerApproval(address,address,bool)",
+    "actionId": "0x0014a06d322ff07fcc02b12f93eb77bb76e28cdee4fc0670b9dec98d24bbfec8",
+    "grantee": "0x00e695aa8000df01b8dc8401b4c34fba5d56bbb2",
+    "txHash": "0x4e1a71cd15c0124265e9c686c8af9fc84c3fcefade60d416f7fccb1b11ca1078"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+    "actionId": "0xeba777d811cd36c06d540d7ff2ed18ed042fd67bbf7c9afcf88c818c7ee6b498",
+    "grantee": "0x2fb8ad26fadc971464a17407e9213d1a22befc8a",
+    "txHash": "0x8796f9432b2be267c45d90528847f56812ad9889af5473117aa36257263872e9"
+  },
+  {
+    "taskId": "20220325-gauge-controller",
+    "contractName": "GaugeController",
+    "useAdaptor": true,
+    "signature": "add_gauge(address,int128)",
+    "actionId": "0xf0a77343972ffaea6782864c7880d1cee9576736637f7702cb0a922223208118",
+    "grantee": "0x0df18b22fb1dd4c1d4bfbf783a8acf0758979328",
+    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "setRelayerApproval(address,address,bool)",
+    "actionId": "0x0014a06d322ff07fcc02b12f93eb77bb76e28cdee4fc0670b9dec98d24bbfec8",
+    "grantee": "0x2fb8ad26fadc971464a17407e9213d1a22befc8a",
+    "txHash": "0x022d905489a2b04d48340f9283ed6fd99994d0467a62cdb2d66272e8640dbe53"
+  },
+  {
+    "taskId": "20210418-vault",
+    "contractName": "Vault",
+    "useAdaptor": false,
+    "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)",
+    "actionId": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1aff",
+    "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
+    "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
+  }
+]
