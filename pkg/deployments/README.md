@@ -114,6 +114,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Weighted Pool V4                                       | [`20230320-weighted-pool-v4`](./tasks/20230320-weighted-pool-v4)                                     |
 | Composable Stable Pools V4                             | [`20230320-composable-stable-pool-v4`](./tasks/20230320-composable-stable-pool-v4)                   |
 | Voting Escrow Remapper                                 | [`20230403-vebal-remapper`](./tasks/20230403-vebal-remapper)                                         |
+| Managed Pool V2                                        | [`20230411-managed-pool-v2`](./tasks/20230411-managed-pool-v2)                                       |
 
 ## Scripts
 
