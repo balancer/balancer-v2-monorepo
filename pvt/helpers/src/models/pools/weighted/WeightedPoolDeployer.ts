@@ -28,6 +28,13 @@ export default {
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
     const poolId = await pool.getPoolId();
 
+    if (pool.initComposablePoolTokenLib) {
+      const composablePoolTokenLib = await deploy('v2-pool-weighted/ComposablePoolTokenLib', {
+        args: [pool.address, vault.address, poolId],
+      });
+      await pool.initComposablePoolTokenLib(composablePoolTokenLib.address);
+    }
+
     const {
       tokens,
       weights,
