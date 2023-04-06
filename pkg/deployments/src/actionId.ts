@@ -261,6 +261,7 @@ export async function getActionIdInfo(actionId: string, network: string): Promis
       )
     )
     .map(([taskId, taskData]) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const contracts = Object.entries(taskData).filter(([, contractData]) =>
         Object.entries(contractData.actionIds).some(([, hash]) => hash == actionId)
       )!;
@@ -268,6 +269,7 @@ export async function getActionIdInfo(actionId: string, network: string): Promis
         taskId,
         contractName,
         useAdaptor: contractData.useAdaptor,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         signature: Object.entries(contractData.actionIds).find(([, hash]) => hash == actionId)![0],
         actionId,
       }));

@@ -80,7 +80,7 @@ export const Roles: RoleData[] = graphRoles
   .map((role) => {
     // if we don't know the signature then do not migrate the role
     // maybe we should throw an error here
-    return !!role.signature
+    return role.signature
       ? {
           role: new Task(role.taskId, TaskMode.READ_ONLY, 'goerli').actionId(role.contractName, role.signature),
           grantee: role.grantee,

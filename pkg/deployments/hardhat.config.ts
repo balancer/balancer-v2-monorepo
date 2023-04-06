@@ -228,7 +228,7 @@ task('get-action-id-info', `Returns all the matches for the given actionId`)
     logger.info(`Looking for action ID info on ${hre.network.name}...`);
 
     const actionIdInfo = await getActionIdInfo(args.id, hre.network.name);
-    if (!!actionIdInfo) {
+    if (actionIdInfo) {
       logger.log(`Found the following matches:`, '');
       logger.log(JSON.stringify(actionIdInfo, null, 2), '');
       process.stdout.write(JSON.stringify(actionIdInfo, null, 2));
