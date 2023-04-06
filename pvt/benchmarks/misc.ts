@@ -11,7 +11,10 @@ import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS, ZERO_BYTES32 } from '@b
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { range } from 'lodash';
-import { ManagedPoolConfigParams, ManagedPoolParams, ManagedPoolSettingsParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import {
+  ManagedPoolParams,
+  ManagedPoolSettingsParams,
+} from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { poolConfigs } from './config';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
@@ -77,7 +80,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     let params;
-    
+
     switch (poolName) {
       case 'ManagedPool': {
         const managedPoolParams: ManagedPoolParams = {
