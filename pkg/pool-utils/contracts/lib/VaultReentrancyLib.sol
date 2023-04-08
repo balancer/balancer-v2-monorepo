@@ -14,6 +14,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 library VaultReentrancyLib {
@@ -33,8 +34,24 @@ library VaultReentrancyLib {
      * here (https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345), those functions are unsafe,
      * and subject to manipulation that may result in loss of funds.
      */
-    function ensureNotInVaultContext(IVault vault) internal {
-        IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
-        vault.manageUserBalance(noop);
+    function ensureNotInVaultContext(IVault vault) internal view {
+        // Perform the following operation to trigger the Vault's reentrancy guard.
+        // Use a static call so that it can be a view function (even though the
+        // function is non-view).
+        //
+        // IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
+        // _vault.manageUserBalance(noop);
+
+        // solhint-disable-next-line var-name-mixedcase
+        bytes32 REENTRANCY_ERROR_HASH = keccak256(abi.encodeWithSignature("Error(string)", "BAL#400"));
+
+        // read-only re-entrancy protection - we are making a static call on a non-view function. It will either
+        // "succeed" (return with no transaction), or revert. if it reverts, we need to make sure it didn't fail
+        // due to a re-entrancy attack.
+        (, bytes memory revertData) = address(vault).staticcall(
+            abi.encodeWithSelector(vault.manageUserBalance.selector, new address[](0))
+        );
+
+        _require(keccak256(revertData) != REENTRANCY_ERROR_HASH, Errors.REENTRANCY);
     }
 }
