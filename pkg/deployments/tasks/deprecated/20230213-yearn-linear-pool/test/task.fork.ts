@@ -350,6 +350,7 @@ describeForkTest('YearnLinearPoolFactory', 'mainnet', 16610000, function () {
         MAX_UINT256
       );
 
+      // Using MockYearnTokenVault from task 20230409-yearn-linear-pool-v2
       await setCode(yvUSDC, getArtifact('MockYearnTokenVault').deployedBytecode);
       const mockYearnTokenVault = await deployedAt('MockYearnTokenVault', yvUSDC);
 

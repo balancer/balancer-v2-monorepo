@@ -28,6 +28,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
     // YearnLinearPools require a Yearn Token
     const mockShareTokenArgs = ['DO NOT USE - Mock Yearn Token', 'TEST', 18, input.WETH];
+    // Using MockYearnTokenVault from task 20230409-yearn-linear-pool-v2
     const mockShareToken = await task.deployAndVerify('MockYearnTokenVault', mockShareTokenArgs, from, force);
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare
