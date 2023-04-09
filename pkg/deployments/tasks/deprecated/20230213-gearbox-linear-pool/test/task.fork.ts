@@ -349,6 +349,7 @@ describeForkTest('GearboxLinearPoolFactory', 'mainnet', 16636000, function () {
         MAX_UINT256
       );
 
+      // Using MockGearboxVault from 20230409-gearbox-linear-pool-v2
       await setCode(GEARBOX_VAULT, getArtifact('MockGearboxVault').deployedBytecode);
       const mockLendingPool = await deployedAt('MockGearboxVault', GEARBOX_VAULT);
 
