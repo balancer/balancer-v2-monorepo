@@ -14,6 +14,7 @@ const BalancerTokenAdmin = new Task('20220325-balancer-token-admin', TaskMode.RE
 const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, 'goerli');
 const VotingEscrowDelegationProxy = new Task('20220325-ve-delegation', TaskMode.READ_ONLY, 'goerli');
 const SmartWalletChecker = new Task('20220420-smart-wallet-checker', TaskMode.READ_ONLY, 'goerli');
+const ProtocolFeeWithdrawer = new Task('20220517-protocol-fee-withdrawer', TaskMode.READ_ONLY, 'goerli');
 
 const DAO_MULTISIG = '0x171C0fF5943CE5f133130436A29bF61E26516003';
 
@@ -79,6 +80,13 @@ export const GrantDelays: DelayData[] = [
   },
   {
     actionId: Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
+    newDelay: 0.25 * DAY,
+  },
+  {
+    actionId: ProtocolFeeWithdrawer.actionId(
+      'ProtocolFeesWithdrawer',
+      'withdrawCollectedFees(address[],uint256[],address)'
+    ),
     newDelay: 0.25 * DAY,
   },
 ];
