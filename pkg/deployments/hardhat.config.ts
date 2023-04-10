@@ -252,7 +252,7 @@ task('get-action-ids-info', `Reconstructs all the permissions from TheGraph AP a
       txHash: permissions[index].txHash,
     }));
     logger.log(`Found the following matches:`, '');
-    logger.log(JSON.stringify(infos, null, 2), '');
+    process.stdout.write(JSON.stringify(infos, null, 2));
   }
 );
 
