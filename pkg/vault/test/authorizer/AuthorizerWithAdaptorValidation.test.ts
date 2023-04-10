@@ -10,7 +10,7 @@ describe('AuthorizerWithAdaptorValidation', () => {
   let authorizerAdaptor: SignerWithAddress, adaptorEntrypoint: SignerWithAddress;
   let user: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract;
-  let oldAuthorizer: Contract;
+  let actualAuthorizer: Contract;
   let admin: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -18,15 +18,15 @@ describe('AuthorizerWithAdaptorValidation', () => {
   });
 
   sharedBeforeEach('deploy old authorizer and helper', async () => {
-    oldAuthorizer = await deploy('MockBasicAuthorizer');
+    actualAuthorizer = await deploy('MockBasicAuthorizer');
 
     authorizer = await deploy('AuthorizerWithAdaptorValidation', {
-      args: [oldAuthorizer.address, authorizerAdaptor.address, adaptorEntrypoint.address],
+      args: [actualAuthorizer.address, authorizerAdaptor.address, adaptorEntrypoint.address],
     });
   });
 
   it('stores the old authorizer', async () => {
-    expect(await authorizer.getOldAuthorizer()).to.equal(oldAuthorizer.address);
+    expect(await authorizer.getActualAuthorizer()).to.equal(actualAuthorizer.address);
   });
 
   it('stores the authorizer adaptor', async () => {
@@ -42,7 +42,7 @@ describe('AuthorizerWithAdaptorValidation', () => {
     const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
 
     sharedBeforeEach('grant permission on the old authorizer', async () => {
-      await oldAuthorizer.connect(admin).grantRole(ROLE_1, user.address);
+      await actualAuthorizer.connect(admin).grantRole(ROLE_1, user.address);
     });
 
     context('when sender is the authorizer adaptor', () => {

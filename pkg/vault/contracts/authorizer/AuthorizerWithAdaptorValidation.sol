@@ -25,14 +25,14 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 contract AuthorizerWithAdaptorValidation is IAuthorizer {
     IAuthorizerAdaptorEntrypoint private immutable _adaptorEntrypoint;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
-    IAuthorizer private immutable _oldAuthorizer;
+    IAuthorizer private immutable _actualAuthorizer;
 
     constructor(
-        IAuthorizer oldAuthorizer,
+        IAuthorizer actualAuthorizer,
         IAuthorizerAdaptor authorizerAdaptor,
         IAuthorizerAdaptorEntrypoint adaptorEntrypoint
     ) {
-        _oldAuthorizer = oldAuthorizer;
+        _actualAuthorizer = actualAuthorizer;
         _authorizerAdaptor = authorizerAdaptor;
         _adaptorEntrypoint = adaptorEntrypoint;
     }
@@ -40,8 +40,8 @@ contract AuthorizerWithAdaptorValidation is IAuthorizer {
     /**
      * @dev Return the address of the original Authorizer.
      */
-    function getOldAuthorizer() external view returns (IAuthorizer) {
-        return _oldAuthorizer;
+    function getActualAuthorizer() external view returns (IAuthorizer) {
+        return _actualAuthorizer;
     }
 
     /**
@@ -70,7 +70,7 @@ contract AuthorizerWithAdaptorValidation is IAuthorizer {
         if (msg.sender == address(_authorizerAdaptor)) {
             return account == address(_adaptorEntrypoint);
         } else {
-            return _oldAuthorizer.canPerform(actionId, account, where);
+            return _actualAuthorizer.canPerform(actionId, account, where);
         }
     }
 }
