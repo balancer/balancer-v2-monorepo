@@ -33,6 +33,7 @@ const graphRoles: {
   grantee: string;
   contractName: string;
   actionId: string;
+  target: string;
 }[] = JSON.parse(fs.readFileSync(path.join(__dirname, './goerli.json')).toString());
 
 export const GrantDelays: DelayData[] = [
@@ -111,14 +112,14 @@ export async function getRoles(): Promise<RoleData[]> {
       role: task.actionId(role.contractName, role.signature),
       grantee: role.grantee,
       target:
-        // if useAdaptor == true than it is a Vyper contract and it should be reviewed manually
+        // if useAdaptor == true than it is a Vyper contract and it should be reviewed manually and target is set already
         // if factoryOutput is set then use EVERYWHERE because we want to give the permission over all pools
         // otherwise fetch the deployed address of the contact and use it
         role.useAdaptor == false
           ? role.factoryOutput
             ? EVERYWHERE
             : (await task.deployedInstance(role.contractName)).address
-          : '',
+          : role.target,
     });
   }
   return ret;
