@@ -1,11 +1,11 @@
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import Task, { TaskMode } from '../../src/task';
-import { TaskRunOptions } from '../../src/types';
+import Task, { TaskMode } from '../../../src/task';
+import { TaskRunOptions } from '../../../src/types';
 import { SiloLinearPoolDeployment } from './input';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ethers } from 'hardhat';
-import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../src';
+import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../../src';
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as SiloLinearPoolDeployment;
   const args = [
@@ -27,14 +27,17 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
     // A Silo requires a Silo Repository
     const mockSiloRepoArgs = [0, 0];
+    // Using MockSiloRepository from 20230410-silo-linear-pool-v2
     const mockSiloRepo = await task.deployAndVerify('MockSiloRepository', mockSiloRepoArgs, from, force);
 
     // shareTokens require a Silo liquidity pool
     const mockSiloArgs = [mockSiloRepo, input.WETH];
+    // Using MockSilo from 20230410-silo-linear-pool-v2
     const mockSilo = await task.deployAndVerify('MockSilo', mockSiloArgs, from, force);
 
     // SiloLinearPools require an Silo Token
     const mockShareTokenArgs = ['DO NOT USE - Mock Share Token', 'TEST', mockSilo, input.WETH, 18];
+    // Using MockShareToken from 20230410-silo-linear-pool-v2
     const mockShareToken = await task.deployAndVerify('MockShareToken', mockShareTokenArgs, from, force);
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare

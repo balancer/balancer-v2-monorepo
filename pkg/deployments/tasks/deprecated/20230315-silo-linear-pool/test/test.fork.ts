@@ -7,8 +7,8 @@ import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
-import { describeForkTest } from '../../../src/forkTests';
+import { impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../../src';
+import { describeForkTest } from '../../../../src/forkTests';
 import { deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 
 export enum SwapKind {
@@ -347,6 +347,7 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
         MAX_UINT256
       );
 
+      // Using MockSilo from 20230410-silo-linear-pool-v2
       await setCode(USDC_SILO, getArtifact('MockSilo').deployedBytecode);
       const mockLendingPool = await deployedAt('MockSilo', USDC_SILO);
 
