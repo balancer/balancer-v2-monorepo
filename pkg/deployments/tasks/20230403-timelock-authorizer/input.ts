@@ -8,7 +8,7 @@ export type TimelockAuthorizerDeployment = {
   Authorizer: string;
   AuthorizerAdaptorEntrypoint: string;
   Root: string;
-  getRoles(): () => Promise<RoleData[]>;
+  getRoles: () => Promise<RoleData[]>;
   Granters: RoleData[];
   Revokers: RoleData[];
   ExecuteDelays: DelayData[];

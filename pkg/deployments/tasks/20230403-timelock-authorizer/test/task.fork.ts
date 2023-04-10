@@ -47,7 +47,7 @@ function doForkTestsOnNetwork(network: string, block: number) {
     });
 
     it('migrates all roles properly', async () => {
-      for (const roleData of input.Roles) {
+      for (const roleData of await input.getRoles()) {
         expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
       }
     });
