@@ -231,7 +231,6 @@ task('get-action-id-info', `Returns all the matches for the given actionId`)
     if (actionIdInfo) {
       logger.log(`Found the following matches:`, '');
       logger.log(JSON.stringify(actionIdInfo, null, 2), '');
-      process.stdout.write(JSON.stringify(actionIdInfo, null, 2));
     } else {
       logger.log(`No entries found for the actionId`, '');
     }
@@ -254,7 +253,6 @@ task('get-action-ids-info', `Reconstructs all the permissions from TheGraph AP a
     }));
     logger.log(`Found the following matches:`, '');
     logger.log(JSON.stringify(infos, null, 2), '');
-    process.stdout.write(JSON.stringify(infos, null, 2));
   }
 );
 
