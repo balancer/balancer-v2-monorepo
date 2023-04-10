@@ -33,15 +33,6 @@
     "txHash": "0xcf396873b2175efb35faf53f90818464e87c0b8ddcb874b5a4286202bbd080fe"
   },
   {
-    "taskId": "20220420-smart-wallet-checker",
-    "contractName": "SmartWalletChecker",
-    "useAdaptor": false,
-    "signature": "denylistAddress(address)",
-    "actionId": "0xfa01325e2a9c77cda6b403aebfca7b8308d967df009e17ac6b42ba6d18088cfd",
-    "grantee": "0x10a19e7ee7d7f8a52822f6817de8ea18204f2e4f",
-    "txHash": "0x0dd4c07bdba9d4ae977e43ee2d784722a1f5b26c4547379d29e708460123658c"
-  },
-  {
     "taskId": "20220325-mainnet-gauge-factory",
     "contractName": "LiquidityGaugeV5",
     "useAdaptor": true,
@@ -191,15 +182,6 @@
     "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
   },
   {
-    "taskId": "20220325-gauge-controller",
-    "contractName": "GaugeController",
-    "useAdaptor": true,
-    "signature": "change_type_weight(int128,uint256)",
-    "actionId": "0x152991b33a10294e25bee98ea5904acd66ba104e55686c0e5c2b7c60c8b5587a",
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "txHash": "0x2e40675d875f177ca088375b43dce9647ffcc40e465e3886a1bd2c88d965646a"
-  },
-  {
     "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
     "actionId": "0xd05e92727c3137b6414e73900467692daf41d632b51b799fbfed05899bff5e4a",
     "txHash": "0x92a5a28650cfa54789551fdd104dd9de88e15bcd42a2530c9d8c4324b2e2d0d1"
@@ -208,15 +190,6 @@
     "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
     "actionId": "0xbc0b729159c77668a876ba12976d49c499667d908b035c2a559771c52de48d39",
     "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
-  },
-  {
-    "taskId": "20220420-smart-wallet-checker",
-    "contractName": "SmartWalletChecker",
-    "useAdaptor": false,
-    "signature": "allowlistAddress(address)",
-    "actionId": "0x552cf8a9722ea54b6fc81eef9df54cbbb0bdd80c1bdacf23d965b7bf7bd9f431",
-    "grantee": "0x10a19e7ee7d7f8a52822f6817de8ea18204f2e4f",
-    "txHash": "0x0dd4c07bdba9d4ae977e43ee2d784722a1f5b26c4547379d29e708460123658c"
   },
   {
     "taskId": "20220420-smart-wallet-checker",
@@ -235,15 +208,6 @@
     "actionId": "0x0014a06d322ff07fcc02b12f93eb77bb76e28cdee4fc0670b9dec98d24bbfec8",
     "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
     "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
-  },
-  {
-    "taskId": "20220325-gauge-controller",
-    "contractName": "GaugeController",
-    "useAdaptor": true,
-    "signature": "add_gauge(address,int128)",
-    "actionId": "0xf0a77343972ffaea6782864c7880d1cee9576736637f7702cb0a922223208118",
-    "grantee": "0x0df18b22fb1dd4c1d4bfbf783a8acf0758979328",
-    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
   },
   {
     "taskId": "20210418-vault",
