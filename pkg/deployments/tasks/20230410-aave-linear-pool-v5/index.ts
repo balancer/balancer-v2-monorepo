@@ -1,11 +1,12 @@
+import { ethers } from 'hardhat';
+import { randomBytes } from 'ethers/lib/utils';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import Task, { TaskMode } from '../../../src/task';
-import { TaskRunOptions } from '../../../src/types';
+import Task, { TaskMode } from '../../src/task';
+import { TaskRunOptions } from '../../src/types';
 import { AaveLinearPoolDeployment } from './input';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { ethers } from 'hardhat';
-import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../../src';
+import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../src';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as AaveLinearPoolDeployment;
@@ -51,6 +52,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // This mimics the logic inside task.deploy
     if (force || !task.output({ ensure: false })['MockAaveLinearPool']) {
       const PROTOCOL_ID = 0;
+      const SALT = randomBytes(32);
 
       const poolCreationReceipt = await (
         await factory.create(
@@ -61,7 +63,8 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
           mockPoolArgs.upperTarget,
           mockPoolArgs.swapFeePercentage,
           mockPoolArgs.owner,
-          PROTOCOL_ID
+          PROTOCOL_ID,
+          SALT
         )
       ).wait();
       const event = expectEvent.inReceipt(poolCreationReceipt, 'PoolCreated');

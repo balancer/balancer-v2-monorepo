@@ -1,4 +1,4 @@
-import Task, { TaskMode } from '../../../src/task';
+import Task, { TaskMode } from '../../src/task';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 export type AaveLinearPoolDeployment = {
@@ -17,7 +17,7 @@ const BalancerQueries = new Task('20220721-balancer-queries', TaskMode.READ_ONLY
 const ProtocolFeePercentagesProvider = new Task('20220725-protocol-fee-percentages-provider', TaskMode.READ_ONLY);
 const WETH = new Task('00000000-tokens', TaskMode.READ_ONLY);
 
-const BaseVersion = { version: 4, deployment: '20230206-aave-rebalanced-linear-pool-v4' };
+const BaseVersion = { version: 5, deployment: '20230410-aave-linear-pool-v5' };
 
 export default {
   Vault,

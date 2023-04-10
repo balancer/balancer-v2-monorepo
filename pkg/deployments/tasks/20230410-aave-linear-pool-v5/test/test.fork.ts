@@ -1,5 +1,6 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
+import { randomBytes } from 'ethers/lib/utils';
 import { BigNumber, Contract } from 'ethers';
 import { setCode } from '@nomicfoundation/hardhat-network-helpers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -9,9 +10,9 @@ import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/c
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
-import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
 
-describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
+describeForkTest('AaveLinearPoolFactory V5', 'mainnet', 16592300, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
   let factory: Contract, vault: Contract, usdt: Contract;
   let rebalancer: Contract;
@@ -36,6 +37,9 @@ describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
   const FINAL_UPPER_TARGET = fp(5e7);
 
   const PROTOCOL_ID = 0;
+  const TASK_NAME = '20230410-aave-linear-pool-v5';
+  const VERSION = 5;
+  const SALT = randomBytes(32);
 
   enum AttackType {
     SET_TARGETS,
@@ -46,7 +50,7 @@ describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
   let poolId: string;
 
   before('run task', async () => {
-    task = new Task('20230206-aave-rebalanced-linear-pool-v4', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task(TASK_NAME, TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('AaveLinearPoolFactory');
   });
@@ -132,7 +136,8 @@ describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
         INITIAL_UPPER_TARGET,
         SWAP_FEE_PERCENTAGE,
         owner.address,
-        PROTOCOL_ID
+        PROTOCOL_ID,
+        SALT
       );
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
@@ -152,8 +157,8 @@ describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
     it('check factory version', async () => {
       const expectedFactoryVersion = {
         name: 'AaveLinearPoolFactory',
-        version: 4,
-        deployment: '20230206-aave-rebalanced-linear-pool-v4',
+        version: VERSION,
+        deployment: TASK_NAME,
       };
 
       expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
@@ -162,8 +167,8 @@ describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
     it('check pool version', async () => {
       const expectedPoolVersion = {
         name: 'AaveLinearPool',
-        version: 4,
-        deployment: '20230206-aave-rebalanced-linear-pool-v4',
+        version: VERSION,
+        deployment: TASK_NAME,
       };
 
       expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
@@ -327,7 +332,6 @@ describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
         MAX_UINT256
       );
 
-      // These artifacts come from 20221207-aave-rebalanced-linear-pool-v3 task (deprecated).
       await setCode(USDT_LENDING_POOL, getArtifact('MockAaveLendingPool').deployedBytecode);
       const mockLendingPool = await deployedAt('MockAaveLendingPool', USDT_LENDING_POOL);
 

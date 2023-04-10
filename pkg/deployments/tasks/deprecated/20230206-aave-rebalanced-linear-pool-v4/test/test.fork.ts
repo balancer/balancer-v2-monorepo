@@ -340,6 +340,7 @@ describeForkTest('AaveLinearPoolFactory V4', 'mainnet', 16592300, function () {
     let attacker: Contract;
 
     before('deploy attacker', async () => {
+      // Using ReadOnlyReentrancyAttackerAaveLP from 20230410-aave-linear-pool-v5 task
       attacker = await deploy('ReadOnlyReentrancyAttackerAaveLP', { args: [vault.address] });
     });
 
