@@ -40,6 +40,14 @@ export const GrantDelays: DelayData[] = [
     actionId: GaugeController.actionId('GaugeController', 'add_gauge(address,int128,uint256)'),
     newDelay: 1 * DAY,
   },
+  {
+    actionId: GaugeController.actionId('GaugeController', 'change_type_weight(int128,uint256)'),
+    newDelay: 1 * DAY,
+  },
+  {
+    actionId: GaugeController.actionId('GaugeController', 'change_gauge_weight(address,uint256)'),
+    newDelay: 1 * DAY,
+  },
   // BALTokenHolder.withdrawFunds(address, uint256) (veBAL BALTokenHolder)
   // Note this actionId can't be pulled from the json file as the BALTokenHolder is not listed there.
   { actionId: '0x79922681fd17c90b4f3409d605f5b059ffcbcef7b5440321ae93b87f3b5c1c78', newDelay: 0.25 * DAY },
