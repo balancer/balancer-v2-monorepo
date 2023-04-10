@@ -1,14 +1,5 @@
 [
   {
-    "taskId": "20220325-balancer-token-admin",
-    "contractName": "BalancerTokenAdmin",
-    "useAdaptor": false,
-    "signature": "activate()",
-    "actionId": "0x193789981465ebf36f4c335742c2f7d5eb973fae73b724abe4efb1677f374ba7",
-    "grantee": "0x2122a7fcc2eebf59cdf532ebfd197d56343e34a0",
-    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
-  },
-  {
     "taskId": "20210418-vault",
     "contractName": "Vault",
     "useAdaptor": false,
