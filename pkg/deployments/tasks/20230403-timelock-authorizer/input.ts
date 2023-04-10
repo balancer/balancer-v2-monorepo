@@ -8,7 +8,7 @@ export type TimelockAuthorizerDeployment = {
   Authorizer: string;
   AuthorizerAdaptorEntrypoint: string;
   Root: string;
-  Roles: RoleData[];
+  getRoles(): () => Promise<RoleData[]>;
   Granters: RoleData[];
   Revokers: RoleData[];
   ExecuteDelays: DelayData[];
@@ -19,6 +19,5 @@ export default {
   Authorizer,
   AuthorizerAdaptorEntrypoint,
   networks: ['goerli'],
-  mainnet: require('./input/mainnet.ts'),
   goerli: require('./input/goerli.ts'),
 };

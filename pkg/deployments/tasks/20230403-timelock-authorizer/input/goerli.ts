@@ -25,8 +25,15 @@ export const Root = DAO_MULTISIG;
 // and reconstructed by using the `get-action-id-info` Hardhat command and `action-ids` script
 // You can rebuild this file at anytime by running
 // hh get-action-ids-info --network goerli > ./tasks/20230403-timelock-authorizer/input/goerli.json
-const graphRoles: { taskId: string; signature: string; grantee: string; contractName: string; actionId: string }[] =
-  JSON.parse(fs.readFileSync(path.join(__dirname, './goerli.json')).toString());
+const graphRoles: {
+  taskId: string;
+  useAdaptor: boolean;
+  factoryOutput: string;
+  signature: string;
+  grantee: string;
+  contractName: string;
+  actionId: string;
+}[] = JSON.parse(fs.readFileSync(path.join(__dirname, './goerli.json')).toString());
 
 export const GrantDelays: DelayData[] = [
   {
@@ -91,20 +98,31 @@ export const GrantDelays: DelayData[] = [
   },
 ];
 
-export const Roles: RoleData[] = graphRoles
-  .map((role) => {
+export async function getRoles(): Promise<RoleData[]> {
+  const ret: RoleData[] = [];
+  for (const role of graphRoles) {
     // if we don't know the signature then do not migrate the role
     // maybe we should throw an error here
     if (!role.signature) {
       throw new Error(`Can't find signature for the actionId ${role.actionId}`);
     }
-    return {
-      role: new Task(role.taskId, TaskMode.READ_ONLY, 'goerli').actionId(role.contractName, role.signature),
+    const task = new Task(role.taskId, TaskMode.READ_ONLY, 'goerli');
+    ret.push({
+      role: task.actionId(role.contractName, role.signature),
       grantee: role.grantee,
-      target: EVERYWHERE,
-    };
-  })
-  .filter((role) => !!role) as RoleData[];
+      target:
+        // if useAdaptor == true than it is a Vyper contract and it should be reviewed manually
+        // if factoryOutput is set then use EVERYWHERE because we want to give the permission over all pools
+        // otherwise fetch the deployed address of the contact and use it
+        role.useAdaptor == false
+          ? role.factoryOutput
+            ? EVERYWHERE
+            : (await task.deployedInstance(role.contractName)).address
+          : '',
+    });
+  }
+  return ret;
+}
 
 export const Granters: RoleData[] = [];
 

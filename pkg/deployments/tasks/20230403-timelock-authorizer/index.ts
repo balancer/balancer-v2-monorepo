@@ -10,7 +10,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       input.Root,
       input.Authorizer,
       input.AuthorizerAdaptorEntrypoint,
-      input.Roles,
+      await input.getRoles(),
       input.Granters,
       input.Revokers,
       input.ExecuteDelays,
