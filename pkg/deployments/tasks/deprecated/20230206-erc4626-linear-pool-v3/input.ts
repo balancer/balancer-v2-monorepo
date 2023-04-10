@@ -1,4 +1,4 @@
-import Task, { TaskMode } from '../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 export type ERC4626LinearPoolDeployment = {
