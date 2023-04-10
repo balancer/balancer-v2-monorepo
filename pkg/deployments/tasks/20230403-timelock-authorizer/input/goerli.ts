@@ -24,9 +24,8 @@ export const Root = DAO_MULTISIG;
 // and reconstructed by using the `get-action-id-info` Hardhat command and `action-ids` script
 // You can rebuild this file at anytime by running
 // hh get-action-ids-info --network goerli > ./tasks/20230403-timelock-authorizer/input/goerli.json
-const graphRoles: { taskId: string; signature: string; grantee: string; contractName: string }[] = JSON.parse(
-  fs.readFileSync(path.join(__dirname, './goerli.json')).toString()
-);
+const graphRoles: { taskId: string; signature: string; grantee: string; contractName: string; actionId: string }[] =
+  JSON.parse(fs.readFileSync(path.join(__dirname, './goerli.json')).toString());
 
 export const GrantDelays: DelayData[] = [
   {
@@ -80,13 +79,14 @@ export const Roles: RoleData[] = graphRoles
   .map((role) => {
     // if we don't know the signature then do not migrate the role
     // maybe we should throw an error here
-    return role.signature
-      ? {
-          role: new Task(role.taskId, TaskMode.READ_ONLY, 'goerli').actionId(role.contractName, role.signature),
-          grantee: role.grantee,
-          target: EVERYWHERE,
-        }
-      : undefined;
+    if (!role.signature) {
+      throw new Error(`Can't find signature for the actionId ${role.actionId}`);
+    }
+    return {
+      role: new Task(role.taskId, TaskMode.READ_ONLY, 'goerli').actionId(role.contractName, role.signature),
+      grantee: role.grantee,
+      target: EVERYWHERE,
+    };
   })
   .filter((role) => !!role) as RoleData[];
 
