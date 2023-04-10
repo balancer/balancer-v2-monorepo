@@ -71,7 +71,6 @@
     "grantee": "0x3babebfd684506a5b47701ee231a53427ad413ef",
     "txHash": "0xfe7eff0251d797eb3708b25c5af5a4f3c753ccf91842b8d46dddd6d6d21d9d12"
   },
-  ,
   {
     "taskId": "20220325-mainnet-gauge-factory",
     "contractName": "LiquidityGaugeV5",
@@ -90,7 +89,6 @@
     "grantee": "0xdf0399539a72e2689b8b2dd53c3c2a0883879fdd",
     "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
   },
-  ,
   {
     "taskId": "20210418-vault",
     "contractName": "Vault",
@@ -100,8 +98,6 @@
     "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
     "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
   },
-  ,
-  ,
   {
     "taskId": "20220420-smart-wallet-checker",
     "contractName": "SmartWalletChecker",
