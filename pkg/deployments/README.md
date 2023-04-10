@@ -101,7 +101,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Linear Pools for ERC4626 Tokens V3                     | [`20230206-erc4626-linear-pool-v3`](./tasks/20230206-erc4626-linear-pool-v3)                         |
 | Linear Pools for Aave aTokens (with rebalancing) V4    | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/20230206-aave-rebalanced-linear-pool-v4)         |
 | Linear Pools for Euler Tokens                          | [`20230208-euler-linear-pool`](./tasks/20230208-euler-linear-pool)                                   |
-| Linear Pools for Yearn Tokens                          | [`20230213-yearn-linear-pool`](./tasks/20230213-yearn-linear-pool)                                   |
 | Linear Pools for Gearbox Tokens                        | [`20230213-gearbox-linear-pool`](./tasks/20230213-gearbox-linear-pool)                               |
 | Single Recipient Stakeless Gauges V2                   | [`20230215-single-recipient-gauge-factory`](./tasks/20230215-single-recipient-gauge-factory-v2)      |
 | Gnosis Root Gauge, for veBAL voting                    | [`20230217-gnosis-root-gauge-factory`](./tasks/20230217-gnosis-root-gauge-factory)                   |
@@ -174,3 +173,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for Aave aTokens (with rebalancing) V3 | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |
 | Weighted Pool V3                                    | [`20230206-weighted-pool-v3`](./tasks/deprecated/20230206-weighted-pool-v3)                             |
 | Composable Stable Pools V3                          | [`20230206-composable-stable-pool-v3`](./tasks/deprecated/20230206-composable-stable-pool-v3)           |
+| Linear Pools for Yearn Tokens                       | [`20230213-yearn-linear-pool`](./tasks/deprecated/20230213-yearn-linear-pool)                           |
