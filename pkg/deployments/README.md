@@ -108,7 +108,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Merkle Orchard Distributor V2                          | [`20230222-merkle-orchard-v2`](./tasks/20230222-merkle-orchard-v2)                                   |
 | Protocol ID registry                                   | [`20230223-protocol-id-registry`](./tasks/20230223-protocol-id-registry)                             |
 | Batch Relayer V5                                       | [`20230314-batch-relayer-v5`](./tasks/20230314-batch-relayer-v5)                                     |
-| Linear Pools for Silo Tokens                           | [`20230315-silo-linear-pool`](./tasks/20230315-silo-linear-pool)                                     |
 | L2 Balancer Pseudo Minter                              | [`20230316-l2-balancer-pseudo-minter`](./tasks/20230316-l2-balancer-pseudo-minter)                   |
 | L2 Voting Escrow Delegation Proxy                      | [`20230316-l2-ve-delegation-proxy`](./tasks/20230316-l2-ve-delegation-proxy)                         |
 | Weighted Pool V4                                       | [`20230320-weighted-pool-v4`](./tasks/20230320-weighted-pool-v4)                                     |
@@ -174,3 +173,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for Aave aTokens (with rebalancing) V3 | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |
 | Weighted Pool V3                                    | [`20230206-weighted-pool-v3`](./tasks/deprecated/20230206-weighted-pool-v3)                             |
 | Composable Stable Pools V3                          | [`20230206-composable-stable-pool-v3`](./tasks/deprecated/20230206-composable-stable-pool-v3)           |
+| Linear Pools for Silo Tokens                        | [`20230315-silo-linear-pool`](./tasks/deprecated/20230315-silo-linear-pool)                             |

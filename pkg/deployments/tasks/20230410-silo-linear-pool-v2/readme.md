@@ -1,11 +1,10 @@
-# 2022-03-15 - Silo Linear Pool
+# 2022-04-10 - Silo Linear Pool V2
 
-First deployment of the `SiloLinearPoolFactory`, for Linear Pools with a Silo yield-bearing token (shareToken).
-Already fixes the reentrancy issue described in https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345.
-Also has a fix in the `SiloLinearPoolRebalancer` to handle tokens which require the `SafeERC20` library for approvals.
+Second deployment of the `SiloLinearPoolFactory`, for Linear Pools with a Silo yield-bearing token (shareToken).
 
 ## Useful Files
 
+- [`SiloExchangeRateModel` artifact](./artifact/SiloExchangeRateModel.json)
 - [`SiloLinearPool` artifact](./artifact/SiloLinearPool.json)
 - [`SiloLinearPoolFactory` artifact](./artifact/SiloLinearPoolFactory.json)
 - [`SiloLinearPoolRebalancer` artifact](./artifact/SiloLinearPoolRebalancer.json)

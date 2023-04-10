@@ -1,6 +1,7 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { randomBytes } from 'ethers/lib/utils';
+import { BigNumber, Contract } from 'ethers';
 import { setCode } from '@nomicfoundation/hardhat-network-helpers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
@@ -9,7 +10,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
 import { describeForkTest } from '../../../src/forkTests';
-import { deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 
 export enum SwapKind {
   GivenIn = 0,
@@ -22,6 +23,11 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
   let rebalancer: Contract;
 
   let task: Task;
+
+  enum AttackType {
+    SET_TARGETS,
+    SET_SWAP_FEE,
+  }
 
   // USDC Mainnet address
   const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
@@ -45,12 +51,15 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
   const FINAL_UPPER_TARGET = fp(5e6);
 
   const PROTOCOL_ID = 5;
+  const TASK_NAME = '20230410-silo-linear-pool-v2';
+  const VERSION = 2;
+  const SALT = randomBytes(32);
 
   let pool: Contract;
   let poolId: string;
 
   before('run task', async () => {
-    task = new Task('20230315-silo-linear-pool', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task(TASK_NAME, TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('SiloLinearPoolFactory');
   });
@@ -138,7 +147,8 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
         INITIAL_UPPER_TARGET,
         SWAP_FEE_PERCENTAGE,
         owner.address,
-        PROTOCOL_ID
+        PROTOCOL_ID,
+        SALT
       );
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
@@ -158,8 +168,8 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
     it('check factory version', async () => {
       const expectedFactoryVersion = {
         name: 'SiloLinearPoolFactory',
-        version: 1,
-        deployment: '20230315-silo-linear-pool',
+        version: VERSION,
+        deployment: TASK_NAME,
       };
 
       expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
@@ -168,8 +178,8 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
     it('check pool version', async () => {
       const expectedPoolVersion = {
         name: 'SiloLinearPool',
-        version: 1,
-        deployment: '20230315-silo-linear-pool',
+        version: VERSION,
+        deployment: TASK_NAME,
       };
 
       expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
@@ -352,6 +362,52 @@ describeForkTest('SiloLinearPoolFactory', 'mainnet', 16478568, function () {
 
       await mockLendingPool.setRevertType(2); // Type 2 is malicious swap query revert
       await expect(rebalancer.rebalance(other.address)).to.be.revertedWith('BAL#357'); // MALICIOUS_QUERY_REVERT
+    });
+  });
+
+  describe('read-only reentrancy protection', () => {
+    let attacker: Contract;
+
+    before('deploy attacker', async () => {
+      // Using Reentrancy Attacker from Aave Fork Test (task 20230206-aave-rebalanced-linear-pool-v4)
+      attacker = await deploy('ReadOnlyReentrancyAttackerAaveLP', { args: [vault.address] });
+    });
+
+    async function performAttack(attackType: AttackType, ethAmount: BigNumber, expectRevert: boolean) {
+      // To trigger the callback and revert, send more than we need for the deposit
+      // If we send just enough, there will be no "extra" ETH, and it won't trigger the callback and attack
+      const amountToSend = expectRevert ? ethAmount.add(1) : ethAmount;
+
+      const attack = attacker.startAttack(pool.address, attackType, ethAmount, { value: amountToSend });
+      if (expectRevert) {
+        await expect(attack).to.be.revertedWith('BAL#420');
+      } else {
+        await expect(attack).to.not.be.reverted;
+      }
+    }
+
+    function itPerformsAttack(expectRevert: boolean) {
+      const action = expectRevert ? 'triggers' : 'does not trigger';
+
+      context('set targets', () => {
+        it(`${action} the set targets attack`, async () => {
+          await performAttack(AttackType.SET_TARGETS, fp(1), expectRevert);
+        });
+      });
+
+      context('set swap fee', () => {
+        it(`${action} the set swap fee attack`, async () => {
+          await performAttack(AttackType.SET_SWAP_FEE, fp(1), expectRevert);
+        });
+      });
+    }
+
+    context('when exactly enough ETH is sent', () => {
+      itPerformsAttack(false);
+    });
+
+    context('when too much ETH is sent', () => {
+      itPerformsAttack(true);
     });
   });
 });
