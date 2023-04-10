@@ -9,21 +9,6 @@
     "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
   },
   {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0x3ff9e4de013546219b242e84ec6504fa5fbf38a304d44867952f64938a514525",
-    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
-  },
-  {
-    "grantee": "0x4b1635c7d3d1fc353298f92083e82df69e1e9158",
-    "actionId": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1af0",
-    "txHash": "0xd0fd95e43b840c7b10d36caf0bf79170a0d68bc376cb9dc1af67b82c20783438"
-  },
-  {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0xe82fca7fd9eb6591902d7a05b72294a683fbe649176226b09bed677446546634",
-    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
-  },
-  {
     "taskId": "20220325-mainnet-gauge-factory",
     "contractName": "LiquidityGaugeV5",
     "useAdaptor": true,
@@ -86,16 +71,7 @@
     "grantee": "0x3babebfd684506a5b47701ee231a53427ad413ef",
     "txHash": "0xfe7eff0251d797eb3708b25c5af5a4f3c753ccf91842b8d46dddd6d6d21d9d12"
   },
-  {
-    "grantee": "0x2fb8ad26fadc971464a17407e9213d1a22befc8a",
-    "actionId": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1af0",
-    "txHash": "0xef939986bea3a1c65a9b96a9bdd87ec2a244fac4fc37e41d6a1aecfa0b4acf90"
-  },
-  {
-    "grantee": "0x171c0ff5943ce5f133130436a29bf61e26516003",
-    "actionId": "0x0000000000000000000000000000000000000000000000000000000000000000",
-    "txHash": "0x6260f3974f7cd6a8dd44193096c78b6f542404df52932ca5273063421e84de7c"
-  },
+  ,
   {
     "taskId": "20220325-mainnet-gauge-factory",
     "contractName": "LiquidityGaugeV5",
@@ -114,11 +90,7 @@
     "grantee": "0xdf0399539a72e2689b8b2dd53c3c2a0883879fdd",
     "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
   },
-  {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0xde60916cf9b3b92856551e42810a66cb98fdcb8d645bb8bc4632f98217edaf4f",
-    "txHash": "0xb5afe57b38fde8920ec9d4e90e2af862a8db6317bc174b600aa39a69fe753f53"
-  },
+  ,
   {
     "taskId": "20210418-vault",
     "contractName": "Vault",
@@ -128,16 +100,8 @@
     "grantee": "0x03f1ab8b19bce21eb06c364aec9e40322572a1e9",
     "txHash": "0x79102fe6eb2ddddbd19801b99e1438635d14196806420150115ecf6f4e9ccb22"
   },
-  {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0xb0f6952d18a23822467f133002cf1bf129c2825a911874b6e1d3cf59ab0d514e",
-    "txHash": "0xa680d6e22a3713f075cf158f32acc4da91f382fb4b0e366788034406fc52428f"
-  },
-  {
-    "grantee": "0xe9b190404d42784d5c9de20032af43133bd28c28",
-    "actionId": "0x40b63abf617c319059e63b6ca5293a8551ac35d578bfcf576b5cb81d32823bc0",
-    "txHash": "0x3b08acd8f28757dabcff50901d6d5edfbb21f164e0f546d6bbdd58e812b585eb"
-  },
+  ,
+  ,
   {
     "taskId": "20220420-smart-wallet-checker",
     "contractName": "SmartWalletChecker",
@@ -154,41 +118,6 @@
     "signature": "add_reward(address,address)",
     "actionId": "0x6b5e3750e9adcbd4a75428ed3fc6d2d3fc8a52866660ad3778d3f8c33108edff",
     "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
-  },
-  {
-    "grantee": "0x0000a3b4db46aed2e20255f08557e9ba98a0c966",
-    "actionId": "0x0000000000000000000000000000000000000000000000000000000000000000",
-    "txHash": "0x64b8eadc875a8613f5835c7f115314a10226240eb24f067d4bd823f89daa418b"
-  },
-  {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0x40b63abf617c319059e63b6ca5293a8551ac35d578bfcf576b5cb81d32823bc0",
-    "txHash": "0x03cbfb3a248cd920852da777ceb000a03e4ffd655eee6740a8a21f5ff6091aad"
-  },
-  {
-    "grantee": "0x10ede1ab2ec74d261c15ea02926d5a4e868c8f76",
-    "actionId": "0x05a6026e8447722ad2634c95e7a4e6321fbe41e0b19b632c7da35e2cf334f03d",
-    "txHash": "0x33561e70d5083c24d5785faf125ca07c042cc519863cff541fe47b5ad04df0f9"
-  },
-  {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0x518e42b5077d93c9686c907c98cefb63fc94601083a71f03edec50a40ff5ef62",
-    "txHash": "0x3872efa061566f3fd285b7a712b583e3cb72fcab0f932fa3043c10acfc3fc429"
-  },
-  {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0xa7bbb6bfa6fb1edcac4443deaa3585deed2396db466176b580b40ff3403ee8b4",
-    "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
-  },
-  {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0xd05e92727c3137b6414e73900467692daf41d632b51b799fbfed05899bff5e4a",
-    "txHash": "0x92a5a28650cfa54789551fdd104dd9de88e15bcd42a2530c9d8c4324b2e2d0d1"
-  },
-  {
-    "grantee": "0xe0a171587b1cae546e069a943eda96916f5ee977",
-    "actionId": "0xbc0b729159c77668a876ba12976d49c499667d908b035c2a559771c52de48d39",
     "txHash": "0x3d2ac5880a7cd6d7ab2076c4400a6e043e5b81049f056492a3330e9c389ce6c5"
   },
   {
