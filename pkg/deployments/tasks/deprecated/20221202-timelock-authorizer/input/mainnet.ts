@@ -1,5 +1,5 @@
 import { DAY } from '@balancer-labs/v2-helpers/src/time';
-import Task, { TaskMode } from '../../../src/task';
+import Task, { TaskMode } from '../../../../src/task';
 import { flatten } from 'lodash';
 import { DelayData, RoleData } from './types';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';

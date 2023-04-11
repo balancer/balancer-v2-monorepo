@@ -1,5 +1,9 @@
 # 2022-12-02 - Timelock Authorizer
 
+> ⚠️ **DEPRECATED: do not use** ⚠️
+
+> Superseded by [20230403-timelock-authorizer](../../20230403-timelock-authorizer/), which provides much better and isolated control over granting, revoking, cancelling and executing permissions.
+
 Deployment of the `TimelockAuthorizer` in order to replace the basic Authorizer deployed with the Vault.
 This Authorizer implementation allows defining a delay per action identifier. Users can only execute functions directly when there is no delay. Otherwise, they're granted permission to schedule an action, which can then be executed by the Authorizer after the delay. It also introduces Granters and Revokers, to allow controlled delegation of permission handling to third parties, which eases the burden on governance and allows the system to scale. For instance, a smaller multisig might be designated as a Granter for certain veBAL-related functions for new pools.
 
