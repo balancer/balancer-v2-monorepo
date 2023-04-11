@@ -14,7 +14,7 @@ describe('AuthorizerWithAdaptorValidation', () => {
   let admin: SignerWithAddress;
 
   before('setup signers', async () => {
-    [admin, user, other, authorizerAdaptor, adaptorEntrypoint] = await ethers.getSigners();
+    [, admin, user, other, authorizerAdaptor, adaptorEntrypoint] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy old authorizer and helper', async () => {
