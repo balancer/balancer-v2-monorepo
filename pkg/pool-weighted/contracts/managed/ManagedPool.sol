@@ -542,18 +542,16 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
-        uint256[] memory scalingFactors = _scalingFactors(tokens);
 
         uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
-        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
 
         return
             ManagedPoolAmmLib.joinPool(
                 balances,
                 userData,
                 actualSupply,
-                scalingFactors,
-                normalizedWeights,
+                _scalingFactors(tokens),
+                _getNormalizedWeights(tokens),
                 poolState,
                 _getCircuitBreakerStates(tokens),
                 _getWeightedMath()
@@ -572,18 +570,15 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
 
-        uint256[] memory scalingFactors = _scalingFactors(tokens);
         uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
-
-        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
 
         return
             ManagedPoolAmmLib.exitPool(
                 balances,
                 userData,
                 actualSupply,
-                scalingFactors,
-                normalizedWeights,
+                _scalingFactors(tokens),
+                _getNormalizedWeights(tokens),
                 _getPoolState(),
                 _getCircuitBreakerStates(tokens),
                 _getWeightedMath()
