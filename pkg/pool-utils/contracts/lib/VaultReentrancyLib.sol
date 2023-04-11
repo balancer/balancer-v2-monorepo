@@ -45,9 +45,8 @@ library VaultReentrancyLib {
         // solhint-disable-next-line var-name-mixedcase
         bytes32 REENTRANCY_ERROR_HASH = keccak256(abi.encodeWithSignature("Error(string)", "BAL#400"));
 
-        // read-only re-entrancy protection - we are making a static call on a non-view function. It will either
-        // "succeed" (return with no transaction), or revert. if it reverts, we need to make sure it didn't fail
-        // due to a re-entrancy attack.
+        // read-only re-entrancy protection - this call is always unsuccessful but we need to make sure
+        // it didn't fail due to a re-entrancy attack
         (, bytes memory revertData) = address(vault).staticcall(
             abi.encodeWithSelector(vault.manageUserBalance.selector, new address[](0))
         );
