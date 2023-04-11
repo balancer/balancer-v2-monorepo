@@ -94,7 +94,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Polygon Root Gauges V2, for veBAL voting               | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Pool Recovery Helper                                   | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 | Authorizer Adaptor Entrypoint                          | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
-| Timelock Authorizer, governance contract               | [`20221202-timelock-authorizer`](./tasks/20221202-timelock-authorizer)                               |
 | L2 Gauge Checkpointer                                  | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                           |
 | VeBoost V2                                             | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
 | Gauge Registrant V3, supporting the Adaptor entrypoint | [`20230109-gauge-adder-v3`](./tasks/20230109-gauge-adder-v3)                                         |
@@ -112,7 +111,9 @@ Returns an object with all contracts from a deployment and their addresses.
 | L2 Voting Escrow Delegation Proxy                      | [`20230316-l2-ve-delegation-proxy`](./tasks/20230316-l2-ve-delegation-proxy)                         |
 | Weighted Pool V4                                       | [`20230320-weighted-pool-v4`](./tasks/20230320-weighted-pool-v4)                                     |
 | Composable Stable Pools V4                             | [`20230320-composable-stable-pool-v4`](./tasks/20230320-composable-stable-pool-v4)                   |
+| Timelock Authorizer, governance contract               | [`20230403-timelock-authorizer`](./tasks/20230403-timelock-authorizer)                               |
 | Voting Escrow Remapper                                 | [`20230403-vebal-remapper`](./tasks/20230403-vebal-remapper)                                         |
+| L2 Layer0 Bridge Forwarder                             | [`20230404-l2-layer0-bridge-forwarder](./tasks/20230404-l2-layer0-bridge-forwarder)                  |
 
 ## Scripts
 
@@ -173,4 +174,5 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for Aave aTokens (with rebalancing) V3 | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |
 | Weighted Pool V3                                    | [`20230206-weighted-pool-v3`](./tasks/deprecated/20230206-weighted-pool-v3)                             |
 | Composable Stable Pools V3                          | [`20230206-composable-stable-pool-v3`](./tasks/deprecated/20230206-composable-stable-pool-v3)           |
+| Timelock Authorizer, governance contract            | [`20221202-timelock-authorizer`](./tasks/deprecated/20221202-timelock-authorizer)                                  |
 | Linear Pools for Yearn Tokens                       | [`20230213-yearn-linear-pool`](./tasks/deprecated/20230213-yearn-linear-pool)                           |

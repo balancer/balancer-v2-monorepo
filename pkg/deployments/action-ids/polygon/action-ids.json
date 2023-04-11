@@ -699,5 +699,15 @@
         "create(address)": "0x322d97a0df341a88bf3c100fe4bbda28c2c8a55985af0612371aeba6af9222e6"
       }
     }
+  },
+  "20230404-l2-layer0-bridge-forwarder": {
+    "L2LayerZeroBridgeForwarder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "onVeBalBridged(address)": "0xbfb224f590dbe2bdfedef2adf975eae2811cbf8cde53743ca5b0bf81afbd3521",
+        "onVeBalSupplyUpdate()": "0x80dd8300722cda4a6ab46082a6f7676bf5d6c899353060a59725a65c4eeeb29e",
+        "setDelegation(address)": "0xd6a35019d9e5286b643336bfabaa3b0deb93e7a134249c1853bb33fb81ca46bd"
+      }
+    }
   }
 }
