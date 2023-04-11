@@ -54,6 +54,8 @@
     "eslint": "^8.26.0",
     "eslint-plugin-prettier": "^4.2.1",
     "ethers": "^5.7.2",
+    "graphql": "^16.6.0",
+    "graphql-request": "^5.2.0",
     "hardhat": "^2.12.5",
     "hardhat-ignore-warnings": "^0.2.4",
     "hardhat-local-networks-config-plugin": "^0.0.6",
