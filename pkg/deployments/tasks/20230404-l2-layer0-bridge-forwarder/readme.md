@@ -4,4 +4,10 @@ Deployment of `L2LayerZeroBridgeForwarder`, which is called by the Layer0 contra
 
 ## Useful Files
 
+- [Goerli testnet addresses](./output/goerli.json)
+- [Arbitrum testnet addresses](./output/arbitrum.json)
+- [Optimism testnet addresses](./output/optimism.json)
+- [Polygon testnet addresses](./output/polygon.json)
+- [Gnosis testnet addresses](./output/gnosis.json)
+- [BSC testnet addresses](./output/bsc.json)
 - [`L2LayerZeroBridgeForwarder` artifact](./artifact/L2LayerZeroBridgeForwarder.json)
