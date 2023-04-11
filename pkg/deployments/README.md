@@ -114,6 +114,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Composable Stable Pools V4                             | [`20230320-composable-stable-pool-v4`](./tasks/20230320-composable-stable-pool-v4)                   |
 | Timelock Authorizer, governance contract               | [`20230403-timelock-authorizer`](./tasks/20230403-timelock-authorizer)                               |
 | Voting Escrow Remapper                                 | [`20230403-vebal-remapper`](./tasks/20230403-vebal-remapper)                                         |
+| L2 Layer0 Bridge Forwarder                             | [`20230404-l2-layer0-bridge-forwarder](./tasks/20230404-l2-layer0-bridge-forwarder)                  |
 
 ## Scripts
 
