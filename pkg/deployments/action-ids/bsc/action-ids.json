@@ -273,5 +273,15 @@
         "updateTokenRateCache(address)": "0x7890466ffba14a02f161e03ef49578067b54197c84285660df1bffe3173b8d70"
       }
     }
+  },
+  "20230404-l2-layer0-bridge-forwarder": {
+    "L2LayerZeroBridgeForwarder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "onVeBalBridged(address)": "0xbf0d09cc84c7a607cf0ca866bc5117237e67bf9a118c80f547c2924550c4a147",
+        "onVeBalSupplyUpdate()": "0xda65f8c06affd0d96c020297234c8620f4b588c1ef6ee036f36f5d5a0f5052f3",
+        "setDelegation(address)": "0x88d38b22d4165008cdd5f7e516bd0da3bc66f10a54e05105ff57385d7ca18f5f"
+      }
+    }
   }
 }
