@@ -18,8 +18,13 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IL2LayerZeroDele
 
 contract MockL2LayerZeroDelegation is IL2LayerZeroDelegation {
     event OnVeBalBridged(address user);
+    event OnVeBalSupplyUpdate();
 
     function onVeBalBridged(address user) external override {
         emit OnVeBalBridged(user);
+    }
+
+    function onVeBalSupplyUpdate() external override {
+        emit OnVeBalSupplyUpdate();
     }
 }

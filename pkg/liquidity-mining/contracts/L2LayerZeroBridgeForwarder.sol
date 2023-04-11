@@ -51,6 +51,15 @@ contract L2LayerZeroBridgeForwarder is IL2LayerZeroDelegation, SingletonAuthenti
     }
 
     /**
+     * @notice Hook to be called whenever the veBAL supply is updated.
+     */
+    function onVeBalSupplyUpdate() external override {
+        if (_delegation != IL2LayerZeroDelegation(0)) {
+            _delegation.onVeBalSupplyUpdate();
+        }
+    }
+
+    /**
      * @notice Sets a new delegation implementation for `onVeBalBridged`.
      */
     function setDelegation(IL2LayerZeroDelegation delegation) external authenticate {

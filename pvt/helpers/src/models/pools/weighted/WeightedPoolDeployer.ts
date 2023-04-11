@@ -33,7 +33,6 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolVersion,
     } = deployment;
 
@@ -50,7 +49,6 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolVersion
     );
   },
@@ -68,7 +66,6 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       owner,
       from,
       aumFeeId,
@@ -124,7 +121,6 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
             owner,
@@ -166,7 +162,6 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
             owner,
@@ -194,7 +189,6 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
             vault.address,
