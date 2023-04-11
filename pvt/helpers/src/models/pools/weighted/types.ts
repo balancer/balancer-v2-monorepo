@@ -27,7 +27,6 @@ export type RawWeightedPoolDeployment = {
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
   managementAumFeePercentage?: BigNumberish;
-  aumProtocolFeesCollector?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -52,7 +51,6 @@ export type WeightedPoolDeployment = {
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
-  aumProtocolFeesCollector: string;
   factoryVersion: string;
   poolVersion: string;
   aumFeeId?: BigNumberish;
