@@ -19,4 +19,6 @@ pragma solidity >=0.7.0 <0.9.0;
  */
 interface IL2LayerZeroDelegation {
     function onVeBalBridged(address user) external;
+
+    function onVeBalSupplyUpdate() external;
 }

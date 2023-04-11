@@ -66,11 +66,31 @@ describe('L2LayerZeroBridgeForwarder', () => {
         await forwarder.connect(admin).setDelegation(delegationImplementation.address);
       });
 
-      it('calls implementation hook', async () => {
+      it('calls the implementation hook', async () => {
         const tx = await forwarder.onVeBalBridged(user.address);
         expectEvent.inIndirectReceipt(await tx.wait(), delegationImplementation.interface, 'OnVeBalBridged', {
           user: user.address,
         });
+      });
+    });
+  });
+
+  describe('onVeBalSupplyUpdate', () => {
+    context('without delegation implementation', () => {
+      it('does nothing', async () => {
+        const receipt = await (await forwarder.onVeBalSupplyUpdate()).wait();
+        expect(receipt.events).to.be.empty; // This covers direct and indirect logs.
+      });
+    });
+
+    context('with delegation implementation', () => {
+      sharedBeforeEach(async () => {
+        await forwarder.connect(admin).setDelegation(delegationImplementation.address);
+      });
+
+      it('calls the implementation hook', async () => {
+        const tx = await forwarder.onVeBalSupplyUpdate();
+        expectEvent.inIndirectReceipt(await tx.wait(), delegationImplementation.interface, 'OnVeBalSupplyUpdate');
       });
     });
   });
