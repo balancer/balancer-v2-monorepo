@@ -1097,5 +1097,36 @@
         "create(address)": "0x11dac6d73575cf704c874437f6e2742b10f0b3a8cb903c585bdc799cab66c457"
       }
     }
+  },
+  "20230403-timelock-authorizer": {
+    "TimelockAuthorizer": {
+      "useAdaptor": true,
+      "factoryOutput": "0x70E26F740bAd6a2CDd762e2478496268882C21d4",
+      "actionIds": {
+        "addCanceler(uint256,address)": "0x84b3cb1b074fa2537089ed5d95c2e834dfa46b9cf15ba788b5db60204cc01d77",
+        "addGranter(bytes32,address,address)": "0x56fdcb3114751be791280b0dfeef8711b3cc25a379813969d153441808daa8b1",
+        "addRevoker(address,address)": "0xb7fd1a26b19040ab47d8ae963105112ec00976232435e6a5a1034c179c73006a",
+        "cancel(uint256)": "0x18ec9b510c3755f14a6652974cc71b2b9a57482bad54ad9eb9a09eb58baabd7c",
+        "claimRoot()": "0xcffc14cd301e680c28f91860225f0a092d9c4d73165e5fff40eb20bfa0e3f3fe",
+        "execute(uint256)": "0x8f5f6d874d513c8f9538691aaf2f8ef75cae914e0d85344d153e367ea25fbb53",
+        "grantPermission(bytes32,address,address)": "0x45d472cabcb284ff7c4561afe024fa131e3a3453716515589925fb02aab53c32",
+        "removeCanceler(uint256,address)": "0x65200169388aff393568a45cd838d54391772da693466700ba1dc5226853451a",
+        "removeGranter(bytes32,address,address)": "0x16ad1c7f27e9973a77997926a5814bffdab568d42a32c8faace4bab064eb276d",
+        "removeRevoker(address,address)": "0x00d2fa87efdc8cb7f234661d6961f750d8827f53ae34acf710b0d5388494a839",
+        "renouncePermission(bytes32,address)": "0xc11cb96e717e9e3f42b189eff417c928f35096225a8c98c97f9778fc6340088c",
+        "revokePermission(bytes32,address,address)": "0x93e29b38130d7f39de47f9d104788118cfbe5cee4aa9938f8ef7a20d6014d0da",
+        "schedule(address,bytes,address[])": "0x319a5f07c45fb0a140c4218a472eec66fb47abf05f80196d3c54ef2248047221",
+        "scheduleDelayChange(bytes32,uint256,address[])": "0x9a4b2391879799f7e2d8c1a184422662e6d906bc4e5525297bd1e376d25139be",
+        "scheduleGrantDelayChange(bytes32,uint256,address[])": "0xbec572782741d39b4b2f14c1b9696b2c2913c7dbadb622a361bf6de9b0e0af92",
+        "scheduleGrantPermission(bytes32,address,address,address[])": "0xe66742bc252fa08f1b102084b8ac2e54075b2e58cd5b77c435715221b9c1844b",
+        "scheduleRevokeDelayChange(bytes32,uint256,address[])": "0xf01dad51f53c8bf5d426aca07182fdb061f2bf2ad3577c23716a183f21e92243",
+        "scheduleRevokePermission(bytes32,address,address,address[])": "0x14264eee9a81feda78a44f1c2231f4bd0f79d3fce310c27eaea8b5eda57813fc",
+        "scheduleRootChange(address,address[])": "0xe20c31fc92609471026c19d7ad9b5a32536158900ea2f62c84bff37fb9c3f80c",
+        "setDelay(bytes32,uint256)": "0xe44768f9c19a976cc769d689c929f6bfd9e21790cbf6f5ef21dc1a247e2d4be2",
+        "setGrantDelay(bytes32,uint256)": "0x00febfd326baef2d764eae991cc5c9009df8c6229512e5668e2b522897c539d3",
+        "setPendingRoot(address)": "0xe67a64beb587ad0ac7dfb6e61c944aa47c143414a1815dadf6e004ece4e41421",
+        "setRevokeDelay(bytes32,uint256)": "0x2e74d0546517d93752edabb9bb85999e15a514229ac3608ff67f3fa76ad0d358"
+      }
+    }
   }
 }
