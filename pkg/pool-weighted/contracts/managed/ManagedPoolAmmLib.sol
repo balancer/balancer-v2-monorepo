@@ -130,6 +130,8 @@ library ManagedPoolAmmLib {
         bytes32[] memory circuitBreakerStates,
         IExternalWeightedMath weightedMath
     ) external view returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        _upscaleArray(balances, scalingFactors);
+
         (bptAmountIn, amountsOut) = _doExit(
             balances,
             normalizedWeights,
