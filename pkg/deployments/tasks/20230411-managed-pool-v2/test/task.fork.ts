@@ -8,12 +8,16 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ManagedPoolParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import {
+  ManagedPoolParams,
+  ManagedPoolSettingsParams,
+} from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 import { getSigner, impersonate, getForkedNetwork, Task, TaskMode, describeForkTest } from '../../../src';
+import { randomBytes } from 'ethers/lib/utils';
 
-describeForkTest('ManagedPoolFactory', 'mainnet', 16991555, function () {
+describeForkTest('ManagedPoolFactory', 'mainnet', 17033100, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress, govMultisig: SignerWithAddress;
   let factory: Contract,
     vault: Contract,
@@ -72,13 +76,17 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 16991555, function () {
   async function createPool(swapEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[0] = owner.address;
+    const salt = randomBytes(32);
 
     const newPoolParams: ManagedPoolParams = {
       name: NAME,
       symbol: SYMBOL,
+      assetManagers: assetManagers,
+    };
+
+    const settingsParams: ManagedPoolSettingsParams = {
       tokens: tokens,
       normalizedWeights: WEIGHTS,
-      assetManagers: assetManagers,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
@@ -86,7 +94,9 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 16991555, function () {
       aumFeeId: ProtocolFee.AUM,
     };
 
-    const receipt = await (await factory.connect(owner).create(newPoolParams, owner.address)).wait();
+    const receipt = await (
+      await factory.connect(owner).create(newPoolParams, settingsParams, owner.address, salt)
+    ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return task.instanceAt('ManagedPool', event.args.pool);
@@ -218,16 +228,22 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 16991555, function () {
       const newPoolParams: ManagedPoolParams = {
         name: NAME,
         symbol: SYMBOL,
+        assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
+      };
+
+      const settingsParams: ManagedPoolSettingsParams = {
         tokens: tokens,
         normalizedWeights: WEIGHTS,
-        assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
         swapEnabledOnStart: true,
-        mustAllowlistLPs: true,
+        mustAllowlistLPs: false,
         managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
         aumFeeId: ProtocolFee.AUM,
       };
-      await expect(factory.connect(owner).create(newPoolParams, owner.address)).to.be.revertedWith('BAL#211');
+
+      await expect(
+        factory.connect(owner).create(newPoolParams, settingsParams, owner.address, randomBytes(32))
+      ).to.be.revertedWith('BAL#211');
     });
   });
 });

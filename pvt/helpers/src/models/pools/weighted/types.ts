@@ -207,6 +207,12 @@ export type ManagedPoolRights = {
 };
 
 export type ManagedPoolParams = {
+  name: string;
+  symbol: string;
+  assetManagers: string[];
+};
+
+export type ManagedPoolSettingsParams = {
   tokens: string[];
   normalizedWeights: BigNumberish[];
   swapFeePercentage: BigNumberish;
