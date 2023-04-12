@@ -28,6 +28,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
     // ERC4626LinearPools require an ERC4626 Token
     const mockErc4626TokenArgs = ['DO NOT USE - Mock ERC4626 Token', 'TEST', 18, input.WETH];
+    // Using MockERC4626Token from 20230409-erc4626-linear-pool-v4 task
     const mockErc4626Token = await task.deployAndVerify('MockERC4626Token', mockErc4626TokenArgs, from, force);
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare

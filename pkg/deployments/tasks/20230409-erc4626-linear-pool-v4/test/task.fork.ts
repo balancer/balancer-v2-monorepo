@@ -357,7 +357,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     });
 
     before('deploy attacker', async () => {
-      attacker = await deploy('ReadOnlyReentrancyAttackerLPV4', { args: [vault.address] });
+      attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
     });
 
     before('deploy pool and prepare', async () => {
@@ -454,8 +454,8 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
         MAX_UINT256
       );
 
-      await setCode(erc4626Token, getArtifact('MockERC4626TokenV4').deployedBytecode);
-      const mockLendingPool = await deployedAt('MockERC4626TokenV4', erc4626Token);
+      await setCode(erc4626Token, getArtifact('MockERC4626Token').deployedBytecode);
+      const mockLendingPool = await deployedAt('MockERC4626Token', erc4626Token);
 
       await mockLendingPool.setRevertType(2); // Type 2 is malicious swap query revert
       await expect(rebalancer.rebalance(other.address)).to.be.revertedWith('BAL#357'); // MALICIOUS_QUERY_REVERT

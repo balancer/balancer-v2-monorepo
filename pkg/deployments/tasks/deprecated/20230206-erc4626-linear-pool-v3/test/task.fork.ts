@@ -352,6 +352,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
     });
 
     before('deploy attacker', async () => {
+      // Using MockERC4626Token from 20230409-erc4626-linear-pool-v4 task
       attacker = await deploy('ReadOnlyReentrancyAttackerLP', { args: [vault.address] });
     });
 
@@ -448,6 +449,7 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16550500, function () {
         MAX_UINT256
       );
 
+      // Using MockERC4626Token from 20230409-erc4626-linear-pool-v4 task
       await setCode(erc4626Token, getArtifact('MockERC4626Token').deployedBytecode);
       const mockLendingPool = await deployedAt('MockERC4626Token', erc4626Token);
 
