@@ -56,6 +56,11 @@ describe('ManagedPoolFactory', function () {
 
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
+    const ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+      libraries: {
+        CircuitBreakerLib: circuitBreakerLib.address,
+      },
+    });
     factory = await deploy('ManagedPoolFactory', {
       args: [
         vault.address,
@@ -68,6 +73,7 @@ describe('ManagedPoolFactory', function () {
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+        ManagedPoolAmmLib: ammLib.address,
       },
     });
     createTime = await currentTimestamp();
