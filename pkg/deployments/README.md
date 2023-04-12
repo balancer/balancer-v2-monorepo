@@ -111,7 +111,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Composable Stable Pools V4                             | [`20230320-composable-stable-pool-v4`](./tasks/20230320-composable-stable-pool-v4)                   |
 | Timelock Authorizer, governance contract               | [`20230403-timelock-authorizer`](./tasks/20230403-timelock-authorizer)                               |
 | Voting Escrow Remapper                                 | [`20230403-vebal-remapper`](./tasks/20230403-vebal-remapper)                                         |
-| L2 Layer0 Bridge Forwarder                             | [`20230404-l2-layer0-bridge-forwarder](./tasks/20230404-l2-layer0-bridge-forwarder)                  |
+| L2 Layer0 Bridge Forwarder                             | [`20230404-l2-layer0-bridge-forwarder`](./tasks/20230404-l2-layer0-bridge-forwarder)                 |
 | Linear Pools for ERC4626 Tokens V4                     | [`20230409-erc4626-linear-pool-v4`](./tasks/20230409-erc4626-linear-pool-v4)                         |
 | Linear Pools for Yearn Tokens V2                       | [`20230409-yearn-linear-pool-v2`](./tasks/20230409-yearn-linear-pool-v2)                             |
 | Linear Pools for Aave aTokens V5                       | [`20230410-aave-linear-pool-v5`](./tasks/20230410-aave-linear-pool-v5)                               |
