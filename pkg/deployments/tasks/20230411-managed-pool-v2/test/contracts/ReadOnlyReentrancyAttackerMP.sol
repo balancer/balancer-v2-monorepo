@@ -24,7 +24,13 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IManagedPool.sol";
  * in the middle of a join operation.
  */
 contract ReadOnlyReentrancyAttackerMP {
-    enum AttackType { SET_MANAGEMENT_AUM_FEE, COLLECT_AUM_MANAGEMENT_FEES, ADD_TOKEN, REMOVE_TOKEN, UPDATE_PROTOCOL_FEE_CACHE }
+    enum AttackType {
+        SET_MANAGEMENT_AUM_FEE,
+        COLLECT_AUM_MANAGEMENT_FEES,
+        ADD_TOKEN,
+        REMOVE_TOKEN,
+        UPDATE_PROTOCOL_FEE_CACHE
+    }
 
     IVault private immutable _vault;
     AttackType private _attackType;
@@ -80,11 +86,11 @@ contract ReadOnlyReentrancyAttackerMP {
         } else if (attackType == AttackType.COLLECT_AUM_MANAGEMENT_FEES) {
             IManagedPool(pool).collectAumManagementFees();
         } else if (attackType == AttackType.ADD_TOKEN) {
-            IERC20 WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+            IERC20 weth = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
             uint256 tokenWeight = 1e16; // 1%
             address recipient = address(this);
 
-            IManagedPool(pool).addToken(WETH, address(0), tokenWeight, 0, recipient);
+            IManagedPool(pool).addToken(weth, address(0), tokenWeight, 0, recipient);
         } else if (attackType == AttackType.REMOVE_TOKEN) {
             (IERC20[] memory tokens, , ) = _vault.getPoolTokens(_poolId);
             address sender = address(this);
