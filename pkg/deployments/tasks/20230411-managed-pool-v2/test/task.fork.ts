@@ -272,7 +272,7 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 17033100, function () {
       });
     });
 
-    describe.skip('survives attacks', async () => {
+    describe('survives attacks', async () => {
       it(`rejects fee update attack`, async () => {
         await performAttack(AttackType.SET_MANAGEMENT_AUM_FEE);
       });
@@ -295,12 +295,17 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 17033100, function () {
     });
 
     async function performAttack(attackType: AttackType) {
-      const bptOut = fp(1);
+      const allTokens = (await vault.getPoolTokens(poolId)).tokens;
+      // Amounts in must not include BPT in user data.
+      const userData = WeightedPoolEncoder.joinExactTokensInForBPTOut(
+        Array(allTokens.length - 1).fill(attackerFunds),
+        0
+      );
 
       const joinRequest = {
-        assets: [pool.address, ...tokens],
-        maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
-        userData: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(bptOut),
+        assets: allTokens,
+        maxAmountsIn: Array(allTokens.length).fill(MAX_UINT256),
+        userData,
         fromInternalBalance: false,
       };
 
