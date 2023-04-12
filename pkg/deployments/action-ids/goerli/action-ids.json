@@ -1107,7 +1107,7 @@
         "setDelegation(address)": "0x2b1063482a56fcc1993bcf1ee2a264d8d49e7ce1e26e76544e5292ab97210119"
       }
     }
-  }
+  },
   "20230403-timelock-authorizer": {
     "TimelockAuthorizer": {
       "useAdaptor": true,
