@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "SiloExchangeRateModel",
+  "sourceName": "contracts/silo-linear-pool/SiloExchangeRateModel.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220d529d72cb3debbabd10de58968caf38f16d08026ed1686a45b9d60f82848498c64736f6c63430007010033",
+  "deployedBytecode": "0x6080604052600080fdfea2646970667358221220d529d72cb3debbabd10de58968caf38f16d08026ed1686a45b9d60f82848498c64736f6c63430007010033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
