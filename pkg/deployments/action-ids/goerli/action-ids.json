@@ -1098,6 +1098,16 @@
       }
     }
   },
+  "20230404-l2-layer0-bridge-forwarder": {
+    "L2LayerZeroBridgeForwarder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "onVeBalBridged(address)": "0x8479390d09c5c301bdc0a009a112b46d49a8039bf633774c349ce215246437a7",
+        "onVeBalSupplyUpdate()": "0xd6dae96c8c48de0dd733a8158aefabd081233ab0a8a1674a5670aedb698fd7e8",
+        "setDelegation(address)": "0x2b1063482a56fcc1993bcf1ee2a264d8d49e7ce1e26e76544e5292ab97210119"
+      }
+    }
+  }
   "20230403-timelock-authorizer": {
     "TimelockAuthorizer": {
       "useAdaptor": true,
