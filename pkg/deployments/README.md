@@ -115,6 +115,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Linear Pools for Gearbox Tokens V2                     | [`20230409-gearbox-linear-pool-v2`](./tasks/20230409-gearbox-linear-pool-v2)                         |
 | Linear Pools for Aave aTokens V5                       | [`20230410-aave-linear-pool-v5`](./tasks/20230410-aave-linear-pool-v5)                               |
 | Linear Pools for Silo Tokens V2                        | [`20230410-silo-linear-pool-v2`](./tasks/20230410-silo-linear-pool-v2)                               |
+| Managed Pool V2                                        | [`20230411-managed-pool-v2`](./tasks/20230411-managed-pool-v2)                                       |
 
 ## Scripts
 
