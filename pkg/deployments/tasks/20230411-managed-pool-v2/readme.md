@@ -10,6 +10,10 @@ A Managed Pool is a Weighted Pool with mutable tokens and weights, designed to b
 
 ## Useful Files
 
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [BSC mainnet addresses](./output/bsc.json)
+- [Gnosis mainnet addresses](./output/gnosis.json)
 - [`ManagedPoolFactory` artifact](./artifact/ManagedPoolFactory.json)
 - [`ManagedPoolAddRemoveTokenLib` artifact](./artifact/ManagedPoolAddRemoveTokenLib.json)
 - [`ManagedPoolAmmLib` artifact](./artifact/ManagedPoolAmmLib.json)
