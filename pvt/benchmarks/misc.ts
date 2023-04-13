@@ -201,7 +201,7 @@ async function deployPoolFromFactory(
         CircuitBreakerLib: circuitBreakerLib.address,
       },
     });
-    const math = await deploy('ExternalWeightedMath');
+    const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
     const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
 
     factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
