@@ -1,0 +1,5 @@
+{
+  "ManagedPoolAddRemoveTokenLib": "0x1802953277FD955f9a254B80Aa0582f193cF1d77",
+  "CircuitBreakerLib": "0xf7D5DcE55E6D47852F054697BAB6A1B48A00ddbd",
+  "ManagedPoolAmmLib": "0xb9aD3466cdd42015cc05d4804DC68D562b6a2065"
+}
