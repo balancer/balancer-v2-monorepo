@@ -301,7 +301,7 @@ export default {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         const math = await deploy('ExternalWeightedMath');
-        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address]});
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
 
         const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
           args: [
