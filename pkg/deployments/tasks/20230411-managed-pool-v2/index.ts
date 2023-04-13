@@ -13,10 +13,14 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
   const circuitBreakerLib = await task.deployAndVerify('CircuitBreakerLib', [], from, force);
   const libs = { CircuitBreakerLib: circuitBreakerLib.address };
   const ammLib = await task.deployAndVerify('ManagedPoolAmmLib', [], from, force, libs);
+  const math = await task.deployAndVerify('ExternalWeightedMath', [], from, force);
+  const recoveryModeHelper = await task.deployAndVerify('RecoveryModeHelper', [input.Vault], from, force);
 
   const args = [
     input.Vault,
     input.ProtocolFeePercentagesProvider,
+    math.address,
+    recoveryModeHelper.address,
     input.FactoryVersion,
     input.PoolVersion,
     input.InitialPauseWindowDuration,
@@ -107,7 +111,4 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       mockPoolArgs.owner,
     ]);
   }
-
-  const math = await factory.getWeightedMath();
-  await task.verify('ExternalWeightedMath', math, []);
 };
