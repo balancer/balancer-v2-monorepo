@@ -8,6 +8,8 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import { impersonateAccount, setBalance } from '@nomicfoundation/hardhat-network-helpers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { defaultAbiCoder } from 'ethers/lib/utils';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('AuthorizerWithAdaptorValidation', () => {
   let vault: Contract, authorizerAdaptor: Contract, adaptorEntrypoint: Contract;
@@ -20,7 +22,7 @@ describe('AuthorizerWithAdaptorValidation', () => {
     [, admin, user, other] = await ethers.getSigners();
   });
 
-  sharedBeforeEach('deploy old authorizer and helper', async () => {
+  sharedBeforeEach('deploy actual authorizer and helper', async () => {
     actualAuthorizer = await deploy('MockBasicAuthorizer', { from: admin });
 
     vault = await deploy('Vault', { args: [actualAuthorizer.address, ZERO_ADDRESS, 0, 0] });
@@ -56,7 +58,7 @@ describe('AuthorizerWithAdaptorValidation', () => {
 
     let adaptorSigner: SignerWithAddress;
 
-    sharedBeforeEach('grant permission on the old authorizer', async () => {
+    sharedBeforeEach('grant permission on the actual authorizer', async () => {
       await actualAuthorizer.connect(admin).grantRole(ROLE_1, user.address);
     });
 
@@ -81,43 +83,72 @@ describe('AuthorizerWithAdaptorValidation', () => {
     });
 
     context('when sender is not the adaptor', () => {
-      it('properly delegates to the old authorizer', async () => {
+      it('properly delegates to the actual authorizer', async () => {
         expect(await authorizer.connect(user).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.true;
         expect(await authorizer.connect(user).canPerform(ROLE_2, user.address, ANY_ADDRESS)).to.be.false;
         expect(await authorizer.connect(other).canPerform(ROLE_1, other.address, ANY_ADDRESS)).to.be.false;
       });
     });
+  });
 
-    describe('Adaptor and Entrypoint interactions (post-upgrade)', () => {
-      sharedBeforeEach('upgrade to the new authorizer', async () => {
-        await actualAuthorizer.connect(admin).grantRole(await actionId(vault, 'setAuthorizer'), admin.address);
-        await vault.connect(admin).setAuthorizer(authorizer.address);
-      });
+  describe('Adaptor and Entrypoint interactions (post-upgrade)', () => {
+    let action;
+    let target: string;
+    let calldata: string;
+    let expectedResult: string;
 
-      it('adaptor calls from entrypoint contract succeed', async () => {
-        expect(await authorizer.connect(adaptorSigner).canPerform(ROLE_1, adaptorEntrypoint.address, ANY_ADDRESS)).to.be
-          .true;
-      });
+    sharedBeforeEach('upgrade to the new authorizer', async () => {
+      await actualAuthorizer.connect(admin).grantRole(await actionId(vault, 'setAuthorizer'), admin.address);
+      await vault.connect(admin).setAuthorizer(authorizer.address);
+    });
 
-      it('unauthorized calls through the entrypoint contract fail', async () => {
-        expect(await authorizer.connect(user).canPerform(ROLE_1, adaptorEntrypoint.address, ANY_ADDRESS)).to.be.false;
-      });
+    sharedBeforeEach('prepare call and grant adaptor permission', async () => {
+      // We're going to have the Adaptor call a view function in the Vault. The fact that this is not a permissioned
+      // function is irrelevant - we just want to make the Adaptor call it. We'll grant the user permission to make this
+      // call.
+      action = await actionId(authorizerAdaptor, 'getProtocolFeesCollector', vault.interface);
+      await actualAuthorizer.connect(admin).grantRole(action, user.address);
 
-      it('adaptor calls from non-entrypoint contract fail', async () => {
-        expect(await authorizer.connect(adaptorSigner).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.false;
-      });
+      target = vault.address;
 
-      it('regular permissions still work after the upgrade', async () => {
-        expect(await authorizer.connect(user).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.true;
-        expect(await authorizer.connect(user).canPerform(ROLE_2, user.address, ANY_ADDRESS)).to.be.false;
-      });
+      // The extra bytes are not required to perform the call, but for testing purposes it's slightly more complete if
+      // the selector does not match the entire calldata.
+      calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector').concat('aabbccddeeff');
 
-      it('permissions revoked on the actual authorizer are reflected in the new', async () => {
-        actualAuthorizer.connect(admin).revokeRole(ROLE_1, user.address);
+      expectedResult = defaultAbiCoder.encode(['address'], [await vault.getProtocolFeesCollector()]);
+    });
 
-        expect(await actualAuthorizer.connect(user).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.false;
-        expect(await authorizer.connect(user).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.false;
-      });
+    it('unauthorized calls to the adaptor fail', async () => {
+      await expect(authorizerAdaptor.connect(other).performAction(target, calldata)).to.be.revertedWith(
+        'SENDER_NOT_ALLOWED'
+      );
+    });
+
+    it('authorized calls to the adaptor fail', async () => {
+      await expect(authorizerAdaptor.connect(user).performAction(target, calldata)).to.be.revertedWith(
+        'SENDER_NOT_ALLOWED'
+      );
+    });
+
+    it('unauthorized calls through the entrypoint fail', async () => {
+      await expect(adaptorEntrypoint.connect(other).performAction(target, calldata)).to.be.revertedWith(
+        'SENDER_NOT_ALLOWED'
+      );
+    });
+
+    it('authorized calls through the entrypoint suceed', async () => {
+      const tx = await adaptorEntrypoint.connect(user).performAction(target, calldata);
+
+      expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', { caller: user.address, data: calldata, target });
+
+      const result = await adaptorEntrypoint.connect(user).callStatic.performAction(target, calldata);
+      expect(result).to.equal(expectedResult);
+    });
+
+    it('other permissions are unaffected', async () => {
+      // The admin had permission to call `setAuthorizer` on the Vault before the upgrade, and still does.
+      await vault.connect(admin).setAuthorizer(ZERO_ADDRESS);
+      expect(await vault.getAuthorizer()).to.equal(ZERO_ADDRESS);
     });
   });
 });
