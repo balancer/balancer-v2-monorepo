@@ -136,7 +136,7 @@ describe('AuthorizerWithAdaptorValidation', () => {
       );
     });
 
-    it('authorized calls through the entrypoint suceed', async () => {
+    it('authorized calls through the entrypoint succeed', async () => {
       const tx = await adaptorEntrypoint.connect(user).performAction(target, calldata);
 
       expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', { caller: user.address, data: calldata, target });
