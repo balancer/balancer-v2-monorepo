@@ -68,8 +68,20 @@ contract AuthorizerWithAdaptorValidation is IAuthorizer {
         address where
     ) external view override returns (bool) {
         if (msg.sender == address(_authorizerAdaptor)) {
+            // The situation where the caller is the `AuthorizerAdaptor` is a special case, as due to a bug it can be
+            // tricked into passing an incorrect `actionId` value, potentially resulting in escalation of privileges.
+            //
+            // To remedy this we force all calls to the `AuthorizerAdaptor` to be made through a singleton entrypoint
+            // contract, called the `AuthorizerAdaptorEntrypoint`. This contract correctly checks whether `account` can
+            // perform `actionId` on `where`, and then forwards the call onto the `AuthorizerAdaptor` to execute.
+            //
+            // The authorizer then rejects calls to the `AuthorizerAdaptor` which aren't made through the entrypoint,
+            // and approves all calls made through it (since the entrypoint will have already performed any necessary
+            // permission checks).
             return account == address(_adaptorEntrypoint);
         } else {
+            // A permission check performed by any other account is simply forwarded to the actual Authorizer, which
+            // is the one that keeps track of permissions.
             return _actualAuthorizer.canPerform(actionId, account, where);
         }
     }
