@@ -12,17 +12,20 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, function () {
   let user: SignerWithAddress, other: SignerWithAddress, admin: SignerWithAddress;
-  let govMultisig: SignerWithAddress;
+  let govMultisig: SignerWithAddress, lmMultisig: SignerWithAddress;
   let authorizer: Contract,
     vault: Contract,
     actualAuthorizer: Contract,
     authorizerAdaptor: Contract,
-    adaptorEntrypoint: Contract;
-  let allowedAction: string, setAuthorizerAction: string;
+    adaptorEntrypoint: Contract,
+    gaugeAdder,
+    gaugeFactory: Contract;
+  let allowedAction: string, setAuthorizerAction: string, addFactoryAction: string;
 
   let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
+  const LM_MULTISIG = '0xc38c5f97b34e175ffd35407fc91a937300e33860';
 
   before('run task', async () => {
     task = new Task('20230414-authorizer-wrapper', TaskMode.TEST, getForkedNetwork(hre));
@@ -34,6 +37,7 @@ describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, functio
     [, admin, user, other] = await ethers.getSigners();
 
     govMultisig = await impersonate(GOV_MULTISIG);
+    lmMultisig = await impersonate(LM_MULTISIG, fp(100));
   });
 
   before('setup contracts', async () => {
@@ -43,23 +47,38 @@ describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, functio
       TaskMode.READ_ONLY,
       getForkedNetwork(hre)
     ).deployedInstance('Authorizer');
+
     authorizerAdaptor = await new Task(
       '20220325-authorizer-adaptor',
       TaskMode.READ_ONLY,
       getForkedNetwork(hre)
     ).deployedInstance('AuthorizerAdaptor');
+
     adaptorEntrypoint = await new Task(
       '20221124-authorizer-adaptor-entrypoint',
       TaskMode.READ_ONLY,
       getForkedNetwork(hre)
     ).deployedInstance('AuthorizerAdaptorEntrypoint');
+
+    gaugeAdder = await new Task('20230109-gauge-adder-v3', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance(
+      'GaugeAdder'
+    );
+
+    // Need to create a new factory (or it will say factory already added)
+    const factoryTask = new Task('20220822-mainnet-gauge-factory-v2', TaskMode.TEST, getForkedNetwork(hre));
+    await factoryTask.run({ force: true });
+    gaugeFactory = await factoryTask.deployedInstance('LiquidityGaugeFactory');
+
+    expect(await gaugeFactory.isGaugeFromFactory(ZERO_ADDRESS)).to.be.false;
   });
 
   before('get actions', async () => {
     allowedAction = await actionId(authorizerAdaptor, 'getProtocolFeesCollector', vault.interface);
     setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+    addFactoryAction = await actionId(gaugeAdder, 'addGaugeFactory');
 
     await actualAuthorizer.connect(govMultisig).grantRole(allowedAction, user.address);
+    await actualAuthorizer.connect(govMultisig).grantRole(addFactoryAction, lmMultisig.address);
   });
 
   describe('getters', () => {
@@ -73,6 +92,15 @@ describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, functio
 
     it('stores the authorizer adaptor entrypoint', async () => {
       expect(await authorizer.getAuthorizerAdaptorEntrypoint()).to.equal(adaptorEntrypoint.address);
+    });
+
+    it('configures the gauge adder', async () => {
+      const entrypoint = await gaugeAdder.getAuthorizerAdaptorEntrypoint();
+      const gaugeAdderAuthorizer = await adaptorEntrypoint.getAuthorizer();
+
+      // Ensure the authorizer we just set the permissions on is the same one the gauge adder is using
+      expect(entrypoint).to.equal(adaptorEntrypoint.address);
+      expect(gaugeAdderAuthorizer).to.equal(actualAuthorizer.address);
     });
   });
 
@@ -163,6 +191,14 @@ describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, functio
       // The admin had permission to call `setAuthorizer` on the Vault before the upgrade, and still does.
       await vault.connect(admin).setAuthorizer(ZERO_ADDRESS);
       expect(await vault.getAuthorizer()).to.equal(ZERO_ADDRESS);
+    });
+  });
+
+  it('can add factories for a gauge type', async () => {
+    const tx = await gaugeAdder.connect(lmMultisig).addGaugeFactory(gaugeFactory.address, 2); // Ethereum is type 2
+    expectEvent.inReceipt(await tx.wait(), 'GaugeFactoryAdded', {
+      gaugeType: 2,
+      gaugeFactory: gaugeFactory.address,
     });
   });
 });
