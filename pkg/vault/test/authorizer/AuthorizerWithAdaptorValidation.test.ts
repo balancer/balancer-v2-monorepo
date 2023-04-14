@@ -38,7 +38,7 @@ describe('AuthorizerWithAdaptorValidation', () => {
     });
   });
 
-  it('stores the old authorizer', async () => {
+  it('stores the actual (existing basic) authorizer', async () => {
     expect(await authorizer.getActualAuthorizer()).to.equal(actualAuthorizer.address);
   });
 
@@ -64,14 +64,15 @@ describe('AuthorizerWithAdaptorValidation', () => {
       await impersonateAccount(authorizerAdaptor.address);
       await setBalance(authorizerAdaptor.address, fp(1));
 
-      const { ethers } = await import('hardhat');
+      // Simulate a call from the real AuthorizerAdaptor by "casting" it as a Signer,
+      // so it can be used with `connect` like an EOA
       adaptorSigner = await SignerWithAddress.create(ethers.provider.getSigner(authorizerAdaptor.address));
     });
 
     context('when sender is the authorizer adaptor', () => {
       it('allows when account is the entrypoint', async () => {
-        await expect(await authorizer.connect(adaptorSigner).canPerform(ROLE_1, adaptorEntrypoint.address, ANY_ADDRESS))
-          .to.be.true;
+        expect(await authorizer.connect(adaptorSigner).canPerform(ROLE_1, adaptorEntrypoint.address, ANY_ADDRESS)).to.be
+          .true;
       });
 
       it('denies when account is not the entrypoint', async () => {
@@ -86,14 +87,37 @@ describe('AuthorizerWithAdaptorValidation', () => {
         expect(await authorizer.connect(other).canPerform(ROLE_1, other.address, ANY_ADDRESS)).to.be.false;
       });
     });
-  });
 
-  describe('Adaptor and Entrypoint interactions', () => {
-    sharedBeforeEach('upgrade to the new authorizer', async () => {
-      await actualAuthorizer.connect(admin).grantRole(await actionId(vault, 'setAuthorizer'), admin.address);
-      await vault.connect(admin).setAuthorizer(authorizer.address);
+    describe('Adaptor and Entrypoint interactions (post-upgrade)', () => {
+      sharedBeforeEach('upgrade to the new authorizer', async () => {
+        await actualAuthorizer.connect(admin).grantRole(await actionId(vault, 'setAuthorizer'), admin.address);
+        await vault.connect(admin).setAuthorizer(authorizer.address);
+      });
+
+      it('adaptor calls from entrypoint contract succeed', async () => {
+        expect(await authorizer.connect(adaptorSigner).canPerform(ROLE_1, adaptorEntrypoint.address, ANY_ADDRESS)).to.be
+          .true;
+      });
+
+      it('unauthorized calls through the entrypoint contract fail', async () => {
+        expect(await authorizer.connect(user).canPerform(ROLE_1, adaptorEntrypoint.address, ANY_ADDRESS)).to.be.false;
+      });
+
+      it('adaptor calls from non-entrypoint contract fail', async () => {
+        expect(await authorizer.connect(adaptorSigner).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.false;
+      });
+
+      it('regular permissions still work after the upgrade', async () => {
+        expect(await authorizer.connect(user).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.true;
+        expect(await authorizer.connect(user).canPerform(ROLE_2, user.address, ANY_ADDRESS)).to.be.false;
+      });
+
+      it('permissions revoked on the actual authorizer are reflected in the new', async () => {
+        actualAuthorizer.connect(admin).revokeRole(ROLE_1, user.address);
+
+        expect(await actualAuthorizer.connect(user).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.false;
+        expect(await authorizer.connect(user).canPerform(ROLE_1, user.address, ANY_ADDRESS)).to.be.false;
+      });
     });
-
-    it('adaptor calls from non-entrypoint contract fail', async () => {});
   });
 });
