@@ -213,7 +213,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         require(offset < _scheduledExecutions.length, "INVALID_OFFSET");
       
         uint256 rest = _scheduledExecutions.length - offset;
-        uint256 size = rest > limit ? limit : rest;
+        uint256 size = Math.min(rest, limit);
         items = new ITimelockAuthorizer.ScheduledExecution[](size);
 
         for (uint256 i = 0; i < size; i++) {
