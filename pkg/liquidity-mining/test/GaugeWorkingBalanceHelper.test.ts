@@ -77,7 +77,7 @@ describe('GaugeWorkingBalanceHelper', () => {
       expect(await workingBalanceHelper.getVotingEscrow()).to.equal(votingEscrow.address);
     });
 
-    it('indicates the network', async () => {
+    it('indicates where to read supply from', async () => {
       expect(await workingBalanceHelper.readsTotalSupplyFromVE()).to.equal(readTotalSupplyFromVE);
     });
   }
@@ -132,20 +132,29 @@ describe('GaugeWorkingBalanceHelper', () => {
       });
     }
 
-    function projectedIsMaxedOut() {
+    function projectedRatioIncreases() {
+      it('current and projected ratios should be 1', async () => {
+        const [current, projected] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
+          gauge.address,
+          user.address
+        );
+
+        expect(projected).to.gt(current);
+      });
+    }
+
+    function projectedRatioIsMaxedOut() {
       it(`projected ratio should be greater than current by the maximum ratio (${MAX_BALANCE_RATIO})`, async () => {
         const [currentWorkingBalance, projectedWorkingBalance] = await workingBalanceHelper.getWorkingBalances(
           gauge.address,
           user.address
         );
 
-        // Ensure we have equal balances (that are non-zero)
         expect(fromFp(projectedWorkingBalance) / fromFp(currentWorkingBalance)).to.eq(MAX_BALANCE_RATIO);
-        expect(projectedWorkingBalance).to.be.gt(0);
       });
     }
 
-    function projectedIsIncreased(maxPctIncrease: number) {
+    function projectedBalanceIsIncreased(maxPctIncrease: number) {
       it(`projected balance should be slightly more than current, by less than ${maxPctIncrease}%`, async () => {
         const [currentWorkingBalance, projectedWorkingBalance] = await workingBalanceHelper.getWorkingBalances(
           gauge.address,
@@ -167,7 +176,6 @@ describe('GaugeWorkingBalanceHelper', () => {
           user.address
         );
 
-        // Ensure we have equal balances (that are non-zero)
         expect(projectedWorkingBalance).to.be.almostEqual(currentWorkingBalance);
         expect(projectedWorkingBalance).to.be.gt(0);
         expect(projectedWorkingBalance).to.be.lte(currentWorkingBalance);
@@ -208,9 +216,11 @@ describe('GaugeWorkingBalanceHelper', () => {
         await createLockForUser(user, bptAmount, LOCK_PERIOD);
       });
 
-      projectedIsMaxedOut();
+      projectedRatioIsMaxedOut();
 
       itUpdatesAfterCheckpointing();
+
+      currentRatioEqualsProjected();
     });
 
     describe('with 1% veBAL', () => {
@@ -224,7 +234,9 @@ describe('GaugeWorkingBalanceHelper', () => {
       });
 
       // Should be less than 5%
-      projectedIsIncreased(5);
+      projectedBalanceIsIncreased(5);
+
+      projectedRatioIncreases();
 
       itUpdatesAfterCheckpointing();
     });
