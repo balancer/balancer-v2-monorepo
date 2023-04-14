@@ -177,7 +177,7 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for Aave aTokens (with rebalancing) V3 | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |
 | Weighted Pool V3                                    | [`20230206-weighted-pool-v3`](./tasks/deprecated/20230206-weighted-pool-v3)                             |
 | Composable Stable Pools V3                          | [`20230206-composable-stable-pool-v3`](./tasks/deprecated/20230206-composable-stable-pool-v3)           |
-| Timelock Authorizer, governance contract            | [`20221202-timelock-authorizer`](./tasks/deprecated/20221202-timelock-authorizer)                                  |
+| Timelock Authorizer, governance contract            | [`20221202-timelock-authorizer`](./tasks/deprecated/20221202-timelock-authorizer)                       |
 | Linear Pools for ERC4626 Tokens V3                  | [`20230206-erc4626-linear-pool-v3`](./tasks/deprecated/20230206-erc4626-linear-pool-v3)                 |
 | Linear Pools for Aave aTokens (with rebalancing) V4 | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/deprecated/20230206-aave-rebalanced-linear-pool-v4) |
 | Linear Pools for Yearn Tokens                       | [`20230213-yearn-linear-pool`](./tasks/deprecated/20230213-yearn-linear-pool)                           |
