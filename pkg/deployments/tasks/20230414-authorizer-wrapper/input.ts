@@ -1,4 +1,3 @@
-import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Task, { TaskMode } from '../../src/task';
 
 export type AuthorizerWithAdaptorValidationDeployment = {
