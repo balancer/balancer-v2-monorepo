@@ -16,16 +16,20 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
 import "../L2BalancerPseudoMinter.sol";
 
 contract ChildChainGaugeRegistry is SingletonAuthentication {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     L2BalancerPseudoMinter private immutable _l2BalancerPseudoMinter;
     ILiquidityGaugeFactory private immutable _liquidityGaugeFactory;
 
-    IChildChainGauge[] private _gauges;
+    EnumerableSet.AddressSet private _gauges;
 
     event GaugeAdded(IChildChainGauge indexed gauge);
+    event GaugeRemoved(IChildChainGauge indexed gauge);
 
     constructor(
         IVault vault,
@@ -44,24 +48,30 @@ contract ChildChainGaugeRegistry is SingletonAuthentication {
         require(_l2BalancerPseudoMinter.isValidGaugeFactory(factory), "INVALID_GAUGE_FACTORY");
         require(factory.isGaugeFromFactory(address(gauge)), "INVALID_GAUGE");
 
-        _gauges.push(gauge);
+        require(_gauges.add(address(gauge)), "GAUGE_ALREADY_REGISTERED");
 
         emit GaugeAdded(gauge);
     }
 
+    function removeGauge(IChildChainGauge gauge) external authenticate {
+        require(_gauges.remove(address(gauge)), "GAUGE_NOT_REGISTERED");
+
+        emit GaugeRemoved(gauge);
+    }
+
     function totalGauges() external view returns (uint256) {
-        return _gauges.length;
+        return _gauges.length();
     }
 
     function getGauges(uint256 startIndex, uint256 endIndex) external view returns (IChildChainGauge[] memory) {
-        require(startIndex < endIndex, "Invalid indices");
-        require(endIndex <= _gauges.length, "End index out of bounds");
+        require(startIndex < endIndex, "INVALID_INDICES");
+        require(endIndex <= _gauges.length(), "END_INDEX_OUT_OF_BOUNDS");
 
         uint256 size = endIndex - startIndex;
         IChildChainGauge[] memory slicedGauges = new IChildChainGauge[](size);
 
         for (uint256 i = 0; i < size; i++) {
-            slicedGauges[i] = _gauges[startIndex + i];
+            slicedGauges[i] = IChildChainGauge(_gauges.at(startIndex + i));
         }
 
         return slicedGauges;
