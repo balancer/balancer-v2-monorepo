@@ -118,7 +118,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Linear Pools for Silo Tokens V2                        | [`20230410-silo-linear-pool-v2`](./tasks/20230410-silo-linear-pool-v2)                               |
 | Managed Pool V2                                        | [`20230411-managed-pool-v2`](./tasks/20230411-managed-pool-v2)                                       |
 
-
 ## Scripts
 
 These are deployments for script-like contracts (often called 'coordinators') which are typically granted some permission by Governance and then executed, after which they become useless.
