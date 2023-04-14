@@ -201,7 +201,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         return _scheduledExecutions[scheduledExecutionId];
     }
 
-    function getNumScheduledExecutions() external view returns (uint256) {
+    function getScheduledExecutionsCount() external view returns (uint256) {
         return _scheduledExecutions.length;
     }
 
