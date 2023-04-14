@@ -22,7 +22,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
  * @dev Temporary Authorizer upgrade that fixes the issue in the AuthorizerAdaptor and allows usage of
  * the AuthorizerAdaptorEntrypoint. The previous Authorizer is the one that actually keeps track of permissions.
  *
- * This is expected to later be replaced by the TimelockAuthorizer, which also includes this fix.
+ * This is expected to be replaced by the TimelockAuthorizer, which also includes this fix.
  */
 contract AuthorizerWithAdaptorValidation is IAuthorizer {
     IAuthorizerAdaptorEntrypoint private immutable _adaptorEntrypoint;
