@@ -194,7 +194,7 @@ describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, functio
     });
   });
 
-  it('can add factories for a gauge type', async () => {
+  it('can use gauge adder V3', async () => {
     const tx = await gaugeAdder.connect(lmMultisig).addGaugeFactory(gaugeFactory.address, 2); // Ethereum is type 2
     expectEvent.inReceipt(await tx.wait(), 'GaugeFactoryAdded', {
       gaugeType: 2,
