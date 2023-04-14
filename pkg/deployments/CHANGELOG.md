@@ -16,6 +16,7 @@
 - Deployed `ComposableStablePoolFactory` V4 to all networks.
 - Deployed `ChildChainGaugeFactory` and `ChildChainGauge` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 - Deployed `L2LayerZeroBridgeForwarder` V5 to all networks except Ethereum.
+- Deployed `ManagedPoolFactory` V2 to all networks.
 
 ### Deprecations
 
