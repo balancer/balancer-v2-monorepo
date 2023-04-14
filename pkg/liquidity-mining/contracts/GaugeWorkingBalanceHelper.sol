@@ -134,20 +134,11 @@ contract GaugeWorkingBalanceHelper {
         (uint256 currentWorkingBalance, uint256 projectedWorkingBalance) = getWorkingBalances(gauge, user);
         uint256 currentWorkingSupply = gauge.working_supply();
 
-        if (projectedWorkingBalance == currentWorkingBalance) {
-            // If the balances are equal, the supply values will also be equal, so just compute the ratio once.
-            uint256 ratio = currentWorkingBalance.divDown(currentWorkingSupply);
+        uint256 projectedWorkingSupply = currentWorkingSupply.add(projectedWorkingBalance.sub(currentWorkingBalance));
 
-            return (ratio, ratio);
-        } else {
-            uint256 projectedWorkingSupply = currentWorkingSupply.add(
-                projectedWorkingBalance.sub(currentWorkingBalance)
-            );
-
-            return (
-                currentWorkingBalance.divDown(currentWorkingSupply),
-                projectedWorkingBalance.divDown(projectedWorkingSupply)
-            );
-        }
+        return (
+            currentWorkingBalance.divDown(currentWorkingSupply),
+            projectedWorkingBalance.divDown(projectedWorkingSupply)
+        );
     }
 }
