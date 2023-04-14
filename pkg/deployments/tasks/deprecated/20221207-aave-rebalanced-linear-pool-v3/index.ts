@@ -27,6 +27,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // the contracts deployed here. The action IDs will be checked to be correct via a different mechanism.
 
     // AaveLinearPools require a StaticAToken, which in turn requires a LendingPool.
+    // These contracts come from 20230410-aave-linear-pool-v5 task
     const mockLendingPool = await task.deployAndVerify('MockAaveLendingPool', [], from, force);
     const mockStaticATokenArgs = ['DO NOT USE - Mock Static AToken', 'TEST', 18, input.WETH, mockLendingPool.address];
     const mockStaticAToken = await task.deployAndVerify('MockStaticAToken', mockStaticATokenArgs, from, force);

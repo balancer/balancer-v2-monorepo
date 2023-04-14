@@ -196,10 +196,20 @@ async function deployPoolFromFactory(
   if (poolName == 'ManagedPool') {
     const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+    const ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+      libraries: {
+        CircuitBreakerLib: circuitBreakerLib.address,
+      },
+    });
+    const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+    const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
+
     factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
       args: [
         vault.address,
         vault.getFeesProvider().address,
+        math.address,
+        recoveryModeHelper.address,
         'factoryVersion',
         'poolVersion',
         MANAGED_PAUSE_WINDOW_DURATION,
@@ -208,6 +218,7 @@ async function deployPoolFromFactory(
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+        ManagedPoolAmmLib: ammLib.address,
       },
     });
   } else if (poolName == 'ComposableStablePool') {

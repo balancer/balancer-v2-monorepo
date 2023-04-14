@@ -56,10 +56,20 @@ describe('ManagedPoolFactory', function () {
 
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
+    const ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+      libraries: {
+        CircuitBreakerLib: circuitBreakerLib.address,
+      },
+    });
+    const math = await deploy('ExternalWeightedMath');
+    const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
+
     factory = await deploy('ManagedPoolFactory', {
       args: [
         vault.address,
         vault.getFeesProvider().address,
+        math.address,
+        recoveryModeHelper.address,
         factoryVersion,
         poolVersion,
         BASE_PAUSE_WINDOW_DURATION,
@@ -68,6 +78,7 @@ describe('ManagedPoolFactory', function () {
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+        ManagedPoolAmmLib: ammLib.address,
       },
     });
     createTime = await currentTimestamp();

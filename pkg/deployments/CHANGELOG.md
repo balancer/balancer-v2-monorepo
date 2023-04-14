@@ -2,14 +2,21 @@
 
 ## Unreleased
 
+### Deprecations
+
+- Deprecated `20221202-timelock-authorizer`.
+
 ### New Deployments
 
+- Deployed `TimelockAuthorizer` and `TimelockAuthorizerMigrator` to Goerli.
 - Deployed `BatchRelayerLibrary` V5 to all networks.
 - Deployed `L2BalancerPseudoMinter` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 - Deployed `VotingEscrowDelegationProxy` and `NullVotingEscrow` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 - Deployed `WeightedPoolFactory` V4 to all networks.
 - Deployed `ComposableStablePoolFactory` V4 to all networks.
 - Deployed `ChildChainGaugeFactory` and `ChildChainGauge` to Goerli, Arbitrum, Polygon, Optimism and Gnosis.
+- Deployed `L2LayerZeroBridgeForwarder` V5 to all networks except Ethereum.
+- Deployed `ManagedPoolFactory` V2 to all networks.
 
 ### Deprecations
 
