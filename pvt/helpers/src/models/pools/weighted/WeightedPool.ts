@@ -61,7 +61,6 @@ export default class WeightedPool extends BasePool {
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
-  aumProtocolFeesCollector: string;
   poolVersion: string;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
@@ -81,7 +80,6 @@ export default class WeightedPool extends BasePool {
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
     managementAumFeePercentage: BigNumberish,
-    aumProtocolFeesCollector: string,
     poolVersion: string,
     owner?: SignerWithAddress
   ) {
@@ -94,7 +92,6 @@ export default class WeightedPool extends BasePool {
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
     this.managementAumFeePercentage = managementAumFeePercentage;
-    this.aumProtocolFeesCollector = aumProtocolFeesCollector;
     this.poolVersion = poolVersion;
   }
 
