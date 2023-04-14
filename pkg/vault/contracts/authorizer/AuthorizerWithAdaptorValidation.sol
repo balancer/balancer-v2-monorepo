@@ -19,8 +19,10 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdapt
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 
 /**
- * @dev Stopgap contract to allow use of AuthorizerAdaptorEntrypoint validation before
- * migration to the `TimelockAuthorizer`.
+ * @dev Temporary Authorizer upgrade that fixes the issue in the AuthorizerAdaptor and allows usage of
+ * the AuthorizerAdaptorEntrypoint. The previous Authorizer is the one that actually keeps track of permissions.
+ *
+ * This is expected to later be replaced by the TimelockAuthorizer, which also includes this fix.
  */
 contract AuthorizerWithAdaptorValidation is IAuthorizer {
     IAuthorizerAdaptorEntrypoint private immutable _adaptorEntrypoint;
@@ -60,7 +62,7 @@ contract AuthorizerWithAdaptorValidation is IAuthorizer {
 
     /**
      * @dev Ensure that all requests either came through the AuthorizerAdaptor via the AuthorizerAdaptorEntrypoint
-     * (which we know has safely checked permissions), or can be validated with the current Authorizer.
+     * (which we know has safely checked permissions), or can be validated with the actual Authorizer.
      */
     function canPerform(
         bytes32 actionId,
