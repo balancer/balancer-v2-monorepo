@@ -104,7 +104,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Protocol ID registry                                   | [`20230223-protocol-id-registry`](./tasks/20230223-protocol-id-registry)                             |
 | Batch Relayer V5                                       | [`20230314-batch-relayer-v5`](./tasks/20230314-batch-relayer-v5)                                     |
 | L2 Balancer Pseudo Minter                              | [`20230316-l2-balancer-pseudo-minter`](./tasks/20230316-l2-balancer-pseudo-minter)                   |
-| Child Chain Gauge Factory V2                           | [`20230316-child-chain-gauge-factory-v2`](./tasks/20230316-child-chain-gauge-factory-v2)                   |
+| Child Chain Gauge Factory V2                           | [`20230316-child-chain-gauge-factory-v2`](./tasks/20230316-child-chain-gauge-factory-v2)             |
 | L2 Voting Escrow Delegation Proxy                      | [`20230316-l2-ve-delegation-proxy`](./tasks/20230316-l2-ve-delegation-proxy)                         |
 | Weighted Pool V4                                       | [`20230320-weighted-pool-v4`](./tasks/20230320-weighted-pool-v4)                                     |
 | Composable Stable Pools V4                             | [`20230320-composable-stable-pool-v4`](./tasks/20230320-composable-stable-pool-v4)                   |
@@ -117,6 +117,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Linear Pools for Aave aTokens V5                       | [`20230410-aave-linear-pool-v5`](./tasks/20230410-aave-linear-pool-v5)                               |
 | Linear Pools for Silo Tokens V2                        | [`20230410-silo-linear-pool-v2`](./tasks/20230410-silo-linear-pool-v2)                               |
 | Managed Pool V2                                        | [`20230411-managed-pool-v2`](./tasks/20230411-managed-pool-v2)                                       |
+| Authorizer with Adaptor Validation                     | [`20230414-authorizer-wrapper`](./tasks/20230414-authorizer-wrapper)                                 |
 
 ## Scripts
 
@@ -177,7 +178,7 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for Aave aTokens (with rebalancing) V3 | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |
 | Weighted Pool V3                                    | [`20230206-weighted-pool-v3`](./tasks/deprecated/20230206-weighted-pool-v3)                             |
 | Composable Stable Pools V3                          | [`20230206-composable-stable-pool-v3`](./tasks/deprecated/20230206-composable-stable-pool-v3)           |
-| Timelock Authorizer, governance contract            | [`20221202-timelock-authorizer`](./tasks/deprecated/20221202-timelock-authorizer)                                  |
+| Timelock Authorizer, governance contract            | [`20221202-timelock-authorizer`](./tasks/deprecated/20221202-timelock-authorizer)                       |
 | Linear Pools for ERC4626 Tokens V3                  | [`20230206-erc4626-linear-pool-v3`](./tasks/deprecated/20230206-erc4626-linear-pool-v3)                 |
 | Linear Pools for Aave aTokens (with rebalancing) V4 | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/deprecated/20230206-aave-rebalanced-linear-pool-v4) |
 | Linear Pools for Yearn Tokens                       | [`20230213-yearn-linear-pool`](./tasks/deprecated/20230213-yearn-linear-pool)                           |
