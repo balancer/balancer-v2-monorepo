@@ -379,11 +379,17 @@ describe('NewBasePool', function () {
         sharedBeforeEach('grant permission', async () => {
           const pauseAction = await actionId(pool, 'pause');
           const unpauseAction = await actionId(pool, 'unpause');
-          await authorizer.connect(admin).grantPermission(unpauseAction, sender.address, ANY_ADDRESS);
-          await authorizer.connect(admin).grantPermission(pauseAction, sender.address, ANY_ADDRESS);
-          await authorizer
-            .connect(admin)
-            .grantPermission(await actionId(minimalPool, 'pause'), sender.address, ANY_ADDRESS);
+          if (!(await authorizer.hasPermission(unpauseAction, sender.address, ANY_ADDRESS))) {
+            await authorizer.connect(admin).grantPermission(unpauseAction, sender.address, ANY_ADDRESS);
+          }
+          if (!(await authorizer.hasPermission(pauseAction, sender.address, ANY_ADDRESS))) {
+            await authorizer.connect(admin).grantPermission(pauseAction, sender.address, ANY_ADDRESS);
+          }
+          if (!(await authorizer.hasPermission(await actionId(minimalPool, 'pause'), sender.address, ANY_ADDRESS))) {
+            await authorizer
+              .connect(admin)
+              .grantPermission(await actionId(minimalPool, 'pause'), sender.address, ANY_ADDRESS);
+          }
         });
 
         itCanPause();

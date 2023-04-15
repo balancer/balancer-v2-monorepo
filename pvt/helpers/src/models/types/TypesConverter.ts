@@ -68,7 +68,6 @@ export default {
       weightChangeMode,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolType,
       aumFeeId,
       factoryVersion,
@@ -84,7 +83,6 @@ export default {
     if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
-    if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
     if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (!weightChangeMode) weightChangeMode = ValueChangeMode.LINEAR_TIME;
@@ -104,7 +102,6 @@ export default {
       weightChangeMode,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,

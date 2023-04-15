@@ -33,7 +33,6 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolVersion,
     } = deployment;
 
@@ -50,7 +49,6 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolVersion
     );
   },
@@ -69,7 +67,6 @@ export default {
       weightChangeMode,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       owner,
       from,
       aumFeeId,
@@ -101,7 +98,13 @@ export default {
       case WeightedPoolType.MANAGED_POOL: {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+          libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
+          },
+        });
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -113,6 +116,7 @@ export default {
               vault: vault.address,
               protocolFeeProvider: vault.protocolFeesProvider.address,
               weightedMath: math.address,
+              recoveryModeHelper: recoveryModeHelper.address,
               pauseWindowDuration,
               bufferPeriodDuration,
               version: poolVersion,
@@ -124,7 +128,6 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
             owner,
@@ -133,6 +136,7 @@ export default {
           libraries: {
             CircuitBreakerLib: circuitBreakerLib.address,
             ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+            ManagedPoolAmmLib: ammLib.address,
           },
         });
         break;
@@ -141,7 +145,14 @@ export default {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
 
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+          libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
+          },
+        });
+
         result = deploy('v2-pool-weighted/MockManagedPool', {
           args: [
             {
@@ -153,6 +164,7 @@ export default {
               vault: vault.address,
               protocolFeeProvider: vault.protocolFeesProvider.address,
               weightedMath: math.address,
+              recoveryModeHelper: recoveryModeHelper.address,
               pauseWindowDuration,
               bufferPeriodDuration,
               version: poolVersion,
@@ -164,7 +176,6 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
             owner,
@@ -173,6 +184,7 @@ export default {
           libraries: {
             CircuitBreakerLib: circuitBreakerLib.address,
             ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+            ManagedPoolAmmLib: ammLib.address,
           },
         });
         break;
@@ -181,6 +193,7 @@ export default {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
 
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy('v2-pool-weighted/MockManagedPoolSettings', {
           args: [
@@ -191,12 +204,12 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
-              aumProtocolFeesCollector: aumProtocolFeesCollector,
               aumFeeId: aumFeeId,
             },
             vault.address,
             vault.protocolFeesProvider.address,
             math.address,
+            recoveryModeHelper.address,
             assetManagers,
             owner,
           ],
@@ -291,10 +304,15 @@ export default {
 
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const math = await deploy('ExternalWeightedMath');
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
+
         const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
           args: [
             vault.address,
             vault.getFeesProvider().address,
+            math.address,
+            recoveryModeHelper.address,
             factoryVersion,
             poolVersion,
             MANAGED_PAUSE_WINDOW_DURATION,

@@ -28,7 +28,6 @@ export type RawWeightedPoolDeployment = {
   weightChangeMode?: ValueChangeMode;
   mustAllowlistLPs?: boolean;
   managementAumFeePercentage?: BigNumberish;
-  aumProtocolFeesCollector?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -54,7 +53,6 @@ export type WeightedPoolDeployment = {
   weightChangeMode: ValueChangeMode;
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
-  aumProtocolFeesCollector: string;
   factoryVersion: string;
   poolVersion: string;
   aumFeeId?: BigNumberish;
@@ -211,6 +209,12 @@ export type ManagedPoolRights = {
 };
 
 export type ManagedPoolParams = {
+  name: string;
+  symbol: string;
+  assetManagers: string[];
+};
+
+export type ManagedPoolSettingsParams = {
   tokens: string[];
   normalizedWeights: BigNumberish[];
   swapFeePercentage: BigNumberish;
