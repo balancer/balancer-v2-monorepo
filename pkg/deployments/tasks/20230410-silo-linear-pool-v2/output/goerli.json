@@ -1,0 +1,7 @@
+{
+  "SiloLinearPoolFactory": "0x30FD8a0f7009F50616aFDaB4aF91a0A2Ef4eaE49",
+  "MockSiloRepository": "0x7153De1A6d71360F07017838c28dEcA0d6C03e2a",
+  "MockSilo": "0xa7A7e22398622bf71fF31DAe5355EC7843b13806",
+  "MockShareToken": "0xB8BDCbF8ccf443D055d5Ffe1d8154fAc8187fC94",
+  "MockSiloLinearPool": "0xBbb66a4fFf47701EC6c528dB615f5E7bF1AbDAAF"
+}
