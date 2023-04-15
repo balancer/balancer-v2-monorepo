@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IChildChainGauge.sol";
 import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
-import "../VotingEscrowDelegationProxy.sol";
 import "./BaseGaugeFactory.sol";
 
 contract ChildChainGaugeFactory is Version, BaseGaugeFactory {

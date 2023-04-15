@@ -40,5 +40,131 @@
       "signature": "create(string,string,address,address,uint256,uint256,address)",
       "useAdaptor": true
     }
+  ],
+  "0xcf0b2b6798f0926a93b908e27f332cfe675625416f0bb92ba5eba0210e8862ad": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    }
+  ],
+  "0x148bace62efe321c95bf0889b402b31e98d5fdcc6ab4cb39b8098228a82d5c7f": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x94551b28e4224ffdc70c9e7178f6ee9e48764fb50cf5635edd9bcf09d2df64c3": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0xebd01fda981e6a2ce9baed03021c6bffe3678acf18bd69a03e20b91a8a7ea0f4": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x9b9e09750c8ed7d83806572801ddf623057c7e95ec15c1ea36c0670827095bed": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x3b7c2782c806c66b41a98e6f998aa0056451d31e41d0f7d04238e0ed97a4350b": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x2fbeeab59a2e8b7f4a4bb0d5b80177b8aef087f0063d317953cc3b9b3512136e": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x9d575f62420250ec382e1e8e262ddae46d0d6817fab9fde48f9c6efd068e5844": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainStreamer",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x9b9ebe5b6e53727fbefa2541e629822e72cd8c63c1e2911094b42bab112590a0": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainLiquidityGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    }
   ]
 }

@@ -1,0 +1,128 @@
+{
+  "0xa1fcfa4f107b70052cfbb2e460d99c96f9b18c1197671fe00ab59c32adcddbeb": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    }
+  ],
+  "0x1c866c9ea7b119a642f593024ced6088dbde65d041e5d3e826b9ad49b949a64b": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x17b18f02fd5498a6aba17d20977b1a8a08f888d821999613fee42f9f9acb0bd9": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x514b6f05525a3f31c3bde60d063e91e88204c5cdc5b35934513f911943b97fcc": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x360a8a15589674642b2125956d96757fc2f06ff1b968333271de16a20e01df05": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x1b288a1f96e75e2fda7a0c1ac5c35a7fd2c5e2e5c425c32152ae01f82545e2da": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0xec9d6185ed79aed8edc19bc6fc25ca544504ab0970d25b191e5279100224502a": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xd0090a09f425bba74e6c801fba7c6d15b44147ab0bd319e40076ce07e95168b6": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainStreamer",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0xaa40669e74603d8e708eac95e60f78c35d5af4f59afdb700675f38c6534809f7": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainLiquidityGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    }
+  ]
+}

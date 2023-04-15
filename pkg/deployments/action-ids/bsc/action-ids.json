@@ -273,5 +273,47 @@
         "updateTokenRateCache(address)": "0x7890466ffba14a02f161e03ef49578067b54197c84285660df1bffe3173b8d70"
       }
     }
+  },
+  "20230404-l2-layer0-bridge-forwarder": {
+    "L2LayerZeroBridgeForwarder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "onVeBalBridged(address)": "0xbf0d09cc84c7a607cf0ca866bc5117237e67bf9a118c80f547c2924550c4a147",
+        "onVeBalSupplyUpdate()": "0xda65f8c06affd0d96c020297234c8620f4b588c1ef6ee036f36f5d5a0f5052f3",
+        "setDelegation(address)": "0x88d38b22d4165008cdd5f7e516bd0da3bc66f10a54e05105ff57385d7ca18f5f"
+      }
+    }
+  },
+  "20230411-managed-pool-v2": {
+    "ManagedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create((string,string,address[]),(address[],uint256[],uint256,bool,bool,uint256,uint256),address,bytes32)": "0x4c552ed444f4c8ac2e22d8eb4ce47f3463aebafdd2b31c2a645fed5693bb2acf",
+        "disable()": "0xa8ff4830c7bf9a4c5c71257a9e4272ae652308e2fadfe8e0b2b862f77ead95d7"
+      }
+    },
+    "ManagedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x710A461Ea47AE36C45CBA8Cb6ce964e8A5cb87eD",
+      "actionIds": {
+        "addAllowedAddress(address)": "0xe59eedd462e75b9ed6dd1e6e6195cb8ed7114efddf34af9d57f1a65f0b4d2856",
+        "addToken(address,address,uint256,uint256,address)": "0xba672b22630cfea128fe0bf7f900324bc523c29acfbdd0070be15e0847ee603d",
+        "collectAumManagementFees()": "0x3e0923b8091b34e9ca82e2dd862129ac56526dcdd850d3435e15907e8f82122c",
+        "disableRecoveryMode()": "0xad52bee7b730cd4172ab23f71a320a2904f076ce8d4188f6780d0f2ecfa89efe",
+        "enableRecoveryMode()": "0xadbf17d5cbdfa6f1473b5c3fae1de6e9959223e464815fc481499cd58a591bab",
+        "pause()": "0x0cce170c212bd2a0cb239b2e279b6a7527ddab4a9bfe5a6801db9f4e55b3f0df",
+        "removeAllowedAddress(address)": "0xd842cceb41efd926a0a2b870e306d7f3da243b5cfd01603eb10fbb952f6140f4",
+        "removeToken(address,uint256,address)": "0x41d66024a564f612e8ab02af48f2c3b171143b9bc9d9b1c19d01396272bbcc43",
+        "setCircuitBreakers(address[],uint256[],uint256[],uint256[])": "0x8a5fc0bdf75306c997c2af7f172e777ecc547b1305285f849c630062b1a97867",
+        "setJoinExitEnabled(bool)": "0x19f4363634e1c9984ae5babee17556256984f377a726ed3189c0f9f069eee874",
+        "setManagementAumFeePercentage(uint256)": "0xd401e0a7dee470f422396c802e3c530979ead01f2e9258a30543b777fef25f2e",
+        "setMustAllowlistLPs(bool)": "0x8c4060ab469795e9a4ab31be0836cbf404f128cc76928d41b3359fc15654744f",
+        "setSwapEnabled(bool)": "0x638d7a30a8c0242399deb9b564eecf119a49343afeef8ffb1032a333871d8de8",
+        "unpause()": "0x4e4fe7cf476c825592856ba53d68617ba8ed01ac847a26e1596010db4b9d1d59",
+        "updateProtocolFeePercentageCache()": "0x2d2a6f797eca8b5093f75472bd67b36e690fcdff529535d6e173a49c1d630259",
+        "updateSwapFeeGradually(uint256,uint256,uint256,uint256)": "0xdee0c2896f4368efc620fb976f1b61b7695b6ee4cd188f3b2c5a707599eeba0d",
+        "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0x2a79c82f7c154c34bc42a75aa3666a5ea936d4a04a2d894460acd7030f28e7b4"
+      }
+    }
   }
 }
