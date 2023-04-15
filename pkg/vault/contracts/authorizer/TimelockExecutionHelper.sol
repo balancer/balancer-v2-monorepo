@@ -57,7 +57,7 @@ contract TimelockExecutionHelper is ReentrancyGuard {
      * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
      * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a
      * scheduled action during the execution of another scheduled action - an unlikely and convoluted scenario that we
-     * knowlingly forbid.
+     * knowingly forbid.
      */
     function execute(address target, bytes memory data) external nonReentrant returns (bytes memory) {
         require(msg.sender == address(_authorizer), "SENDER_IS_NOT_AUTHORIZER");

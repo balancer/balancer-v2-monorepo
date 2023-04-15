@@ -4,7 +4,7 @@
 >
 > This factory and associated Pools have been deprecated due to dependencies requiring extra features: this deployment's Pools are not expected to ever be used.
 >
-> An updated version will be released soon.
+> Superseded by this [updated version](../../20230411-managed-pool-v2), which has reentrancy protection, create2, configurable pause window, and other improvements.
 
 Deployment of the `ManagedPoolFactory`, which allows creating Managed Pools.
 
