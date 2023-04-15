@@ -297,7 +297,9 @@ describe('Exit Pool', () => {
             context('when the relayer is not whitelisted by the authorizer', () => {
               sharedBeforeEach('revoke permission from relayer', async () => {
                 const action = await actionId(vault, 'exitPool');
-                await authorizer.connect(admin).revokePermission(action, relayer.address, ANY_ADDRESS);
+                if (await authorizer.hasPermission(action, relayer.address, ANY_ADDRESS)) {
+                  await authorizer.connect(admin).revokePermission(action, relayer.address, ANY_ADDRESS);
+                }
               });
 
               context('when the relayer is allowed by the user', () => {

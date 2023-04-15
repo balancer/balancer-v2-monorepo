@@ -62,7 +62,6 @@ export default class WeightedPool extends BasePool {
   mustAllowlistLPs: boolean;
   reserveAssetManager: string;
   managementAumFeePercentage: BigNumberish;
-  aumProtocolFeesCollector: string;
   poolVersion: string;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
@@ -83,7 +82,6 @@ export default class WeightedPool extends BasePool {
     mustAllowlistLPs: boolean,
     reserveAssetManager: string,
     managementAumFeePercentage: BigNumberish,
-    aumProtocolFeesCollector: string,
     poolVersion: string,
     owner?: SignerWithAddress
   ) {
@@ -97,7 +95,6 @@ export default class WeightedPool extends BasePool {
     this.mustAllowlistLPs = mustAllowlistLPs;
     this.reserveAssetManager = reserveAssetManager;
     this.managementAumFeePercentage = managementAumFeePercentage;
-    this.aumProtocolFeesCollector = aumProtocolFeesCollector;
     this.poolVersion = poolVersion;
   }
 

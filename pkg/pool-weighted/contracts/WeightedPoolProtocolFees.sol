@@ -53,6 +53,8 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     uint256 private constant _LAST_POST_JOINEXIT_INVARIANT_OFFSET = 0;
     uint256 private constant _LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH = 192;
 
+    event ATHRateProductUpdated(uint256 oldATHRateProduct, uint256 newATHRateProduct);
+
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
         _require(numTokens <= 8, Errors.MAX_TOKENS);
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
@@ -199,6 +201,8 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     }
 
     function _updateATHRateProduct(uint256 rateProduct) internal {
+        emit ATHRateProductUpdated(_athRateProduct, rateProduct);
+
         _athRateProduct = rateProduct;
     }
 

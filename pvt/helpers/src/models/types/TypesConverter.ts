@@ -66,7 +66,6 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       reserveAssetManager,
       poolType,
       aumFeeId,
@@ -84,7 +83,6 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == reserveAssetManager) reserveAssetManager = ZERO_ADDRESS;
-    if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
     if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
@@ -103,7 +101,6 @@ export default {
       mustAllowlistLPs,
       reserveAssetManager,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
