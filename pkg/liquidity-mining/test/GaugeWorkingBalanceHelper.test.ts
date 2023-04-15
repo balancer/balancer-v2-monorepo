@@ -8,7 +8,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp, FP_ONE, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
@@ -19,7 +19,7 @@ describe('GaugeWorkingBalanceHelper', () => {
   let vault: Vault;
   let BAL: Contract;
   let workingBalanceHelper: Contract;
-  let admin: SignerWithAddress, user: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, user: SignerWithAddress, other: SignerWithAddress, another: SignerWithAddress;
   let adaptor: Contract;
   let pool: Contract;
   let boost: Contract;
@@ -29,7 +29,7 @@ describe('GaugeWorkingBalanceHelper', () => {
   let gauge: Contract;
 
   before('setup signers', async () => {
-    [, admin, user, other] = await ethers.getSigners();
+    [, admin, user, other, another] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy Vault and tokens', async () => {
@@ -192,6 +192,31 @@ describe('GaugeWorkingBalanceHelper', () => {
       });
     }
 
+    function veBALDecaysOverTime() {
+      it('veBAL decays over time', async () => {
+        const [, projecteBalanceBefore] = await workingBalanceHelper.getWorkingBalances(gauge.address, user.address);
+        const [, projectedRatioBefore] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
+          gauge.address,
+          user.address
+        );
+
+        // Checkpoint user, add another contribution to maintain the total supply, and advance time
+        await gauge.connect(user).user_checkpoint(user.address);
+        await createLockForUser(another, bptAmount.mul(100), LOCK_PERIOD);
+        await advanceTime(LOCK_PERIOD / 2);
+
+        const [, projectedBalanceAfter] = await workingBalanceHelper.getWorkingBalances(gauge.address, user.address);
+        const [, projectedRatioAfter] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
+          gauge.address,
+          user.address
+        );
+
+        // Projections should be uniformly lower
+        expect(projectedBalanceAfter).to.be.lt(projecteBalanceBefore);
+        expect(projectedRatioAfter).to.be.lt(projectedRatioBefore);
+      });
+    }
+
     describe('with no veBAL', () => {
       context('check raw balances', () => {
         sharedBeforeEach('deposit', async () => {
@@ -229,8 +254,8 @@ describe('GaugeWorkingBalanceHelper', () => {
         await depositIntoGauge(user, stakeAmount);
         await depositIntoGauge(other, stakeAmount);
 
-        await createLockForUser(user, bptAmount, 365 * DAY);
-        await createLockForUser(other, bptAmount.mul(100), 365 * DAY);
+        await createLockForUser(user, bptAmount, LOCK_PERIOD);
+        await createLockForUser(other, bptAmount.mul(100), LOCK_PERIOD);
       });
 
       // Should be less than 5%
@@ -239,6 +264,8 @@ describe('GaugeWorkingBalanceHelper', () => {
       projectedRatioIncreases();
 
       itUpdatesAfterCheckpointing();
+
+      veBALDecaysOverTime();
     });
   }
 
