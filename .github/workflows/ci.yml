@@ -238,7 +238,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Forked Network Cache
         # Hardhat caches node requests when working with forked networks (e.g. when querying contract code, storage,
-        # etc.) to save time in future runs. We cache this directory accross runs.
+        # etc.) to save time in future runs. We cache this directory across runs.
         # This cache action is special for a couple reasons, which originate from a) it not occupying much disk size,
         # and b) the cache never being invalid (as past blockchain data is immutable). We therefore:
         #  - save the cache even on action failure (which may be caused due to a timeout), even if this could result in
@@ -260,5 +260,6 @@ jobs:
           POLYGON_RPC_ENDPOINT: ${{ secrets.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT }}
           ARBITRUM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT }}
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
+          GOERLI_RPC_ENDPOINT: ${{ secrets.GOERLI_ARCHIVE_ENDPOINT }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-deployments test

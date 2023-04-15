@@ -135,7 +135,7 @@ library StableMath {
         // by = balance token out                                                                                    //
         // y = by - ay (finalBalanceOut)                                                                             //
         // D = invariant                                               D                     D^(n+1)                 //
-        // A = amplification coefficient               y^2 + ( S - ----------  - D) * y -  ------------- = 0         //
+        // A = amplification coefficient               y^2 + ( S + ----------  - D) * y -  ------------- = 0         //
         // n = number of tokens                                    (A * n^n)               A * n^2n * P              //
         // S = sum of final balances but y                                                                           //
         // P = product of final balances but y                                                                       //
@@ -175,7 +175,7 @@ library StableMath {
         // bx = balance token in                                                                                     //
         // x = bx + ax (finalBalanceIn)                                                                              //
         // D = invariant                                                D                     D^(n+1)                //
-        // A = amplification coefficient               x^2 + ( S - ----------  - D) * x -  ------------- = 0         //
+        // A = amplification coefficient               x^2 + ( S + ----------  - D) * x -  ------------- = 0         //
         // n = number of tokens                                     (A * n^n)               A * n^2n * P             //
         // S = sum of final balances but x                                                                           //
         // P = product of final balances but x                                                                       //

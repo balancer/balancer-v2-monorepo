@@ -105,6 +105,12 @@
       "contractName": "LiquidityGaugeV5",
       "signature": "add_reward(address,address)",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "add_reward(address,address)",
+      "useAdaptor": true
     }
   ],
   "0x9f596268ae1d840bffec6468f35868d6215d48830f5874204b4b5202ce5f037e": [
@@ -123,6 +129,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
       "signature": "claim_rewards()",
       "useAdaptor": true
     }
@@ -145,6 +157,12 @@
       "contractName": "LiquidityGaugeV5",
       "signature": "claim_rewards(address)",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
     }
   ],
   "0x09cd18211fb6b5f5d35da164c1377daca07134e29471154cc4b268e635fa98ae": [
@@ -165,6 +183,12 @@
       "contractName": "LiquidityGaugeV5",
       "signature": "claim_rewards(address,address)",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
     }
   ],
   "0xffe7f3a303586ecf807e0b512726ae165966960a1c571c9436ecb471f34789f7": [
@@ -177,6 +201,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "claimable_tokens(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
       "signature": "claimable_tokens(address)",
       "useAdaptor": true
     }
@@ -199,6 +229,12 @@
       "contractName": "LiquidityGaugeV5",
       "signature": "deposit(uint256)",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
     }
   ],
   "0xf36a7bb219d21dfa1e55054181e8d0374dd108d24388e03731dc0d19761caf80": [
@@ -217,6 +253,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
       "signature": "deposit(uint256,address)",
       "useAdaptor": true
     }
@@ -251,6 +293,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "deposit_reward_token(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
       "signature": "deposit_reward_token(address,uint256)",
       "useAdaptor": true
     }
@@ -301,6 +349,12 @@
       "contractName": "SingleRecipientGauge",
       "signature": "killGauge()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
     }
   ],
   "0x75f03d945d74639aa78784e5071604aa86c170a9f4c32bdf428231d560be70b7": [
@@ -319,6 +373,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
       "signature": "set_reward_distributor(address,address)",
       "useAdaptor": true
     }
@@ -341,6 +401,12 @@
       "contractName": "LiquidityGaugeV5",
       "signature": "set_rewards_receiver(address)",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
     }
   ],
   "0x5e7938ef4e6a59634c9800645277831eda1a30b5efd9ec55235154211f9e2941": [
@@ -361,6 +427,12 @@
       "contractName": "SingleRecipientGauge",
       "signature": "unkillGauge()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
     }
   ],
   "0xdd1c1c3bdba9af83567a294b444bfa43351dee295bdd2fe01a4ea28465a1cd9c": [
@@ -373,6 +445,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "user_checkpoint(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
       "signature": "user_checkpoint(address)",
       "useAdaptor": true
     }
@@ -393,6 +471,12 @@
     {
       "taskId": "20220822-mainnet-gauge-factory-v2",
       "contractName": "LiquidityGaugeV5",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
       "signature": "withdraw(uint256)",
       "useAdaptor": true
     }
@@ -433,6 +517,12 @@
     {
       "taskId": "20220413-child-chain-gauge-factory",
       "contractName": "ChildChainLiquidityGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGaugeFactory",
       "signature": "create(address)",
       "useAdaptor": true
     }
