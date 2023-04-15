@@ -134,7 +134,7 @@ contract GaugeWorkingBalanceHelper {
         (uint256 currentWorkingBalance, uint256 projectedWorkingBalance) = getWorkingBalances(gauge, user);
         uint256 currentWorkingSupply = gauge.working_supply();
 
-        uint256 projectedWorkingSupply = currentWorkingSupply.add(projectedWorkingBalance.sub(currentWorkingBalance));
+        uint256 projectedWorkingSupply = currentWorkingSupply.add(projectedWorkingBalance).sub(currentWorkingBalance);
 
         return (
             currentWorkingBalance.divDown(currentWorkingSupply),
