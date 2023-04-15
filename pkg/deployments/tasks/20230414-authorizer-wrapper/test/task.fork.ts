@@ -6,26 +6,25 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { impersonate, getForkedNetwork, Task, TaskMode, describeForkTest } from '../../../src';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { defaultAbiCoder } from 'ethers/lib/utils';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, function () {
-  let user: SignerWithAddress, other: SignerWithAddress, admin: SignerWithAddress;
-  let govMultisig: SignerWithAddress, lmMultisig: SignerWithAddress;
+  let admin: SignerWithAddress;
+  let govMultisig: SignerWithAddress, lmMultisig: SignerWithAddress, swapFeeSetter: SignerWithAddress;
   let authorizer: Contract,
     vault: Contract,
     actualAuthorizer: Contract,
     authorizerAdaptor: Contract,
     adaptorEntrypoint: Contract,
-    gaugeAdder,
-    gaugeFactory: Contract;
-  let allowedAction: string, setAuthorizerAction: string, addFactoryAction: string;
+    gaugeAdder;
 
   let task: Task;
+  let addEthereumGaugeAction: string;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
   const LM_MULTISIG = '0xc38c5f97b34e175ffd35407fc91a937300e33860';
+  const SWAP_FEE_SETTER = '0xE4a8ed6c1D8d048bD29A00946BFcf2DB10E7923B';
 
   before('run task', async () => {
     task = new Task('20230414-authorizer-wrapper', TaskMode.TEST, getForkedNetwork(hre));
@@ -34,10 +33,11 @@ describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, functio
   });
 
   before('load signers', async () => {
-    [, admin, user, other] = await ethers.getSigners();
+    [, admin] = await ethers.getSigners();
 
-    govMultisig = await impersonate(GOV_MULTISIG);
+    govMultisig = await impersonate(GOV_MULTISIG, fp(1000));
     lmMultisig = await impersonate(LM_MULTISIG, fp(100));
+    swapFeeSetter = await impersonate(SWAP_FEE_SETTER, fp(100));
   });
 
   before('setup contracts', async () => {
@@ -63,22 +63,10 @@ describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, functio
     gaugeAdder = await new Task('20230109-gauge-adder-v3', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance(
       'GaugeAdder'
     );
-
-    // Need to create a new factory (or it will say factory already added)
-    const factoryTask = new Task('20220822-mainnet-gauge-factory-v2', TaskMode.TEST, getForkedNetwork(hre));
-    await factoryTask.run({ force: true });
-    gaugeFactory = await factoryTask.deployedInstance('LiquidityGaugeFactory');
-
-    expect(await gaugeFactory.isGaugeFromFactory(ZERO_ADDRESS)).to.be.false;
   });
 
   before('get actions', async () => {
-    allowedAction = await actionId(authorizerAdaptor, 'getProtocolFeesCollector', vault.interface);
-    setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-    addFactoryAction = await actionId(gaugeAdder, 'addGaugeFactory');
-
-    await actualAuthorizer.connect(govMultisig).grantRole(allowedAction, user.address);
-    await actualAuthorizer.connect(govMultisig).grantRole(addFactoryAction, lmMultisig.address);
+    addEthereumGaugeAction = await actionId(gaugeAdder, 'addEthereumGauge');
   });
 
   describe('getters', () => {
@@ -104,101 +92,80 @@ describeForkTest('AuthorizerWithAdaptorValidation', 'mainnet', 17047707, functio
     });
   });
 
-  describe('canPerform', () => {
-    let adaptorSigner: SignerWithAddress;
+  describe('Gauge Adder v3', () => {
+    let gauge: string;
 
-    before('impersonate adaptor', async () => {
-      await impersonate(authorizerAdaptor.address, fp(10));
+    sharedBeforeEach(async () => {
+      const factoryTask = new Task('20220822-mainnet-gauge-factory-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
+      const gaugeFactory = await factoryTask.deployedInstance('LiquidityGaugeFactory');
 
-      // Simulate a call from the real AuthorizerAdaptor by "casting" it as a Signer,
-      // so it can be used with `connect` like an EOA
-      adaptorSigner = await SignerWithAddress.create(ethers.provider.getSigner(authorizerAdaptor.address));
+      const pool = '0x32296969ef14eb0c6d29669c550d4a0449130230';
+      const tx = await gaugeFactory.create(pool, 0);
+      const event = expectEvent.inIndirectReceipt(await tx.wait(), gaugeFactory.interface, 'GaugeCreated');
+      gauge = event.args.gauge;
     });
 
-    context('when sender is the authorizer adaptor', () => {
-      it('allows when account is the entrypoint', async () => {
-        expect(
-          await authorizer.connect(adaptorSigner).canPerform(allowedAction, adaptorEntrypoint.address, vault.address)
-        ).to.be.true;
+    context('before the upgrade', () => {
+      it('the LM multisig has permission to add gauges', async () => {
+        expect(await actualAuthorizer.canPerform(addEthereumGaugeAction, lmMultisig.address, ZERO_ADDRESS)).to.be.true;
       });
 
-      it('denies when account is not the entrypoint', async () => {
-        expect(await authorizer.connect(adaptorSigner).canPerform(allowedAction, user.address, vault.address)).to.be
-          .false;
+      it('attempting to add gauges reverts as the Adaptor Entrypoint is not yet operational', async () => {
+        await expect(gaugeAdder.connect(lmMultisig).addEthereumGauge(gauge)).to.be.revertedWith('BAL#401');
       });
     });
 
-    context('when sender is not the adaptor', () => {
-      it('properly delegates to the actual authorizer', async () => {
-        expect(await authorizer.connect(user).canPerform(allowedAction, user.address, vault.address)).to.be.true;
-        expect(await authorizer.connect(user).canPerform(setAuthorizerAction, user.address, vault.address)).to.be.false;
-        expect(await authorizer.connect(other).canPerform(allowedAction, other.address, vault.address)).to.be.false;
+    context('after the upgrade', () => {
+      sharedBeforeEach('upgrade Authorizer', async () => {
+        const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+        await actualAuthorizer.connect(govMultisig).grantRole(setAuthorizerAction, admin.address);
+
+        await vault.connect(admin).setAuthorizer(authorizer.address);
+        expect(await vault.getAuthorizer()).to.equal(authorizer.address);
+      });
+
+      it('GaugeAdder can now add gauges', async () => {
+        const tx = await gaugeAdder.connect(lmMultisig).addEthereumGauge(gauge);
+
+        const gaugeControllerInterface = new ethers.utils.Interface([
+          'event NewGauge(address gauge, int128 gaugeType, uint256 weight)',
+        ]);
+
+        expectEvent.inIndirectReceipt(await tx.wait(), gaugeControllerInterface, 'NewGauge', {
+          gauge,
+        });
       });
     });
   });
 
-  describe('Adaptor and Entrypoint interactions (post-upgrade)', () => {
-    let action;
-    let target: string;
-    let calldata: string;
-    let expectedResult: string;
+  describe('set swap fee percentage', () => {
+    let pool: Contract;
 
-    before('upgrade to the new authorizer', async () => {
-      await actualAuthorizer.connect(govMultisig).grantRole(setAuthorizerAction, admin.address);
-
-      await vault.connect(admin).setAuthorizer(authorizer.address);
-      expect(await vault.getAuthorizer()).to.equal(authorizer.address);
+    sharedBeforeEach(async () => {
+      const factoryTask = new Task('20230206-weighted-pool-v3', TaskMode.READ_ONLY, getForkedNetwork(hre));
+      pool = await factoryTask.instanceAt('WeightedPool', '0xEab8B160903B4a29D7D92C92b4ff632F5c964987');
     });
 
-    before('prepare call and grant adaptor permission', async () => {
-      // We're going to have the Adaptor call a view function in the Vault. The fact that this is not a permissioned
-      // function is irrelevant - we just want to make the Adaptor call it. We'll grant the user permission to make this
-      // call.
-      action = await actionId(authorizerAdaptor, 'getProtocolFeesCollector', vault.interface);
-      await actualAuthorizer.connect(govMultisig).grantRole(action, user.address);
-
-      target = vault.address;
-
-      // The extra bytes are not required to perform the call, but for testing purposes it's slightly more complete if
-      // the selector does not match the entire calldata.
-      calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector').concat('aabbccddeeff');
-
-      expectedResult = defaultAbiCoder.encode(['address'], [await vault.getProtocolFeesCollector()]);
+    context('before the upgrade', () => {
+      it('the swap fee percentage can be set', async () => {
+        const tx = await pool.connect(swapFeeSetter).setSwapFeePercentage(fp(0.1));
+        expectEvent.inReceipt(await tx.wait(), 'SwapFeePercentageChanged');
+      });
     });
 
-    it('unauthorized calls to the adaptor fail', async () => {
-      await expect(authorizerAdaptor.connect(other).performAction(target, calldata)).to.be.revertedWith('BAL#401');
-    });
+    context('after the upgrade', () => {
+      sharedBeforeEach('upgrade Authorizer', async () => {
+        const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+        await actualAuthorizer.connect(govMultisig).grantRole(setAuthorizerAction, admin.address);
 
-    it('authorized calls to the adaptor fail', async () => {
-      await expect(authorizerAdaptor.connect(user).performAction(target, calldata)).to.be.revertedWith('BAL#401');
-    });
+        await vault.connect(admin).setAuthorizer(authorizer.address);
+        expect(await vault.getAuthorizer()).to.equal(authorizer.address);
+      });
 
-    it('unauthorized calls through the entrypoint fail', async () => {
-      await expect(adaptorEntrypoint.connect(other).performAction(target, calldata)).to.be.revertedWith('BAL#401');
-    });
-
-    it('authorized calls through the entrypoint succeed', async () => {
-      const tx = await adaptorEntrypoint.connect(user).performAction(target, calldata);
-
-      expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', { caller: user.address, data: calldata, target });
-
-      const result = await adaptorEntrypoint.connect(user).callStatic.performAction(target, calldata);
-      expect(result).to.equal(expectedResult);
-    });
-
-    it('other permissions are unaffected', async () => {
-      // The admin had permission to call `setAuthorizer` on the Vault before the upgrade, and still does.
-      await vault.connect(admin).setAuthorizer(ZERO_ADDRESS);
-      expect(await vault.getAuthorizer()).to.equal(ZERO_ADDRESS);
-    });
-  });
-
-  it('can use gauge adder V3', async () => {
-    const tx = await gaugeAdder.connect(lmMultisig).addGaugeFactory(gaugeFactory.address, 2); // Ethereum is type 2
-    expectEvent.inReceipt(await tx.wait(), 'GaugeFactoryAdded', {
-      gaugeType: 2,
-      gaugeFactory: gaugeFactory.address,
+      it('the swap fee percentage can be still set', async () => {
+        const tx = await pool.connect(swapFeeSetter).setSwapFeePercentage(fp(0.1));
+        expectEvent.inReceipt(await tx.wait(), 'SwapFeePercentageChanged');
+      });
     });
   });
 });
