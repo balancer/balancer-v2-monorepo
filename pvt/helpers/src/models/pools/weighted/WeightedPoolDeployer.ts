@@ -98,6 +98,11 @@ export default {
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+          libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
+          },
+        });
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -129,6 +134,7 @@ export default {
           libraries: {
             CircuitBreakerLib: circuitBreakerLib.address,
             ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+            ManagedPoolAmmLib: ammLib.address,
           },
         });
         break;
@@ -139,6 +145,12 @@ export default {
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+          libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
+          },
+        });
+
         result = deploy('v2-pool-weighted/MockManagedPool', {
           args: [
             {
@@ -170,6 +182,7 @@ export default {
           libraries: {
             CircuitBreakerLib: circuitBreakerLib.address,
             ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+            ManagedPoolAmmLib: ammLib.address,
           },
         });
         break;
@@ -287,10 +300,15 @@ export default {
 
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const math = await deploy('ExternalWeightedMath');
+        const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
+
         const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
           args: [
             vault.address,
             vault.getFeesProvider().address,
+            math.address,
+            recoveryModeHelper.address,
             factoryVersion,
             poolVersion,
             MANAGED_PAUSE_WINDOW_DURATION,
