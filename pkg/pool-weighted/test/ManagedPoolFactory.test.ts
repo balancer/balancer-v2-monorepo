@@ -61,10 +61,15 @@ describe('ManagedPoolFactory', function () {
         CircuitBreakerLib: circuitBreakerLib.address,
       },
     });
+    const math = await deploy('ExternalWeightedMath');
+    const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
+
     factory = await deploy('ManagedPoolFactory', {
       args: [
         vault.address,
         vault.getFeesProvider().address,
+        math.address,
+        recoveryModeHelper.address,
         factoryVersion,
         poolVersion,
         BASE_PAUSE_WINDOW_DURATION,
