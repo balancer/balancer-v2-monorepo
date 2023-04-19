@@ -657,6 +657,38 @@
       }
     }
   },
+  "20230411-managed-pool-v2": {
+    "ManagedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create((string,string,address[]),(address[],uint256[],uint256,bool,bool,uint256,uint256),address,bytes32)": "0xe94d4f88a6d6f3449cb1005093922f69f89d217744047dc35d72c8d5308743da",
+        "disable()": "0x8d305e761700b38cf2bc3f9e2c4ad60807e843cf2efd2415b902b1163f8f9a22"
+      }
+    },
+    "ManagedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xf5A71257B331C02dA1Eae52151C3d600f16B76F0",
+      "actionIds": {
+        "addAllowedAddress(address)": "0x73433598a6ee73c7da42fc96255eca1de0b23893b2bc2d21733b0a050833ac9e",
+        "addToken(address,address,uint256,uint256,address)": "0x6134115ebd2144e1396c11e6cb7fed3328910a7c664a97db3d24158ec0851d76",
+        "collectAumManagementFees()": "0x15d2d7f8f98ab6d0201baab09bc27ac56ec41e8412c6b7bbcd66a8288ca975bb",
+        "disableRecoveryMode()": "0x5610aeafaa3f5c4ef9b9b45ee9c0810b2f7bd64b7b504f19d1a8a3bde062a966",
+        "enableRecoveryMode()": "0xb213b9fefdba263a47d6449bab5d563a39489f656d504fd24d5b9efe6fe23a61",
+        "pause()": "0x6c331c074092fbc25cd1032630ed25155aa5b81afa1d296bf5a0f0e9e0c6e846",
+        "removeAllowedAddress(address)": "0x41c9971c941d0e80df0f20a1c1c8d1e452c3ff0fa21a358ca93597bd0fdb9b2e",
+        "removeToken(address,uint256,address)": "0x2aac7335b24cb356c448c5bdfa04e855ccb834ff2eb31ee642ed98bf5b55da7d",
+        "setCircuitBreakers(address[],uint256[],uint256[],uint256[])": "0x0d3695614536d3868050acf7e475735030ddf4bcdbcd3dbcce7c7d648a7506d1",
+        "setJoinExitEnabled(bool)": "0x9aa54bac17d6fc9f8f7c79d2df05640551bd4072f577edc0cbe1ec8a34062320",
+        "setManagementAumFeePercentage(uint256)": "0x861521052946742ab7716aff1b6da1a65f09c8e9ac1e69096065df97ac60fc3b",
+        "setMustAllowlistLPs(bool)": "0xb31f689047b3836141cdc301315bfbc52fcb02c416691c6f8f42df1045213b1d",
+        "setSwapEnabled(bool)": "0x49138bbfb6e77035aa89705fb88ef2078a99b65ae5b6c9ffc983408cae7acae1",
+        "unpause()": "0x2104a90e49b9d709bbc44eee47d6280b32101abfb2f670e77162a9c703c8888b",
+        "updateProtocolFeePercentageCache()": "0x68b5eab37b76e1b4faeb57ff15b38149c8e1e5d34d071e74017b9d8db64fa31d",
+        "updateSwapFeeGradually(uint256,uint256,uint256,uint256)": "0xa4964628ee2b4becfdda58941605326e7388ae792b6b4e00f021439a632bea16",
+        "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0x28944fba3c44b5125d16d5192ec1f5e1861679336eb53b1c4343d8ae111bfb45"
+      }
+    }
+  },
   "20230409-erc4626-linear-pool-v4": {
     "ERC4626LinearPoolFactory": {
       "useAdaptor": false,
