@@ -1,0 +1,9 @@
+{
+  "ManagedPoolAddRemoveTokenLib": "0x59562f93c447656F6E4799fC1FC7c3d977C3324F",
+  "CircuitBreakerLib": "0x2498A2B0d6462d2260EAC50aE1C3e03F4829BA95",
+  "ManagedPoolAmmLib": "0xDEd7Fef7D8eCdcB74F22f0169e1A9EC696e6695d",
+  "ExternalWeightedMath": "0x8df317a729fcaA260306d7de28888932cb579b88",
+  "RecoveryModeHelper": "0x3B1eb8EB7b43882b385aB30533D9A2BeF9052a98",
+  "ManagedPoolFactory": "0x4C32a8a8fDa4E24139B51b456B42290f51d6A1c4",
+  "MockManagedPool": "0xb4AF4fdd49da2A2BA9522EAdCF86D407a69f19c8"
+}
