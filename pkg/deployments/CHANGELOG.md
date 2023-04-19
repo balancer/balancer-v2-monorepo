@@ -18,12 +18,15 @@
 - Deployed `L2LayerZeroBridgeForwarder` V5 to all networks except Ethereum.
 - Deployed `ManagedPoolFactory` V2 to all networks.
 - Deployed `AuthorizerWithAdaptorValidation` to all networks.
+- Deployed `AaveLinearPoolFactoryV5` to all networks.
 
 ### Deprecations
 
 - Deprecated `20220916-batch-relayer-v4`.
 - Deprecated `20230206-weighted-pool-v3`.
 - Deprecated `20230206-composable-stable-pool-v3`.
+- Deprecated `20230206-composable-stable-pool-v3`.
+- Deprecated `20230206-aave-rebalanced-linear-pool-v3`.
 
 ## 3.2.0 (2023-02-24)
 
@@ -58,6 +61,7 @@
 - Deployed `GnosisRootGaugeFactory` to Mainnet.
 - Deployed `MerkleOrchard` V2 to Mainnet, Goerli, Arbitrum and Polygon.
 - Deployed `SingleRecipientGaugeFactory` V2 to Mainnet and Goerli.
+- Deployed `ProtocolIdRegistry` to Mainnet, Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 - Deployed `ProtocolIdRegistry` to Mainnet, Goerli, Arbitrum, Polygon, Optimism and Gnosis.
 
 ### Deprecations
