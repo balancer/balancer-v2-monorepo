@@ -1196,6 +1196,7 @@
     },
     "ERC4626LinearPool": {
       "useAdaptor": false,
+      "factoryOutput": "0x9516a2d25958EdB8da246a320f2c7d94A0DBe25d",
       "actionIds": {
         "disableRecoveryMode()": "0xcdbdee0d8755700385092bfc71468577a3f4d92e90eee08906454441eeb69625",
         "enableRecoveryMode()": "0xbc3dae38c30f2686b160e7154a2d649e84222b9f9de4e3347380cd82f23771ad",
