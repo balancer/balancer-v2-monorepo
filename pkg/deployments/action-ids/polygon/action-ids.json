@@ -741,5 +741,26 @@
         "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0x5eb69fd587e32f9abb7693dfb52b92ecd1a708335fc4c5e5ebd012115ad2a7e1"
       }
     }
+  },
+  "20230409-erc4626-linear-pool-v4": {
+    "ERC4626LinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256,bytes32)": "0x96c00cee5f23c01714b5e57e259a1c31641e672eee5651a4eb0e71b4fc5f24f8",
+        "disable()": "0x04add3612b5eacdfcdfd76721e5a8c64fa27447ca2e7471d7a8eb367740462e0"
+      }
+    },
+    "ERC4626LinearPool": {
+      "useAdaptor": false,
+      "actionIds": {
+        "disableRecoveryMode()": "0xa7c8b49644727da31a35a048233a99825f3b136e1e3d0471005b4669bea0be01",
+        "enableRecoveryMode()": "0x0ab8486492d2c210b3e25cbe0edc6da056cb86a87d97e1505c437891d0feeb8a",
+        "initialize()": "0xbdf92e696c3c1976ead921ee734615809bd2fcefea0a9ca7f0340c1ca5473670",
+        "pause()": "0x900d676b02cc16ed6fb55deda4c1fd5d404fe928336a39685fe16808565a1ba5",
+        "setSwapFeePercentage(uint256)": "0xe1afc8536d46588e42d553c6d54fc45fa8a579ee70d6955bd4eda71cf8892c77",
+        "setTargets(uint256,uint256)": "0xeaef47449a416a9bfb2deedb72095ad8e87e585b1673098647a2d5afba27843b",
+        "unpause()": "0x6eb2fe59bb99c4b1a1a0e24aa492309a26f1a6e54e90fb6003e3da3a7ea62337"
+      }
+    }
   }
 }
