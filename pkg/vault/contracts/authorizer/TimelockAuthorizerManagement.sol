@@ -21,7 +21,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/ITimelockAuthorizer.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "./TimelockExecutionHelper.sol";
 
 /**
@@ -34,7 +33,7 @@ import "./TimelockExecutionHelper.sol";
  *
  * See `TimelockAuthorizer`
  */
-abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, ReentrancyGuard {
+abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     using Address for address;
 
     // solhint-disable-next-line const-name-snakecase
@@ -270,7 +269,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function execute(uint256 scheduledExecutionId) external override nonReentrant returns (bytes memory result) {
+    function execute(uint256 scheduledExecutionId) external override returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
 
         ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
@@ -290,7 +289,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
 
         // Note that this is the only place in the entire contract we perform a non-view call to an external contract,
         // i.e. this is the only context in which this contract can be re-entered, and by this point we've already
-        // completed all state transitions.
+        // completed all state transitions (in other words, we follow the Checks-Effects-Interactions pattern).
         // This results in the scheduled execution being marked as 'executed' during its execution, but that should not
         // be an issue.
         result = _executionHelper.execute(scheduledExecution.where, scheduledExecution.data);
@@ -467,7 +466,6 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer, Reentranc
 
         for (uint256 i = 0; i < executors.length; i++) {
             require(!_isExecutor[scheduledExecutionId][executors[i]], "DUPLICATE_EXECUTORS");
-            // Note that we allow for repeated executors - this is not an issue
             _isExecutor[scheduledExecutionId][executors[i]] = true;
             emit ExecutorAdded(scheduledExecutionId, executors[i]);
         }

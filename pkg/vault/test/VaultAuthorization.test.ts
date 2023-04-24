@@ -149,7 +149,9 @@ describe('VaultAuthorization', function () {
       context('when the sender is not allowed by the authorizer', () => {
         sharedBeforeEach('revoke permission for sender', async () => {
           const action = await actionId(vault, 'setRelayerApproval');
-          await authorizer.connect(admin).revokePermission(action, sender.address, ANY_ADDRESS);
+          if (await authorizer.hasPermission(action, sender.address, ANY_ADDRESS)) {
+            await authorizer.connect(admin).revokePermission(action, sender.address, ANY_ADDRESS);
+          }
         });
 
         context('when the sender is approved by the user', () => {

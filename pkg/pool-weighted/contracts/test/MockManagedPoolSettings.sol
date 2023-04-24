@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-pool-utils/contracts/RecoveryModeHelper.sol";
+
 import "../managed/ManagedPoolSettings.sol";
 import "../ExternalWeightedMath.sol";
 
@@ -22,12 +24,14 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
     using WeightedPoolUserData for bytes;
 
     ExternalWeightedMath private immutable _weightedMath;
+    RecoveryModeHelper private immutable _recoveryModeHelper;
 
     constructor(
         ManagedPoolSettingsParams memory settingsParams,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         ExternalWeightedMath weightedMath,
+        RecoveryModeHelper recoveryModeHelper,
         address[] memory assetManagers,
         address owner
     )
@@ -48,6 +52,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         ManagedPoolSettings(settingsParams, protocolFeeProvider)
     {
         _weightedMath = weightedMath;
+        _recoveryModeHelper = recoveryModeHelper;
     }
 
     function getVirtualSupply() external view returns (uint256) {

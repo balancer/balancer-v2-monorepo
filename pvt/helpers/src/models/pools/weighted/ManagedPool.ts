@@ -7,11 +7,10 @@ import {
   RawManagedPoolDeployment,
   ManagedPoolDeployment,
   ManagedPoolParams,
-  BasePoolRights,
-  ManagedPoolRights,
   GradualSwapFeeUpdateParams,
   CircuitBreakerState,
   ManagedPoolType,
+  ManagedPoolSettingsParams,
 } from './types';
 import Vault from '../../vault/Vault';
 import { deploy, deployedAt } from '../../../contract';
@@ -21,15 +20,17 @@ import TokenList from '../../tokens/TokenList';
 import { BigNumberish } from '../../../numbers';
 import { ProtocolFee } from '../../vault/types';
 import { ZERO_ADDRESS } from '../../../constants';
-import { DAY } from '../../../time';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import Token from '../../tokens/Token';
 import { accountToAddress } from '@balancer-labs/balancer-js';
+import { randomBytes } from 'ethers/lib/utils';
 
 export default class ManagedPool extends WeightedPool {
   static weightedMathLib: Contract;
   static addRemoveTokenLib: Contract;
   static circuitBreakerLib: Contract;
+  static recoverModeHelperLib: Contract;
+  static ammLib: Contract;
 
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
@@ -43,7 +44,6 @@ export default class ManagedPool extends WeightedPool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
-    rateProviders: Account[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
     swapEnabledOnStart: boolean,
@@ -53,6 +53,7 @@ export default class ManagedPool extends WeightedPool {
     aumFeeId?: BigNumberish,
     owner?: Account
   ) {
+    const rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     super(instance, poolId, vault, tokens, weights, rateProviders, assetManagers, swapFeePercentage, owner);
 
     this.swapEnabledOnStart = swapEnabledOnStart;
@@ -69,6 +70,12 @@ export default class ManagedPool extends WeightedPool {
     ManagedPool.weightedMathLib = await deploy('v2-pool-weighted/ExternalWeightedMath');
     ManagedPool.addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
     ManagedPool.circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+    ManagedPool.recoverModeHelperLib = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
+    ManagedPool.ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+      libraries: {
+        CircuitBreakerLib: ManagedPool.circuitBreakerLib.address,
+      },
+    });
 
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
     const poolId = await pool.getPoolId();
@@ -76,7 +83,6 @@ export default class ManagedPool extends WeightedPool {
     const {
       tokens,
       weights,
-      rateProviders,
       assetManagers,
       swapFeePercentage,
       swapEnabledOnStart,
@@ -93,7 +99,6 @@ export default class ManagedPool extends WeightedPool {
       vault,
       tokens,
       weights,
-      rateProviders,
       assetManagers,
       swapFeePercentage,
       swapEnabledOnStart,
@@ -109,21 +114,39 @@ export default class ManagedPool extends WeightedPool {
     const {
       tokens,
       weights,
-      swapFeePercentage,
       assetManagers,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumFeeId,
-      poolVersion,
       owner,
-      pauseWindowDuration,
-      bufferPeriodDuration,
       poolType,
       from,
+      aumFeeId,
+      poolVersion,
     } = params;
 
     if (poolType == ManagedPoolType.MOCK_MANAGED_POOL_SETTINGS) {
+      const args = [
+        {
+          tokens: tokens.addresses,
+          normalizedWeights: weights,
+          swapFeePercentage: swapFeePercentage,
+          swapEnabledOnStart: swapEnabledOnStart,
+          mustAllowlistLPs: mustAllowlistLPs,
+          managementAumFeePercentage: managementAumFeePercentage,
+          aumFeeId: aumFeeId,
+        },
+        vault.address,
+        vault.protocolFeesProvider.address,
+        ManagedPool.weightedMathLib.address,
+        ManagedPool.recoverModeHelperLib.address,
+        assetManagers,
+        owner,
+      ];
+
       return deploy('v2-pool-weighted/MockManagedPoolSettings', {
         args: [
           {
@@ -138,6 +161,7 @@ export default class ManagedPool extends WeightedPool {
           vault.address,
           vault.protocolFeesProvider.address,
           ManagedPool.weightedMathLib.address,
+          ManagedPool.recoverModeHelperLib.address,
           assetManagers,
           owner,
         ],
@@ -160,6 +184,7 @@ export default class ManagedPool extends WeightedPool {
           vault: vault.address,
           protocolFeeProvider: vault.protocolFeesProvider.address,
           weightedMath: ManagedPool.weightedMathLib.address,
+          recoveryModeHelper: ManagedPool.recoverModeHelperLib.address,
           pauseWindowDuration,
           bufferPeriodDuration,
           version: poolVersion,
@@ -179,6 +204,7 @@ export default class ManagedPool extends WeightedPool {
       libraries: {
         CircuitBreakerLib: ManagedPool.circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: ManagedPool.addRemoveTokenLib.address,
+        ManagedPoolAmmLib: ManagedPool.ammLib.address,
       },
     });
   }
@@ -193,11 +219,22 @@ export default class ManagedPool extends WeightedPool {
       mustAllowlistLPs,
       managementAumFeePercentage,
       aumFeeId,
+      factoryVersion,
+      poolVersion,
       from,
     } = params;
 
     const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        ManagedPool.weightedMathLib.address,
+        ManagedPool.recoverModeHelperLib.address,
+        factoryVersion,
+        poolVersion,
+        PAUSE_WINDOW_DURATION,
+        BUFFER_PERIOD_DURATION
+      ],
       from,
       libraries: {
         CircuitBreakerLib: ManagedPool.circuitBreakerLib.address,
@@ -205,12 +242,23 @@ export default class ManagedPool extends WeightedPool {
       },
     });
 
-    const controlledFactory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', {
-      args: [factory.address],
-      from,
-    });
+    const poolParams: ManagedPoolParams = {
+      name: NAME,
+      symbol: SYMBOL,
+      assetManagers,
+    };
 
-    const newPoolParams: ManagedPoolParams = {
+    const settingsParams: ManagedPoolSettingsParams = {
+      tokens: tokens.addresses,
+      normalizedWeights: weights,
+      swapFeePercentage: swapFeePercentage,
+      swapEnabledOnStart: swapEnabledOnStart,
+      mustAllowlistLPs: mustAllowlistLPs,
+      managementAumFeePercentage: managementAumFeePercentage,
+      aumFeeId: aumFeeId ?? ProtocolFee.AUM,
+    };
+
+    /*const newPoolParams: ManagedPoolParams = {
       name: NAME,
       symbol: SYMBOL,
       tokens: tokens.addresses,
@@ -244,7 +292,17 @@ export default class ManagedPool extends WeightedPool {
       .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
-    return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
+    return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);*/
+
+  const salt = randomBytes(32);
+  
+  const tx = await factory
+    .connect(from || ZERO_ADDRESS)
+    .create(poolParams, settingsParams, from?.address || ZERO_ADDRESS, salt);
+  const receipt = await tx.wait();
+  const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
+
+  return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
   }
 
   async updateWeightsGradually(

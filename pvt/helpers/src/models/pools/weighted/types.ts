@@ -79,12 +79,11 @@ export type RawManagedPoolDeployment = {
   rateProviders?: Account[];
   assetManagers?: string[];
   swapFeePercentage?: BigNumberish;
+  pauseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
   managementAumFeePercentage?: BigNumberish;
-  aumFeeId?: BigNumberish;
-  pauseWindowDuration?: BigNumberish;
-  bufferPeriodDuration?: BigNumberish;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -93,6 +92,7 @@ export type RawManagedPoolDeployment = {
   poolType?: ManagedPoolType;
   factoryVersion?: string;
   poolVersion?: string;
+  aumFeeId?: BigNumberish;
 };
 
 export type ManagedPoolDeployment = {
@@ -101,18 +101,18 @@ export type ManagedPoolDeployment = {
   rateProviders: Account[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
+  pauseWindowDuration: BigNumberish;
+  bufferPeriodDuration: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
-  aumFeeId?: BigNumberish;
-  pauseWindowDuration: BigNumberish;
-  bufferPeriodDuration: BigNumberish;
   factoryVersion: string;
   poolVersion: string;
   owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   poolType?: ManagedPoolType;
+  aumFeeId?: BigNumberish;
 };
 
 export type SwapWeightedPool = {
@@ -263,6 +263,12 @@ export type ManagedPoolRights = {
 };
 
 export type ManagedPoolParams = {
+  name: string;
+  symbol: string;
+  assetManagers: string[];
+};
+
+export type ManagedPoolSettingsParams = {
   tokens: string[];
   normalizedWeights: BigNumberish[];
   swapFeePercentage: BigNumberish;

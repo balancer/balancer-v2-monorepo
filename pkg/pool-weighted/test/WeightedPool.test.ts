@@ -179,6 +179,7 @@ describe('WeightedPool', function () {
 
     let tokens: TokenList;
     let pool: WeightedPool;
+    let mockPool: Contract;
     let vaultContract: Contract;
 
     sharedBeforeEach('deploy pool', async () => {
@@ -193,6 +194,36 @@ describe('WeightedPool', function () {
         weights: WEIGHTS.slice(0, numTokens),
         swapFeePercentage: swapFeePercentage,
         vault,
+      });
+
+      mockPool = await deploy('MockWeightedPoolProtocolFees', {
+        args: [
+          vault.address,
+          vault.getFeesProvider().address,
+          'Test WP',
+          'TWP',
+          tokens.addresses,
+          tokens.map(() => ZERO_ADDRESS), // rate providers
+          tokens.map(() => ZERO_ADDRESS), // asset managers
+          POOL_SWAP_FEE_PERCENTAGE,
+          0,
+          0,
+          lp.address,
+        ],
+      });
+    });
+
+    context('ATHRateProduct update', () => {
+      const newRate = fp(1.1);
+
+      it('emits an event when ATHRateProduct is updated', async () => {
+        const tx = await mockPool.updateATHRateProduct(newRate);
+        const receipt = await tx.wait();
+
+        expectEvent.inReceipt(receipt, 'ATHRateProductUpdated', {
+          oldATHRateProduct: 0,
+          newATHRateProduct: newRate,
+        });
       });
     });
 

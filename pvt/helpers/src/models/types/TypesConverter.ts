@@ -127,14 +127,14 @@ export default {
       assetManagers,
       swapFeePercentage,
       swapEnabledOnStart,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      aumFeeId,
       mustAllowlistLPs,
       managementAumFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
       factoryVersion,
       poolVersion,
       poolType,
+      aumFeeId,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
@@ -143,16 +143,16 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e16);
     if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!pauseWindowDuration) pauseWindowDuration = DEFAULT_PAUSE_WINDOW_DURATION;
-    if (!bufferPeriodDuration) bufferPeriodDuration = DEFAULT_BUFFER_PERIOD_DURATION;
     if (!poolType) poolType = ManagedPoolType.MANAGED_POOL;
     if (swapEnabledOnStart == undefined) swapEnabledOnStart = true;
-    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
     if (undefined == factoryVersion) factoryVersion = 'default factory version';
     if (undefined == poolVersion) poolVersion = 'default pool version';
+    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
+    if (!pauseWindowDuration) pauseWindowDuration = 9 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     return {
       tokens,
       weights,
@@ -160,16 +160,16 @@ export default {
       assetManagers,
       swapFeePercentage,
       swapEnabledOnStart,
-      aumFeeId,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      poolType: params.poolType,
+      owner: this.toAddress(params.owner),
+      from: params.from,
       factoryVersion,
       poolVersion,
-      owner: params.owner,
-      from: params.from,
+      poolType,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      aumFeeId,
     };
   },
 
