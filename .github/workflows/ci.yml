@@ -47,7 +47,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-solidity-utils test
       - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1.0.9
+        uses: foundry-rs/foundry-toolchain@v1.0.7
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz
 
@@ -66,7 +66,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-standalone-utils test
       - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1.0.9
+        uses: foundry-rs/foundry-toolchain@v1.0.7
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-standalone-utils test-fuzz
 
@@ -85,7 +85,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
       - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1.0.9
+        uses: foundry-rs/foundry-toolchain@v1.0.7
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-vault test-fuzz
 
@@ -104,7 +104,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-utils test
       - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1.0.9
+        uses: foundry-rs/foundry-toolchain@v1.0.7
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz
 
@@ -123,7 +123,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-weighted test
       - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1.0.9
+        uses: foundry-rs/foundry-toolchain@v1.0.7
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz
 
@@ -142,7 +142,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-stable test
       - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1.0.9
+        uses: foundry-rs/foundry-toolchain@v1.0.7
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz
 
@@ -161,7 +161,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-linear test
       - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1.0.9
+        uses: foundry-rs/foundry-toolchain@v1.0.7
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz
 
@@ -180,7 +180,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1.0.9
+        uses: foundry-rs/foundry-toolchain@v1.0.7
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
 
