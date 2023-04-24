@@ -49,7 +49,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: latest
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz
 
@@ -70,7 +70,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: latest
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-standalone-utils test-fuzz
 
@@ -91,7 +91,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: latest
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-vault test-fuzz
 
@@ -112,7 +112,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: latest
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz
 
@@ -133,7 +133,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: latest
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz
 
@@ -154,7 +154,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: latest
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz
 
@@ -175,7 +175,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: latest
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz
 
@@ -196,7 +196,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: latest
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
 
