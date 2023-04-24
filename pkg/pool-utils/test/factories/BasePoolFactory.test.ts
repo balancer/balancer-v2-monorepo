@@ -9,6 +9,7 @@ import { MONTH, DAY, currentTimestamp } from '@balancer-labs/v2-helpers/src/time
 import { expect } from 'chai';
 import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BasePoolFactory', function () {
   const PAUSE_WINDOW_DURATION = 90 * DAY;
@@ -43,7 +44,7 @@ describe('BasePoolFactory', function () {
     });
 
     const action = await actionId(factory, 'disable');
-    await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+    await authorizer.connect(admin).grantPermission(action, admin.address, ANY_ADDRESS);
   });
 
   it('stores the vault address', async () => {

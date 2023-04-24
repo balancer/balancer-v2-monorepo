@@ -242,9 +242,10 @@ export default class Vault {
 
   async setSwapFeePercentage(swapFeePercentage: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
+    const id = await actionId(feesCollector, 'setSwapFeePercentage');
 
-    if (this.authorizer && this.admin) {
-      await this.grantPermissionsGlobally([await actionId(feesCollector, 'setSwapFeePercentage')], this.admin);
+    if (this.authorizer && this.admin && !(await this.hasPermissionGlobally(id, this.admin))) {
+      await this.grantPermissionGlobally(id, this.admin);
     }
 
     const sender = from || this.admin;
@@ -257,9 +258,10 @@ export default class Vault {
     { from }: TxParams = {}
   ): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
+    const id = await actionId(feesCollector, 'setFlashLoanFeePercentage');
 
-    if (this.authorizer && this.admin) {
-      await this.grantPermissionsGlobally([await actionId(feesCollector, 'setFlashLoanFeePercentage')], this.admin);
+    if (this.authorizer && this.admin && !(await this.hasPermissionGlobally(id, this.admin))) {
+      await this.grantPermissionGlobally(id, this.admin);
     }
 
     const sender = from || this.admin;
@@ -273,24 +275,62 @@ export default class Vault {
     const feeCollector = await this.getFeesCollector();
     const feeProvider = this.protocolFeesProvider;
 
-    await this.authorizer
-      .connect(this.admin)
-      .grantPermissions([actionId(feeProvider, 'setFeeTypePercentage')], this.admin.address, [feeProvider.address]);
+    await this.grantPermissionIfNeeded(
+      await actionId(feeProvider, 'setFeeTypePercentage'),
+      this.admin.address,
+      feeProvider.address
+    );
 
-    await this.authorizer.connect(this.admin).grantPermissions(
-      ['setSwapFeePercentage', 'setFlashLoanFeePercentage'].map((fn) => actionId(feeCollector, fn)),
+    await this.grantPermissionIfNeeded(
+      await actionId(feeCollector, 'setSwapFeePercentage'),
       feeProvider.address,
-      [feeCollector.address, feeCollector.address]
+      feeCollector.address
+    );
+
+    await this.grantPermissionIfNeeded(
+      await actionId(feeCollector, 'setFlashLoanFeePercentage'),
+      feeProvider.address,
+      feeCollector.address
     );
 
     await feeProvider.connect(this.admin).setFeeTypePercentage(feeType, bn(value));
   }
 
-  async grantPermissionsGlobally(actionIds: string[], to?: Account): Promise<ContractTransaction> {
+  async hasPermissionGlobally(actionId: string, to?: Account): Promise<ContractTransaction> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
-    const wheres = actionIds.map(() => ANY_ADDRESS);
-    return this.authorizer.connect(this.admin).grantPermissions(actionIds, TypesConverter.toAddress(to), wheres);
+    return this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS);
+  }
+
+  async grantPermissionGloballyIfNeeded(actionId: string, to?: Account): Promise<ContractTransaction | undefined> {
+    if (await this.hasPermissionGlobally(actionId, to)) {
+      return undefined;
+    }
+    return this.grantPermissionGlobally(actionId, to);
+  }
+
+  async grantPermissionGlobally(actionId: string, to?: Account): Promise<ContractTransaction> {
+    if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
+    if (!to) to = await this._defaultSender();
+    if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS))
+      throw Error(`Account ${typeof to === 'string' ? to : to.address} already have global permission for ${actionId}`);
+    return this.authorizer.connect(this.admin).grantPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS);
+  }
+
+  async grantPermissionIfNeeded(
+    actionId: string,
+    to: Account,
+    where: Account
+  ): Promise<ContractTransaction | undefined> {
+    if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
+    if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS))
+      throw Error(`Account ${typeof to === 'string' ? to : to.address} already have global permission for ${actionId}`);
+    if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), TypesConverter.toAddress(where))) {
+      return undefined;
+    }
+    return this.authorizer
+      .connect(this.admin)
+      .grantPermission(actionId, TypesConverter.toAddress(to), TypesConverter.toAddress(where));
   }
 
   async setRelayerApproval(user: SignerWithAddress, relayer: Account, approval: boolean): Promise<ContractTransaction> {
@@ -308,11 +348,11 @@ export default class Vault {
   }
 
   async setAuthorizer(newAuthorizer: Account): Promise<ContractTransaction> {
-    // Needed to suppress lint warning. grantPermissionsGlobally will fail if there is no authorizer or admin
+    // Needed to suppress lint warning. grantPermissionGlobally will fail if there is no authorizer or admin
     const admin = this.admin ?? ZERO_ADDRESS;
 
     const action = await actionId(this.instance, 'setAuthorizer');
-    await this.grantPermissionsGlobally([action], admin);
+    await this.grantPermissionGlobally(action, admin);
 
     return this.instance.connect(admin).setAuthorizer(TypesConverter.toAddress(newAuthorizer));
   }

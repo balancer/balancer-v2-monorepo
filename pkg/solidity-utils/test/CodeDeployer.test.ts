@@ -1,8 +1,10 @@
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { ethers } from 'hardhat';
+
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('CodeDeployer', function () {
   let factory: Contract;

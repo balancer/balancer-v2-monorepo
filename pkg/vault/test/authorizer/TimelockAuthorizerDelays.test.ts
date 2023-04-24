@@ -376,7 +376,7 @@ describe('TimelockAuthorizer delays', () => {
         ).to.be.revertedWith('DELAY_TOO_LARGE');
       });
 
-      it('reverts if setDelay is called directly', async () => {
+      it('reverts if setGrantDelay is called directly', async () => {
         await expect(authorizer.instance.setGrantDelay(ACTION_1, DAY)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
       });
 
@@ -551,7 +551,7 @@ describe('TimelockAuthorizer delays', () => {
         ).to.be.revertedWith('DELAY_TOO_LARGE');
       });
 
-      it('reverts if setDelay is called directly', async () => {
+      it('reverts if setRevokeDelay is called directly', async () => {
         await expect(authorizer.instance.setRevokeDelay(ACTION_1, DAY)).to.be.revertedWith('CAN_ONLY_BE_SCHEDULED');
       });
 

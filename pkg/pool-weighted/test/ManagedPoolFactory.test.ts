@@ -7,6 +7,7 @@ import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -14,6 +15,7 @@ import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ManagedPoolParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('ManagedPoolFactory', function () {
   let tokens: TokenList;
@@ -54,10 +56,20 @@ describe('ManagedPoolFactory', function () {
 
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
+    const ammLib = await deploy('v2-pool-weighted/ManagedPoolAmmLib', {
+      libraries: {
+        CircuitBreakerLib: circuitBreakerLib.address,
+      },
+    });
+    const math = await deploy('ExternalWeightedMath');
+    const recoveryModeHelper = await deploy('v2-pool-utils/RecoveryModeHelper', { args: [vault.address] });
+
     factory = await deploy('ManagedPoolFactory', {
       args: [
         vault.address,
         vault.getFeesProvider().address,
+        math.address,
+        recoveryModeHelper.address,
         factoryVersion,
         poolVersion,
         BASE_PAUSE_WINDOW_DURATION,
@@ -66,6 +78,7 @@ describe('ManagedPoolFactory', function () {
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+        ManagedPoolAmmLib: ammLib.address,
       },
     });
     createTime = await currentTimestamp();
@@ -93,7 +106,9 @@ describe('ManagedPoolFactory', function () {
       aumFeeId: ProtocolFee.AUM,
     };
 
-    const receipt = await (await factory.connect(manager).create(poolParams, settingsParams, manager.address)).wait();
+    const receipt = await (
+      await factory.connect(manager).create(poolParams, settingsParams, manager.address, randomBytes(32))
+    ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return deployedAt('ManagedPool', event.args.pool);

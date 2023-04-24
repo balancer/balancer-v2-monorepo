@@ -4,17 +4,40 @@ import fs from 'fs';
 import { padEnd } from 'lodash';
 import path from 'path';
 import logger from './logger';
+import { request, gql } from 'graphql-request';
+
 import Task, { TaskMode } from './task';
 
 export const ACTION_ID_DIRECTORY = path.join(__dirname, '../action-ids');
 
-export type ContractActionIdData = { useAdaptor: boolean; factoryOutput?: string; actionIds: Record<string, string> };
-type ActionIdInfo = {
+export type RoleData = {
+  role: string;
+  grantee: string;
+  target: string;
+};
+
+// Define a type alias with a more meaningful name
+export type ActionIdData = Record<string, string>;
+
+export type TaskActionIds = Record<string, ContractActionIdData>;
+
+export type ContractActionIdData = { useAdaptor: boolean; factoryOutput?: string; actionIds: ActionIdData };
+
+export type ActionIdInfo = {
   taskId: string;
   contractName: string;
   signature: string;
   useAdaptor: boolean;
 };
+
+interface TheGraphPermissionEntry {
+  id: string;
+  account: string;
+  action: {
+    id: string;
+  };
+  txHash: string;
+}
 
 function safeReadJsonFile<T>(filePath: string): Record<string, T> {
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
@@ -22,9 +45,9 @@ function safeReadJsonFile<T>(filePath: string): Record<string, T> {
   return fileExists ? JSON.parse(fs.readFileSync(filePath).toString()) : {};
 }
 
-export function getTaskActionIds(task: Task): Record<string, ContractActionIdData> {
+export function getTaskActionIds(task: Task): TaskActionIds {
   const filePath = path.join(ACTION_ID_DIRECTORY, task.network, 'action-ids.json');
-  const actionIdFileContents = safeReadJsonFile<Record<string, ContractActionIdData>>(filePath);
+  const actionIdFileContents = safeReadJsonFile<TaskActionIds>(filePath);
   return actionIdFileContents[task.id];
 }
 
@@ -39,7 +62,7 @@ export async function saveActionIds(task: Task, contractName: string, factoryOut
   const filePath = path.join(actionIdsDir, 'action-ids.json');
 
   // Load the existing content if any exists.
-  const newFileContents = safeReadJsonFile<Record<string, ContractActionIdData>>(filePath);
+  const newFileContents = safeReadJsonFile<TaskActionIds>(filePath);
 
   // Write the new entry.
   newFileContents[task.id] = newFileContents[task.id] ?? {};
@@ -77,25 +100,26 @@ export function checkActionIdUniqueness(network: string): void {
   const actionIdsDir = path.join(ACTION_ID_DIRECTORY, network);
 
   const filePath = path.join(actionIdsDir, 'action-ids.json');
-  const actionIdFileContents = safeReadJsonFile<Record<string, ContractActionIdData>>(filePath);
+  const actionIdFileContents = safeReadJsonFile<TaskActionIds>(filePath);
 
   const duplicateActionIdsMapping = getDuplicateActionIds(actionIdFileContents);
 
   const expectedCollisionsFilePath = path.join(actionIdsDir, 'expected-collisions.json');
-  const expectedDuplicateActionIdsMapping =
-    safeReadJsonFile<Record<string, ContractActionIdData>>(expectedCollisionsFilePath);
+  const expectedDuplicateActionIdsMapping = safeReadJsonFile<TaskActionIds>(expectedCollisionsFilePath);
 
   if (JSON.stringify(duplicateActionIdsMapping) === JSON.stringify(expectedDuplicateActionIdsMapping)) {
     logger.success(`Verified that no contracts unexpectedly share action IDs for ${network}`);
   } else {
     for (const [actionId, instances] of Object.entries(duplicateActionIdsMapping)) {
       if (JSON.stringify(instances) === JSON.stringify(expectedDuplicateActionIdsMapping[actionId])) {
-        // We expect some collisions of actionIds for cases in which contracts which use the AuthorizerAdaptor
-        // have contracts which share the same signature. e.g. liquidity gauges and factories.
-        // If the collisions match *exactly* with the expected list of collisions then we can ignore them.
+        // We expect some collisions of actionIds for cases where contracts share the same signature,
+        // such as those using the AuthorizerAdaptor. If the collisions *exactly* match those in the
+        // expected list, we can ignore them.
         continue;
       }
 
+      // If there are unexpected collisions while running `save-action-ids`, this will generate detailed
+      // warning messages. Follow the instructions below to update the `expected-collisions` file.
       logger.warn(`${instances.length} contracts share the action ID: ${actionId}`);
       for (const [index, actionIdInfo] of instances.entries()) {
         const prefix = `  ${index + 1}: ${actionIdInfo.contractName}::${actionIdInfo.signature}`;
@@ -103,9 +127,19 @@ export function checkActionIdUniqueness(network: string): void {
       }
     }
 
-    // Write the new set of collisions to a file so that if we accept them, we can just copy them across.
+    // Write a file called `updated-expected-collisions`, with new entries added to resolve the warnings.
+    //
+    // If there is no `expected-collisions` file for this network, simply review the new file to ensure the
+    // additions are valid, then rename `updated-expected-collisions` to `expected-collisions`.
+    // If there is already an`expected-collisions` file, check the diff, then replace the old file with this one.
+    //
+    // Never make manual changes to the `expected-collisions` file, as this might result in "unsorted"
+    // entries that cause `save-action-ids` to fail with no warnings.
+    //
+    // After renaming or replacing the collisions file, running `save-action-ids` again should
+    // produce no warnings.
     fs.writeFileSync(
-      path.join(actionIdsDir, 'new-collisions.json'),
+      path.join(actionIdsDir, 'updated-expected-collisions.json'),
       JSON.stringify(duplicateActionIdsMapping, null, 2)
     );
     throw Error(`There exist two duplicated action IDs across two separate contracts`);
@@ -116,7 +150,7 @@ export async function getActionIds(
   task: Task,
   contractName: string,
   factoryOutput?: string
-): Promise<{ useAdaptor: boolean; actionIds: Record<string, string> }> {
+): Promise<{ useAdaptor: boolean; actionIds: ActionIdData }> {
   const artifact = task.artifact(contractName);
 
   const { ignoredFunctions } = safeReadJsonFile<string[]>(path.join(ACTION_ID_DIRECTORY, 'ignored-functions.json'));
@@ -166,7 +200,7 @@ async function getActionIdSource(
 async function getActionIdsFromSource(
   contractFunctions: [string, FunctionFragment][],
   actionIdSource: Contract
-): Promise<Record<string, string>> {
+): Promise<ActionIdData> {
   const functionActionIds = await Promise.all(
     contractFunctions.map(async ([signature, contractFunction]) => {
       const functionSelector = Interface.getSighash(contractFunction);
@@ -177,9 +211,7 @@ async function getActionIdsFromSource(
   return Object.fromEntries(functionActionIds);
 }
 
-function getDuplicateActionIds(
-  actionIdFileContents: Record<string, Record<string, ContractActionIdData>>
-): Record<string, ActionIdInfo[]> {
+function getDuplicateActionIds(actionIdFileContents: Record<string, TaskActionIds>): Record<string, ActionIdInfo[]> {
   // Reverse the mapping of `contractName -> signature -> actionId` to be `actionId -> [contractName, signature][]`.
   // This simplifies checking for duplicate actionIds to just reading the length of the arrays.
   const actionIdsMapping: Record<string, ActionIdInfo[]> = Object.entries(actionIdFileContents)
@@ -214,4 +246,53 @@ async function checkFactoryOutput(task: Task, contractName: string, factoryOutpu
   if (!(await factory.isPoolFromFactory(factoryOutput))) {
     throw Error(`The contract at ${factoryOutput} is not an instance of a ${contractName}`);
   }
+}
+
+/** Returns full info for a given actionId and network */
+export async function getActionIdInfo(actionId: string, network: string): Promise<ActionIdInfo | undefined> {
+  // read network JSON file from action-ids dir
+  const tasks = safeReadJsonFile<TaskActionIds>(path.join(ACTION_ID_DIRECTORY, network, 'action-ids.json'));
+  // filter all the entries which have the same actionId
+  // and map them to an array of ActionIdInfo
+  const entries = Object.entries(tasks)
+    .filter(([, taskData]) =>
+      Object.values(taskData).some((contractData) =>
+        Object.entries(contractData.actionIds).some(([, hash]) => hash == actionId)
+      )
+    )
+    .map(([taskId, taskData]) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const contracts = Object.entries(taskData).filter(([, contractData]) =>
+        Object.entries(contractData.actionIds).some(([, hash]) => hash == actionId)
+      )!;
+      return contracts.map(([contractName, contractData]) => ({
+        taskId,
+        contractName,
+        useAdaptor: contractData.useAdaptor,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        signature: Object.entries(contractData.actionIds).find(([, hash]) => hash == actionId)![0],
+        actionId,
+      }));
+    })
+    .flat();
+  // we return first entry because all the collisions are verified by scripts
+  return entries[0];
+}
+
+export async function fetchTheGraphPermissions(url: string): Promise<TheGraphPermissionEntry[]> {
+  const query = gql`
+    query {
+      permissions {
+        id
+        account
+        action {
+          id
+        }
+        txHash
+      }
+    }
+  `;
+
+  const data = await request<{ permissions: TheGraphPermissionEntry[] }>(url, query);
+  return data.permissions;
 }

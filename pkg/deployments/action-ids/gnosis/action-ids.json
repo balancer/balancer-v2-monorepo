@@ -79,39 +79,6 @@
       }
     }
   },
-  "20220916-batch-relayer-v4": {
-    "BatchRelayerLibrary": {
-      "useAdaptor": true,
-      "actionIds": {
-        "approveVault(address,uint256)": "0x366943a376e1eee87c125c41e1ebfefefecb7625f9560400b401e08554f12f9d",
-        "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])": "0x1c51c12025cad8b59a93f565aba39b7586417548fffa0784034ef4efc2b03994",
-        "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])": "0x0033a2b07675761aeb0b878dcdb51e664d1b5071472b3d6773eb903d001c4f22",
-        "gaugeClaimRewards(address[])": "0x390c7ee687ce5a121a2d012da2c5ede3401e04e9fae81c18087112971b77776a",
-        "gaugeDeposit(address,address,address,uint256)": "0x1ed26eebb9efc5aec3251ec636da5692f56cfebc2f5d06086c43eee7cdf77b23",
-        "gaugeMint(address[],uint256)": "0xaea0e18c34e441f756843cfbe6171de65c63cf98daeb1c4a62658c4891810c8f",
-        "gaugeSetMinterApproval(bool,address,uint256,uint8,bytes32,bytes32)": "0xede1819d855fb435df8844525fa1e1b1e85e61923c88952d2cae5f93c28494ea",
-        "gaugeWithdraw(address,address,address,uint256)": "0xda69dae4673e4f75fe2fa61c746ba8b23d7f58d79640acd9a70ec18975772ca3",
-        "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)": "0xaccf83d8621bc59db150cd86e5d7e8a86fd45def71eddfa860d21a3c9b0884f6",
-        "manageUserBalance((uint8,address,uint256,address,address)[],uint256)": "0x2ce3348a3d7a3d024e4ceed93f96899123aba5ef69f4a0e8fdff68dc6173f8bf",
-        "setRelayerApproval(address,bool,bytes)": "0xa66222bfe1523c936400ff0873ec8ec9a28e557fd0dd4e2b4f134622658bd2bf",
-        "stakeETH(address,uint256,uint256)": "0x6b9313fc3efac9cde6d2bcd2ecdc582e1ff06a33fb0f74ebcb95b01088e98e4f",
-        "stakeETHAndWrap(address,uint256,uint256)": "0x299942611cfabb9a824ef6fcbb21c88e3e31372809e82a66c53ce3b2c31aff35",
-        "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)": "0x1e61bb0248d61e32328afd35243dbcfdc0e4186ca4f1b444bfd9350b681eeb66",
-        "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)": "0xde0c041e406703bbb745d4db99101ebb7b171be13d919f77370fd652c782278b",
-        "unwrapERC4626(address,address,address,uint256,uint256)": "0xca102cfa86bd480e952b610d0dabfe76c47751df20fbbd4297928818adb3a74b",
-        "unwrapReaperVaultToken(address,address,address,uint256,uint256)": "0x8a4cd40e1a2f14f83116beb3a754344844eebd7cdd4bcf3181b765e86e42e171",
-        "unwrapUnbuttonToken(address,address,address,uint256,uint256)": "0xfe699461dc246d04093c97e801fca1dfe7bf29bd63725f9f159d0c5364426379",
-        "unwrapWstETH(address,address,uint256,uint256)": "0xfa9bcc4f89128e741e8d9fef6b33c68da4aba16cac8940235db5705a8c92fbed",
-        "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)": "0x9cffff4bd644ab27bc1ff66019354dd4bf34dff14aeac978b38288dd8108b597",
-        "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)": "0xdc095992a61ef91733f4c9c8797ce198484d744abdc54b1db8c9f930b02f7073",
-        "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)": "0x32a6b68c912f85d8561796231d43bdc6db7036eda77f2f3f9643e58f891aae6b",
-        "wrapERC4626(address,address,address,uint256,uint256)": "0x44c79f14b79b7ef1bef8e5e53d943945c5d8df1a27fe1c6408bc0884df8ded41",
-        "wrapReaperVaultToken(address,address,address,uint256,uint256)": "0xc90e51726c51526e90d73620145365669f007bec7b0e3821bfbdb0520a5c118f",
-        "wrapStETH(address,address,uint256,uint256)": "0x5161bd7d2bb7c1ca32df99e222692073ced616bc0ebcfacb82e49f251cfcc263",
-        "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x1788a4448d746681dc29939260f2db801b68ab6dde7d8d519b14811a4bdcba36"
-      }
-    }
-  },
   "20220908-weighted-pool-v2": {
     "WeightedPoolFactory": {
       "useAdaptor": false,
@@ -335,6 +302,157 @@
       "actionIds": {
         "registerProtocolId(uint256,string)": "0x0ed00e8835e2d2867dcdf863354062a805ff3fe1dabf44c0b68378c84c52616e",
         "renameProtocolId(uint256,string)": "0xfb760772d39ec169b9e7cd49bccd8858c635114d103dea72a7a694d094e8930c"
+      }
+    }
+  },
+  "20230320-weighted-pool-v4": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address,bytes32)": "0x189827ce924673a2e4444d2fda3c3aad7e86b0f6696f25847472b1f4c0a70dcc",
+        "disable()": "0xee4957b205e6db89fef568d9e8aa4fce4a9a8de50ccf9bf7bd611d8c9fa20a07"
+      }
+    },
+    "WeightedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xd8752f9b0A2c2813796AbD2bE212A32FFd656EF1",
+      "actionIds": {
+        "disableRecoveryMode()": "0x29596d20dcc54c557d94ae57af84f08715a588be1d756198eec61a3dc368b6c1",
+        "enableRecoveryMode()": "0x1d8c9dcce0bb3a303ff9556ace00e75eb744769eeeac8c5beb115a1d697378bd",
+        "pause()": "0x424af7587d00b5e073c5d47ad47b564a6510fa9fb35fb0393c6e83f928227270",
+        "setAssetManagerPoolConfig(address,bytes)": "0x6c0551b25fbc86176f5d526bca650ca24aa057c956dc4ff69bf5432cf5958958",
+        "setSwapFeePercentage(uint256)": "0x0e439756a3aff035984c3a9be923d228a560b708849149e6384abd264011962a",
+        "unpause()": "0x7118b8b3fcf42fc65d6a4548438cc91635b07fc80a98fa1a6b4ea295bd137093",
+        "updateProtocolFeePercentageCache()": "0x217c096d00d656aeb4fbdce1b5e42248ed79db74d71bf938b42604ffb51d2350"
+      }
+    }
+  },
+  "20230320-composable-stable-pool-v4": {
+    "ComposableStablePoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address,bytes32)": "0x73957253fb35ee4fcad753d804456bc462e96cc7dc67a7eb02e7e573dfc820fd",
+        "disable()": "0x51d0341d2686f3ed15bf4f4b5745540b32c4723280e3eefa8dabcb4a366ab0d2"
+      }
+    },
+    "ComposableStablePool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xf3678A0b54C61ccD88Ce321c2e07f87aC75F08B9",
+      "actionIds": {
+        "disableRecoveryMode()": "0x338ff79f4b040df80f9cbc5217e904e2c8dbb7fb58beb6100c837ffa25ab4197",
+        "enableRecoveryMode()": "0xb35863a581c2826e59cfa027d5228768a0fcc02c7497f27c05e435870fa4e34b",
+        "pause()": "0x21ea7ba7282a115973d24d0598646f2b24b98bfd5ed4811eafc19282ada7063c",
+        "setAssetManagerPoolConfig(address,bytes)": "0x96da418105a9d025b1b80d3de6243f5a519267f66caaa6a943b97030f6e2cabe",
+        "setSwapFeePercentage(uint256)": "0xceef6cf4faeffc4260dea255a7815f36c153816232b663a816c08b761ad73cbc",
+        "setTokenRateCacheDuration(address,uint256)": "0xa4cf3b6e755d1c52bedde1ca3a92b562e8fec558b3036cd5eeb2c17ce0cc2c6b",
+        "startAmplificationParameterUpdate(uint256,uint256)": "0x144167e496476037f70eaed5c87faa423fb69e52609d0b4ee48a8284784a800d",
+        "stopAmplificationParameterUpdate()": "0x6470d89bfdcc75143ff276dba3b9742eb1e31ae77d9c6e1330743a621d33e755",
+        "unpause()": "0xf4e188ddf87d79267ed947ffe3a55f04fe919821d4eaa22090db47a09c00ff85",
+        "updateProtocolFeePercentageCache()": "0x4f8203a797dc1109c3f31193e25858f7901ac10d7092bfcd7c8d3601c98fadb4",
+        "updateTokenRateCache(address)": "0x239964292fa5d300796b3b838154583011a75c01b290076f7fdf482801ef2d22"
+      }
+    }
+  },
+  "20230316-l2-balancer-pseudo-minter": {
+    "L2BalancerPseudoMinter": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addGaugeFactory(address)": "0xff178bcb549aae01d4613b3ca6c16f1fa42e808cd1bddd210756b3878cfa9268",
+        "mint(address)": "0x97f7f1b521a14f36f1c7cb36dfab49d74185ad3bc0c458fc32ba67da2966415e",
+        "mintFor(address,address)": "0x1fc80cfffac4b9527fe294eca5590653d06d60038a36d9dd27ff9b53f6dcd434",
+        "mintMany(address[])": "0xf7128ccdb3ffa73b88d0f9e71ade9dd02594ea2f47c885fe8b2365ac633386a8",
+        "mintManyFor(address[],address)": "0x7519e151f44d1b50737c56f72f4a1d480041dc4f697253693c8a9a6fe3d3e5d4",
+        "mint_for(address,address)": "0x016d43b0da0e71d158a5e321c48dca28ceac996bea655d07a4a50843437c63b9",
+        "mint_many(address[8])": "0x99ab5a231ad1a48dec22b7db9af36f172133086d2577443ad1ea87652490f368",
+        "removeGaugeFactory(address)": "0xc57999420bd10abd998589ff441a68d6eeb987ae3475a9b72dfb3549122dbd84",
+        "setMinterApproval(address,bool)": "0xdea7a6796e346eda189719616b222c3d819b8c1ae0ad63fdc055f5587444f6ff",
+        "setMinterApprovalWithSignature(address,bool,address,uint256,uint8,bytes32,bytes32)": "0x8e39642ab168f36bd60dbc1f0bd705dcd09de4ba7bb18a7fe3d4f2b4b9075b1a",
+        "toggle_approve_mint(address)": "0xa6150298594be9fdb9f3a836db79e2ac5d086a336f47e9d92a59b603efa92f3a"
+      }
+    }
+  },
+  "20230316-l2-ve-delegation-proxy": {
+    "NullVotingEscrow": {
+      "useAdaptor": true,
+      "actionIds": {}
+    },
+    "VotingEscrowDelegationProxy": {
+      "useAdaptor": false,
+      "actionIds": {
+        "killDelegation()": "0x9cb98e2303069731b519a5796159ef39c12e97c5d113d273c9ab8999a85d9e4f",
+        "setDelegation(address)": "0x61d367fdef9a156d543288bab90410760d120019702b0559ffb08a3075aa7d42"
+      }
+    }
+  },
+  "20230316-child-chain-gauge-factory-v2": {
+    "ChildChainGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "add_reward(address,address)": "0xc94195da697c94d4db5c313ab49b9ea64c8d69137624b163ba0e4540edfd0faf",
+        "claim_rewards()": "0xcf0b2b6798f0926a93b908e27f332cfe675625416f0bb92ba5eba0210e8862ad",
+        "claim_rewards(address)": "0x148bace62efe321c95bf0889b402b31e98d5fdcc6ab4cb39b8098228a82d5c7f",
+        "claim_rewards(address,address)": "0x94551b28e4224ffdc70c9e7178f6ee9e48764fb50cf5635edd9bcf09d2df64c3",
+        "claim_rewards(address,address,uint256[])": "0x434081a11e142e3f0479032c4e19f009cbb7bc38b678eefaad5d85e8ad4d4bc1",
+        "claimable_tokens(address)": "0xcbc01ad744252bfd1bd92c8416347f570de50588e83ca3f41151ff12282294f4",
+        "deposit(uint256)": "0xebd01fda981e6a2ce9baed03021c6bffe3678acf18bd69a03e20b91a8a7ea0f4",
+        "deposit(uint256,address)": "0x9b9e09750c8ed7d83806572801ddf623057c7e95ec15c1ea36c0670827095bed",
+        "deposit_reward_token(address,uint256)": "0x21380fb654397c5c8ef2da7e72d3f1fba75f641eac0456661fbd66e4cb0e430f",
+        "initialize(address,string)": "0xa1bc4ed4f6b2dad893b29de2f74c168de039c9c185df52b709f197c18901f9a5",
+        "killGauge()": "0x8037c51433ec7e1b24c1336802cdee94972d826a8f260c622ade11ec89877829",
+        "set_reward_distributor(address,address)": "0x9d575f62420250ec382e1e8e262ddae46d0d6817fab9fde48f9c6efd068e5844",
+        "set_rewards_receiver(address)": "0x3b7c2782c806c66b41a98e6f998aa0056451d31e41d0f7d04238e0ed97a4350b",
+        "unkillGauge()": "0x369ab802731b7a705c4b17c0a1ce3b0dcd2443784a8964630697ae5a707673b2",
+        "user_checkpoint(address)": "0x20929f17a62d4b1c503d54b4f8dc07b1b247aac613fcdfa7cf95d24eaf5e1352",
+        "withdraw(uint256)": "0x2fbeeab59a2e8b7f4a4bb0d5b80177b8aef087f0063d317953cc3b9b3512136e",
+        "withdraw(uint256,address)": "0x56b37309c50be4acbf1a5f2b9bcef0f6605d393dade7d542c6deae09a98c0766"
+      }
+    },
+    "ChildChainGaugeFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(address)": "0x9b9ebe5b6e53727fbefa2541e629822e72cd8c63c1e2911094b42bab112590a0"
+      }
+    }
+  },
+  "20230404-l2-layer0-bridge-forwarder": {
+    "L2LayerZeroBridgeForwarder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "onVeBalBridged(address)": "0xce2b3c1775dd4d071e247526336532cdf865e8ce5c03adcadc631f83b994d051",
+        "onVeBalSupplyUpdate()": "0x82aecea1e20156027af23b1224f4e58630ca673d7465ca993e84795281347811",
+        "setDelegation(address)": "0x42e1b079f84a2299c7a8c44b572da4fd8fe6062c79fcd44c200323c771c65bdb"
+      }
+    }
+  },
+  "20230411-managed-pool-v2": {
+    "ManagedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create((string,string,address[]),(address[],uint256[],uint256,bool,bool,uint256,uint256),address,bytes32)": "0x3bb4fa58c635469d415e8d5e178ef78ff3f1aeef850fd229fb841cd6646a7776",
+        "disable()": "0xad5264d61ee90db6d19d6e36a2c93f6d23112459b8a494e489fa1b8f0b9fac38"
+      }
+    },
+    "ManagedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xc061361fDa32fF5b65F7D98aCC9a87349d3F0768",
+      "actionIds": {
+        "addAllowedAddress(address)": "0xae3a21d45d780f0912917fca114a0dbb0a52369d134f215a781dd0b5cb170a4f",
+        "addToken(address,address,uint256,uint256,address)": "0x2716ddb7affa761a25505a5a2475eebd03f2d2963fe8336c6184fe39a629612d",
+        "collectAumManagementFees()": "0x6c94287cb6c6b28f4f55c0419d28177ebd0325e5078fde777c4f45f661e5c6a2",
+        "disableRecoveryMode()": "0xb2af73aa4d2b082807ca3eee2d0f1404eb4bd2fa6e69cf52fcea761c3f37b5d0",
+        "enableRecoveryMode()": "0x46efbab063c0b0398c10c3e97d24a5263780379231f3ead5ac0eaf2e9cf8a318",
+        "pause()": "0x376ffebf3f39d793f8453bbf54f031a0b93c0455a242f89dc6c534b14016e7c5",
+        "removeAllowedAddress(address)": "0xcd23876f4cbe36975e1809e863af66a34abfa63be4f26d9a80faad9505c556ee",
+        "removeToken(address,uint256,address)": "0x405ca41b626290883e5d9a79d10f64c62c9cb46760aaf2261c92d6c0a497d533",
+        "setCircuitBreakers(address[],uint256[],uint256[],uint256[])": "0x325275527e82086c57a57241bd407a680275fb4ed0f7f7c929b59c00b4bc2299",
+        "setJoinExitEnabled(bool)": "0x15599e27c6387116c7c650818bae7aaddc2ba31b2b21f4af10a1bd7516c7110e",
+        "setManagementAumFeePercentage(uint256)": "0x6a54f867cef58dbed9615ce44a904e292be372d69fe416709876cc55fa99dd74",
+        "setMustAllowlistLPs(bool)": "0x52cc7bc5fd1892697bfb29cc827530010f84535b4c9f8ea962f478d2538538c9",
+        "setSwapEnabled(bool)": "0xd30808f0275d908d48a2f8690fbb9164fdf745a68a8c500748f15f0cceb62c57",
+        "unpause()": "0xd91831ebc42acd1099b238ce67465a2588e7621afb027e9ec1663222355037c1",
+        "updateProtocolFeePercentageCache()": "0x396dd9d2510c854bf06fa81a3f05fa720fab237f6041bb4c0edc4c0cf5a988db",
+        "updateSwapFeeGradually(uint256,uint256,uint256,uint256)": "0x1df8daa0f3b2e85e42cab681fa43182069fc189521fe3116516cb3a38caf49f5",
+        "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0xc5c5ff596df7daeaf2310727f4ece9650c2de758637046a2366488661451ef61"
       }
     }
   }

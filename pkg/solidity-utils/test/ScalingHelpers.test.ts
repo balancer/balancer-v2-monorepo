@@ -3,6 +3,7 @@ import { Contract } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ScalingHelpers', function () {
   let lib: Contract;

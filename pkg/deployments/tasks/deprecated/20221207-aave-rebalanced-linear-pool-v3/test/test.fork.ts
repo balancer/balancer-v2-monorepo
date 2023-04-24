@@ -322,6 +322,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
         MAX_UINT256
       );
 
+      // MockAaveLendingPool comes from 20230410-aave-linear-pool-v5 task
       await setCode(USDT_LENDING_POOL, getArtifact('MockAaveLendingPool').deployedBytecode);
       const mockLendingPool = await deployedAt('MockAaveLendingPool', USDT_LENDING_POOL);
 

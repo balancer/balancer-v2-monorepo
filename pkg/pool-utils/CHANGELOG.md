@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.0.0 (2023-03-23)
+
+### New Features
+
+- Added `_setVersion` to `Version`
+- Protected `ProtocolFeeCache` from reentrancy issues.
+
+### Breaking Changes
+
+- The `_create` function in `BasePoolFactory` now uses the `CREATE2` opcode and takes an extra `salt` argument.
+
 ## 3.1.2 (2023-02-14)
 
 ### Bugfix

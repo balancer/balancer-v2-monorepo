@@ -9,6 +9,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { ANY_ADDRESS, MAX_UINT256, MAX_UINT32 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, maxUint } from '@balancer-labs/v2-helpers/src/numbers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const MAX_UINT224 = maxUint(224);
 const HEAD = 0;

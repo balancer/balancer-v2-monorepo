@@ -2,7 +2,7 @@
 
 Deployment of the `TimelockAuthorizerTransitionMigrator`, responsible for migrating permissions granted to the old authorizer in the time period after the `TimelockAuthorizer` was deployed, while the old authorizer was still in use. 
 
-The `TimelockAuthorizer` deployment can be found [here](../../20221202-timelock-authorizer/). Permissions granted to the old authorizer before the new deployment were already migrated with the `TimelockAuthorizerMigrator` as part of the `TimelockAuthorizer` deployment task.
+The `TimelockAuthorizer` deployment can be found [here](../../deprecated/20221202-timelock-authorizer/). Permissions granted to the old authorizer before the new deployment were already migrated with the `TimelockAuthorizerMigrator` as part of the `TimelockAuthorizer` deployment task.
 
 ## Useful Files
 

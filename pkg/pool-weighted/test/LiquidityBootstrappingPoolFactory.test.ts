@@ -10,6 +10,8 @@ import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { randomBytes } from 'ethers/lib/utils';
 
 describe('LiquidityBootstrappingPoolFactory', function () {
   let tokens: TokenList;
@@ -39,7 +41,16 @@ describe('LiquidityBootstrappingPoolFactory', function () {
 
   async function createPool(swapEnabled = true): Promise<Contract> {
     const receipt = await (
-      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS, swapEnabled)
+      await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        WEIGHTS,
+        POOL_SWAP_FEE_PERCENTAGE,
+        ZERO_ADDRESS,
+        swapEnabled,
+        randomBytes(32)
+      )
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');

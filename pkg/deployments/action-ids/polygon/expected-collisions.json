@@ -1,304 +1,4 @@
 {
-  "0xd03b5f019cefeab0cc74841a0b2668d25343c9fec06eca27675ad685df26b98a": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "approveVault(address,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "approveVault(address,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "approveVault(address,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0x338404bc464c0ef79e228aefddd61b05ced8e87d07e687f8c72c7497332228c8": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])",
-      "useAdaptor": true
-    }
-  ],
-  "0x2046a60fbd4b0651eeccf4569c6fb230e6d80beed585ae1b61c8b82c007432b0": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])",
-      "useAdaptor": true
-    }
-  ],
-  "0x87d8ae738361ffb841d4dc69c5bf3408c08ca31724b52fe29bec34e112ad7fdf": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0xaaa9fa0f8fa65fdbb37ad2b2f161ba8d81bc0aeb8e1c0b4a787bad0afdd75917": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "manageUserBalance((uint8,address,uint256,address,address)[],uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "manageUserBalance((uint8,address,uint256,address,address)[],uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "manageUserBalance((uint8,address,uint256,address,address)[],uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0xd24ed30861879954c746d985c9c30a5a03054fa61b580538c0456c4fb88c9b25": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "setRelayerApproval(address,bool,bytes)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "setRelayerApproval(address,bool,bytes)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "setRelayerApproval(address,bool,bytes)",
-      "useAdaptor": true
-    }
-  ],
-  "0xe1ddd239cf6926b6c4662040df9c3196c29447d3a4495e703211f9938a1a6602": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "stakeETH(address,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "stakeETH(address,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "stakeETH(address,uint256,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0xc3ceca803ba5052b1091832931e56f32dcd895159df788481b2d793bfb5d191f": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "stakeETHAndWrap(address,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "stakeETHAndWrap(address,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "stakeETHAndWrap(address,uint256,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0xe35bf50f5320f0a747b9564025e3e57b647ba554cbbb63edd77c532e90a7779f": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0xd2ffef63710a7acb6e5467a182bafb6ca52c25a773ecffef91ba4d103002d08c": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0xf729f6ba9462a99b6e7adcee87338f1f8c32e49a09d5d098d79833ca3a731f69": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapWstETH(address,address,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapWstETH(address,address,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapWstETH(address,address,uint256,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0xcab56cf0a06b55508156a5c957a970efad1443bad7856dbe80ec11a370f80a89": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
-      "useAdaptor": true
-    }
-  ],
-  "0xedebced60d7da90f933bbff86bec5241792e17792f152ae92fe1114b921c5907": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)",
-      "useAdaptor": true
-    }
-  ],
-  "0x2d09a22fbe9c7d158e7987034d52ddbb9cc91614360aebee2b7672dfb8df50be": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0x312291dc2ab61f228f04827afccdb688df88526f6e687fb057f1a4ea94814e63": [
-    {
-      "taskId": "20211203-batch-relayer",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapStETH(address,address,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapStETH(address,address,uint256,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapStETH(address,address,uint256,uint256)",
-      "useAdaptor": true
-    }
-  ],
   "0x527e5a8917fef9f19f55ea7d3f9dc98c00e4836cf918d2af144d2ef91076a53c": [
     {
       "taskId": "20211208-aave-linear-pool",
@@ -313,59 +13,129 @@
       "useAdaptor": true
     }
   ],
-  "0xf3abcb6ea155a888a74606ff67c6bff943ebdb771fd4c9b3054270d1b225f377": [
+  "0x3e45197c029b241e01ec787908e5cacec9ce62d1230009fc362a356331131b5a": [
     {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapERC4626(address,address,address,uint256,uint256)",
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards()",
       "useAdaptor": true
     },
     {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapERC4626(address,address,address,uint256,uint256)",
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards()",
       "useAdaptor": true
     }
   ],
-  "0x2fcc532607caa6c4ffbe06c537209d617d797054243c744a5b1d4c2b4a9763e3": [
+  "0x582a057ac2a6af38d6210cf82d397b1a8e37d0057c9e3c048a431bea266574fb": [
     {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapUnbuttonToken(address,address,address,uint256,uint256)",
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards(address)",
       "useAdaptor": true
     },
     {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "unwrapUnbuttonToken(address,address,address,uint256,uint256)",
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards(address)",
       "useAdaptor": true
     }
   ],
-  "0xbe28e94386fc7c9c960f7d2609c42ff770438c8fe1728f22eb6060907a029fc3": [
+  "0x1b4a46b44f0b40250b0e39d8dd6d3e554f4cb2b54e4b930f619f1e9e2a5a13a5": [
     {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapERC4626(address,address,address,uint256,uint256)",
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards(address,address)",
       "useAdaptor": true
     },
     {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapERC4626(address,address,address,uint256,uint256)",
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "claim_rewards(address,address)",
       "useAdaptor": true
     }
   ],
-  "0x7808579855c199a6e3403f9de0a8365f49bae414686efc25cf17a54492246927": [
+  "0x959d4174ac0236341e6fd7f85e7fed11948a27fa51e44b1ddeb6486b90e908c1": [
     {
-      "taskId": "20220318-batch-relayer-v2",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapUnbuttonToken(address,address,address,uint256,uint256)",
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256)",
       "useAdaptor": true
     },
     {
-      "taskId": "20220720-batch-relayer-v3",
-      "contractName": "BatchRelayerLibrary",
-      "signature": "wrapUnbuttonToken(address,address,address,uint256,uint256)",
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x570301d2863e5329b64ec737327d88ae17e23af8794ab92d9fccadea1e14c674": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x1b83016646b0a4e0aaf521a2aa574b2a62c83d1d10567379de1dec1c02bd7b1c": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x7e797160239fadbf43f7b4403f0b147757d6a9fe58eeefb888121e0c481f146b": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x363cf2bd771efe16bd206d33a549d4698c4ad202ea6b5bf693722fbe151140a6": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainStreamer",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGauge",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x322d97a0df341a88bf3c100fe4bbda28c2c8a55985af0612371aeba6af9222e6": [
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainLiquidityGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20230316-child-chain-gauge-factory-v2",
+      "contractName": "ChildChainGaugeFactory",
+      "signature": "create(address)",
       "useAdaptor": true
     }
   ]

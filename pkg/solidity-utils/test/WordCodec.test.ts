@@ -5,6 +5,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { bn, negate } from '@balancer-labs/v2-helpers/src/numbers';
 import { random } from 'lodash';
 import { ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { hexZeroPad } from 'ethers/lib/utils';
 
 describe('WordCodec', () => {
   let lib: Contract;
@@ -162,7 +163,7 @@ describe('WordCodec', () => {
   });
 
   describe('insert', () => {
-    const word = bn(random(2 ** 255));
+    const word = hexZeroPad(bn(random(2 ** 255)).toHexString(), 32);
 
     describe('unsigned', () => {
       it('reverts with zero bit length', async () => {
