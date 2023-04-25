@@ -14,7 +14,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     '',
     input.AuthorizerAdaptor,
     input.PreseededBoostCalls.concat(
-      new Array<typeof input.PreseededBoostCalls[number]>(10 - input.PreseededBoostCalls.length).fill({
+      new Array<(typeof input.PreseededBoostCalls)[number]>(10 - input.PreseededBoostCalls.length).fill({
         delegator: ZERO_ADDRESS,
         receiver: ZERO_ADDRESS,
         percentage: 0,
@@ -24,7 +24,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       })
     ),
     input.PreseededApprovalCalls.concat(
-      new Array<typeof input.PreseededApprovalCalls[number]>(10 - input.PreseededApprovalCalls.length).fill({
+      new Array<(typeof input.PreseededApprovalCalls)[number]>(10 - input.PreseededApprovalCalls.length).fill({
         operator: ZERO_ADDRESS,
         delegator: ZERO_ADDRESS,
       })
