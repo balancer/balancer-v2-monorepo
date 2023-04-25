@@ -246,22 +246,6 @@ export type GradualSwapFeeUpdateParams = {
   endSwapFeePercentage: BigNumber;
 };
 
-export type BasePoolRights = {
-  canTransferOwnership: boolean;
-  canChangeSwapFee: boolean;
-  canUpdateMetadata: boolean;
-};
-
-export type ManagedPoolRights = {
-  canChangeWeights: boolean;
-  canDisableSwaps: boolean;
-  canSetMustAllowlistLPs: boolean;
-  canSetCircuitBreakers: boolean;
-  canChangeTokens: boolean;
-  canChangeMgmtFees: boolean;
-  canDisableJoinExit: boolean;
-};
-
 export type ManagedPoolParams = {
   name: string;
   symbol: string;
