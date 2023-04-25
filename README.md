@@ -31,7 +31,7 @@ Active development occurs in this repository, which means some contracts in it m
 
 ## Pre-requisites
 
-The build & test instructions below should work out of the box with Node 18. More specifically, it is recommended to use the LTS version ^18.15; Node 19 is not supported.
+The build & test instructions below should work out of the box with Node 18. More specifically, it is recommended to use the LTS version 18.15.0; Node 19 and higher are not supported. Node 18.16.0 has a [known issue](https://github.com/NomicFoundation/hardhat/issues/3877) that makes the build flaky.
 
 Multiple Node versions can be installed in the same system, either manually or with a version manager.
 One option to quickly select the suggested Node version is using `nvm`, and running:
