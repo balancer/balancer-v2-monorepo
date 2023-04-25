@@ -14,7 +14,6 @@ import {
   RawWeightedPoolDeployment,
   WeightedPoolDeployment,
   WeightedPoolType,
-  BasePoolRights,
 } from '../pools/weighted/types';
 import {
   RawTokenApproval,
@@ -245,21 +244,5 @@ export default {
   toBytes32(value: BigNumberish): string {
     const hexy = ethers.utils.hexlify(value);
     return ethers.utils.hexZeroPad(hexy, 32);
-  },
-
-  toEncodedBasePoolRights(basePoolRights: BasePoolRights): string {
-    let value = 0;
-
-    if (basePoolRights.canTransferOwnership) {
-      value += 1;
-    }
-    if (basePoolRights.canChangeSwapFee) {
-      value += 2;
-    }
-    if (basePoolRights.canUpdateMetadata) {
-      value += 4;
-    }
-
-    return this.toBytes32(value);
   },
 };
