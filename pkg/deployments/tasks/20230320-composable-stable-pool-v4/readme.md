@@ -12,4 +12,5 @@ Supersedes `20230206-composable-stable-pool-v3`.
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Avalanche mainnet addresses](./output/avalanche.json)
 - [`ComposableStablePoolFactory` artifact](./artifact/ComposableStablePoolFactory.json)
