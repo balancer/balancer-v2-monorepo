@@ -82,10 +82,12 @@ describe('GaugeWorkingBalanceHelper', () => {
     });
   }
 
+  const randomInt = (max: number) => Math.floor(Math.random() * Math.floor(max));
+
   function itComputesWorkingBalances() {
     const TOKENLESS_PRODUCTION = 0.4;
     const MAX_BALANCE_RATIO = 1 / TOKENLESS_PRODUCTION;
-    const LOCK_PERIOD = 365 * DAY;
+    const LOCK_PERIOD = (185 + randomInt(180)) * DAY;
     const stakeAmount = fp(5);
     const bptAmount = fp(10);
 
@@ -194,7 +196,7 @@ describe('GaugeWorkingBalanceHelper', () => {
 
     function veBALDecaysOverTime() {
       it('veBAL decays over time', async () => {
-        const [, projecteBalanceBefore] = await workingBalanceHelper.getWorkingBalances(gauge.address, user.address);
+        const [, projectedBalanceBefore] = await workingBalanceHelper.getWorkingBalances(gauge.address, user.address);
         const [, projectedRatioBefore] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
           gauge.address,
           user.address
@@ -205,15 +207,21 @@ describe('GaugeWorkingBalanceHelper', () => {
         await createLockForUser(another, bptAmount.mul(100), LOCK_PERIOD);
         await advanceTime(LOCK_PERIOD / 2);
 
-        const [, projectedBalanceAfter] = await workingBalanceHelper.getWorkingBalances(gauge.address, user.address);
+        const [currentBalanceAfter, projectedBalanceAfter] = await workingBalanceHelper.getWorkingBalances(
+          gauge.address,
+          user.address
+        );
         const [, projectedRatioAfter] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
           gauge.address,
           user.address
         );
 
         // Projections should be uniformly lower
-        expect(projectedBalanceAfter).to.be.lt(projecteBalanceBefore);
+        expect(projectedBalanceAfter).to.be.lt(projectedBalanceBefore);
         expect(projectedRatioAfter).to.be.lt(projectedRatioBefore);
+
+        // Should be equal after checkpoint
+        expect(projectedBalanceBefore).to.be.eq(currentBalanceAfter);
       });
     }
 
@@ -271,12 +279,13 @@ describe('GaugeWorkingBalanceHelper', () => {
 
   context('on L1', () => {
     const relativeWeightCap = fp(0.1);
+    const readTotalSupplyFromVe = true;
 
     sharedBeforeEach('deploy helper', async () => {
-      await deployHelper(true);
+      await deployHelper(readTotalSupplyFromVe);
     });
 
-    itStoresParameters(true);
+    itStoresParameters(readTotalSupplyFromVe);
 
     sharedBeforeEach('deploy gauge and factory', async () => {
       const balTokenAdmin = await deploy('MockBalancerTokenAdmin', { args: [vault.address, BAL.address] });
@@ -305,13 +314,16 @@ describe('GaugeWorkingBalanceHelper', () => {
       deployment: 'test-deployment',
     });
 
+    // Setting the readTotalSupplyFromVE to false reads from the proxy instead
+    const readTotalSupplyFromProxy = false;
+
     let pseudoMinter: Contract;
 
     sharedBeforeEach('deploy helper', async () => {
-      await deployHelper(false);
+      await deployHelper(readTotalSupplyFromProxy);
     });
 
-    itStoresParameters(false);
+    itStoresParameters(readTotalSupplyFromProxy);
 
     sharedBeforeEach('deploy gauge and factory', async () => {
       pseudoMinter = await deploy('L2BalancerPseudoMinter', { args: [vault.address, BAL.address] });
