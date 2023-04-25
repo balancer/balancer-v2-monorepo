@@ -39,10 +39,10 @@ interface IGauge {
 /**
  * @notice Get the current and projected `working_balance` (effective veBAL boosted balance) for a user on a gauge.
  * @dev The `working_balance` can range between 40% and 100% of the nominal user balance on a gauge, depending on the
- * veBAL "voting power" of the user. This value generally decays over time, but will increase with additional veBAL
- * locking.
+ * veBAL "voting power" of the user with respect to the total "voting power" supply. This value generally decays over
+ * time, but will increase with additional veBAL locking.
  *
- * Also compute the working balance ratios: balance/supply, which is more informative when deciding whether
+ * Also computes the working balance ratios: balance/supply, which is more informative when deciding whether
  * it would be advantageous for the user to checkpoint a gauge.
  */
 contract GaugeWorkingBalanceHelper {
@@ -75,8 +75,8 @@ contract GaugeWorkingBalanceHelper {
     /**
      * @dev Returns the VotingEscrow contract associated with the proxy.
      */
-    function getVotingEscrow() external view returns (address) {
-        return address(_veBAL);
+    function getVotingEscrow() external view returns (IERC20) {
+        return _veBAL;
     }
 
     /**
