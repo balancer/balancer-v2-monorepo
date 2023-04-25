@@ -68,7 +68,7 @@ contract ValueCompressionTest is Test {
     ) external {
         maxUncompressedValue = bound(maxUncompressedValue, 1, type(uint256).max);
         value = bound(value, 0, maxUncompressedValue);
-        bitLength = uint8(bound(bitLength, 2, 255));
+        bitLength = uint8(bound(bitLength, uint256(2), 255));
 
         // Prevent internal overflows
         vm.assume(bitLength < 256 - mostSignificantBit(maxUncompressedValue));
