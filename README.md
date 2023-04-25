@@ -31,7 +31,7 @@ Active development occurs in this repository, which means some contracts in it m
 
 ## Pre-requisites
 
-The build & test instructions below should work out of the box with Node 18. More specifically, it is recommended to use the LTS version ^18.12; Node 19 is not supported.
+The build & test instructions below should work out of the box with Node 18. More specifically, it is recommended to use the LTS version ^18.15; Node 19 is not supported.
 
 Multiple Node versions can be installed in the same system, either manually or with a version manager.
 One option to quickly select the suggested Node version is using `nvm`, and running:
@@ -52,8 +52,16 @@ $ git clone --recurse-submodules https://github.com/balancer-labs/balancer-v2-mo
 
 Before any tests can be run, the repository needs to be prepared:
 
+### First time build
+
 ```bash
 $ yarn # install all dependencies
+$ yarn workspace @balancer-labs/balancer-js buildbuild # build balancer-js first
+```
+
+### Regular build
+
+```bash
 $ yarn build # compile all contracts
 ```
 
