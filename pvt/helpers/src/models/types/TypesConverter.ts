@@ -10,11 +10,7 @@ import { Account } from './types';
 import { ProtocolFee, RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
-import {
-  RawWeightedPoolDeployment,
-  WeightedPoolDeployment,
-  WeightedPoolType,
-} from '../pools/weighted/types';
+import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from '../pools/weighted/types';
 import {
   RawTokenApproval,
   RawTokenMint,
