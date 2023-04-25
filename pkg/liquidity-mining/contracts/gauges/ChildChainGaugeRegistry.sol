@@ -48,7 +48,7 @@ contract ChildChainGaugeRegistry is SingletonAuthentication {
         // 2. The gauge is deployed from the registered factory
         ILiquidityGaugeFactory factory = gauge.factory();
         require(_l2BalancerPseudoMinter.isValidGaugeFactory(factory), "INVALID_GAUGE_FACTORY");
-        require(factory.isGaugeFromFactory(address(gauge)), "INVALID_GAUGE");
+        require(factory.isGaugeFromFactory(address(gauge)), "GAUGE_NOT_FROM_FACTORY`");
 
         require(_gauges.add(address(gauge)), "GAUGE_ALREADY_REGISTERED");
 
