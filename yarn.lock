@@ -118,6 +118,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-common@workspace:pvt/common"
   dependencies:
+    "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
     "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.6"
     "@typescript-eslint/eslint-plugin": "npm:^5.41.0"
@@ -209,6 +210,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-helpers@workspace:pvt/helpers"
   dependencies:
+    "@balancer-labs/balancer-js": "workspace:*"
     "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.6"
     "@nomiclabs/hardhat-ethers": "npm:^2.2.1"
     "@types/lodash": "npm:^4.14.186"
