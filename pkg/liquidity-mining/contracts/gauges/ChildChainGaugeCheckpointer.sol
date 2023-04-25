@@ -38,5 +38,7 @@ contract ChildChainGaugeCheckpointer is IL2LayerZeroDelegation {
         }
     }
 
-    function onVeBalSupplyUpdate() external override {}
+    function onVeBalSupplyUpdate() external override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

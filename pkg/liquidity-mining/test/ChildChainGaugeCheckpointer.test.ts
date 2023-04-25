@@ -24,8 +24,6 @@ describe('ChildChainGaugeCheckpointer', () => {
     const vault = await Vault.create();
     const balToken = await deploy('TestBalancerToken', { args: [admin.address, 'Balancer', 'BAL'] });
 
-    const mockBPT = await deploy('v2-solidity-utils/TestToken', { args: ['Balancer Pool Test token', 'BPTST', 18] });
-
     const pseudoMinter = await deploy('L2BalancerPseudoMinter', { args: [vault.address, balToken.address] });
 
     gaugeFactory = await deploy('MockChildChainGaugeFactory', {});

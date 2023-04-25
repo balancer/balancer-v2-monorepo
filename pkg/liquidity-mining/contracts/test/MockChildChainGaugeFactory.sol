@@ -24,7 +24,7 @@ contract MockChildChainGaugeFactory {
         return address(0);
     }
 
-    function isGaugeFromFactory(address ) external pure returns (bool) {
+    function isGaugeFromFactory(address) external pure returns (bool) {
         return true;
     }
 }
