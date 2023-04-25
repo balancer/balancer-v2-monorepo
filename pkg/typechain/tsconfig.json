@@ -1,9 +1,0 @@
-{
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "moduleResolution": "node",
-    "declaration": true,
-    "outDir": "dist"
-  },
-  "include": ["./temp"]
-}
