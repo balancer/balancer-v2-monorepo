@@ -129,24 +129,6 @@ export default class ManagedPool extends WeightedPool {
     } = params;
 
     if (poolType == ManagedPoolType.MOCK_MANAGED_POOL_SETTINGS) {
-      const args = [
-        {
-          tokens: tokens.addresses,
-          normalizedWeights: weights,
-          swapFeePercentage: swapFeePercentage,
-          swapEnabledOnStart: swapEnabledOnStart,
-          mustAllowlistLPs: mustAllowlistLPs,
-          managementAumFeePercentage: managementAumFeePercentage,
-          aumFeeId: aumFeeId,
-        },
-        vault.address,
-        vault.protocolFeesProvider.address,
-        ManagedPool.weightedMathLib.address,
-        ManagedPool.recoverModeHelperLib.address,
-        assetManagers,
-        owner,
-      ];
-
       return deploy('v2-pool-weighted/MockManagedPoolSettings', {
         args: [
           {
@@ -233,7 +215,7 @@ export default class ManagedPool extends WeightedPool {
         factoryVersion,
         poolVersion,
         PAUSE_WINDOW_DURATION,
-        BUFFER_PERIOD_DURATION
+        BUFFER_PERIOD_DURATION,
       ],
       from,
       libraries: {
@@ -294,15 +276,15 @@ export default class ManagedPool extends WeightedPool {
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
     return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);*/
 
-  const salt = randomBytes(32);
-  
-  const tx = await factory
-    .connect(from || ZERO_ADDRESS)
-    .create(poolParams, settingsParams, from?.address || ZERO_ADDRESS, salt);
-  const receipt = await tx.wait();
-  const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
+    const salt = randomBytes(32);
 
-  return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
+    const tx = await factory
+      .connect(from || ZERO_ADDRESS)
+      .create(poolParams, settingsParams, from?.address || ZERO_ADDRESS, salt);
+    const receipt = await tx.wait();
+    const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
+
+    return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
   }
 
   async updateWeightsGradually(
