@@ -7,7 +7,7 @@ import Task from './task';
 
 export const NETWORKS = ['goerli', 'mainnet', 'polygon', 'arbitrum', 'optimism', 'gnosis', 'bsc', 'avalanche'];
 
-export type Network = typeof NETWORKS[number];
+export type Network = (typeof NETWORKS)[number];
 
 export type TaskRunOptions = {
   force?: boolean;
