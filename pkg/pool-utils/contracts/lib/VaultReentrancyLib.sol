@@ -47,7 +47,7 @@ library VaultReentrancyLib {
 
         // read-only re-entrancy protection - this call is always unsuccessful but we need to make sure
         // it didn't fail due to a re-entrancy attack
-        (, bytes memory revertData) = address(vault).staticcall(
+        (, bytes memory revertData) = address(vault).staticcall{ gas: 100_000 }(
             abi.encodeWithSelector(vault.manageUserBalance.selector, new address[](0))
         );
 
