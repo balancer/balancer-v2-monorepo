@@ -66,10 +66,10 @@ contract GaugeWorkingBalanceHelper {
     }
 
     /**
-     * @dev Returns the VotingEscrowDelegationProxy.
+     * @dev Returns the VotingEscrowDelegationProxy (as an IVeDelegation, which is exported).
      */
-    function getVotingEscrowDelegationProxy() external view returns (address) {
-        return address(_veDelegationProxy);
+    function getVotingEscrowDelegationProxy() external view returns (IVeDelegation) {
+        return _veDelegationProxy;
     }
 
     /**
