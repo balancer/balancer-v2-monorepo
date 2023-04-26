@@ -47,6 +47,9 @@ library VaultReentrancyLib {
 
         // read-only re-entrancy protection - this call is always unsuccessful but we need to make sure
         // it didn't fail due to a re-entrancy attack
+        // staticcall seems to consume almost entire gas limit upon revert
+        // which cause entire call to revert with `out of gas` error
+        // putting 100k limit address the issue
         (, bytes memory revertData) = address(vault).staticcall{ gas: 100_000 }(
             abi.encodeWithSelector(vault.manageUserBalance.selector, new address[](0))
         );
