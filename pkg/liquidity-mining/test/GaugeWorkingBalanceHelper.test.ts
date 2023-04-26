@@ -135,7 +135,7 @@ describe('GaugeWorkingBalanceHelper', () => {
     }
 
     function projectedRatioIncreases() {
-      it('current and projected ratios should be 1', async () => {
+      it('projected ratio should be larger than current', async () => {
         const [current, projected] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
           gauge.address,
           user.address
