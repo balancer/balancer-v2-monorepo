@@ -42,18 +42,33 @@ library VaultReentrancyLib {
         // IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
         // _vault.manageUserBalance(noop);
 
-        // solhint-disable-next-line var-name-mixedcase
-        bytes32 REENTRANCY_ERROR_HASH = keccak256(abi.encodeWithSignature("Error(string)", "BAL#400"));
-
-        // read-only re-entrancy protection - this call is always unsuccessful but we need to make sure
-        // it didn't fail due to a re-entrancy attack
-        // staticcall seems to consume almost entire gas limit upon revert
-        // which cause entire call to revert with `out of gas` error
-        // putting 100k limit address the issue
-        (, bytes memory revertData) = address(vault).staticcall{ gas: 100_000 }(
-            abi.encodeWithSelector(vault.manageUserBalance.selector, new address[](0))
+        // Read-only re-entrancy protection.
+        // This call always reverts, but we need to make sure it doesn't fail due to a re-entrancy attack.
+        // Staticcall consumes all gas forwarded to it on a revert. By default,
+        // almost the entire gas is forwarded to the staticcall,
+        // causing the entire call to revert with an 'out of gas' error.
+        // Setting a 2k limit addresses the issue and saves gas.
+        // Revert happens inside the _enterNonReentrant function.
+        //
+        //    function _enterNonReentrant() private {
+        //        // Will revert here in case of reentrancy
+        //        // Results to revertData abi.encodeWithSignature("Error(string)", "BAL#400")
+        //        _require(_status != _ENTERED, Errors.REENTRANCY);
+        //
+        //        // Will revert here because modifies storage
+        //        // Results to empty revertData
+        //        _status = _ENTERED;
+        //    }
+        //
+        // Based on the code in the enterNonReentrant function, there are two
+        // possible revertData values: 0x and abi.encodeWithSignature("Error(string)", "BAL#400").
+        // It is more bytecode and gas efficient to check that revertData is
+        // zero than to compare it to the REENTRANCY revertData. This also prevents
+        // other non-zero errors from passing the check.
+        (bool success, bytes memory revertData) = address(vault).staticcall{ gas: 2_000 }(
+            abi.encodeWithSelector(vault.manageUserBalance.selector, 0)
         );
 
-        _require(keccak256(revertData) != REENTRANCY_ERROR_HASH, Errors.REENTRANCY);
+        _require(success == false && revertData.length == 0, Errors.REENTRANCY);
     }
 }
