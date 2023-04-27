@@ -88,7 +88,7 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      owner: params.owner,
+      owner: this.toAddress(params.owner),
       from: params.from,
     };
   },
