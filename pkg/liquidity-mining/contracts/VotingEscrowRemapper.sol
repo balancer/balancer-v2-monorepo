@@ -44,42 +44,51 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         _votingEscrow = votingEscrow;
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function getVotingEscrow() public view override returns (IVotingEscrow) {
         return _votingEscrow;
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function getOmniVotingEscrow() public view override returns (IOmniVotingEscrow) {
         return _omniVotingEscrow;
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function getTotalSupplyPoint() external view override returns (IVotingEscrow.Point memory) {
         IVotingEscrow votingEscrow = getVotingEscrow();
         uint256 totalSupplyEpoch = votingEscrow.epoch();
         return votingEscrow.point_history(totalSupplyEpoch);
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function getUserPoint(address user) external view override returns (IVotingEscrow.Point memory) {
         IVotingEscrow votingEscrow = getVotingEscrow();
         uint256 userEpoch = votingEscrow.user_point_epoch(user);
         return votingEscrow.user_point_history(user, userEpoch);
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function getLockedEnd(address user) external view override returns (uint256) {
         return getVotingEscrow().locked__end(user);
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function getLocalUser(address remoteUser, uint256 chainId) public view override returns (address) {
         return _remoteToLocalAddressMap[chainId][remoteUser];
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function getRemoteUser(address localUser, uint256 chainId) public view override returns (address) {
         return _localToRemoteAddressMap[chainId][localUser];
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function getRemappingManager(address localUser) public view override returns (address) {
         return _localRemappingManager[localUser];
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function setOmniVotingEscrow(IOmniVotingEscrow omniVotingEscrow) external override authenticate nonReentrant {
         _omniVotingEscrow = omniVotingEscrow;
         emit OmniVotingEscrowUpdated(omniVotingEscrow);
@@ -87,6 +96,7 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
 
     // Remapping Setters
 
+    /// @inheritdoc IVotingEscrowRemapper
     function setNetworkRemapping(
         address localUser,
         address remoteUser,
@@ -184,6 +194,7 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         }
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function setNetworkRemappingManager(address localUser, address delegate)
         external
         override
@@ -196,6 +207,7 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         emit AddressDelegateUpdated(localUser, delegate);
     }
 
+    /// @inheritdoc IVotingEscrowRemapper
     function clearNetworkRemapping(address localUser, uint256 chainId) external payable override nonReentrant {
         require(localUser != address(0), "localUser cannot be zero address");
         require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing");

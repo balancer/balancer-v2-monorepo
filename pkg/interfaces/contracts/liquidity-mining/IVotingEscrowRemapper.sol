@@ -81,8 +81,18 @@ interface IVotingEscrowRemapper {
      */
     function getRemoteUser(address localUser, uint256 chainId) external view returns (address);
 
+    /**
+     * @notice Gets the account that can set a remapping for a given local user.
+     * @param localUser - Address of the user on the local chain which are querying the remapping manager for.
+     */
     function getRemappingManager(address localUser) external view returns (address);
 
+    /**
+     * @notice Sets omni voting escrow address.
+     * @dev This step is required before creating any remapping.
+     * Omni voting escrow is not set in the constructor to avoid circular dependencies.
+     * @param omniVotingEscrow - Address of the omni voting escrow contract.
+     */
     function setOmniVotingEscrow(IOmniVotingEscrow omniVotingEscrow) external;
 
     // Remapping Setters
