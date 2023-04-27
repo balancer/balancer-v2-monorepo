@@ -1,7 +1,6 @@
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -47,7 +46,6 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
 
       pool = await WeightedPool.create({
         vault,
-        poolType: WeightedPoolType.WEIGHTED_POOL,
         tokens,
         weights: WEIGHTS.slice(0, numTokens),
         rateProviders,
@@ -109,7 +107,6 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
 
         sharedBeforeEach(async () => {
           yieldFeeExemptPool = await WeightedPool.create({
-            poolType: WeightedPoolType.WEIGHTED_POOL,
             tokens,
             weights: WEIGHTS.slice(0, numTokens),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
