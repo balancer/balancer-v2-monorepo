@@ -37,7 +37,6 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
         tokens,
         weights,
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-        owner: lp.address, // needed for LBP tests
         ...params,
       });
     } else if (poolType == WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL) {
@@ -46,7 +45,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
         tokens,
         weights,
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-        owner: lp.address, // needed for LBP tests
+        owner: lp.address, // needed for LBP tests (only owner can join)
         ...params,
       });
     }

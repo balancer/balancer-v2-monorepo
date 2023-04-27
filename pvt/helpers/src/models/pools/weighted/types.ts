@@ -13,6 +13,7 @@ export enum WeightedPoolType {
   LIQUIDITY_BOOTSTRAPPING_POOL,
 }
 
+// These names are used in the helpers to fetch the artifacts
 export enum ManagedPoolType {
   MANAGED_POOL = 'ManagedPool',
   MOCK_MANAGED_POOL = 'MockManagedPool',
