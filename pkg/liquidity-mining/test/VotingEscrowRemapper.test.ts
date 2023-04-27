@@ -575,6 +575,9 @@ describe('VotingEscrowRemapper', function () {
       await votingEscrow.setUserPointHistory(local.address, epoch, point);
       expect(await votingEscrow.user_point_epoch(local.address)).to.be.eq(epoch);
       expect(await votingEscrow.user_point_history(local.address, epoch)).to.be.deep.eq(Object.values(point));
+      expect(await votingEscrow.user_point_history(remote, epoch)).to.be.deep.eq(
+        Array(Object.keys(point).length).fill(0)
+      );
     });
 
     it('returns balance for epoch', async () => {
@@ -590,6 +593,7 @@ describe('VotingEscrowRemapper', function () {
       expect(await remapper.getRemoteUser(local.address, 1)).to.equal(remote);
 
       expect(await remapper.getUserPoint(local.address)).to.be.deep.eq(Object.values(point));
+      expect(await remapper.getUserPoint(remote)).to.be.deep.eq(Array(Object.keys(point).length).fill(0));
     });
   });
 
