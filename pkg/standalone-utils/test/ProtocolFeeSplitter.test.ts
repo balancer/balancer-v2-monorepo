@@ -47,7 +47,7 @@ describe('ProtocolFeeSplitter', function () {
   });
 
   sharedBeforeEach('create and initialize pools', async () => {
-    pool = await WeightedPool.create({ vault, tokens, owner: owner.address });
+    pool = await WeightedPool.create({ vault, tokens, owner });
     poolId = await pool.getPoolId();
 
     const initialBalances = Array(tokens.length).fill(fp(1000));
