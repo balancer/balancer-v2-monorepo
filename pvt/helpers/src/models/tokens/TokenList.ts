@@ -86,6 +86,10 @@ export default class TokenList {
     return tokens.map((token) => this.indexOf(token));
   }
 
+  indicesOfTwoTokens(token: number | Token, anotherToken: number | Token): number[] {
+    return [this.indexOf(token), this.indexOf(anotherToken)];
+  }
+
   subset(length: number, offset = 0): TokenList {
     return new TokenList(this.tokens.slice(offset, offset + length));
   }

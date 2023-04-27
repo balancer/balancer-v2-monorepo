@@ -16,14 +16,14 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryModeHelper.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/RecoveryModeHelper.sol";
 import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
 import "./ManagedPool.sol";
-import "../ExternalWeightedMath.sol";
 
 /**
  * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
@@ -45,6 +45,8 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
+        IExternalWeightedMath externalWeightedMath,
+        IRecoveryModeHelper recoveryModeHelper,
         string memory factoryVersion,
         string memory poolVersion,
         uint256 initialPauseWindowDuration,
@@ -59,8 +61,8 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
         )
         Version(factoryVersion)
     {
-        _weightedMath = new ExternalWeightedMath();
-        _recoveryModeHelper = new RecoveryModeHelper(vault);
+        _weightedMath = externalWeightedMath;
+        _recoveryModeHelper = recoveryModeHelper;
         _poolVersion = poolVersion;
     }
 

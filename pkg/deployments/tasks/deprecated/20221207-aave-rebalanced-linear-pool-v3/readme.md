@@ -2,7 +2,7 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
-> Superseded by [Aave Linear Pool V4](../../20230206-aave-rebalanced-linear-pool-v4/), which fixes the reentrancy issue described in this [forum post](https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345).
+> Superseded by [Aave Linear Pool V4](../20230206-aave-rebalanced-linear-pool-v4/), which fixes the reentrancy issue described in this [forum post](https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345).
 
 Deployment of the `AaveLinearPoolFactory`, for Linear Pools with a wrapped aToken. This new deployment includes:
 

@@ -220,7 +220,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v1
         with:
-          node-version: 14
+          node-version: 18.15
       - name: Cache
         uses: actions/cache@v2
         id: cache
@@ -260,5 +260,6 @@ jobs:
           POLYGON_RPC_ENDPOINT: ${{ secrets.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT }}
           ARBITRUM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT }}
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
+          GOERLI_RPC_ENDPOINT: ${{ secrets.GOERLI_ARCHIVE_ENDPOINT }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-deployments test
