@@ -43,7 +43,7 @@ library VaultReentrancyLib {
         // _vault.manageUserBalance(noop);
 
         // Read-only re-entrancy protection.
-        // This call always reverts, but we need to make sure it doesn't fail due to a re-entrancy attack.
+        // This view call always reverts, but we need to make sure it doesn't fail due to a re-entrancy attack.
         // Staticcall consumes all gas forwarded to it on a revert. By default,
         // almost the entire gas is forwarded to the staticcall,
         // causing the entire call to revert with an 'out of gas' error.
