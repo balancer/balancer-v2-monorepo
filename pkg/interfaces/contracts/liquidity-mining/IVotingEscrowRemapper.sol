@@ -34,10 +34,13 @@ interface IVotingEscrowRemapper {
     event RemoteAddressMappingCleared(address indexed remoteUser, uint256 indexed chainId);
     event AddressDelegateUpdated(address indexed localUser, address indexed delegate);
 
+    /**
+     * @notice Returns Voting Escrow contract address.
+     */
     function getVotingEscrow() external view returns (IVotingEscrow);
 
     /**
-     * @notice Returns Omni Voting Escrow contract address).
+     * @notice Returns Omni Voting Escrow contract address.
      */
     function getOmniVotingEscrow() external view returns (IOmniVotingEscrow);
 
@@ -51,6 +54,7 @@ interface IVotingEscrowRemapper {
 
     /**
      * @notice Returns a user's current veBAL balance as a Point. Note that we don't apply any remappings in this query.
+     * The returned value is taken directly from the voting escrow.
      * @dev We return the balance as a Point to allow extrapolating this into the future.
      */
     function getUserPoint(address user) external view returns (IVotingEscrow.Point memory);
@@ -97,6 +101,12 @@ interface IVotingEscrowRemapper {
         uint256 chainId
     ) external payable;
 
+    /**
+     * @notice Sets an address to manage the mapping for a given local user on its behalf.
+     * @dev This is intended to handle contracts which cannot interact with this contract directly.
+     * @param localUser - The address of a contract allowlisted on the `SmartWalletChecker`.
+     * @param delegate - The address which is allowed to manage remote users to be linked to `localUser`.
+     */
     function setNetworkRemappingManager(address localUser, address delegate) external;
 
     /**
