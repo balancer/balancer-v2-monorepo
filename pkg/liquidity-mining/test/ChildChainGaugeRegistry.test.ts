@@ -15,6 +15,7 @@ describe('ChildChainGaugeRegistry', () => {
   let gaugeFactory: Contract;
   let otherGaugeFactory: Contract;
   let gauge: Contract;
+  let gauge2: Contract;
   let otherGauge: Contract;
   let admin: SignerWithAddress, other: SignerWithAddress;
   let registry: Contract;
@@ -60,7 +61,7 @@ describe('ChildChainGaugeRegistry', () => {
     });
 
     registry = await deploy('ChildChainGaugeRegistry', {
-      args: [vault.address, pseudoMinter.address, gaugeFactory.address],
+      args: [pseudoMinter.address, gaugeFactory.address],
     });
 
     await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin.address);
@@ -73,18 +74,34 @@ describe('ChildChainGaugeRegistry', () => {
     let event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
     gauge = await deployedAt('ChildChainGauge', event.args.gauge);
 
+    tx = await gaugeFactory.create(mockBPT.address);
+    event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
+    gauge2 = await deployedAt('ChildChainGauge', event.args.gauge);
+
     tx = await otherGaugeFactory.create(mockBPT.address);
     event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
     otherGauge = await deployedAt('ChildChainGauge', event.args.gauge);
   });
 
   describe('addGauge', () => {
-    it('can add a valid gauge to the registry', async () => {
-      const tx = await registry.connect(admin).addGauge(gauge.address);
+    context('when the gauge, factory and caller are valid', () => {
+      it('can add a valid gauge to the registry', async () => {
+        await expect(registry.connect(admin).addGauge(gauge.address)).not.to.be.reverted;
+      });
 
-      expectEvent.inReceipt(await tx.wait(), 'GaugeAdded', { gauge: gauge.address });
-      expect(await registry.totalGauges()).to.eq(1);
-      expect((await registry.getGauges(0, 1))[0]).to.eq(gauge.address);
+      it('emits an event', async () => {
+        const tx = await registry.connect(admin).addGauge(gauge.address);
+
+        expectEvent.inReceipt(await tx.wait(), 'GaugeAdded', { gauge: gauge.address });
+      });
+
+      it('increments total gauges', async () => {
+        expect(await registry.totalGauges()).to.eq(0);
+
+        await registry.connect(admin).addGauge(gauge.address);
+
+        expect(await registry.totalGauges()).to.eq(1);
+      });
     });
 
     it('only privileged account can add a gauge', async () => {
@@ -130,6 +147,50 @@ describe('ChildChainGaugeRegistry', () => {
 
     it('only privileged account can remove a gauge', async () => {
       await expect(registry.connect(other).removeGauge(gauge.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+  });
+
+  describe('totalGauges', () => {
+    it('returns the correct total number of gauges', async () => {
+      expect(await registry.totalGauges()).to.equal(0);
+
+      await registry.connect(admin).addGauge(gauge.address);
+      expect(await registry.totalGauges()).to.equal(1);
+
+      await registry.connect(admin).addGauge(gauge2.address);
+      expect(await registry.totalGauges()).to.equal(2);
+    });
+  });
+
+  describe('getGauges', () => {
+    sharedBeforeEach('add gauges', async () => {
+      await registry.connect(admin).addGauge(gauge.address);
+      await registry.connect(admin).addGauge(gauge2.address);
+    });
+
+    it('returns a range of gauges', async () => {
+      const startIndex = 0;
+      const endIndex = 2;
+
+      const gauges = await registry.getGauges(startIndex, endIndex);
+      expect(gauges.length).to.equal(endIndex - startIndex);
+
+      expect(gauges[0]).to.equal(gauge.address);
+      expect(gauges[1]).to.equal(gauge2.address);
+    });
+
+    it('reverts if startIndex is greater than endIndex', async () => {
+      const startIndex = 2;
+      const endIndex = 1;
+
+      await expect(registry.getGauges(startIndex, endIndex)).to.be.revertedWith('INVALID_INDICES');
+    });
+
+    it('reverts if endIndex is out of bounds', async () => {
+      const startIndex = 1;
+      const endIndex = 4;
+
+      await expect(registry.getGauges(startIndex, endIndex)).to.be.revertedWith('END_INDEX_OUT_OF_BOUNDS');
     });
   });
 });

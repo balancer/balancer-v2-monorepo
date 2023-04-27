@@ -23,6 +23,11 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IL2LayerZeroDele
 
 import { ChildChainGaugeRegistry } from "./ChildChainGaugeRegistry.sol";
 
+/**
+ * @title ChildChainGaugeCheckpointer
+ * @notice Checkpointer for all child chain gauges.
+ * This contract calls `user_checkpoint` function on every child chain gauge during onVeBalBridged callback.
+ */
 contract ChildChainGaugeCheckpointer is IL2LayerZeroDelegation {
     ChildChainGaugeRegistry private immutable _childChainGaugeRegistry;
 
@@ -30,6 +35,7 @@ contract ChildChainGaugeCheckpointer is IL2LayerZeroDelegation {
         _childChainGaugeRegistry = childChainGaugeRegistry;
     }
 
+    /// @inheritdoc IL2LayerZeroDelegation
     function onVeBalBridged(address user) external override {
         uint256 totalGauges = _childChainGaugeRegistry.totalGauges();
         IChildChainGauge[] memory gauges = _childChainGaugeRegistry.getGauges(0, totalGauges);
@@ -38,6 +44,7 @@ contract ChildChainGaugeCheckpointer is IL2LayerZeroDelegation {
         }
     }
 
+    /// @inheritdoc IL2LayerZeroDelegation
     function onVeBalSupplyUpdate() external override {
         // solhint-disable-previous-line no-empty-blocks
     }

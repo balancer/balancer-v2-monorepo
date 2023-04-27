@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
+import { expect } from 'chai';
 
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -12,6 +13,7 @@ describe('ChildChainGaugeCheckpointer', () => {
   let gaugeFactory: Contract;
   let gauge1: Contract;
   let gauge2: Contract;
+  let gauge3: Contract;
   let checkpointer: Contract;
   let admin: SignerWithAddress, user1: SignerWithAddress, other: SignerWithAddress;
   let registry: Contract;
@@ -29,7 +31,7 @@ describe('ChildChainGaugeCheckpointer', () => {
     gaugeFactory = await deploy('MockChildChainGaugeFactory', {});
 
     registry = await deploy('ChildChainGaugeRegistry', {
-      args: [vault.address, pseudoMinter.address, gaugeFactory.address],
+      args: [pseudoMinter.address, gaugeFactory.address],
     });
 
     await vault.grantPermissionGlobally(await actionId(pseudoMinter, 'addGaugeFactory'), admin.address);
@@ -42,6 +44,8 @@ describe('ChildChainGaugeCheckpointer', () => {
     await gauge1.setMockFactory(gaugeFactory.address);
     gauge2 = await deploy('MockChildChainGauge', { args: ['test'] });
     await gauge2.setMockFactory(gaugeFactory.address);
+    gauge3 = await deploy('MockChildChainGauge', { args: ['test'] });
+    await gauge3.setMockFactory(gaugeFactory.address);
 
     await registry.connect(admin).addGauge(gauge1.address);
     await registry.connect(admin).addGauge(gauge2.address);
@@ -56,10 +60,53 @@ describe('ChildChainGaugeCheckpointer', () => {
       const tx = await checkpointer.connect(other).onVeBalBridged(user1.address);
 
       for (const gauge of [gauge1, gauge2]) {
-        await expectEvent.inIndirectReceipt(await tx.wait(), gauge.interface, 'UserCheckpoint', {
-          user: user1.address,
-        });
+        await expectEvent.inIndirectReceipt(
+          await tx.wait(),
+          gauge.interface,
+          'UserCheckpoint',
+          {
+            user: user1.address,
+          },
+          gauge.address
+        );
       }
+    });
+
+    it('does NOT checkpoint removed gagues', async () => {
+      await registry.connect(admin).removeGauge(gauge2.address);
+      const tx = await checkpointer.connect(other).onVeBalBridged(user1.address);
+
+      expectEvent.inIndirectReceipt(
+        await tx.wait(),
+        gauge1.interface,
+        'UserCheckpoint',
+        {
+          user: user1.address,
+        },
+        gauge1.address
+      );
+
+      expect(expectEvent.arrayFromIndirectReceipt(await tx.wait(), gauge1.interface, 'UserCheckpoint').length).to.eq(1);
+    });
+
+    it('does checkpoint new gagues', async () => {
+      await registry.connect(admin).removeGauge(gauge1.address);
+      await registry.connect(admin).removeGauge(gauge2.address);
+      await registry.connect(admin).addGauge(gauge3.address);
+
+      const tx = await checkpointer.connect(other).onVeBalBridged(user1.address);
+
+      expectEvent.inIndirectReceipt(
+        await tx.wait(),
+        gauge3.interface,
+        'UserCheckpoint',
+        {
+          user: user1.address,
+        },
+        gauge3.address
+      );
+
+      expect(expectEvent.arrayFromIndirectReceipt(await tx.wait(), gauge1.interface, 'UserCheckpoint').length).to.eq(1);
     });
   });
 });
