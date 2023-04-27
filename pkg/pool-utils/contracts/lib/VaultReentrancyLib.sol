@@ -47,7 +47,9 @@ library VaultReentrancyLib {
         // Staticcall consumes all gas forwarded to it on a revert. By default,
         // almost the entire gas is forwarded to the staticcall,
         // causing the entire call to revert with an 'out of gas' error.
-        // Setting a 2k limit addresses the issue and saves gas.
+        // We set the gas limit to 100k, but the exact number doesn't matter because
+        // view calls are free, and non-view calls won't waste
+        // the entire gas limit on a revert.
         // Revert happens inside the _enterNonReentrant function.
         //
         //    function _enterNonReentrant() private {
@@ -65,10 +67,10 @@ library VaultReentrancyLib {
         // It is more bytecode and gas efficient to check that revertData is
         // zero than to compare it to the REENTRANCY revertData. This also prevents
         // other non-zero errors from passing the check.
-        (bool success, bytes memory revertData) = address(vault).staticcall{ gas: 2_000 }(
+        (, bytes memory revertData) = address(vault).staticcall{ gas: 100_000 }(
             abi.encodeWithSelector(vault.manageUserBalance.selector, 0)
         );
 
-        _require(success == false && revertData.length == 0, Errors.REENTRANCY);
+        _require(revertData.length == 0, Errors.REENTRANCY);
     }
 }
