@@ -605,10 +605,6 @@
     }
   },
   "20230316-l2-ve-delegation-proxy": {
-    "NullVotingEscrow": {
-      "useAdaptor": true,
-      "actionIds": {}
-    },
     "VotingEscrowDelegationProxy": {
       "useAdaptor": false,
       "actionIds": {
