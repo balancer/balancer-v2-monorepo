@@ -40,7 +40,7 @@ interface IVotingEscrowRemapper {
     function getVotingEscrow() external view returns (IVotingEscrow);
 
     /**
-     * @notice Returns Omni Voting Escrow contract address.
+     * @notice Returns Omni Voting Escrow contract address, which is the gateway to bridge veBAL balances to L2s.
      */
     function getOmniVotingEscrow() external view returns (IOmniVotingEscrow);
 
@@ -76,7 +76,7 @@ interface IVotingEscrowRemapper {
     /**
      * @notice Returns the remote user corresponding to an address on the local chain.
      * @dev Returns `address(0)` if the remapping does not exist for the given local user.
-     * @param localUser - Address of the user on the local chain which are querying the remote address for.
+     * @param localUser - Address of the user on the local chain corresponding to the remote address.
      * @param chainId - The chain ID of the remote network.
      */
     function getRemoteUser(address localUser, uint256 chainId) external view returns (address);
