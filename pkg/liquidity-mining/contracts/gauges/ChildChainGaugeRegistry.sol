@@ -74,7 +74,7 @@ contract ChildChainGaugeRegistry is SingletonAuthentication, ReentrancyGuard {
 
     /**
      * @notice Remove a registered gauge from the registry and emit a GaugeRemoved event.
-     * If the gauge is not registered, the function reverts with a "GAUGE_NOT_REGISTERED" error.
+     * @dev If the gauge is not registered, the function reverts with a "GAUGE_NOT_REGISTERED" error.
      * Remove a gauge might affect the order of the remaining gauges.
      * @param gauge The gauge to remove from the registry.
      */
