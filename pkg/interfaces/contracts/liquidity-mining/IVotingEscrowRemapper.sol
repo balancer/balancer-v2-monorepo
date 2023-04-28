@@ -68,8 +68,8 @@ interface IVotingEscrowRemapper {
     /**
      * @notice Returns the local user corresponding to an address on a remote chain.
      * @dev Returns `address(0)` if the remapping does not exist for the given remote user.
-     * @param remoteUser - Address of the user on the remote chain which are querying the local address for.
-     * @param chainId - The chain ID of the network which this user is on.
+     * @param remoteUser - Address of the user on the remote chain corresponding to the local address.
+     * @param chainId - The chain ID of the remote network.
      */
     function getLocalUser(address remoteUser, uint256 chainId) external view returns (address);
 
@@ -77,13 +77,13 @@ interface IVotingEscrowRemapper {
      * @notice Returns the remote user corresponding to an address on the local chain.
      * @dev Returns `address(0)` if the remapping does not exist for the given local user.
      * @param localUser - Address of the user on the local chain which are querying the remote address for.
-     * @param chainId - The chain ID of the network which the remote user is on.
+     * @param chainId - The chain ID of the remote network.
      */
     function getRemoteUser(address localUser, uint256 chainId) external view returns (address);
 
     /**
      * @notice Gets the account that can set a remapping for a given local user.
-     * @param localUser - Address of the user on the local chain which are querying the remapping manager for.
+     * @param localUser - Address of the user on the local chain with a remapping manager.
      */
     function getRemappingManager(address localUser) external view returns (address);
 
@@ -112,7 +112,7 @@ interface IVotingEscrowRemapper {
     ) external payable;
 
     /**
-     * @notice Sets an address to manage the mapping for a given local user on its behalf.
+     * @notice Sets an address to manage the mapping for a given local user on their behalf.
      * @dev This is intended to handle contracts which cannot interact with this contract directly.
      * @param localUser - The address of a contract allowlisted on the `SmartWalletChecker`.
      * @param delegate - The address which is allowed to manage remote users to be linked to `localUser`.
@@ -123,7 +123,7 @@ interface IVotingEscrowRemapper {
      * @notice Clears a local user's mapping for a particular network.
      * @dev This is intended to discourage and also allow recovery from griefing attacks.
      * If griefing occurs then the griefer can be removed from Smart Wallet Checker and have their remappings erased.
-     * The local user can always clear its own mapping, regardless the state of the Smart Wallet Checker.
+     * The local user can always clear their own mapping, regardless the state of the Smart Wallet Checker.
      * @param localUser - The address of the local user to erase.
      * @param chainId - The chain id of the network to erase.
      */
