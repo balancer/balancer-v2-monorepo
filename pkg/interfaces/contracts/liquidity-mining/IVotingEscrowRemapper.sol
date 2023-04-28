@@ -30,8 +30,8 @@ import "./IVotingEscrow.sol";
  */
 interface IVotingEscrowRemapper {
     event OmniVotingEscrowUpdated(IOmniVotingEscrow indexed newOmniVotingEscrow);
-    event AddressMappingUpdated(address indexed localUser, address indexed remoteUser, uint256 indexed chainId);
-    event RemoteAddressMappingCleared(address indexed remoteUser, uint256 indexed chainId);
+    event AddressMappingUpdated(address indexed localUser, address indexed remoteUser, uint16 indexed chainId);
+    event RemoteAddressMappingCleared(address indexed remoteUser, uint16 indexed chainId);
     event AddressDelegateUpdated(address indexed localUser, address indexed delegate);
 
     /**
@@ -71,7 +71,7 @@ interface IVotingEscrowRemapper {
      * @param remoteUser - Address of the user on the remote chain corresponding to the local address.
      * @param chainId - The chain ID of the remote network.
      */
-    function getLocalUser(address remoteUser, uint256 chainId) external view returns (address);
+    function getLocalUser(address remoteUser, uint16 chainId) external view returns (address);
 
     /**
      * @notice Returns the remote user corresponding to an address on the local chain.
@@ -79,7 +79,7 @@ interface IVotingEscrowRemapper {
      * @param localUser - Address of the user on the local chain corresponding to the remote address.
      * @param chainId - The chain ID of the remote network.
      */
-    function getRemoteUser(address localUser, uint256 chainId) external view returns (address);
+    function getRemoteUser(address localUser, uint16 chainId) external view returns (address);
 
     /**
      * @notice Gets the account that can set a remapping for a given local user.
@@ -108,7 +108,7 @@ interface IVotingEscrowRemapper {
     function setNetworkRemapping(
         address localUser,
         address remoteUser,
-        uint256 chainId
+        uint16 chainId
     ) external payable;
 
     /**
@@ -127,5 +127,5 @@ interface IVotingEscrowRemapper {
      * @param localUser - The address of the local user to erase.
      * @param chainId - The chain id of the network to erase.
      */
-    function clearNetworkRemapping(address localUser, uint256 chainId) external payable;
+    function clearNetworkRemapping(address localUser, uint16 chainId) external payable;
 }
