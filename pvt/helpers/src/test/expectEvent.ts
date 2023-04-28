@@ -93,7 +93,7 @@ export function notEmitted(receipt: ContractReceipt, eventName: string): void {
   }
 }
 
-export function arrayFromIndirectReceipt(
+function arrayFromIndirectReceipt(
   receipt: ContractReceipt,
   emitter: Interface,
   eventName: string,
