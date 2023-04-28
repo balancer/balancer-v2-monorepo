@@ -86,7 +86,7 @@ describe('ChildChainGaugeCheckpointer', () => {
         gauge1.address
       );
 
-      expect(expectEvent.arrayFromIndirectReceipt(await tx.wait(), gauge1.interface, 'UserCheckpoint').length).to.eq(1);
+      await expectEvent.inIndirectReceipt(await tx.wait(), gauge1.interface, 'UserCheckpoint', undefined, undefined, 1);
     });
 
     it('does checkpoint new gagues', async () => {
@@ -106,7 +106,7 @@ describe('ChildChainGaugeCheckpointer', () => {
         gauge3.address
       );
 
-      expect(expectEvent.arrayFromIndirectReceipt(await tx.wait(), gauge1.interface, 'UserCheckpoint').length).to.eq(1);
+      await expectEvent.inIndirectReceipt(await tx.wait(), gauge1.interface, 'UserCheckpoint', undefined, undefined, 1);
     });
   });
 });
