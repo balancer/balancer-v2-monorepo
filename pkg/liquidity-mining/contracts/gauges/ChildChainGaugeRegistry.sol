@@ -54,7 +54,7 @@ contract ChildChainGaugeRegistry is SingletonAuthentication, ReentrancyGuard {
 
     /**
      * @notice Add a gauge to the registry after validating its legitimacy.
-     * This function checks that the gauge's factory is registered with the L2BalancerPseudoMinter,
+     * @dev This function checks that the gauge's factory is registered with the L2BalancerPseudoMinter,
      * and that the gauge has been deployed from the registered factory. If these conditions are met,
      * the gauge is added to the registry, and a GaugeAdded event is emitted.
      * @param gauge The gauge to add to the registry.
