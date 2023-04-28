@@ -34,8 +34,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
 contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication, ReentrancyGuard {
     IVotingEscrow private immutable _votingEscrow;
     IOmniVotingEscrow private _omniVotingEscrow;
-    mapping(uint256 => mapping(address => address)) private _localToRemoteAddressMap;
-    mapping(uint256 => mapping(address => address)) private _remoteToLocalAddressMap;
+    mapping(uint16 => mapping(address => address)) private _localToRemoteAddressMap;
+    mapping(uint16 => mapping(address => address)) private _remoteToLocalAddressMap;
 
     // Records a mapping from an address to another address which is authorized to manage its remote users.
     mapping(address => address) private _localRemappingManager;
@@ -74,12 +74,12 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
     }
 
     /// @inheritdoc IVotingEscrowRemapper
-    function getLocalUser(address remoteUser, uint256 chainId) public view override returns (address) {
+    function getLocalUser(address remoteUser, uint16 chainId) public view override returns (address) {
         return _remoteToLocalAddressMap[chainId][remoteUser];
     }
 
     /// @inheritdoc IVotingEscrowRemapper
-    function getRemoteUser(address localUser, uint256 chainId) public view override returns (address) {
+    function getRemoteUser(address localUser, uint16 chainId) public view override returns (address) {
         return _localToRemoteAddressMap[chainId][localUser];
     }
 
@@ -100,7 +100,7 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
     function setNetworkRemapping(
         address localUser,
         address remoteUser,
-        uint256 chainId
+        uint16 chainId
     ) external payable override nonReentrant {
         _require(msg.sender == localUser || msg.sender == _localRemappingManager[localUser], Errors.SENDER_NOT_ALLOWED);
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL can set up a mapping");
@@ -158,18 +158,18 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         _remoteToLocalAddressMap[chainId][remoteUser] = localUser;
         _localToRemoteAddressMap[chainId][localUser] = remoteUser;
 
-        emit AddressMappingUpdated(localUser, remoteUser, uint16(chainId));
+        emit AddressMappingUpdated(localUser, remoteUser, chainId);
 
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
-        (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(uint16(chainId), false, "");
+        (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(chainId, false, "");
         if (oldRemoteUser != address(0)) {
             require(msg.value >= nativeFee * 2, "Insufficient ETH to bridge user balance");
             // If there was an old mapping, send balance from (local) oldRemoteUser --> (remote) oldRemoteUser
             // This should clean up the existing bridged balance from localUser --> oldRemoteUser.
             omniVotingEscrow.sendUserBalance{ value: nativeFee }(
                 oldRemoteUser,
-                uint16(chainId),
+                chainId,
                 payable(msg.sender),
                 address(0),
                 ""
@@ -179,13 +179,7 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         }
 
         // Bridge balance for new mapping localUser --> remoteUser.
-        omniVotingEscrow.sendUserBalance{ value: nativeFee }(
-            localUser,
-            uint16(chainId),
-            payable(msg.sender),
-            address(0),
-            ""
-        );
+        omniVotingEscrow.sendUserBalance{ value: nativeFee }(localUser, chainId, payable(msg.sender), address(0), "");
 
         // Send back any leftover ETH to the caller.
         uint256 remainingBalance = address(this).balance;
@@ -208,7 +202,7 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
     }
 
     /// @inheritdoc IVotingEscrowRemapper
-    function clearNetworkRemapping(address localUser, uint256 chainId) external payable override nonReentrant {
+    function clearNetworkRemapping(address localUser, uint16 chainId) external payable override nonReentrant {
         require(localUser != address(0), "localUser cannot be zero address");
         require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing");
         IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
@@ -226,23 +220,11 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
         // Clean up the balance for the old mapping, and bridge the new (default) one.
-        (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(uint16(chainId), false, "");
+        (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(chainId, false, "");
         require(msg.value >= nativeFee * 2, "Insufficient ETH to bridge user balance");
 
-        omniVotingEscrow.sendUserBalance{ value: nativeFee }(
-            localUser,
-            uint16(chainId),
-            payable(msg.sender),
-            address(0),
-            ""
-        );
-        omniVotingEscrow.sendUserBalance{ value: nativeFee }(
-            remoteUser,
-            uint16(chainId),
-            payable(msg.sender),
-            address(0),
-            ""
-        );
+        omniVotingEscrow.sendUserBalance{ value: nativeFee }(localUser, chainId, payable(msg.sender), address(0), "");
+        omniVotingEscrow.sendUserBalance{ value: nativeFee }(remoteUser, chainId, payable(msg.sender), address(0), "");
 
         // Send back any leftover ETH to the caller.
         uint256 remainingBalance = address(this).balance;
