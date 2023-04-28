@@ -12,20 +12,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
-/**
- * @notice Minimal hook interface to be called whenever the veBAL balance of a user is updated in a L2 chain.
- */
-interface IL2LayerZeroDelegation {
-    /**
-     * @notice Called whenever the veBAL balance of a user is updated in a L2 chain.
-     * @param user The user whose veBAL balance was updated.
-     */
-    function onVeBalBridged(address user) external;
+contract MockChildChainGaugeFactory {
+    function getProductVersion() public pure returns (string memory) {
+        return "";
+    }
 
-    /**
-     * @notice Called whenever the total veBAL supply is updated in a L2 chain.
-     */
-    function onVeBalSupplyUpdate() external;
+    function getGaugeImplementation() public pure returns (address) {
+        return address(0);
+    }
+
+    function isGaugeFromFactory(address) external pure returns (bool) {
+        return true;
+    }
 }
