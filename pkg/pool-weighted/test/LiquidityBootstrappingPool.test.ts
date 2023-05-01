@@ -7,10 +7,10 @@ import { MINUTE, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import LiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/LiquidityBootstrappingPool';
 import { range } from 'lodash';
-import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
+import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('LiquidityBootstrappingPool', function () {
@@ -45,7 +45,7 @@ describe('LiquidityBootstrappingPool', function () {
   });
 
   let sender: SignerWithAddress;
-  let pool: WeightedPool;
+  let pool: LiquidityBootstrappingPool;
   const weights = [fp(0.3), fp(0.55), fp(0.1), fp(0.05)];
   const initialBalances = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
@@ -56,41 +56,37 @@ describe('LiquidityBootstrappingPool', function () {
       const params = {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
-        poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
       };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
+      await expect(LiquidityBootstrappingPool.create(params)).to.be.revertedWith('MIN_TOKENS');
     });
 
     it('fails with > 4 tokens', async () => {
       const params = {
         tokens: allTokens,
         weights: tooManyWeights,
-        poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
       };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
+      await expect(LiquidityBootstrappingPool.create(params)).to.be.revertedWith('MAX_TOKENS');
     });
 
     it('fails with mismatched tokens/weights', async () => {
       const params = {
         tokens,
         weights: tooManyWeights,
-        poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
       };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      await expect(LiquidityBootstrappingPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
     });
   });
 
   describe('weights and scaling factors', () => {
     for (const numTokens of range(2, MAX_TOKENS + 1)) {
       context(`with ${numTokens} tokens`, () => {
-        let pool: WeightedPool;
+        let pool: LiquidityBootstrappingPool;
         let tokens: TokenList;
 
         sharedBeforeEach('deploy pool', async () => {
           tokens = allTokens.subset(numTokens);
 
-          pool = await WeightedPool.create({
-            poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
+          pool = await LiquidityBootstrappingPool.create({
             tokens,
             weights: weights.slice(0, numTokens),
           });
@@ -119,10 +115,9 @@ describe('LiquidityBootstrappingPool', function () {
       const params = {
         tokens,
         weights,
-        poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
         fromFactory: true,
       };
-      pool = await WeightedPool.create(params);
+      pool = await LiquidityBootstrappingPool.create(params);
     });
 
     it('has no asset managers', async () => {
@@ -139,10 +134,9 @@ describe('LiquidityBootstrappingPool', function () {
         const params = {
           tokens,
           weights,
-          poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
           swapEnabledOnStart: false,
         };
-        pool = await WeightedPool.create(params);
+        pool = await LiquidityBootstrappingPool.create(params);
       });
 
       it('swaps show disabled on start', async () => {
@@ -160,10 +154,9 @@ describe('LiquidityBootstrappingPool', function () {
           tokens,
           weights,
           owner: owner.address,
-          poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
           swapEnabledOnStart: true,
         };
-        pool = await WeightedPool.create(params);
+        pool = await LiquidityBootstrappingPool.create(params);
       });
 
       it('swaps show enabled on start', async () => {

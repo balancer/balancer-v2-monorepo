@@ -34,7 +34,7 @@ contract PoolRegistrationLibTest is Test {
         );
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            IERC20 token = IERC20(bound(tokenIds[i], 1, 10));
+            IERC20 token = IERC20(bound(tokenIds[i], uint256(1), 10));
             (IERC20[] memory poolTokens, , ) = _vault.getPoolTokens(poolId);
 
             for (uint256 j = 0; j < poolTokens.length; j++) {

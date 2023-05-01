@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+
+- Added `locked__end` to `IVotingEscrow`.
+- Added `IL2LayerZeroDelegation`.
+- Added `IVotingEscrowRemapper`.
+
 ## 0.4.0 (2023-03-15)
 
 - Added `IERC4626`.

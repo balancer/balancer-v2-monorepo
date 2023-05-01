@@ -14,14 +14,14 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import ManagedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/ManagedPool';
 import {
   ExitResult,
   JoinQueryResult,
   JoinResult,
-  RawWeightedPoolDeployment,
+  RawManagedPoolDeployment,
   SwapResult,
-  WeightedPoolType,
+  ManagedPoolType,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
@@ -35,7 +35,7 @@ describe('ManagedPool', function () {
   let allTokens: TokenList;
   let poolTokens: TokenList;
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
-  let pool: WeightedPool;
+  let pool: ManagedPool;
   let vault: Vault;
 
   const poolVersion = JSON.stringify({
@@ -43,6 +43,9 @@ describe('ManagedPool', function () {
     version: '0',
     deployment: 'test-deployment',
   });
+
+  // Asset Management operations
+  const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 
   before('setup signers', async () => {
     [, admin, owner, other] = await ethers.getSigners();
@@ -68,18 +71,18 @@ describe('ManagedPool', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
-  async function deployPool(overrides: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
+  async function deployPool(overrides: RawManagedPoolDeployment = {}): Promise<ManagedPool> {
     const params = {
       vault,
       tokens: poolTokens,
       weights: poolWeights,
       owner: owner.address,
       aumFeeId: ProtocolFee.AUM,
-      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
+      poolType: ManagedPoolType.MOCK_MANAGED_POOL,
       poolVersion,
       ...overrides,
     };
-    return WeightedPool.create(params);
+    return ManagedPool.create(params);
   }
 
   async function getUnscaledBptPrice(tokenIndex: number): Promise<BigNumber> {
@@ -991,9 +994,16 @@ describe('ManagedPool', function () {
 
   context('recovery mode', () => {
     sharedBeforeEach('deploy pool and enter recovery mode', async () => {
-      pool = await deployPool();
+      pool = await deployPool({ assetManagers: Array(initialBalances.length).fill(other.address) });
       await pool.init({ from: other, initialBalances });
       await pool.enableRecoveryMode();
+    });
+
+    it('has expected asset managers', async () => {
+      await poolTokens.asyncEach(async (token) => {
+        const { assetManager } = await vault.getPoolTokenInfo(pool.poolId, token);
+        expect(assetManager).to.be.eq(other.address);
+      });
     });
 
     function itExitsViaRecoveryModeCorrectly() {
@@ -1038,6 +1048,31 @@ describe('ManagedPool', function () {
         await pool.setJoinExitEnabled(owner, false);
       });
 
+      itExitsViaRecoveryModeCorrectly();
+    });
+
+    context('when there is a managed balance', () => {
+      const doubleBalance = initialBalances[0].mul(2);
+
+      sharedBeforeEach(async () => {
+        // Add managed balance equal to the current balance of the first token, effectively doubling it
+        const ops = [
+          { poolId: pool.poolId, kind: OP_KIND.UPDATE, amount: initialBalances[0], token: poolTokens.first.address },
+        ];
+
+        await pool.vault.instance.connect(other).managePoolBalance(ops);
+      });
+
+      it('reflects the increased balance', async () => {
+        const { balances } = await vault.getPoolTokens(pool.poolId);
+
+        // Vault balances include the BPT at index 0, so the "first" token is at 1
+        // Its balance should be doubled, while the next token should be unchanged
+        expect(balances[1]).to.eq(doubleBalance);
+        expect(balances[2]).to.eq(initialBalances[1]);
+      });
+
+      // Should ignore the managed balance, and exit with the cash tokens only
       itExitsViaRecoveryModeCorrectly();
     });
   });

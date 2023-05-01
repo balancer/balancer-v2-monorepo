@@ -383,5 +383,77 @@
         "setDelegation(address)": "0x61d367fdef9a156d543288bab90410760d120019702b0559ffb08a3075aa7d42"
       }
     }
+  },
+  "20230316-child-chain-gauge-factory-v2": {
+    "ChildChainGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "add_reward(address,address)": "0xc94195da697c94d4db5c313ab49b9ea64c8d69137624b163ba0e4540edfd0faf",
+        "claim_rewards()": "0xcf0b2b6798f0926a93b908e27f332cfe675625416f0bb92ba5eba0210e8862ad",
+        "claim_rewards(address)": "0x148bace62efe321c95bf0889b402b31e98d5fdcc6ab4cb39b8098228a82d5c7f",
+        "claim_rewards(address,address)": "0x94551b28e4224ffdc70c9e7178f6ee9e48764fb50cf5635edd9bcf09d2df64c3",
+        "claim_rewards(address,address,uint256[])": "0x434081a11e142e3f0479032c4e19f009cbb7bc38b678eefaad5d85e8ad4d4bc1",
+        "claimable_tokens(address)": "0xcbc01ad744252bfd1bd92c8416347f570de50588e83ca3f41151ff12282294f4",
+        "deposit(uint256)": "0xebd01fda981e6a2ce9baed03021c6bffe3678acf18bd69a03e20b91a8a7ea0f4",
+        "deposit(uint256,address)": "0x9b9e09750c8ed7d83806572801ddf623057c7e95ec15c1ea36c0670827095bed",
+        "deposit_reward_token(address,uint256)": "0x21380fb654397c5c8ef2da7e72d3f1fba75f641eac0456661fbd66e4cb0e430f",
+        "initialize(address,string)": "0xa1bc4ed4f6b2dad893b29de2f74c168de039c9c185df52b709f197c18901f9a5",
+        "killGauge()": "0x8037c51433ec7e1b24c1336802cdee94972d826a8f260c622ade11ec89877829",
+        "set_reward_distributor(address,address)": "0x9d575f62420250ec382e1e8e262ddae46d0d6817fab9fde48f9c6efd068e5844",
+        "set_rewards_receiver(address)": "0x3b7c2782c806c66b41a98e6f998aa0056451d31e41d0f7d04238e0ed97a4350b",
+        "unkillGauge()": "0x369ab802731b7a705c4b17c0a1ce3b0dcd2443784a8964630697ae5a707673b2",
+        "user_checkpoint(address)": "0x20929f17a62d4b1c503d54b4f8dc07b1b247aac613fcdfa7cf95d24eaf5e1352",
+        "withdraw(uint256)": "0x2fbeeab59a2e8b7f4a4bb0d5b80177b8aef087f0063d317953cc3b9b3512136e",
+        "withdraw(uint256,address)": "0x56b37309c50be4acbf1a5f2b9bcef0f6605d393dade7d542c6deae09a98c0766"
+      }
+    },
+    "ChildChainGaugeFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(address)": "0x9b9ebe5b6e53727fbefa2541e629822e72cd8c63c1e2911094b42bab112590a0"
+      }
+    }
+  },
+  "20230404-l2-layer0-bridge-forwarder": {
+    "L2LayerZeroBridgeForwarder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "onVeBalBridged(address)": "0xce2b3c1775dd4d071e247526336532cdf865e8ce5c03adcadc631f83b994d051",
+        "onVeBalSupplyUpdate()": "0x82aecea1e20156027af23b1224f4e58630ca673d7465ca993e84795281347811",
+        "setDelegation(address)": "0x42e1b079f84a2299c7a8c44b572da4fd8fe6062c79fcd44c200323c771c65bdb"
+      }
+    }
+  },
+  "20230411-managed-pool-v2": {
+    "ManagedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create((string,string,address[]),(address[],uint256[],uint256,bool,bool,uint256,uint256),address,bytes32)": "0x3bb4fa58c635469d415e8d5e178ef78ff3f1aeef850fd229fb841cd6646a7776",
+        "disable()": "0xad5264d61ee90db6d19d6e36a2c93f6d23112459b8a494e489fa1b8f0b9fac38"
+      }
+    },
+    "ManagedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xc061361fDa32fF5b65F7D98aCC9a87349d3F0768",
+      "actionIds": {
+        "addAllowedAddress(address)": "0xae3a21d45d780f0912917fca114a0dbb0a52369d134f215a781dd0b5cb170a4f",
+        "addToken(address,address,uint256,uint256,address)": "0x2716ddb7affa761a25505a5a2475eebd03f2d2963fe8336c6184fe39a629612d",
+        "collectAumManagementFees()": "0x6c94287cb6c6b28f4f55c0419d28177ebd0325e5078fde777c4f45f661e5c6a2",
+        "disableRecoveryMode()": "0xb2af73aa4d2b082807ca3eee2d0f1404eb4bd2fa6e69cf52fcea761c3f37b5d0",
+        "enableRecoveryMode()": "0x46efbab063c0b0398c10c3e97d24a5263780379231f3ead5ac0eaf2e9cf8a318",
+        "pause()": "0x376ffebf3f39d793f8453bbf54f031a0b93c0455a242f89dc6c534b14016e7c5",
+        "removeAllowedAddress(address)": "0xcd23876f4cbe36975e1809e863af66a34abfa63be4f26d9a80faad9505c556ee",
+        "removeToken(address,uint256,address)": "0x405ca41b626290883e5d9a79d10f64c62c9cb46760aaf2261c92d6c0a497d533",
+        "setCircuitBreakers(address[],uint256[],uint256[],uint256[])": "0x325275527e82086c57a57241bd407a680275fb4ed0f7f7c929b59c00b4bc2299",
+        "setJoinExitEnabled(bool)": "0x15599e27c6387116c7c650818bae7aaddc2ba31b2b21f4af10a1bd7516c7110e",
+        "setManagementAumFeePercentage(uint256)": "0x6a54f867cef58dbed9615ce44a904e292be372d69fe416709876cc55fa99dd74",
+        "setMustAllowlistLPs(bool)": "0x52cc7bc5fd1892697bfb29cc827530010f84535b4c9f8ea962f478d2538538c9",
+        "setSwapEnabled(bool)": "0xd30808f0275d908d48a2f8690fbb9164fdf745a68a8c500748f15f0cceb62c57",
+        "unpause()": "0xd91831ebc42acd1099b238ce67465a2588e7621afb027e9ec1663222355037c1",
+        "updateProtocolFeePercentageCache()": "0x396dd9d2510c854bf06fa81a3f05fa720fab237f6041bb4c0edc4c0cf5a988db",
+        "updateSwapFeeGradually(uint256,uint256,uint256,uint256)": "0x1df8daa0f3b2e85e42cab681fa43182069fc189521fe3116516cb3a38caf49f5",
+        "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0xc5c5ff596df7daeaf2310727f4ece9650c2de758637046a2366488661451ef61"
+      }
+    }
   }
 }
