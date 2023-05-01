@@ -20,14 +20,14 @@ export default class Token {
   }
 
   static async deployedAt(address: Account): Promise<Token> {
-    const instance = await deployedAt('v2-standalone-utils/TestToken', TypesConverter.toAddress(address));
+    const instance = await deployedAt('v2-solidity-utils/TestToken', TypesConverter.toAddress(address));
     const [name, symbol, decimals] = await Promise.all([instance.name(), instance.symbol(), instance.decimals()]);
     if (symbol === 'WETH') {
       return new Token(
         name,
         symbol,
         decimals,
-        await deployedAt('v2-standalone-utils/TestWETH', TypesConverter.toAddress(address))
+        await deployedAt('v2-solidity-utils/TestWETH', TypesConverter.toAddress(address))
       );
     }
     return new Token(name, symbol, decimals, instance);
