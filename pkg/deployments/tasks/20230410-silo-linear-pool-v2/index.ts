@@ -49,6 +49,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // It is necessary to set a total supply for the shareToken, as well as initialize assetStorage and interestData within the mockSilo.
     // This is done in order to avoid divide by 0 errors when creating a MockSiloLinearPool from the Factory.
     await mockShareToken.setTotalSupply(fp(1));
+
     await mockSilo.setAssetStorage(
       input.WETH,
       mockShareToken.address,
