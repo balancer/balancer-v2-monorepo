@@ -27,7 +27,7 @@ export default class Token {
         name,
         symbol,
         decimals,
-        await deployedAt('v2-solidity-utils/TestWETH', TypesConverter.toAddress(address))
+        await deployedAt('v2-standalone-utils/TestWETH', TypesConverter.toAddress(address))
       );
     }
     return new Token(name, symbol, decimals, instance);
