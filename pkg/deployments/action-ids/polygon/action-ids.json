@@ -757,6 +757,7 @@
     },
     "YearnLinearPoolFactory": {
       "useAdaptor": false,
+      "factoryOutput": "0xdae301690004946424E41051aCe1791083be42a1",
       "actionIds": {
         "create(string,string,address,address,uint256,uint256,address,uint256,bytes32)": "0xaf947869f4f3a0e0363abd32db76969213326c9b60ffff5a505902700c42ffc4",
         "disable()": "0xcc2b10c657509434d44ea360695df848ccc5e8a27438dd62f0ae87b147224965"
