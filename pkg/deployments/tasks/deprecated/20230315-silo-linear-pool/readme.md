@@ -9,6 +9,8 @@ Also has a fix in the `SiloLinearPoolRebalancer` to handle tokens which require 
 
 ## Useful Files
 
+- [Ethereum mainnet addresses](./output/mainnet.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`SiloLinearPool` artifact](./artifact/SiloLinearPool.json)
 - [`SiloLinearPoolFactory` artifact](./artifact/SiloLinearPoolFactory.json)
 - [`SiloLinearPoolRebalancer` artifact](./artifact/SiloLinearPoolRebalancer.json)
