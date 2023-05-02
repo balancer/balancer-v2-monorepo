@@ -1185,5 +1185,27 @@
         "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0xc190da9e735fd438c73158ff1808c577b8b08fde4fbb8ad17ab4ce2f91f67215"
       }
     }
+  },
+  "20230410-silo-linear-pool-v2": {
+    "SiloLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256,bytes32)": "0x579e77e7dee3833bc6d34a93171e6f1f0bee546d49589e2cc8feb17a4ed9d09e",
+        "disable()": "0x821049bb6ef72deac25b0e490181aaefac3d90d182e80bca5c3f65f46efc4f5a"
+      }
+    },
+    "SiloLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x74CBfAF94A3577c539a9dCEE9870A6349a33b34f",
+      "actionIds": {
+        "disableRecoveryMode()": "0xe847f977cd8e10478255ec80b009d4a8fae02c522668d069338bf02a560da410",
+        "enableRecoveryMode()": "0x034ee1ea95f848440061786bb02a338bc9a003951046d1386ab163bf1fb70192",
+        "initialize()": "0xd91dcb993a34e4ffc1e9f08d5bad6c52bf7eee6053339986e011ea57e272a599",
+        "pause()": "0x7b287abc448e5afd5a48345f9648865a2bbe004d466ea8d591e05682400ca48d",
+        "setSwapFeePercentage(uint256)": "0xf7939f1289f961848c0a92aaeff509b21549a13102c87a1c7925a11395ae7d91",
+        "setTargets(uint256,uint256)": "0x40ec418a16c99e189ca5a9d18950f34ffeb1ff1cc484566f9b178c59f304bf31",
+        "unpause()": "0x948a5c55387a33ee9ad6c3237293509060e9e98e09c39580a4fd0e8ac3b79abc"
+      }
+    }
   }
 }
