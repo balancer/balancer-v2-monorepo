@@ -33,7 +33,7 @@
     "lint:solidity": "solhint 'tasks/**/*.sol'",
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "prepack": "yarn build",
-    "test": "yarn build && hardhat test ./**/test/*.ts"
+    "test": "yarn build && hardhat test ./**/test/*.ts",
     "ci:prepare-config": "ts-node ci/prepare-config.ts"
   },
   "devDependencies": {
