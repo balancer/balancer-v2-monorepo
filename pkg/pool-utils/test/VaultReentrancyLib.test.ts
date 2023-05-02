@@ -67,7 +67,7 @@ describe('VaultReentrancyLib', function () {
     });
   }
 
-  describe('VaultReentrancyLib', () => {
+  describe('VaultReentrancyLib - standard non-view pool hooks', () => {
     let authorizer: Contract, vault: Contract, pool: Contract;
     let poolId: string;
 
@@ -191,7 +191,7 @@ describe('VaultReentrancyLib', function () {
     });
   });
 
-  describe('in MockVault context (test protecting view function', () => {
+  describe('VaultReentrancyLib - read-only hooks', () => {
     let vault: Contract, pool: Contract;
 
     sharedBeforeEach('deploy mock vault', async () => {
