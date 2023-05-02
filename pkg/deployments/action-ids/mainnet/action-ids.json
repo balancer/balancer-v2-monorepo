@@ -1196,6 +1196,7 @@
     },
     "GearboxLinearPool": {
       "useAdaptor": false,
+      "factoryOutput": "0x0d05Aac44aC7Dd3c7ba5d50Be93EB884A057d234",
       "actionIds": {
         "disableRecoveryMode()": "0xd9483945f8db426a7e8d9739e1d216d99aa55e950dcb36b6b09ba3eb5fd43a9a",
         "enableRecoveryMode()": "0x6576d422b86632e2199a13b9ed43bb27cfa9a1e2f521809e4a9efaa1853c5c1c",
