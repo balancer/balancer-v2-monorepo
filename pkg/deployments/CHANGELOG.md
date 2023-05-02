@@ -18,8 +18,10 @@
 - Deployed `L2LayerZeroBridgeForwarder` V5 to all networks except Ethereum.
 - Deployed `ManagedPoolFactory` V2 to all networks.
 - Deployed `AuthorizerWithAdaptorValidation` to all networks.
-- Deployed `ERC4626LinearPoolFactoryV4` to Mainnet, Polygon, Optimism and Arbitrum.
+- Deployed `ERC4626LinearPoolFactoryV4` to Mainnet, Polygon, Optimism, Arbitrum and Avalanche.
 - Deployed `YearnLinearPoolFactoryV2` to Mainnet, Polygon, Arbitrum and Optimism.
+- Deployed `AaveLinearPoolFactoryV5` to all networks.
+- Deployed `GearboxLinearPoolFactoryV2` to Mainnet.
 - Deployed `SiloLinearPoolFactoryV2` to Goerli and Mainnet.
 
 ### Deprecations
@@ -29,6 +31,8 @@
 - Deprecated `20230206-composable-stable-pool-v3`.
 - Deprecated `20230206-erc4626-linear-pool-v3`.
 - Deprecated `20230213-yearn-linear-pool`.
+- Deprecated `20230206-aave-rebalanced-linear-pool-v4`.
+- Deprecated `20230213-gearbox-linear-pool`.
 - Deprecated `20230315-silo-linear-pool`.
 
 ## 3.2.0 (2023-02-24)

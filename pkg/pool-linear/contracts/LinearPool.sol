@@ -141,7 +141,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     /**
      * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
      */
-    function _ensureNotInVaultContext() private {
+    function _ensureNotInVaultContext() private view {
         VaultReentrancyLib.ensureNotInVaultContext(getVault());
     }
 

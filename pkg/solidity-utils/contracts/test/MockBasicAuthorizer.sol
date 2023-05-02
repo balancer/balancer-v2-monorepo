@@ -18,8 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IBasicAuthorizer.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "../openzeppelin/EnumerableSet.sol";
+import "../helpers/InputHelpers.sol";
 
 contract MockBasicAuthorizer is IBasicAuthorizer {
     using EnumerableSet for EnumerableSet.AddressSet;
