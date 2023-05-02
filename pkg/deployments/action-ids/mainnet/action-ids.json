@@ -1189,6 +1189,7 @@
   "20230410-aave-linear-pool-v5": {
     "AaveLinearPool": {
       "useAdaptor": false,
+      "factoryOutput": "0x4cE277Df0FeB5B4d07a0ca2ADCf5326E4005239d",
       "actionIds": {
         "disableRecoveryMode()": "0x9bc87a8eb9cc99699c942d367413b64cec46fec372b850ceb1e92dd404262f54",
         "enableRecoveryMode()": "0x4e4c0dff3668c7cab151f99058e4bb3470cdb320ea5c7584fdf29c1bef04a196",
