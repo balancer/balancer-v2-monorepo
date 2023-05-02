@@ -752,6 +752,7 @@
     },
     "AaveLinearPool": {
       "useAdaptor": false,
+      "factoryOutput": "0x0889b240A5876aae745Ac19f1771853671dC5d36",
       "actionIds": {
         "disableRecoveryMode()": "0x9d7dcdac80240446f8ddeba7bb48f71050110d5348b283937c81d407cc71db1c",
         "enableRecoveryMode()": "0x2702eaf4dd3129a963b411073e79e54b4810837c737bfa553cf21c7628be4564",
