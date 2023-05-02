@@ -13,7 +13,7 @@ jobs:
   check-artifacts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile balancer-js
@@ -24,7 +24,7 @@ jobs:
   check-addresses:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile balancer-js
@@ -46,7 +46,7 @@ jobs:
   check-action-ids:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile balancer-js
@@ -68,7 +68,7 @@ jobs:
   markdown-link-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: gaurav-nelson/github-action-markdown-link-check@v1
         with:
           use-quiet-mode: 'yes'
