@@ -18,12 +18,16 @@
 - Deployed `L2LayerZeroBridgeForwarder` V5 to all networks except Ethereum.
 - Deployed `ManagedPoolFactory` V2 to all networks.
 - Deployed `AuthorizerWithAdaptorValidation` to all networks.
+- Deployed `ERC4626LinearPoolFactoryV4` to Mainnet, Polygon, Optimism and Arbitrum.
+- Deployed `SiloLinearPoolFactoryV2` to Goerli and Mainnet.
 
 ### Deprecations
 
 - Deprecated `20220916-batch-relayer-v4`.
 - Deprecated `20230206-weighted-pool-v3`.
 - Deprecated `20230206-composable-stable-pool-v3`.
+- Deprecated `20230206-erc4626-linear-pool-v3`.
+- Deprecated `20230315-silo-linear-pool`.
 
 ## 3.2.0 (2023-02-24)
 
