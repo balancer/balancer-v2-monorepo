@@ -18,7 +18,14 @@ pragma solidity >=0.7.0 <0.9.0;
  * @notice Minimal hook interface to be called whenever the veBAL balance of a user is updated in a L2 chain.
  */
 interface IL2LayerZeroDelegation {
+    /**
+     * @notice Called whenever the veBAL balance of a user is updated in a L2 chain.
+     * @param user The user whose veBAL balance was updated.
+     */
     function onVeBalBridged(address user) external;
 
+    /**
+     * @notice Called whenever the total veBAL supply is updated in a L2 chain.
+     */
     function onVeBalSupplyUpdate() external;
 }
