@@ -7,7 +7,6 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { fp, fpDiv, fpMul, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
 import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFees.behavior';
@@ -47,7 +46,6 @@ describe('WeightedPool', function () {
       tokens = allTokens.subset(2);
 
       pool = await WeightedPool.create({
-        poolType: WeightedPoolType.WEIGHTED_POOL,
         tokens,
         weights: WEIGHTS.slice(0, 2),
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
@@ -88,7 +86,6 @@ describe('WeightedPool', function () {
           tokens = allTokens.subset(numTokens);
 
           pool = await WeightedPool.create({
-            poolType: WeightedPoolType.WEIGHTED_POOL,
             tokens,
             weights: WEIGHTS.slice(0, numTokens),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
@@ -193,7 +190,6 @@ describe('WeightedPool', function () {
       await vault.setSwapFeePercentage(protocolFeePercentage);
 
       pool = await WeightedPool.create({
-        poolType: WeightedPoolType.WEIGHTED_POOL,
         tokens,
         weights: WEIGHTS.slice(0, numTokens),
         swapFeePercentage: swapFeePercentage,

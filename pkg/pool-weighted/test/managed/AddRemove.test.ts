@@ -2,8 +2,7 @@ import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import ManagedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/ManagedPool';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -17,6 +16,7 @@ import { random, range } from 'lodash';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+import { ManagedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 describe('ManagedPoolSettings - add/remove token', () => {
   let vault: Vault;
@@ -50,7 +50,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
   async function createPool(
     numberOfTokens: number,
     weights?: Array<BigNumber>
-  ): Promise<{ pool: WeightedPool; poolTokens: TokenList }> {
+  ): Promise<{ pool: ManagedPool; poolTokens: TokenList }> {
     const poolTokens = allTokens.subset(numberOfTokens);
     if (weights == undefined) {
       // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
@@ -63,15 +63,15 @@ describe('ManagedPoolSettings - add/remove token', () => {
       weights = range(numberOfTokens).map(() => fp(100 + random(50)));
     }
 
-    const pool = await WeightedPool.create({
+    const pool = await ManagedPool.create({
       tokens: poolTokens,
       weights,
       owner: owner.address,
-      poolType: WeightedPoolType.MANAGED_POOL,
       assetManagers: Array(numberOfTokens).fill(assetManager.address),
       swapEnabledOnStart: true,
       vault,
       managementAumFeePercentage: fp(0.1), // Non-zero so that some protocol AUM fees are charged
+      poolType: ManagedPoolType.MOCK_MANAGED_POOL,
     });
 
     return { pool, poolTokens };
@@ -117,7 +117,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
     itAddsATokenAtTokenCount(MAX_TOKENS - 1);
 
     function itAddsATokenAtTokenCount(poolTokenCount: number) {
-      let pool: WeightedPool;
+      let pool: ManagedPool;
       let poolTokens: TokenList;
 
       context(`when the pool has ${poolTokenCount} tokens`, () => {
@@ -456,7 +456,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
     itRemovesATokenAtTokenCount(MAX_TOKENS);
 
     function itRemovesATokenAtTokenCount(poolTokenCount: number) {
-      let pool: WeightedPool;
+      let pool: ManagedPool;
       let poolTokens: TokenList;
 
       context(`when the pool has ${poolTokenCount} tokens`, () => {
