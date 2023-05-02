@@ -212,5 +212,27 @@
         "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0xb699a7c9a044c8cc3420213d2b0b7a2daa070fca50add3f78af2791113a323ff"
       }
     }
+  },
+  "20230409-erc4626-linear-pool-v4": {
+    "ERC4626LinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256,bytes32)": "0x10c8e04d416bd25cb3a52b58323f9a32ef7af13f10e08706b8b07429a78fde45",
+        "disable()": "0x7c86cd148d8db45c3b501ebc46765f768002a524cfb99123f8f21c719f62e38c"
+      }
+    },
+    "ERC4626LinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xEd3E2F496cbCd8e212192fb8D1499842f04A0D19",
+      "actionIds": {
+        "disableRecoveryMode()": "0xef8870acc88fde46bc14769a6c812a201d75f3b65c6ba31eb5c852833028db35",
+        "enableRecoveryMode()": "0xa2685f4f3b3ddc4fd9c791acbb59d64abb16a8597f810c7154b1b9b5a6c3b5a9",
+        "initialize()": "0x7dfc2d33cf535cbc0b43a96a883f4e75e1e79fd81931c0e7ffcb0bf677089c39",
+        "pause()": "0xeefb035cba9a13afe91cf64ecc5036868aa5cc5340cd7c5017def2049ac0b0ba",
+        "setSwapFeePercentage(uint256)": "0x6103010ac84a79eba6f8385214ddd4e50f4d1e8a2210023cfdf373b4bae5450c",
+        "setTargets(uint256,uint256)": "0x94e7c43729e6cb635126e5a736eaa1db1ee39400b329e3d1d9a9dda175f52b1f",
+        "unpause()": "0x478f9d4025883c9d3d66ec622c3d3e90ba16457a940fda57a1c149d8149f2c2b"
+      }
+    }
   }
 }
