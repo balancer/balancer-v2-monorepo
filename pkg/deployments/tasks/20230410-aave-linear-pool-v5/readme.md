@@ -5,12 +5,12 @@ Supersedes `20230206-aave-rebalancer-linear-pool`, modifying the pool factory to
 
 ## Useful Files
 
-- [`AaveLinearPool` artifact](./artifact/AaveLinearPool.json)
-- [`AaveLinearPoolFactory` artifact](./artifact/AaveLinearPoolFactory.json)
-- [`AaveLinearPoolRebalancer` artifact](./artifact/AaveLinearPoolRebalancer.json)
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [BSC mainnet addresses](./output/bsc.json)
+- [`AaveLinearPool` artifact](./artifact/AaveLinearPool.json)
+- [`AaveLinearPoolFactory` artifact](./artifact/AaveLinearPoolFactory.json)
+- [`AaveLinearPoolRebalancer` artifact](./artifact/AaveLinearPoolRebalancer.json)
