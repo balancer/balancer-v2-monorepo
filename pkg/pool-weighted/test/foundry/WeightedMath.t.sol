@@ -26,8 +26,7 @@ contract WeightedMathTest is Test {
     // Match the minimum supply defined in `BasePool`.
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
-    //TODO: remove skip prefix when Foundry issue resolved
-    function skipTestJoinSwaps(
+    function testJoinSwaps(
         uint256[20] memory balancesFixed,
         uint256[20] memory normalizedWeightsFixed,
         uint256 arrayLength,
@@ -104,8 +103,7 @@ contract WeightedMathTest is Test {
         assertEq(joinSwap, properJoin);
     }
 
-    //TODO: remove skip prefix when Foundry issue resolved
-    function skipTestExitSwaps(
+    function testExitSwaps(
         uint256[20] memory balancesFixed,
         uint256[20] memory normalizedWeightsFixed,
         uint256 arrayLength,

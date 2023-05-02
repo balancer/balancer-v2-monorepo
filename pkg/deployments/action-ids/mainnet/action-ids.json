@@ -1186,6 +1186,28 @@
       }
     }
   },
+  "20230409-erc4626-linear-pool-v4": {
+    "ERC4626LinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256,bytes32)": "0xdb2525439ee1656aa0e8f28cf70607fdd3842689cf01a34c18f2523824408758",
+        "disable()": "0x3dcf6c9d1f7bcff6477a09e1a18ca76f56c83f7e055276096a5acdd3c24f022a"
+      }
+    },
+    "ERC4626LinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x9516a2d25958EdB8da246a320f2c7d94A0DBe25d",
+      "actionIds": {
+        "disableRecoveryMode()": "0xcdbdee0d8755700385092bfc71468577a3f4d92e90eee08906454441eeb69625",
+        "enableRecoveryMode()": "0xbc3dae38c30f2686b160e7154a2d649e84222b9f9de4e3347380cd82f23771ad",
+        "initialize()": "0x16bdb45b2542c68f7b6fc8bb4475e011135821deaa7baee5b7933094f1af1073",
+        "pause()": "0x92740abcb256f64824759ca687fc8af1a6ba7900e201545f9b848d3e3daab488",
+        "setSwapFeePercentage(uint256)": "0xd41187a1d52918991b8e886e7e02dadf9f3899ff8134eaa5aa4e8f6a81dec3ab",
+        "setTargets(uint256,uint256)": "0x2c7bba59983418a55126cdd07a69d73a710ec5fa3366f5b12c369de97d43492e",
+        "unpause()": "0x3bd06a773652f06ff2bc008fa41cc79cc7028608b1c1d40254e0f441525e3b43"
+      }
+    }
+  },
   "20230409-gearbox-linear-pool-v2": {
     "GearboxLinearPoolFactory": {
       "useAdaptor": false,
