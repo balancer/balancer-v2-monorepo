@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./IOmniVotingEscrow.sol";
+import "./IOmniVotingEscrowAdaptor.sol";
 import "./IVotingEscrow.sol";
 
 /**
@@ -29,7 +30,6 @@ import "./IVotingEscrow.sol";
  * cannot.
  */
 interface IVotingEscrowRemapper {
-    event OmniVotingEscrowUpdated(IOmniVotingEscrow indexed newOmniVotingEscrow);
     event AddressMappingUpdated(address indexed localUser, address indexed remoteUser, uint16 indexed chainId);
     event RemoteAddressMappingCleared(address indexed remoteUser, uint16 indexed chainId);
     event AddressDelegateUpdated(address indexed localUser, address indexed delegate);
@@ -40,9 +40,10 @@ interface IVotingEscrowRemapper {
     function getVotingEscrow() external view returns (IVotingEscrow);
 
     /**
-     * @notice Returns Omni Voting Escrow contract address, which is the gateway to bridge veBAL balances to L2s.
+     * @notice Returns Omni Voting Escrow Adaptor contract address, which interfaces with the gateway to bridge
+     * veBAL balances to L2s.
      */
-    function getOmniVotingEscrow() external view returns (IOmniVotingEscrow);
+    function getOmniVotingEscrowAdaptor() external view returns (IOmniVotingEscrowAdaptor);
 
     /**
      * @notice Returns the current total supply of veBAL as a Point.
@@ -86,14 +87,6 @@ interface IVotingEscrowRemapper {
      * @param localUser - Address of the user on the local chain with a remapping manager.
      */
     function getRemappingManager(address localUser) external view returns (address);
-
-    /**
-     * @notice Sets omni voting escrow address.
-     * @dev This step is required before creating any remapping.
-     * Omni voting escrow is not set in the constructor to avoid circular dependencies.
-     * @param omniVotingEscrow - Address of the omni voting escrow contract.
-     */
-    function setOmniVotingEscrow(IOmniVotingEscrow omniVotingEscrow) external;
 
     // Remapping Setters
 
