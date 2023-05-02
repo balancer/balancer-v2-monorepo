@@ -3,7 +3,6 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { getPoolAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_INT256, MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
@@ -60,7 +59,6 @@ describe('VaultActions', function () {
     // Pool A: DAI-MKR
     tokensA = new TokenList([tokens.DAI, tokens.MKR]).sort();
     const poolA = await WeightedPool.create({
-      poolType: WeightedPoolType.WEIGHTED_POOL,
       tokens: tokensA,
       vault,
     });
@@ -71,7 +69,6 @@ describe('VaultActions', function () {
     // Pool B: MKR-SNX
     tokensB = new TokenList([tokens.MKR, tokens.SNX]).sort();
     const poolB = await WeightedPool.create({
-      poolType: WeightedPoolType.WEIGHTED_POOL,
       tokens: tokensB,
       vault,
     });
@@ -82,7 +79,6 @@ describe('VaultActions', function () {
     // Pool C: SNX-BAT
     tokensC = new TokenList([tokens.SNX, tokens.BAT]).sort();
     const poolC = await WeightedPool.create({
-      poolType: WeightedPoolType.WEIGHTED_POOL,
       tokens: tokensC,
       vault,
     });

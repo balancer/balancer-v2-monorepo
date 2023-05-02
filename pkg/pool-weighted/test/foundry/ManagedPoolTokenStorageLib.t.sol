@@ -42,7 +42,7 @@ contract ManagedPoolTokenStorageLibTest is Test {
     }
 
     function testScalingFactor(bytes32 tokenState, uint8 decimals) external {
-        decimals = uint8(bound(decimals, 0, 30));
+        decimals = uint8(bound(decimals, uint256(0), 30));
         ERC20 token = new TestToken("Test", "TEST", decimals);
 
         if (decimals <= 18) {
@@ -123,7 +123,7 @@ contract ManagedPoolTokenStorageLibTest is Test {
 
     function testInitializeToken(uint256 normalizedWeight, uint8 decimals) external {
         normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
-        decimals = uint8(bound(decimals, 0, 30));
+        decimals = uint8(bound(decimals, uint256(0), 30));
 
         ERC20 token = new TestToken("Test", "TEST", decimals);
         if (decimals <= 18) {
