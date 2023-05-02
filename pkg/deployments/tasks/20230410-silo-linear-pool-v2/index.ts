@@ -48,25 +48,25 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
     // It is necessary to set a total supply for the shareToken, as well as initialize assetStorage and interestData within the mockSilo.
     // This is done in order to avoid divide by 0 errors when creating a MockSiloLinearPool from the Factory.
-    await mockShareToken.setTotalSupply(fp(1));
-
-    await mockSilo.setAssetStorage(
-      input.WETH,
-      mockShareToken.address,
-      mockShareToken.address,
-      mockShareToken.address,
-      fp(1),
-      fp(1),
-      fp(1)
-    );
-
-    await mockSilo.setInterestData(
-      input.WETH, // interestBearingAsset
-      0, // harvestedProtocolFees
-      0, // protocolFees
-      0, // interestRateTimestamp
-      AssetStatus.Active // status
-    );
+    // await mockShareToken.setTotalSupply(fp(1));
+    //
+    // await mockSilo.setAssetStorage(
+    //   input.WETH,
+    //   mockShareToken.address,
+    //   mockShareToken.address,
+    //   mockShareToken.address,
+    //   fp(1),
+    //   fp(1),
+    //   fp(1)
+    // );
+    //
+    // await mockSilo.setInterestData(
+    //   input.WETH, // interestBearingAsset
+    //   0, // harvestedProtocolFees
+    //   0, // protocolFees
+    //   0, // interestRateTimestamp
+    //   AssetStatus.Active // status
+    // );
 
     // The assetManager, pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare
     // them here to appease the type system. Those are constructor arguments, but automatically provided by the factory.
