@@ -253,6 +253,23 @@ interface ITimelockAuthorizer {
     function getScheduledExecution(uint256 scheduledExecutionId) external view returns (ScheduledExecution memory);
 
     /**
+     * @notice Returns the lifetime count of scheduled executions. The most recent scheduled exectuion will always have
+     * a `scheduledExecutionId` of `getScheduledExecutionsCount() - 1`
+     */
+    function getScheduledExecutionsCount() external view returns (uint256);
+
+    /**
+     * @notice Provides a mechanism to iterate over all scheduled executions. This function will return `limit` items
+     * starting at index `offset`. When `reverseOrder` is true, the items will be returned in reverse chronological
+     * order, with the most recent scheduled execution returned at index 0.
+     */
+    function getScheduledExecutions(
+        uint256 offset,
+        uint256 limit,
+        bool reverseOrder
+    ) external view returns (ITimelockAuthorizer.ScheduledExecution[] memory items);
+
+    /**
      * @notice Returns true if `account` is an executor for `scheduledExecutionId`.
      */
     function isExecutor(uint256 scheduledExecutionId, address account) external view returns (bool);
