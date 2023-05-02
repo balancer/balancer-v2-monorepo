@@ -1,0 +1,6 @@
+{
+  "AaveLinearPoolFactory": "0xE605Dbe1cA85dCdb8F43CEfA427f3B0fC06f6ba6",
+  "MockAaveLendingPool": "0x5F43FBa61f63Fa6bFF101a0A0458cEA917f6B347",
+  "MockStaticAToken": "0xC101dcA301a4011C1F925e9622e749e550a1B667",
+  "MockAaveLinearPool": "0x2Ba5fd37e71Ab2633602553BE7ad5A377D7ED31A"
+}
