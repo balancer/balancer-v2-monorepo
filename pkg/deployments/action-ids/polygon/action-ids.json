@@ -745,6 +745,7 @@
   "20230409-yearn-linear-pool-v2": {
     "YearnLinearPool": {
       "useAdaptor": false,
+      "factoryOutput": "0xdae301690004946424E41051aCe1791083be42a1",
       "actionIds": {
         "disableRecoveryMode()": "0x9bc87a8eb9cc99699c942d367413b64cec46fec372b850ceb1e92dd404262f54",
         "enableRecoveryMode()": "0x4e4c0dff3668c7cab151f99058e4bb3470cdb320ea5c7584fdf29c1bef04a196",
@@ -757,7 +758,6 @@
     },
     "YearnLinearPoolFactory": {
       "useAdaptor": false,
-      "factoryOutput": "0xdae301690004946424E41051aCe1791083be42a1",
       "actionIds": {
         "create(string,string,address,address,uint256,uint256,address,uint256,bytes32)": "0xaf947869f4f3a0e0363abd32db76969213326c9b60ffff5a505902700c42ffc4",
         "disable()": "0xcc2b10c657509434d44ea360695df848ccc5e8a27438dd62f0ae87b147224965"
