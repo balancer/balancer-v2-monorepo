@@ -18,7 +18,7 @@
 - Deployed `L2LayerZeroBridgeForwarder` V5 to all networks except Ethereum.
 - Deployed `ManagedPoolFactory` V2 to all networks.
 - Deployed `AuthorizerWithAdaptorValidation` to all networks.
-- Deployed `ERC4626LinearPoolFactoryV4` to Mainnet, Polygon, Optimism and Arbitrum.
+- Deployed `ERC4626LinearPoolFactoryV4` to Mainnet, Polygon, Optimism, Arbitrum and Avalanche.
 - Deployed `YearnLinearPoolFactoryV2` to Mainnet, Polygon, Arbitrum and Optimism.
 - Deployed `AaveLinearPoolFactoryV5` to all networks.
 - Deployed `GearboxLinearPoolFactoryV2` to Mainnet.
