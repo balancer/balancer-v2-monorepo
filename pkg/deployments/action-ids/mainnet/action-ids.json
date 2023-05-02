@@ -1251,7 +1251,7 @@
         "unpause()": "0x9fbcef66358f7ec1047261be97e63eb957da8d0ec14f4ea177ba232f6df62bc1"
       }
     }
-  }.
+  },
   "20230410-aave-linear-pool-v5": {
     "AaveLinearPool": {
       "useAdaptor": false,
