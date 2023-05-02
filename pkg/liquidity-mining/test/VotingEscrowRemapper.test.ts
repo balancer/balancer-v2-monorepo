@@ -560,6 +560,43 @@ describe('VotingEscrowRemapper', function () {
     });
   });
 
+  describe('getUserPoint', () => {
+    const epoch = 123;
+    const point = {
+      bias: 30,
+      slope: -70,
+      ts: 178,
+      blk: 1567,
+    };
+
+    sharedBeforeEach(async () => {
+      // Mock setters
+      await votingEscrow.setUserPointEpoch(local.address, epoch);
+      await votingEscrow.setUserPointHistory(local.address, epoch, point);
+      expect(await votingEscrow.user_point_epoch(local.address)).to.be.eq(epoch);
+      expect(await votingEscrow.user_point_history(local.address, epoch)).to.be.deep.eq(Object.values(point));
+      expect(await votingEscrow.user_point_history(remote, epoch)).to.be.deep.eq(
+        Array(Object.keys(point).length).fill(0)
+      );
+    });
+
+    it('returns balance for epoch', async () => {
+      expect(await remapper.getUserPoint(local.address)).to.be.deep.eq(Object.values(point));
+    });
+
+    it('is unaffected by remappings', async () => {
+      await smartWalletChecker.connect(admin).allowlistAddress(local.address);
+      await vault.grantPermissionGlobally(await actionId(remapper, 'setOmniVotingEscrow'), admin);
+      await remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
+
+      await remapper.connect(local).setNetworkRemapping(local.address, remote, 1);
+      expect(await remapper.getRemoteUser(local.address, 1)).to.equal(remote);
+
+      expect(await remapper.getUserPoint(local.address)).to.be.deep.eq(Object.values(point));
+      expect(await remapper.getUserPoint(remote)).to.be.deep.eq(Array(Object.keys(point).length).fill(0));
+    });
+  });
+
   describe('getLockedEnd', () => {
     const end = 12345;
 
