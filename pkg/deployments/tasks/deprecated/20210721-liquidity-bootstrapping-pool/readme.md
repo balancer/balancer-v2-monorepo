@@ -11,4 +11,5 @@ Deployment of the `LiquidityBootstrappingPoolFactory`, for Liquidity Bootstrappi
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`LiquidityBootstrappingPoolFactory` artifact](./artifact/LiquidityBootstrappingPoolFactory.json)
