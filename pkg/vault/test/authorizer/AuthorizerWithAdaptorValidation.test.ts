@@ -23,7 +23,7 @@ describe('AuthorizerWithAdaptorValidation', () => {
   });
 
   sharedBeforeEach('deploy actual authorizer and helper', async () => {
-    actualAuthorizer = await deploy('MockBasicAuthorizer', { from: admin });
+    actualAuthorizer = await deploy('v2-solidity-utils/MockBasicAuthorizer', { from: admin });
 
     vault = await deploy('Vault', { args: [actualAuthorizer.address, ZERO_ADDRESS, 0, 0] });
 

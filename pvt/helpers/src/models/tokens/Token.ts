@@ -20,7 +20,7 @@ export default class Token {
   }
 
   static async deployedAt(address: Account): Promise<Token> {
-    const instance = await deployedAt('v2-standalone-utils/TestToken', TypesConverter.toAddress(address));
+    const instance = await deployedAt('v2-solidity-utils/TestToken', TypesConverter.toAddress(address));
     const [name, symbol, decimals] = await Promise.all([instance.name(), instance.symbol(), instance.decimals()]);
     if (symbol === 'WETH') {
       return new Token(
