@@ -12,5 +12,6 @@ Deployment of the `WeightedPoolFactory`, for Weighted Pools of up to 8 tokens, a
 - [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`WeightedPoolFactory` artifact](./artifact/WeightedPoolFactory.json)
 - [`WeightedPool2TokensFactory` artifact](./artifact/WeightedPool2TokensFactory.json)
