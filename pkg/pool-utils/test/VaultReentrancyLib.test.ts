@@ -188,6 +188,14 @@ describe('VaultReentrancyLib', function () {
 
         expectEvent.inReceipt(receipt, 'ProtectedFunctionCalled');
       });
+
+      it('can call a protected view function outside the Vault context', async () => {
+        await expect(pool.protectedViewFunction()).not.to.reverted;
+      });
+
+      it('do not waste gas', async () => {
+        await expect(pool.protectedFunction({ gasLimit: 40000 })).not.to.reverted;
+      });
     });
   });
 
