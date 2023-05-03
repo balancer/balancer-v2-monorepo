@@ -49,7 +49,8 @@ library VaultReentrancyLib {
         // By default, almost the entire available gas is forwarded to the staticcall,
         // causing the entire call to revert with an 'out of gas' error.
         //
-        // We set the gas limit to 10k for the staticcall to avoid wasting gas when it reverts due to storage modification.
+        // We set the gas limit to 10k for the staticcall to
+        // avoid wasting gas when it reverts due to storage modification.
         // `manageUserBalance` is a non-reentrant function in the Vault, so calling it invokes `_enterNonReentrant`
         // in the `ReentrancyGuard` contract, reproduced here:
         //
