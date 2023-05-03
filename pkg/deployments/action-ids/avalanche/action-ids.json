@@ -213,6 +213,73 @@
       }
     }
   },
+  "20230316-l2-balancer-pseudo-minter": {
+    "L2BalancerPseudoMinter": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addGaugeFactory(address)": "0xb6da886ea1e01af4eeb5ab12c50050346b2216644901051e344fa47cb3f03dce",
+        "mint(address)": "0x213c0c7860e8db10e016ae613aab0b2aab10d7355d79111e3d2fe3d3c37b1136",
+        "mintFor(address,address)": "0x19f08d6afbdc9dfa646644385dde86662223b64407a2b63828f3fdbceb612244",
+        "mintMany(address[])": "0x22074be7b9f5446b40c6984d47e1f5f84a7ee90b9ba89a5b128cd42f471b1923",
+        "mintManyFor(address[],address)": "0xdd304054db8c8636a22aa7b2a3956f4cfa77f43b85b8563f68a42f34d40ce74b",
+        "mint_for(address,address)": "0x9432ca5abe771645b5be44c1482c73f781743ecd9823f95724e79d8c7bb3c292",
+        "mint_many(address[8])": "0x86453e3f73e4b6a71c9cfeb4d698b49972b187f884f330a517d650db3510fd73",
+        "removeGaugeFactory(address)": "0x9c1c3e342d13a9220468be9ab248ae98232151cbc402731b0325adb70c94652f",
+        "setMinterApproval(address,bool)": "0x66ad07505f343956f146e8224e7f06e30609461c1d6e08a2b29e3215cb7d51d5",
+        "setMinterApprovalWithSignature(address,bool,address,uint256,uint8,bytes32,bytes32)": "0x327e0216bd7bed1b83c655d16081b51dc6ea0875246d12e4139f7d9a13e71f05",
+        "toggle_approve_mint(address)": "0xec9bbd0dc06fff49a0187004478a9030c8b469067fa4f49f0d0b94bc3bc30d5a"
+      }
+    }
+  },
+  "20230316-l2-ve-delegation-proxy": {
+    "VotingEscrowDelegationProxy": {
+      "useAdaptor": false,
+      "actionIds": {
+        "killDelegation()": "0x912151c4b4c2d56c1c12a3194aca37ab61610b470365313c464beb47f0ef9486",
+        "setDelegation(address)": "0xa1d71cc301546175f03bda02d1a4397c439df4116db7639596bf3b897a6a5293"
+      }
+    }
+  },
+  "20230316-child-chain-gauge-factory-v2": {
+    "ChildChainGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "add_reward(address,address)": "0xde6b942f89e9060258ffab001fdc0f8f8586641c2f0aa6a47ab427260a470059",
+        "claim_rewards()": "0xcc81616174594bad0116a2a67a46f12ae8b8dbfcd5b5d85653f6a9f45a5fac2f",
+        "claim_rewards(address)": "0xe41be765d5cfad11c08db014eff2b4a8d61ef1cdb4e261ccbd8e6ea97547d17a",
+        "claim_rewards(address,address)": "0x2a5475c5eed3f53f037dcf0ea892bc00066b46567f46c5870d8b640cf1295e8d",
+        "claim_rewards(address,address,uint256[])": "0xbe310d1b3796ddca6cf53459cad020bf96085725cef266423cb09eef0e395aa4",
+        "claimable_tokens(address)": "0xddb2e5eb8f7853bb83552651570c8b87b5e79cf7d8db23ead90e3109a9da4c13",
+        "deposit(uint256)": "0xdb7a8a865c118c708b7b58aa81fcd9faf63dcde098724f59f3caa5b83ea396b9",
+        "deposit(uint256,address)": "0xfee5c147eaac04c90e63b7abbfd29e62c6d879a33809b505fdb94ef3eecbaf62",
+        "deposit_reward_token(address,uint256)": "0xab0b9020e618692f256ca998e9958f5a0381801234d37a5a1545017e2488f542",
+        "initialize(address,string)": "0xc0e7c1f6cda94ca87c275bf4d063e10053b0ebbdea218d3710b9d522a4852023",
+        "killGauge()": "0x58a62240278232213392be311889725c8de77ca8633fa45a1b3fd119dbe8f153",
+        "set_reward_distributor(address,address)": "0xce713085e9498c958964f4c64979785027e7a93323b68bca8e87296c696fa643",
+        "set_rewards_receiver(address)": "0xf88d34e766f85b5f4d620e7d4166da3f9bdf13e6f68adbf890b136082b2916e1",
+        "unkillGauge()": "0xefc9aa1da5cd66f85fa5731c6b17ac1454039768bc72d02824d97e09d3eff790",
+        "user_checkpoint(address)": "0xe61e4a449660c19d22eee34923ff4af6ee513588593c3656f981ea1828862192",
+        "withdraw(uint256)": "0x2946cd1bba50d122afcd4e50cb175bc14fd55a6df2e8ab74458327704b001e25",
+        "withdraw(uint256,address)": "0xaccf36b10d9bc422a35c27e5b56d801f71d0e6b5452cf8264f29dfad7550cb3d"
+      }
+    },
+    "ChildChainGaugeFactory": {
+      "useAdaptor": true,
+      "actionIds": {
+        "create(address)": "0xc9dc065d0516a896cd89386058734c4819fe89854b021f97724dcd1ecbc72d8b"
+      }
+    }
+  },
+  "20230404-l2-layer0-bridge-forwarder": {
+    "L2LayerZeroBridgeForwarder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "onVeBalBridged(address)": "0x2fdd9045fac30059763ebffb4a2d4e7fa8b5cd76025fab02024ed6a0c1d4c900",
+        "onVeBalSupplyUpdate()": "0x365c293f3c90209fef705aa0d5ebe674dae4aa40c1597648609934bbd532a5dc",
+        "setDelegation(address)": "0x5422f053f58d9a4e6081a50db3c4ee9352ac0d75c8a92eab99872c45145c00a9"
+      }
+    }
+  },
   "20230410-aave-linear-pool-v5": {
     "AaveLinearPoolFactory": {
       "useAdaptor": false,
