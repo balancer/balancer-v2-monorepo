@@ -451,5 +451,27 @@
         "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0xc5c5ff596df7daeaf2310727f4ece9650c2de758637046a2366488661451ef61"
       }
     }
+  },
+  "20230410-aave-linear-pool-v5": {
+    "AaveLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address,uint256,bytes32)": "0x4b24a0fa7431b398970898b296328b82bc37d7a72904003e95bd15682ac3631f",
+        "disable()": "0x540a18483d139c6574abe9cc2f83f7d983b9e06eba4f560be96ef9504d4c9208"
+      }
+    },
+    "AaveLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x1AC55C31DaC78ca943CB8ebfCa5945ce09e036e2",
+      "actionIds": {
+        "disableRecoveryMode()": "0xfa622d172821d9fc7f1c07dd32678a73e16776f473232c5246ae2eba9dc27568",
+        "enableRecoveryMode()": "0x7461fb1ee70d064228f527e7d349d2429d9abb1a2ec29524519c9dd586f8f3c6",
+        "initialize()": "0x0119982710e8a37f33ece1c11f7b019c060cc6d23431578d22b1beef34643708",
+        "pause()": "0xa35728781c343f60b02e19dc90a50f0991daefdab1c5de541899d28dd065f7bf",
+        "setSwapFeePercentage(uint256)": "0xebcf876ca20204aac10dbecae7d6f0e45424ffc906585668776d5726b64f464a",
+        "setTargets(uint256,uint256)": "0x6b9adb82c7dca579c077378378d6545465281a86df1446c72ddf4c888f40e0b0",
+        "unpause()": "0xbc391e7298e7dfd01972421659778cab74ca955fb19fcd97709b550f86c1cc0d"
+      }
+    }
   }
 }
