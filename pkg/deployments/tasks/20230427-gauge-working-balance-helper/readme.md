@@ -5,5 +5,3 @@ Deployment of the `GaugeWorkingBalanceHelper`, which reads the current and proje
 ## Useful Files
 
 - [`GaugeWorkingBalanceHelper` artifact](./artifact/GaugeWorkingBalanceHelper.json)
-- [`LiquidityGaugeV5` artifact](./artifact/LiquidityGaugeV5.json)
-- [`ChildChainGauge` artifact](./artifact/ChildChainGauge.json)

@@ -78,7 +78,10 @@ describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function (
     ).deployedInstance('BalancerTokenAdmin');
 
     BAL = await BALTokenAdmin.getBalancerToken();
-    gauge = await task.instanceAt('LiquidityGaugeV5', GAUGE);
+
+    const gaugeFactoryTask = new Task('20220325-mainnet-gauge-factory', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    gauge = await gaugeFactoryTask.instanceAt('LiquidityGaugeV5', GAUGE);
+
     lpToken = await deployedAt('IERC20', LP_TOKEN);
   });
 
