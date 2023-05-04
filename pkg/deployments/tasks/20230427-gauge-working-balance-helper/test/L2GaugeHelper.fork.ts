@@ -55,9 +55,13 @@ describeForkTest('GaugeWorkingBalanceHelper-L2', 'polygon', 42002545, function (
     veDelegationProxy = await proxyTask.deployedInstance('VotingEscrowDelegationProxy');
     votingEscrow = await proxyTask.deployedInstance('NullVotingEscrow');
 
-    const gaugeFactoryTask = new Task('20230316-child-chain-gauge-factory-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    const gaugeFactoryTask = new Task(
+      '20230316-child-chain-gauge-factory-v2',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
     gauge = await gaugeFactoryTask.instanceAt('ChildChainGauge', GAUGE);
-  
+
     lpToken = await deployedAt('IERC20', LP_TOKEN);
   });
 
