@@ -17,12 +17,11 @@ describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function (
   let lpTokenHolder: SignerWithAddress;
   let vault: Contract;
   let gauge: Contract;
-  let bal80weth20Pool: Contract;
   let lpToken: Contract;
   let BAL: string;
   let task: Task;
 
-  const VEBAL_POOL = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56';
+  const VEBAL_POOL_ID = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014';
   const VAULT_BOUNTY = fp(1000);
 
   const LP_TOKEN = '0x7B50775383d3D6f0215A8F290f2C9e2eEBBEceb2';
@@ -110,11 +109,12 @@ describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function (
     const MAX_BALANCE_RATIO = 1 / TOKENLESS_PRODUCTION;
 
     before('create veBAL whale', async () => {
-      bal80weth20Pool = await deployedAt('v2-pool-weighted/WeightedPool', VEBAL_POOL);
-      const poolId = await bal80weth20Pool.getPoolId();
+      const [poolAddress] = await vault.getPool(VEBAL_POOL_ID);
+
+      const bal80weth20Pool = await deployedAt('IERC20', poolAddress);
 
       await vault.connect(veBALHolder).joinPool(
-        poolId,
+        VEBAL_POOL_ID,
         veBALHolder.address,
         veBALHolder.address,
         {
