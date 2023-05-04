@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { BasePoolEncoder, SwapKind, toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256, ONES_BYTES32, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
@@ -170,8 +170,13 @@ describeForkTest('WeightedPool V5', 'mainnet', 17188200, function () {
           MAX_UINT256
         );
 
+      // Will not have ManagedPool/ExternalWeightedMath on zkSync, so we can't make the external math library call as in V4.
+      // Hardcode the value returned by the V4 test to verify the swap.
+      const expectedUNI = bn('11482986580631025800000');
+
       // Assert pool swap
       expectEqualWithError(await comp.balanceOf(owner.address), 0, 0.0001);
+      expectEqualWithError(await uni.balanceOf(owner.address), expectedUNI, 0.1);
     });
   });
 
