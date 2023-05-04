@@ -1,37 +1,43 @@
 import Task, { TaskMode } from '../../src/task';
 
 export type GaugeWorkingBalanceHelperDeployment = {
-  L1VotingEscrowDelegationProxy: string;
-  L2VotingEscrowDelegationProxy: string;
+  VotingEscrowDelegationProxy: string;
+  ReadTotalSupplyFromVE: boolean;
 };
 
 export default {
   mainnet: {
-    L1VotingEscrowDelegationProxy: new Task('20220325-ve-delegation', TaskMode.READ_ONLY).output({ network: 'mainnet' })
+    VotingEscrowDelegationProxy: new Task('20220325-ve-delegation', TaskMode.READ_ONLY).output({ network: 'mainnet' })
       .VotingEscrowDelegationProxy,
+    ReadTotalSupplyFromVE: true,
   },
   goerli: {
-    L1VotingEscrowDelegationProxy: new Task('20220325-ve-delegation', TaskMode.READ_ONLY).output({ network: 'goerli' })
+    VotingEscrowDelegationProxy: new Task('20220325-ve-delegation', TaskMode.READ_ONLY).output({ network: 'goerli' })
       .VotingEscrowDelegationProxy,
+    ReadTotalSupplyFromVE: true,
   },
   arbitrum: {
-    L2VotingEscrowDelegationProxy: new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY).output({
+    VotingEscrowDelegationProxy: new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY).output({
       network: 'arbitrum',
     }).VotingEscrowDelegationProxy,
+    ReadTotalSupplyFromVE: false,
   },
   gnosis: {
-    L2VotingEscrowDelegationProxy: new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY).output({
+    VotingEscrowDelegationProxy: new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY).output({
       network: 'gnosis',
     }).VotingEscrowDelegationProxy,
+    ReadTotalSupplyFromVE: false,
   },
   optimism: {
-    L2VotingEscrowDelegationProxy: new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY).output({
+    VotingEscrowDelegationProxy: new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY).output({
       network: 'optimism',
     }).VotingEscrowDelegationProxy,
+    ReadTotalSupplyFromVE: false,
   },
   polygon: {
-    L2VotingEscrowDelegationProxy: new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY).output({
+    VotingEscrowDelegationProxy: new Task('20230316-l2-ve-delegation-proxy', TaskMode.READ_ONLY).output({
       network: 'polygon',
     }).VotingEscrowDelegationProxy,
+    ReadTotalSupplyFromVE: false,
   },
 };
