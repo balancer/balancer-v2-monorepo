@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOmniVotingEscrow.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOmniVotingEscrowAdaptor.sol";
@@ -39,7 +39,7 @@ contract OmniVotingEscrowAdaptor is
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    /// @inheritdoc IOmniVotingEscrowAdaptor
+    /// @inheritdoc IOmniVotingEscrowAdaptorSettings
     function getOmniVotingEscrow() public view override returns (IOmniVotingEscrow) {
         return _omniVotingEscrow;
     }
@@ -66,7 +66,10 @@ contract OmniVotingEscrowAdaptor is
         override
         returns (uint256 nativeFee, uint256 zroFee)
     {
-        return getOmniVotingEscrow().estimateSendUserBalance(_dstChainId, _useZro, _adapterParams);
+        IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
+        require(omniVotingEscrow != IOmniVotingEscrow(0), "Omni voting escrow not set");
+
+        return omniVotingEscrow.estimateSendUserBalance(_dstChainId, _useZro, _adapterParams);
     }
 
     /// @inheritdoc IOmniVotingEscrowAdaptor
@@ -75,7 +78,10 @@ contract OmniVotingEscrowAdaptor is
         uint16 _dstChainId,
         address payable _refundAddress
     ) external payable override {
-        getOmniVotingEscrow().sendUserBalance{ value: msg.value }(
+        IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
+        require(omniVotingEscrow != IOmniVotingEscrow(0), "Omni voting escrow not set");
+
+        omniVotingEscrow.sendUserBalance{ value: msg.value }(
             _user,
             _dstChainId,
             _refundAddress,

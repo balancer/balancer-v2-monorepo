@@ -15,7 +15,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./IOmniVotingEscrow.sol";
-import "../vault/IVault.sol";
 
 /**
  * @dev Interface for `OmniVotingEscrowAdaptor` settings.
@@ -25,6 +24,11 @@ interface IOmniVotingEscrowAdaptorSettings {
     event UseZeroUpdated(bool newUseZero);
     event AdapterParamsUpdated(bytes newAdapterParams);
     event ZeroPaymentAddressUpdated(address indexed newZeroPaymentAddress);
+
+    /**
+     * @notice Returns Omni Voting Escrow contract address, which is the gateway to bridge veBAL balances to L2s.
+     */
+    function getOmniVotingEscrow() external view returns (IOmniVotingEscrow);
 
     /**
      * @notice Returns `_useZro` parameter used in `estimateSendUserBalance`.

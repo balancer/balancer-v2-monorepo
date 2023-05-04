@@ -14,20 +14,13 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./IOmniVotingEscrow.sol";
-import "../vault/IVault.sol";
-
 /**
  * @dev Interface for `OmniVotingEscrowAdaptor`.
  */
 interface IOmniVotingEscrowAdaptor {
     /**
-     * @notice Returns Omni Voting Escrow contract address, which is the gateway to bridge veBAL balances to L2s.
-     */
-    function getOmniVotingEscrow() external view returns (IOmniVotingEscrow);
-
-    /**
      * @notice Forwards `estimateSendUserBalance` call to omni voting escrow.
+     * @dev Reverts if `OmniVotingEscrow` is not set.
      * @param _dstChainId - Destination chain ID.
      * @return nativeFee - Native fee reported by the omni voting escrow.
      * @return zroFee - Layer zero fee reported by the omni voting escrow.
@@ -36,6 +29,7 @@ interface IOmniVotingEscrowAdaptor {
 
     /**
      * @notice Forwards `sendUserBalance` call to omni voting escrow.
+     * @dev Reverts if `OmniVotingEscrow` is not set.
      * @param _user - User to bridge the balance from.
      * @param _dstChainId - Destination chain ID.
      * @param _refundAddress - Address where to return excess ETH.

@@ -106,7 +106,6 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL can set up a mapping");
         require(remoteUser != address(0), "Zero address cannot be used as remote user");
         IOmniVotingEscrowAdaptor omniVotingEscrowAdaptor = getOmniVotingEscrowAdaptor();
-        require(address(omniVotingEscrowAdaptor.getOmniVotingEscrow()) != address(0), "Omni voting escrow not set");
 
         // We keep a 1-to-1 local-remote mapping for each chain.
         // If A --> B (i.e. A in the local chain is remapped to B in the remote chain), to keep the state consistent
@@ -200,7 +199,6 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         require(localUser != address(0), "localUser cannot be zero address");
         require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing");
         IOmniVotingEscrowAdaptor omniVotingEscrowAdaptor = getOmniVotingEscrowAdaptor();
-        require(address(omniVotingEscrowAdaptor.getOmniVotingEscrow()) != address(0), "Omni voting escrow not set");
 
         address remoteUser = _localToRemoteAddressMap[chainId][localUser];
         require(remoteUser != address(0), "Remapping to clear does not exist");
