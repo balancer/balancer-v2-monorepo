@@ -166,7 +166,9 @@ describe('OmniVotingEscrowAdaptor', function () {
 
     context('when omni voting escrow is not set', () => {
       it('reverts', async () => {
-        await expect(omniVotingEscrowAdaptor.estimateSendUserBalance(chainId)).to.be.reverted;
+        await expect(omniVotingEscrowAdaptor.estimateSendUserBalance(chainId)).to.be.revertedWith(
+          'Omni voting escrow not set'
+        );
       });
     });
 
@@ -194,8 +196,9 @@ describe('OmniVotingEscrowAdaptor', function () {
 
     context('when omni voting escrow is not set', () => {
       it('reverts', async () => {
-        await expect(omniVotingEscrowAdaptor.sendUserBalance(user.address, chainId, refunded.address, { value })).to.be
-          .reverted;
+        await expect(
+          omniVotingEscrowAdaptor.sendUserBalance(user.address, chainId, refunded.address, { value })
+        ).to.be.revertedWith('Omni voting escrow not set');
       });
     });
 
