@@ -16,6 +16,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOmniVotingEscrow.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOmniVotingEscrowAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOmniVotingEscrowAdaptorSettings.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
@@ -24,7 +25,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  * @dev Provides the remapper a stable interface to forward requests to the omni voting escrow, while allowing to
  * configure optional parameters and even swap the target omni voting escrow contract.
  */
-contract OmniVotingEscrowAdaptor is IOmniVotingEscrowAdaptor, SingletonAuthentication {
+contract OmniVotingEscrowAdaptor is
+    IOmniVotingEscrowAdaptor,
+    IOmniVotingEscrowAdaptorSettings,
+    SingletonAuthentication
+{
     IOmniVotingEscrow private _omniVotingEscrow;
     bool private _useZro;
     bytes private _adapterParams;
@@ -39,17 +44,17 @@ contract OmniVotingEscrowAdaptor is IOmniVotingEscrowAdaptor, SingletonAuthentic
         return _omniVotingEscrow;
     }
 
-    /// @inheritdoc IOmniVotingEscrowAdaptor
+    /// @inheritdoc IOmniVotingEscrowAdaptorSettings
     function getUseZero() external view override returns (bool) {
         return _useZro;
     }
 
-    /// @inheritdoc IOmniVotingEscrowAdaptor
+    /// @inheritdoc IOmniVotingEscrowAdaptorSettings
     function getAdapterParams() external view override returns (bytes memory) {
         return _adapterParams;
     }
 
-    /// @inheritdoc IOmniVotingEscrowAdaptor
+    /// @inheritdoc IOmniVotingEscrowAdaptorSettings
     function getZeroPaymentAddress() external view override returns (address) {
         return _zroPaymentAddress;
     }
@@ -79,25 +84,25 @@ contract OmniVotingEscrowAdaptor is IOmniVotingEscrowAdaptor, SingletonAuthentic
         );
     }
 
-    /// @inheritdoc IOmniVotingEscrowAdaptor
+    /// @inheritdoc IOmniVotingEscrowAdaptorSettings
     function setOmniVotingEscrow(IOmniVotingEscrow omniVotingEscrow) external override authenticate {
         _omniVotingEscrow = omniVotingEscrow;
         emit OmniVotingEscrowUpdated(omniVotingEscrow);
     }
 
-    /// @inheritdoc IOmniVotingEscrowAdaptor
+    /// @inheritdoc IOmniVotingEscrowAdaptorSettings
     function setUseZero(bool useZro) external override authenticate {
         _useZro = useZro;
         emit UseZeroUpdated(useZro);
     }
 
-    /// @inheritdoc IOmniVotingEscrowAdaptor
+    /// @inheritdoc IOmniVotingEscrowAdaptorSettings
     function setAdapterParams(bytes memory adapterParams) external override authenticate {
         _adapterParams = adapterParams;
         emit AdapterParamsUpdated(adapterParams);
     }
 
-    /// @inheritdoc IOmniVotingEscrowAdaptor
+    /// @inheritdoc IOmniVotingEscrowAdaptorSettings
     function setZeroPaymentAddress(address paymentAddress) external override authenticate {
         _zroPaymentAddress = paymentAddress;
         emit ZeroPaymentAddressUpdated(paymentAddress);
