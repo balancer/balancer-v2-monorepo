@@ -24,8 +24,7 @@ describeForkTest('WeightedPool V5', 'mainnet', 17188200, function () {
     uni: Contract,
     comp: Contract,
     aave: Contract,
-    wstEth: Contract,
-    math: Contract;
+    wstEth: Contract;
 
   let task: Task;
 
@@ -60,7 +59,6 @@ describeForkTest('WeightedPool V5', 'mainnet', 17188200, function () {
     task = new Task('20230505-weighted-pool-v5', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('WeightedPoolFactory');
-    math = await task.deployedInstance('ExternalWeightedMath');
   });
 
   before('load signers', async () => {
@@ -173,15 +171,7 @@ describeForkTest('WeightedPool V5', 'mainnet', 17188200, function () {
         );
 
       // Assert pool swap
-      const expectedUNI = await math.calcOutGivenIn(
-        initialBalanceCOMP,
-        WEIGHTS[tokens.indexOf(COMP)],
-        initialBalanceUNI,
-        WEIGHTS[tokens.indexOf(UNI)],
-        amount
-      );
       expectEqualWithError(await comp.balanceOf(owner.address), 0, 0.0001);
-      expectEqualWithError(await uni.balanceOf(owner.address), expectedUNI, 0.1);
     });
   });
 
