@@ -146,11 +146,14 @@ library LogExpMath {
     function exp(int256 x) internal pure returns (int256) {
         _require(x >= MIN_NATURAL_EXPONENT && x <= MAX_NATURAL_EXPONENT, Errors.INVALID_EXPONENT);
 
+        bool negative = false;
+    
         if (x < 0) {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
             // fits in the signed 256 bit range (as it is larger than MIN_NATURAL_EXPONENT).
             // Fixed point division requires multiplying by ONE_18.
-            return ((ONE_18 * ONE_18) / exp(-x));
+            x = -x;
+            negative = true;
         }
 
         // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
@@ -277,7 +280,9 @@ library LogExpMath {
         // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
         // and then drop two digits to return an 18 decimal value.
 
-        return (((product * seriesSum) / ONE_20) * firstAN) / 100;
+        int256 result = (((product * seriesSum) / ONE_20) * firstAN) / 100;
+
+        return negative ? (ONE_18 * ONE_18) / result : result;
     }
 
     /**
@@ -324,11 +329,14 @@ library LogExpMath {
      * @dev Internal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
      */
     function _ln(int256 a) private pure returns (int256) {
+        bool negative = false;
+
         if (a < ONE_18) {
             // Since ln(a^k) = k * ln(a), we can compute ln(a) as ln(a) = ln((1/a)^(-1)) = - ln((1/a)). If a is less
             // than one, 1/a will be greater than one, and this if statement will not be entered in the recursive call.
             // Fixed point division requires multiplying by ONE_18.
-            return (-_ln((ONE_18 * ONE_18) / a));
+            a = (ONE_18 * ONE_18) / a;
+            negative = true;
         }
 
         // First, we use the fact that ln^(a * b) = ln(a) + ln(b) to decompose ln(a) into a sum of powers of two, which
@@ -454,7 +462,9 @@ library LogExpMath {
         // with 20 decimals). All that remains is to sum these two, and then drop two digits to return a 18 decimal
         // value.
 
-        return (sum + seriesSum) / 100;
+        int256 result = (sum + seriesSum) / 100;
+
+        return negative ? -result : result;
     }
 
     /**
