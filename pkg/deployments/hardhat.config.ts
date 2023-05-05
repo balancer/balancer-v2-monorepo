@@ -292,4 +292,16 @@ export default {
     sources: './tasks',
   },
   warnings: hardhatBaseConfig.warnings,
+  etherscan: {
+    customChains: [
+      {
+        network: 'zkemv',
+        chainId: 1101,
+        urls: {
+          apiURL: 'https://api-zkevm.polygonscan.com/api',
+          browserURL: 'https://zkevm.polygonscan.com/',
+        },
+      },
+    ],
+  },
 };
