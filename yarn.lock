@@ -120,7 +120,7 @@ __metadata:
     "@balancer-labs/v2-interfaces": "workspace:*"
     "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.6"
     "@nomiclabs/hardhat-ethers": "npm:^2.2.1"
-    "@nomiclabs/hardhat-etherscan": "npm:^3.1.7"
+    "@nomiclabs/hardhat-etherscan": "npm:^3.1.2"
     "@nomiclabs/hardhat-vyper": "npm:^3.0.3"
     "@solidity-parser/parser": "npm:^0.14.5"
     "@types/lodash": "npm:^4.14.186"
@@ -1589,7 +1589,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomiclabs/hardhat-etherscan@npm:^3.1.7":
+"@nomiclabs/hardhat-etherscan@npm:^3.1.2":
   version: 3.1.7
   resolution: "@nomiclabs/hardhat-etherscan@npm:3.1.7"
   dependencies:
