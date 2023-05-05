@@ -43,7 +43,7 @@
         "disable()": "0xaaca8c0bc7eb9707e436b61086714bd0b55b4f174ac505a2bcbbe9ba2289c825"
       }
     },
-    "LiquidityBootstrappingPool": {
+    "NoProtocolFeeLiquidityBootstrappingPool": {
       "useAdaptor": false,
       "factoryOutput": "0xe90472ffc41D7Ddf8E3B456bBA748e3F22c59C6f",
       "actionIds": {
@@ -474,6 +474,20 @@
         "updateProtocolFeePercentageCache()": "0x9b1082c9aefd6e580ec824ce392cb617a55c74d9cf9024558dd6010fe85f0b44",
         "updateSwapFeeGradually(uint256,uint256,uint256,uint256)": "0x505d9fdab989cf5bb2ac88dc2df29aa3e08bdf9ff64008ff38b52394fb430fff",
         "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0x476df22730bbcd2cf34500a13848383574fb02b18e6d83ea155fe8d6d58e14b1"
+      }
+    }
+  },
+  "20210418-authorizer": {
+    "Authorizer": {
+      "useAdaptor": true,
+      "actionIds": {
+        "grantRole(bytes32,address)": "0xf62d50a5df5afc8449ee4f87c229ab86e5877a244d9ffcb824f98f500a10391e",
+        "grantRoles(bytes32[],address)": "0x2c43e5d2a67bff453c155e70c4f15197dd1d191c8070a350b0a507e14fe1a67f",
+        "grantRolesToMany(bytes32[],address[])": "0x0075e46524aa4a7327df21c5661b9775bf60a858aec549e8342228cecdb88dc9",
+        "renounceRole(bytes32,address)": "0xccd2805331f71a09077687e812b1f9dcfdc58f04620214cc8c055f4b47df8c1d",
+        "revokeRole(bytes32,address)": "0x82548eb49024443d7e580f26f7fde7b9241e334e3106c192f7cf31dc96e0d50e",
+        "revokeRoles(bytes32[],address)": "0xfe70bf9269c6a2c477d47975628b7a2ed8ae42fe2161255d3054bb62f8f350f2",
+        "revokeRolesFromMany(bytes32[],address[])": "0x0033144b33b8042bf633629e4c271cfcf8ef41fce453bbab55bbe8af50fd1f3c"
       }
     }
   }
