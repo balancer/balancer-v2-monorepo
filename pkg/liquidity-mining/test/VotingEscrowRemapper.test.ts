@@ -14,7 +14,7 @@ describe('VotingEscrowRemapper', function () {
   let vault: Vault;
   let smartWalletChecker: Contract;
   let remapper: Contract;
-  let votingEscrow: Contract, omniVotingEscrow: Contract;
+  let votingEscrow: Contract, omniVotingEscrow: Contract, omniVotingEscrowAdaptor: Contract;
 
   let admin: SignerWithAddress, local: SignerWithAddress, manager: SignerWithAddress, other: SignerWithAddress;
   let remote: string;
@@ -30,8 +30,11 @@ describe('VotingEscrowRemapper', function () {
     smartWalletChecker = await deploy('SmartWalletChecker', { args: [vault.address, []] });
     votingEscrow = await deploy('MockVotingEscrow', { args: [smartWalletChecker.address] });
     omniVotingEscrow = await deploy('MockOmniVotingEscrow');
+    omniVotingEscrowAdaptor = await deploy('OmniVotingEscrowAdaptor', { args: [vault.address] });
 
-    remapper = await deploy('VotingEscrowRemapper', { args: [votingEscrow.address, vault.address] });
+    remapper = await deploy('VotingEscrowRemapper', {
+      args: [vault.address, votingEscrow.address, omniVotingEscrowAdaptor.address],
+    });
   });
 
   sharedBeforeEach('grant permissions over smart wallet checker', async () => {
@@ -44,34 +47,8 @@ describe('VotingEscrowRemapper', function () {
       expect(await remapper.getVotingEscrow()).to.be.eq(votingEscrow.address);
     });
 
-    it('gets null omni voting escrow', async () => {
-      expect(await remapper.getOmniVotingEscrow()).to.be.eq(ZERO_ADDRESS);
-    });
-  });
-
-  describe('setOmniVotingEscrow', () => {
-    context('without permissions', () => {
-      it('reverts', async () => {
-        await expect(remapper.setOmniVotingEscrow(omniVotingEscrow.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
-      });
-    });
-
-    context('with permissions', () => {
-      sharedBeforeEach(async () => {
-        await vault.grantPermissionGlobally(await actionId(remapper, 'setOmniVotingEscrow'), admin);
-      });
-
-      it('sets omni voting escrow', async () => {
-        await remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
-        expect(await remapper.getOmniVotingEscrow()).to.be.eq(omniVotingEscrow.address);
-      });
-
-      it('emits an event', async () => {
-        const tx = await remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
-        expectEvent.inReceipt(await tx.wait(), 'OmniVotingEscrowUpdated', {
-          newOmniVotingEscrow: omniVotingEscrow.address,
-        });
-      });
+    it('gets omni voting escrow adaptor', async () => {
+      expect(await remapper.getOmniVotingEscrowAdaptor()).to.be.eq(omniVotingEscrowAdaptor.address);
     });
   });
 
@@ -81,7 +58,7 @@ describe('VotingEscrowRemapper', function () {
     let caller: SignerWithAddress;
 
     sharedBeforeEach(async () => {
-      await vault.grantPermissionGlobally(await actionId(remapper, 'setOmniVotingEscrow'), admin);
+      await vault.grantPermissionGlobally(await actionId(omniVotingEscrowAdaptor, 'setOmniVotingEscrow'), admin);
     });
 
     context('incorrect setup: deny-listed by smart wallet checker and OmniVotingEscrow unset', () => {
@@ -99,10 +76,10 @@ describe('VotingEscrowRemapper', function () {
       });
     });
 
-    context('correct setup: allow-listed by smart wallet checker and OmniVotingEscrow set', () => {
+    context('correct setup: allow-listed by smart wallet checker and OmniVotingEscrow set in the adaptor', () => {
       sharedBeforeEach(async () => {
         await smartWalletChecker.connect(admin).allowlistAddress(local.address);
-        await remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
+        await omniVotingEscrowAdaptor.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
       });
 
       context('when the caller is the local user', () => {
@@ -246,7 +223,7 @@ describe('VotingEscrowRemapper', function () {
           const nativeFee = 20;
 
           sharedBeforeEach(async () => {
-            await omniVotingEscrow.setNativeFee(nativeFee);
+            await omniVotingEscrow.setNativeFee(nativeFee, chainId);
           });
 
           context('when the value sent does not cover the minimum fee amount', () => {
@@ -409,7 +386,7 @@ describe('VotingEscrowRemapper', function () {
 
       it('returns the unspent ETH', async () => {
         const nativeFee = 30;
-        await omniVotingEscrow.setNativeFee(nativeFee);
+        await omniVotingEscrow.setNativeFee(nativeFee, chainId);
 
         const balanceBefore = await ethers.provider.getBalance(caller.address);
         const receipt = await (await doClearMap(nativeFee * 1000)).wait();
@@ -424,8 +401,8 @@ describe('VotingEscrowRemapper', function () {
 
     sharedBeforeEach('setup mapping and denylist user', async () => {
       await smartWalletChecker.connect(admin).allowlistAddress(local.address);
-      await vault.grantPermissionGlobally(await actionId(remapper, 'setOmniVotingEscrow'), admin);
-      await remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
+      await vault.grantPermissionGlobally(await actionId(omniVotingEscrowAdaptor, 'setOmniVotingEscrow'), admin);
+      await omniVotingEscrowAdaptor.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
 
       await remapper.connect(local).setNetworkRemapping(local.address, remote, chainId);
       await remapper.connect(local).setNetworkRemapping(local.address, remote, otherChainId);
@@ -446,7 +423,7 @@ describe('VotingEscrowRemapper', function () {
 
       context('when omni voting escrow is not set', () => {
         sharedBeforeEach(async () => {
-          await remapper.connect(admin).setOmniVotingEscrow(ZERO_ADDRESS);
+          await omniVotingEscrowAdaptor.connect(admin).setOmniVotingEscrow(ZERO_ADDRESS);
         });
 
         it('reverts', async () => {
@@ -586,8 +563,8 @@ describe('VotingEscrowRemapper', function () {
 
     it('is unaffected by remappings', async () => {
       await smartWalletChecker.connect(admin).allowlistAddress(local.address);
-      await vault.grantPermissionGlobally(await actionId(remapper, 'setOmniVotingEscrow'), admin);
-      await remapper.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
+      await vault.grantPermissionGlobally(await actionId(omniVotingEscrowAdaptor, 'setOmniVotingEscrow'), admin);
+      await omniVotingEscrowAdaptor.connect(admin).setOmniVotingEscrow(omniVotingEscrow.address);
 
       await remapper.connect(local).setNetworkRemapping(local.address, remote, 1);
       expect(await remapper.getRemoteUser(local.address, 1)).to.equal(remote);
