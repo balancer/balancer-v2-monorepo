@@ -247,6 +247,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
 
     function _isSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) private pure returns (bool) {
         return
+            gaugeType == IGaugeAdder.GaugeType.Ethereum ||
             gaugeType == IGaugeAdder.GaugeType.Polygon ||
             gaugeType == IGaugeAdder.GaugeType.Arbitrum ||
             gaugeType == IGaugeAdder.GaugeType.Optimism ||
