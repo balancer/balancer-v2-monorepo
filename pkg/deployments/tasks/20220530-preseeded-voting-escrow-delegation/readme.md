@@ -8,4 +8,5 @@ See [the Tribe DAO proposal](https://forum.balancer.fi/t/tribe-dao-boost-delegat
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`PreseededVotingEscrowDelegation` artifact](./artifact/PreseededVotingEscrowDelegation.json)
