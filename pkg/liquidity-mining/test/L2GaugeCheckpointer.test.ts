@@ -28,9 +28,9 @@ describe('L2GaugeCheckpointer', () => {
   let testGauges: string[], otherTypeGauges: string[];
 
   const GAUGES_PER_TYPE = 3;
-  const FIRST_VALID_GAUGE = GaugeType.Polygon;
+  const FIRST_VALID_GAUGE = GaugeType.Ethereum;
 
-  // Allowed gauges: Polygon, Arbitrum, Optimism, Gnosis, ZKSync.
+  // Allowed gauges: Ethereum, Polygon, Arbitrum, Optimism, Gnosis, ZKSync.
   const GAUGE_TYPES = Object.values(GaugeType)
     .filter((v) => !isNaN(Number(v)) && v >= FIRST_VALID_GAUGE)
     .map((t) => Number(t));
