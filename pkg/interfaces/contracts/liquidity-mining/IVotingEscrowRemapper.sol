@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./IOmniVotingEscrow.sol";
 import "./IOmniVotingEscrowAdaptor.sol";
 import "./IVotingEscrow.sol";
 
