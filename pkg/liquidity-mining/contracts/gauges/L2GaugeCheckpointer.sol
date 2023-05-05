@@ -125,6 +125,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
 
+        _checkpointGauges(IGaugeAdder.GaugeType.Ethereum, minRelativeWeight, currentPeriod);
         _checkpointGauges(IGaugeAdder.GaugeType.Polygon, minRelativeWeight, currentPeriod);
         _checkpointGauges(IGaugeAdder.GaugeType.Arbitrum, minRelativeWeight, currentPeriod);
         _checkpointGauges(IGaugeAdder.GaugeType.Optimism, minRelativeWeight, currentPeriod);
