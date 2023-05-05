@@ -30,4 +30,7 @@ export default {
   goerli: {
     admin: '0xE0a171587b1Cae546E069A943EDa96916F5EE977',
   },
+  zkevm: {
+    admin: '0x2f237e7643a3bF6Ef265dd6FCBcd26a7Cc38dbAa',
+  },
 };
