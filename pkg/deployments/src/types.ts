@@ -17,7 +17,7 @@ export const NETWORKS = [
   'sepolia',
 ];
 
-export type Network = typeof NETWORKS[number];
+export type Network = (typeof NETWORKS)[number];
 
 export type TaskRunOptions = {
   force?: boolean;

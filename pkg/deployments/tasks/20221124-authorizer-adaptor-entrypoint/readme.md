@@ -12,4 +12,5 @@ Deployment of the `AuthorizerAdaptorEntrypoint`, a gateway contract created to a
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`AuthorizerAdaptorEntrypoint` artifact](./artifact/AuthorizerAdaptorEntrypoint.json)
