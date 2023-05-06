@@ -9,5 +9,6 @@ Deployment of the `ProtocolIdRegistry` contract, which keeps track of valid part
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
+- [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`ProtocolIdRegistry` artifact](./artifact/ProtocolIdRegistry.json)

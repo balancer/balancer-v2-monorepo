@@ -11,5 +11,6 @@ Deployment of the `AuthorizerAdaptorEntrypoint`, a gateway contract created to a
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
+- [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`AuthorizerAdaptorEntrypoint` artifact](./artifact/AuthorizerAdaptorEntrypoint.json)

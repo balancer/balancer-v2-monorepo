@@ -1,0 +1,74 @@
+{
+  "0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6": {
+    "task": "20210418-authorizer",
+    "name": "Authorizer"
+  },
+  "0xBA12222222228d8Ba445958a75a0704d566BF2C8": {
+    "task": "20210418-vault",
+    "name": "Vault"
+  },
+  "0xce88686553686DA562CE7Cea497CE749DA109f9F": {
+    "task": "20210418-vault",
+    "name": "ProtocolFeesCollector"
+  },
+  "0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9": {
+    "task": "20210418-vault",
+    "name": "BalancerHelpers"
+  },
+  "0xdcdbf71A870cc60C6F9B621E28a7D3Ffd6Dd4965": {
+    "task": "20220325-authorizer-adaptor",
+    "name": "AuthorizerAdaptor"
+  },
+  "0x230a59F4d9ADc147480f03B0D3fFfeCd56c3289a": {
+    "task": "20220517-protocol-fee-withdrawer",
+    "name": "ProtocolFeesWithdrawer"
+  },
+  "0x809B79b53F18E9bc08A961ED4678B901aC93213a": {
+    "task": "20220721-balancer-queries",
+    "name": "BalancerQueries"
+  },
+  "0x1802953277FD955f9a254B80Aa0582f193cF1d77": {
+    "task": "20220725-protocol-fee-percentages-provider",
+    "name": "ProtocolFeePercentagesProvider"
+  },
+  "0xf7D5DcE55E6D47852F054697BAB6A1B48A00ddbd": {
+    "task": "20221123-pool-recovery-helper",
+    "name": "PoolRecoveryHelper"
+  },
+  "0xb9aD3466cdd42015cc05d4804DC68D562b6a2065": {
+    "task": "20221124-authorizer-adaptor-entrypoint",
+    "name": "AuthorizerAdaptorEntrypoint"
+  },
+  "0x6CaD2ea22BFA7F4C14Aae92E47F510Cd5C509bc7": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
+  },
+  "0x475D18169BE8a89357A9ee3Ab00ca386d20fA229": {
+    "task": "20230316-l2-balancer-pseudo-minter",
+    "name": "L2BalancerPseudoMinter"
+  },
+  "0xD87F44Df0159DC78029AB9CA7D7e57E7249F5ACD": {
+    "task": "20230316-l2-ve-delegation-proxy",
+    "name": "NullVotingEscrow"
+  },
+  "0xc7E5ED1054A24Ef31D827E6F86caA58B3Bc168d7": {
+    "task": "20230316-l2-ve-delegation-proxy",
+    "name": "VotingEscrowDelegationProxy"
+  },
+  "0x59562f93c447656F6E4799fC1FC7c3d977C3324F": {
+    "task": "20230316-child-chain-gauge-factory-v2",
+    "name": "ChildChainGauge"
+  },
+  "0x2498A2B0d6462d2260EAC50aE1C3e03F4829BA95": {
+    "task": "20230316-child-chain-gauge-factory-v2",
+    "name": "ChildChainGaugeFactory"
+  },
+  "0xDEd7Fef7D8eCdcB74F22f0169e1A9EC696e6695d": {
+    "task": "20230404-l2-layer0-bridge-forwarder",
+    "name": "L2LayerZeroBridgeForwarder"
+  },
+  "0x8df317a729fcaA260306d7de28888932cb579b88": {
+    "task": "20230414-authorizer-wrapper",
+    "name": "AuthorizerWithAdaptorValidation"
+  }
+}

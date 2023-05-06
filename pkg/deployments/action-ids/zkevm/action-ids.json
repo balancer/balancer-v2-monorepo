@@ -34,5 +34,80 @@
         "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))": "0x672fb3f0e8a340e3fb8702457aa4ca5df06547b389d1b676ac5d02a8e28e6a51"
       }
     }
+  },
+  "20220517-protocol-fee-withdrawer": {
+    "ProtocolFeesWithdrawer": {
+      "useAdaptor": false,
+      "actionIds": {
+        "allowlistToken(address)": "0x25cc916136334320c6d82ecbd69a943394467276dbdf1f20b4af66c9a36bae60",
+        "denylistToken(address)": "0xdbc8f1f973e905b408bd874b7b2dd4ac3a8b6d6494b51da5c28de0ec4ac21791",
+        "withdrawCollectedFees(address[],uint256[],address)": "0xcd3768eb08cdc2de2d040f74fb351ccbef01df1d042fa8033e12f224ecc27c4d"
+      }
+    }
+  },
+  "20220725-protocol-fee-percentages-provider": {
+    "ProtocolFeePercentagesProvider": {
+      "useAdaptor": false,
+      "actionIds": {
+        "registerFeeType(uint256,string,uint256,uint256)": "0x513273384d162134cbddebfdd19eaccc8ed68f0bfb272d86004994059f8ee5cd",
+        "setFeeTypePercentage(uint256,uint256)": "0xbeb10dd1f094c0751dc69e30b35c3f37cee8a9303f6e7380c83d31adcba39ea8"
+      }
+    }
+  },
+  "20221123-pool-recovery-helper": {
+    "PoolRecoveryHelper": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addPoolFactory(address)": "0x4133838a02bd2b8ed714d2c6f9b67c9edc60b2a48cdffca2fc4908545c9ea168",
+        "enableRecoveryMode(address)": "0xdfdbe7662360ae5df79cca0062bf6d6782893c588a127d7475f7386ccfb5e300",
+        "removePoolFactory(address)": "0xe54abf8b88dbe1bc275b3ffd3f7ab1b0ad3541db2664b78940b7fb9c05526bf2"
+      }
+    }
+  },
+  "20230223-protocol-id-registry": {
+    "ProtocolIdRegistry": {
+      "useAdaptor": false,
+      "actionIds": {
+        "registerProtocolId(uint256,string)": "0xc26e21fc0aba43b199202ad3de0ba39a17c1006c1f7b3791ca2a3b9f86a4f0b9",
+        "renameProtocolId(uint256,string)": "0x717d11aa4cee062d5f4a3262a493c6cb8b8d7985b98d3a3fd2f80631feb89968"
+      }
+    }
+  },
+  "20230316-l2-balancer-pseudo-minter": {
+    "L2BalancerPseudoMinter": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addGaugeFactory(address)": "0x28eae42992658aefe28d2ca017a285a62376e3196f2ea3207d6e25d2dd31822d",
+        "mint(address)": "0xd2befe177e6e3253225004914b943520931ee96e5b0d1ac88f786a26802a10f3",
+        "mintFor(address,address)": "0xd0d85b5a5fe3242a38da8d45a4ecd52f3688c6d54902274aec81ff77969f1f29",
+        "mintMany(address[])": "0x2a50f4ec9c54564d4fe112308da7d1b4da07c8c2d34bed22395e24d7029421fa",
+        "mintManyFor(address[],address)": "0x747c1067722d4120f2fa6459268a4b2b90a4cadee4ab76185eced8433e4da72c",
+        "mint_for(address,address)": "0xee713be922d58c7cacf738f3aeb278344e56b4ef9ddad676aac7c55b522700aa",
+        "mint_many(address[8])": "0xfe0c17e1eb821ca09cae67037248210bc5e26c06264525f4b629a2dc4afd2554",
+        "removeGaugeFactory(address)": "0xacaad4083b3ef2d7b832a0342e80dd1cf818cd7c6187334641979e49fe84eed6",
+        "setMinterApproval(address,bool)": "0x2e7ce463e49a26dc0df87a005531fb620f5ae5f460260511c2752f91492c0b99",
+        "setMinterApprovalWithSignature(address,bool,address,uint256,uint8,bytes32,bytes32)": "0x608204836bbe70de3ba4810f37d885895fa4b4da207f14177ea086f1fb81301a",
+        "toggle_approve_mint(address)": "0x0d88c62e936c56cc12d4a647e7f2d4540996810b214126f97350fe5af4a4238b"
+      }
+    }
+  },
+  "20230316-l2-ve-delegation-proxy": {
+    "VotingEscrowDelegationProxy": {
+      "useAdaptor": false,
+      "actionIds": {
+        "killDelegation()": "0xedccfb801ed1c13b38c94234009230c1e6a858e4c477518138cb0bfd611db5c2",
+        "setDelegation(address)": "0xe1a833117678417df5b0aeb8002f897e410d84f7a8f1906e355a97151a3f38a9"
+      }
+    }
+  },
+  "20230404-l2-layer0-bridge-forwarder": {
+    "L2LayerZeroBridgeForwarder": {
+      "useAdaptor": false,
+      "actionIds": {
+        "onVeBalBridged(address)": "0x1957793a6ccaf5efd269cfbce1366e32bf91e994ebb4ef05fdfd9a85ea839741",
+        "onVeBalSupplyUpdate()": "0x840ed1b7b1460cc8b17b12cfa577f83baa920a208a4b118ccaf397891140dc11",
+        "setDelegation(address)": "0x10767a41bcb10819360753ff746241aae84129cd6703d9bab377fb9442f91571"
+      }
+    }
   }
 }

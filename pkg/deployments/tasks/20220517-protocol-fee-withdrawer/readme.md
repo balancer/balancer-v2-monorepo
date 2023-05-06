@@ -13,5 +13,6 @@ See [the Double Entrypoint Fix Relayer](../20220513-double-entrypoint-fix-relaye
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
+- [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`ProtocolFeesWithdrawer` artifact](./artifact/ProtocolFeesWithdrawer.json)

@@ -57,4 +57,7 @@ export default {
   avalanche: {
     InitialFactories: [],
   },
+  zkevm: {
+    InitialFactories: [],
+  },
 };
