@@ -20,6 +20,10 @@ export default {
     wstETH: '0x6320cD32aA674d2898A68ec82e869385Fc5f7E2f',
     BalancerMinter,
   },
+  sepolia: {
+    wstETH: '0x0000000000000000000000000000000000000000',
+    BalancerMinter,
+  },
   polygon: {
     wstETH: '0x0000000000000000000000000000000000000000',
     BalancerMinter: '0x0000000000000000000000000000000000000000',

@@ -14,4 +14,5 @@ result they would have if called on the Vault given the current state.
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`BalancerQueries` artifact](./artifact/BalancerQueries.json)

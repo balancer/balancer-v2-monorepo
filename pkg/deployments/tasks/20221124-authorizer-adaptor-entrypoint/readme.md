@@ -13,4 +13,5 @@ Deployment of the `AuthorizerAdaptorEntrypoint`, a gateway contract created to a
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`AuthorizerAdaptorEntrypoint` artifact](./artifact/AuthorizerAdaptorEntrypoint.json)

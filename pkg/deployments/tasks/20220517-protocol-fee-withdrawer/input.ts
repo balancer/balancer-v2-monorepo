@@ -38,6 +38,9 @@ export default {
   goerli: {
     InitialDeniedTokens: [],
   },
+  sepolia: {
+    InitialDeniedTokens: [],
+  },
   zkevm: {
     InitialDeniedTokens: [],
   },

@@ -13,4 +13,5 @@ Deployment of the `PoolRecoveryHelper`, which provides a permissionless way to m
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`PoolRecoveryHelper` artifact](./artifact/PoolRecoveryHelper.json)

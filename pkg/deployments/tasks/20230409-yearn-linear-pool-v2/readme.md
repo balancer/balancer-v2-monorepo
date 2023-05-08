@@ -9,6 +9,7 @@ Supersedes `20230213-yearn-linear-pool`, modifying the pool factory to use Creat
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`YearnLinearPoolFactory` artifact](./artifact/YearnLinearPoolFactory.json)
 - [`YearnLinearPool` artifact](./artifact/YearnLinearPool.json)
 - [`YearnLinearPoolRebalancer` artifact](./artifact/YearnLinearPoolRebalancer.json)
