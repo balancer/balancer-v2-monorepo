@@ -86,5 +86,25 @@
   "0x4678731DC41142A902a114aC5B2F77b63f4a259D": {
     "task": "20230314-batch-relayer-v5",
     "name": "BalancerRelayer"
+  },
+  "0xAcf05BE5134d64d150d153818F8C67EE36996650": {
+    "task": "20230411-managed-pool-v2",
+    "name": "ManagedPoolAddRemoveTokenLib"
+  },
+  "0x9129E834e15eA19b6069e8f08a8EcFc13686B8dC": {
+    "task": "20230411-managed-pool-v2",
+    "name": "CircuitBreakerLib"
+  },
+  "0xA69E0Ccf150a29369D8Bbc0B3f510849dB7E8EEE": {
+    "task": "20230411-managed-pool-v2",
+    "name": "ManagedPoolAmmLib"
+  },
+  "0xDF9B5B00Ef9bca66e9902Bd813dB14e4343Be025": {
+    "task": "20230411-managed-pool-v2",
+    "name": "ExternalWeightedMath"
+  },
+  "0x300Ab2038EAc391f26D9F895dc61F8F66a548833": {
+    "task": "20230411-managed-pool-v2",
+    "name": "RecoveryModeHelper"
   }
 }
