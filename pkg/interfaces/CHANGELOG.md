@@ -8,6 +8,7 @@
 - Added `IL2LayerZeroDelegation`.
 - Added `IVotingEscrowRemapper`.
 - Added `IOmniVotingEscrowAdaptor` and `IOmniVotingEscrowAdaptorSettings`.
+- Added `checkpointSingleGauge` and `getSingleBridgeCost` to `IL2GaugeCheckpointer`.
 
 ### Breaking changes
 
