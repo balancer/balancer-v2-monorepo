@@ -6,5 +6,6 @@ Deployment of the `LiquidityGaugeFactory`, for liquidity gauges to be used with 
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`LiquidityGaugeV5` artifact](./artifact/LiquidityGaugeV5.json)
 - [`LiquidityGaugeFactory` artifact](./artifact/LiquidityGaugeFactory.json)

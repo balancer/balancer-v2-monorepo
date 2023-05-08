@@ -15,4 +15,5 @@ It also adds support for many new protocol wrappers: CompoundV2 (Midas), Euler, 
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`BatchRelayerLibrary` artifact](./artifact/BatchRelayerLibrary.json)
