@@ -117,8 +117,8 @@ describeForkTest('WeightedPool V5', 'mainnet', 17188200, function () {
     it('check factory version', async () => {
       const expectedFactoryVersion = {
         name: 'WeightedPoolFactory',
-        version: 5,
-        deployment: '20230505-weighted-pool-v5',
+        version: 4,
+        deployment: '20230320-weighted-pool-v4',
       };
 
       expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
@@ -129,8 +129,8 @@ describeForkTest('WeightedPool V5', 'mainnet', 17188200, function () {
 
       const expectedPoolVersion = {
         name: 'WeightedPool',
-        version: 5,
-        deployment: '20230505-weighted-pool-v5',
+        version: 4,
+        deployment: '20230320-weighted-pool-v4',
       };
 
       expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
