@@ -11,5 +11,6 @@ Deployment of the `NoProtocolFeeLiquidityBootstrappingPool`, for Liquidity Boots
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
+- [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [`NoProtocolFeeLiquidityBootstrappingPoolFactory` artifact](./artifact/NoProtocolFeeLiquidityBootstrappingPoolFactory.json)

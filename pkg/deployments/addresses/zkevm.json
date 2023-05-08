@@ -74,5 +74,17 @@
   "0x3B1eb8EB7b43882b385aB30533D9A2BeF9052a98": {
     "task": "20211202-no-protocol-fee-lbp",
     "name": "NoProtocolFeeLiquidityBootstrappingPoolFactory"
+  },
+  "0x3c87FF3e9307dbEbfAe720E04C6439e49f79BF9B": {
+    "task": "20211202-no-protocol-fee-lbp",
+    "name": "MockLiquidityBootstrappingPool"
+  },
+  "0x54f8F9d28e26Fa5864cfA80f50A5Df95fD85f46a": {
+    "task": "20230314-batch-relayer-v5",
+    "name": "BatchRelayerLibrary"
+  },
+  "0x4678731DC41142A902a114aC5B2F77b63f4a259D": {
+    "task": "20230314-batch-relayer-v5",
+    "name": "BalancerRelayer"
   }
 }

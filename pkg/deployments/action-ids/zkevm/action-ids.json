@@ -109,5 +109,25 @@
         "setDelegation(address)": "0x10767a41bcb10819360753ff746241aae84129cd6703d9bab377fb9442f91571"
       }
     }
+  },
+  "20211202-no-protocol-fee-lbp": {
+    "NoProtocolFeeLiquidityBootstrappingPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],uint256,address,bool)": "0x1fd10449f2ebec7e18b61ef6df2c49d9ea830ad4a9f53d847e19cf3809169aeb",
+        "disable()": "0xb4738e79f724f5cf9554215b3249de2528482bb77b93844f5eff3f3c9e7126b4"
+      }
+    },
+    "NoProtocolFeeLiquidityBootstrappingPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x3c87FF3e9307dbEbfAe720E04C6439e49f79BF9B",
+      "actionIds": {
+        "setAssetManagerPoolConfig(address,bytes)": "0x37fc3bbab5157ec061d8dd11e6a3934d70807ffc1ad9c3a2463225acd9156635",
+        "setPaused(bool)": "0x624dd4b04f97504cad964d1dd43ecd241b6d89c1529091cfedfd80e9d6b80d99",
+        "setSwapEnabled(bool)": "0x9e1b0e353ad3d764d2e8b0f40b39af75cb35e14e63e753d3a4a62859ea5f9084",
+        "setSwapFeePercentage(uint256)": "0x9e71206909b5fab4c36eb9e667afb9a6dcc535260b4b0837056ab7f9ec68c0be",
+        "updateWeightsGradually(uint256,uint256,uint256[])": "0x927aa107ec7cf1bf8a315b8359a8978aa4b2a79049e36480d845075f53fa5c1e"
+      }
+    }
   }
 }
