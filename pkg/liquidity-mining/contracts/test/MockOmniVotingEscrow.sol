@@ -18,31 +18,38 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOmniVotingEscrow.sol";
 
 contract MockOmniVotingEscrow is IOmniVotingEscrow {
-    event SendUserBalance(address user, uint16 chainId, address refundAddress);
+    event SendUserBalance(
+        address user,
+        uint16 chainId,
+        address refundAddress,
+        address zroPaymentAddress,
+        bytes adapterParams,
+        uint256 value
+    );
 
-    uint256 private _nativeFee;
+    // chain ID --> native fee
+    mapping(uint16 => uint256) private _nativeFee;
     uint256 private _zroFee;
 
     function estimateSendUserBalance(
-        uint16,
+        uint16 chainId,
         bool,
         bytes calldata
     ) external view override returns (uint256 nativeFee, uint256 zroFee) {
-        return (_nativeFee, _zroFee);
+        return (_nativeFee[chainId], _zroFee);
     }
 
-    // solhint-disable no-unused-vars
     function sendUserBalance(
         address _user,
         uint16 _dstChainId,
         address payable _refundAddress,
-        address,
-        bytes memory
+        address _zroPaymentAddress,
+        bytes memory _adapterParams
     ) external payable override {
-        emit SendUserBalance(_user, _dstChainId, _refundAddress);
+        emit SendUserBalance(_user, _dstChainId, _refundAddress, _zroPaymentAddress, _adapterParams, msg.value);
     }
 
-    function setNativeFee(uint256 nativeFee) external {
-        _nativeFee = nativeFee;
+    function setNativeFee(uint256 nativeFee, uint16 chainId) external {
+        _nativeFee[chainId] = nativeFee;
     }
 }
