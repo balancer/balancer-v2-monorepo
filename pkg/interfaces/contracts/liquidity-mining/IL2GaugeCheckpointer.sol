@@ -77,14 +77,14 @@ interface IL2GaugeCheckpointer {
      * @notice Returns the gauge of a given type at the given index.
      * @dev Reverts if the index is greater than or equal to the amount of added gauges for the given type.
      * @param gaugeType Type of the gauge.
-     * @param index - Index of the added gauge.
+     * @param index Index of the added gauge.
      */
     function getGaugeAtIndex(GaugeType gaugeType, uint256 index) external view returns (IStakelessGauge);
 
     /**
      * @notice Performs a checkpoint for all added gauges above the given relative weight threshold.
      * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
-     * @param minRelativeWeight - Threshold to filter out gauges below it.
+     * @param minRelativeWeight Threshold to filter out gauges below it.
      */
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable;
 
@@ -92,9 +92,26 @@ interface IL2GaugeCheckpointer {
      * @notice Performs a checkpoint for all added gauges of a given type above the given relative weight threshold.
      * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
      * @param gaugeType Type of the gauge.
-     * @param minRelativeWeight - Threshold to filter out gauges below it.
+     * @param minRelativeWeight Threshold to filter out gauges below it.
      */
     function checkpointGaugesOfTypeAboveRelativeWeight(GaugeType gaugeType, uint256 minRelativeWeight) external payable;
+
+    /**
+     * @notice Performs a checkpoint for a single added gauge of a given type.
+     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * Reverts if the gauge was not added to the checkpointer beforehand.
+     * @param gaugeType Type of the gauge.
+     * @param gauge Address of the gauge to checkpoint.
+     */
+    function checkpointSingleGauge(IGaugeAdder.GaugeType gaugeType, address gauge) external payable;
+
+    /**
+     * @notice Returns the ETH cost to checkpoint a single given gauge.
+     * @dev Reverts if the gauge was not added to the checkpointer beforehand.
+     * @param gaugeType Type of the gauge.
+     * @param gauge Address of the gauge to check the bridge costs.
+     */
+    function getSingleBridgeCost(IGaugeAdder.GaugeType gaugeType, address gauge) external view returns (uint256);
 
     /**
      * @notice Returns the ETH cost to checkpoint all gauges for a given minimum relative weight.

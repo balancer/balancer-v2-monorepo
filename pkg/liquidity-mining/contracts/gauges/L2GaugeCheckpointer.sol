@@ -119,11 +119,41 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
 
         _checkpointGauges(gaugeType, minRelativeWeight, currentPeriod);
 
-        // Send back any leftover ETH to the caller.
-        // Most gauge types don't need to send value, and this step can be skipped in those cases.
-        uint256 remainingBalance = address(this).balance;
-        if (remainingBalance > 0) {
-            Address.sendValue(msg.sender, remainingBalance);
+        _returnLeftoverEthIfAny();
+    }
+
+    /// @inheritdoc IL2GaugeCheckpointer
+    function checkpointSingleGauge(IGaugeAdder.GaugeType gaugeType, address gauge)
+        external
+        payable
+        override
+        withSupportedGaugeType(gaugeType)
+        nonReentrant
+    {
+        uint256 checkpointCost = getSingleBridgeCost(gaugeType, gauge);
+
+        _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
+            gauge,
+            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
+        );
+
+        _returnLeftoverEthIfAny();
+    }
+
+    /// @inheritdoc IL2GaugeCheckpointer
+    function getSingleBridgeCost(IGaugeAdder.GaugeType gaugeType, address gauge)
+        public
+        view
+        override
+        withSupportedGaugeType(gaugeType)
+        returns (uint256)
+    {
+        require(_gauges[gaugeType].contains(gauge), "Gauge was not added to the checkpointer");
+
+        if (gaugeType == IGaugeAdder.GaugeType.Arbitrum) {
+            return ArbitrumRootGauge(gauge).getTotalBridgeCost();
+        } else {
+            return 0;
         }
     }
 
@@ -209,6 +239,15 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
      */
     function _checkpointCostlessBridgeGauge(address gauge) private {
         _authorizerAdaptorEntrypoint.performAction(gauge, abi.encodeWithSelector(IStakelessGauge.checkpoint.selector));
+    }
+
+    function _returnLeftoverEthIfAny() private {
+        // Send back any leftover ETH to the caller.
+        // Most gauge types don't need to send value, and this step can be skipped in those cases.
+        uint256 remainingBalance = address(this).balance;
+        if (remainingBalance > 0) {
+            Address.sendValue(msg.sender, remainingBalance);
+        }
     }
 
     /**
