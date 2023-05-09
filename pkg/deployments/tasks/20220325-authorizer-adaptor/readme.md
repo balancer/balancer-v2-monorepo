@@ -14,4 +14,5 @@ The adaptor may then be the admin for these systems and acts as a proxy forwardi
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`AuthorizerAdaptor` artifact](./artifact/AuthorizerAdaptor.json)

@@ -7,4 +7,5 @@ This version contains some bugfixes, and lets users (both EOAs and contracts) pr
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`FeeDistributor` artifact](./artifact/FeeDistributor.json)
