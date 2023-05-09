@@ -64,7 +64,6 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     const { pauseWindowEndTime, bufferPeriodEndTime } = await mockPool.getPausedState();
     const pauseWindowDuration = pauseWindowEndTime.sub(poolCreationBlock.timestamp);
     const bufferPeriodDuration = bufferPeriodEndTime.sub(poolCreationBlock.timestamp).sub(pauseWindowDuration);
-    console.log(`dur: ${pauseWindowDuration}; buff: ${bufferPeriodDuration}; v: ${input.Vault}`);
 
     // We are now ready to verify the Pool
     await task.verify('LiquidityBootstrappingPool', mockPool.address, [
