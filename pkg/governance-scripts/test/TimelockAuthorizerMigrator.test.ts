@@ -42,7 +42,7 @@ describe('TimelockAuthorizerMigrator', () => {
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
 
   sharedBeforeEach('set up vault', async () => {
-    oldAuthorizer = await deploy('v2-vault/MockBasicAuthorizer');
+    oldAuthorizer = await deploy('v2-solidity-utils/MockBasicAuthorizer');
     vault = await deploy('v2-vault/Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
 
     const authorizerAdaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
@@ -106,7 +106,7 @@ describe('TimelockAuthorizerMigrator', () => {
       let tempAuthorizer: Contract;
 
       sharedBeforeEach('set up vault', async () => {
-        tempAuthorizer = await deploy('v2-vault/MockBasicAuthorizer');
+        tempAuthorizer = await deploy('v2-solidity-utils/MockBasicAuthorizer');
       });
 
       it('reverts', async () => {

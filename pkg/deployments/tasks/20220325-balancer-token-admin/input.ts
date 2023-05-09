@@ -19,4 +19,7 @@ export default {
   goerli: {
     BAL: TestBALTask.output({ network: 'goerli' }).TestBalancerToken,
   },
+  sepolia: {
+    BAL: TestBALTask.output({ network: 'sepolia' }).TestBalancerToken,
+  },
 };

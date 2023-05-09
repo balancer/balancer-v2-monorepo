@@ -11,8 +11,13 @@ import TokenList from '../../tokens/TokenList';
 import { actionId } from '../../misc/actions';
 import Token from '../../tokens/Token';
 import Vault from '../../vault/Vault';
-
 import { RecoveryModeExitParams, ExitResult, JoinExitBasePool, FailureMode } from './types';
+import { DAY } from '../../../time';
+
+export const NAME = 'Balancer Pool Token';
+export const SYMBOL = 'BPT';
+export const PAUSE_WINDOW_DURATION = DAY * 90;
+export const BUFFER_PERIOD_DURATION = DAY * 30;
 
 export default class BasePool {
   instance: Contract;
@@ -20,7 +25,7 @@ export default class BasePool {
   tokens: TokenList;
   swapFeePercentage: BigNumberish;
   vault: Vault;
-  owner?: SignerWithAddress;
+  owner?: Account;
 
   constructor(
     instance: Contract,
@@ -28,7 +33,7 @@ export default class BasePool {
     vault: Vault,
     tokens: TokenList,
     swapFeePercentage: BigNumberish,
-    owner?: SignerWithAddress
+    owner?: Account
   ) {
     this.instance = instance;
     this.poolId = poolId;

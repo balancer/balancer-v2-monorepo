@@ -12,4 +12,5 @@ Deployment of the `StablePoolFactory`, for Stable Pools of up to 5 tokens.
 - [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`StablePoolFactory` artifact](./artifact/StablePoolFactory.json)

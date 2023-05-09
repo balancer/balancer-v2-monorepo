@@ -9,4 +9,5 @@ Deployment of the `LidoRelayer`, for using stETH with the Balancer Vault without
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`LidoRelayer` artifact](./artifact/LidoRelayer.json)

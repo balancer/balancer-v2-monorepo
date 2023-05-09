@@ -11,6 +11,7 @@ Also has a fix in the `GearboxLinearPoolRebalancer` to handle tokens which requi
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`GearboxLinearPoolFactory` artifact](./artifact/GearboxLinearPoolFactory.json)
 - [`GearboxLinearPool` artifact](./artifact/GearboxLinearPool.json)
 - [`GearboxLinearPoolRebalancer` artifact](./artifact/GearboxLinearPoolRebalancer.json)

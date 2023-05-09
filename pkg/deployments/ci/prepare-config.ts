@@ -30,6 +30,9 @@ if (process.env.CI) {
       },
       "goerli": {
         "url": "${process.env.GOERLI_RPC_ENDPOINT}"
+      },
+      "sepolia": {
+        "url": "${process.env.SEPOLIA_RPC_ENDPOINT}"
       }
     },
     "defaultConfig": {

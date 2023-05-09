@@ -6,6 +6,7 @@ Deployment of the new `GaugeAdder`, a helper contract which helps prevent some f
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Goerli addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`GaugeAdder` artifact](./artifact/GaugeAdder.json)
 - [`LiquidityGaugeFactory` artifact](./artifact/LiquidityGaugeFactory.json)
 - [`LiquidityGaugeV5` artifact](./artifact/LiquidityGaugeV5.json)
