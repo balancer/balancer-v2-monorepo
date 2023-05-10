@@ -175,21 +175,13 @@
     "task": "20221021-managed-pool",
     "name": "ManagedPoolFactory"
   },
-  "0x1B57f637Ce3408f1f834b0b70f9A595b062DAea7": {
-    "task": "20221115-aave-rebalanced-linear-pool",
-    "name": "AaveLinearPoolFactory"
+  "0x85a80afee867aDf27B50BdB7b76DA70f1E853062": {
+    "task": "20221122-composable-stable-pool-v2",
+    "name": "ComposableStablePoolFactory"
   },
-  "0xe7234Ab7854285bb0D68A26f3d2f2087C6057825": {
-    "task": "20221115-aave-rebalanced-linear-pool",
-    "name": "MockAaveLendingPool"
-  },
-  "0x22be81ecAe87F1Ae1db9e17d6B072f846e07FC45": {
-    "task": "20221115-aave-rebalanced-linear-pool",
-    "name": "MockStaticAToken"
-  },
-  "0x77f0e64Faf0FDeAF0b632919214ba142f0478424": {
-    "task": "20221115-aave-rebalanced-linear-pool",
-    "name": "MockAaveLinearPool"
+  "0x373b347bc87998b151A5E9B6bB6ca692b766648a": {
+    "task": "20221122-composable-stable-pool-v2",
+    "name": "MockComposableStablePool"
   },
   "0xb5e56CC3d2e38e53b1166175C59e921A37cDC1E2": {
     "task": "20221123-pool-recovery-helper",
@@ -198,14 +190,6 @@
   "0x97207B095e4D5C9a6e4cfbfcd2C3358E03B90c4A": {
     "task": "20221124-authorizer-adaptor-entrypoint",
     "name": "AuthorizerAdaptorEntrypoint"
-  },
-  "0x85a80afee867aDf27B50BdB7b76DA70f1E853062": {
-    "task": "20221122-composable-stable-pool-v2",
-    "name": "ComposableStablePoolFactory"
-  },
-  "0x373b347bc87998b151A5E9B6bB6ca692b766648a": {
-    "task": "20221122-composable-stable-pool-v2",
-    "name": "MockComposableStablePool"
   },
   "0xa2D801064652A269D92EE2A59F3261155ec66830": {
     "task": "20221207-aave-rebalanced-linear-pool-v3",
@@ -222,10 +206,6 @@
   "0xa612B6AeD2E7ca1A3a4f23FbcA9128461bBB7718": {
     "task": "20221207-aave-rebalanced-linear-pool-v3",
     "name": "MockAaveLinearPool"
-  },
-  "0x5cF4928a3205728bd12830E1840F7DB85c62a4B9": {
-    "task": "20230223-protocol-id-registry",
-    "name": "ProtocolIdRegistry"
   },
   "0xf23b4DB826DbA14c0e857029dfF076b1c0264843": {
     "task": "20230206-aave-rebalanced-linear-pool-v4",
@@ -286,6 +266,10 @@
   "0x9805dcfD25e6De36bad8fe9D3Fe2c9b44B764102": {
     "task": "20230222-merkle-orchard-v2",
     "name": "MerkleOrchard"
+  },
+  "0x5cF4928a3205728bd12830E1840F7DB85c62a4B9": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
   },
   "0xD87F44Df0159DC78029AB9CA7D7e57E7249F5ACD": {
     "task": "20230314-batch-relayer-v5",

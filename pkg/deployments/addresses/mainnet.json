@@ -315,21 +315,13 @@
     "task": "20221021-managed-pool",
     "name": "ManagedPoolFactory"
   },
-  "0xb5a0a6bceCB2988bb348c2546BbA9c2bD9A04A1e": {
-    "task": "20221115-aave-rebalanced-linear-pool",
-    "name": "AaveLinearPoolFactory"
+  "0x85a80afee867aDf27B50BdB7b76DA70f1E853062": {
+    "task": "20221122-composable-stable-pool-v2",
+    "name": "ComposableStablePoolFactory"
   },
-  "0xc40e9101993ce134411e86E1bCB3Ffc27019CD13": {
-    "task": "20221115-aave-rebalanced-linear-pool",
-    "name": "MockAaveLendingPool"
-  },
-  "0xbA54bb8a7E0eefe160164d00c06A4F2ee8459a5f": {
-    "task": "20221115-aave-rebalanced-linear-pool",
-    "name": "MockStaticAToken"
-  },
-  "0xe23D111cb71414830B93F078977B7f53A5e996eE": {
-    "task": "20221115-aave-rebalanced-linear-pool",
-    "name": "MockAaveLinearPool"
+  "0x373b347bc87998b151A5E9B6bB6ca692b766648a": {
+    "task": "20221122-composable-stable-pool-v2",
+    "name": "MockComposableStablePool"
   },
   "0x1b300C86980a5195bCF49bD419A068D98dC133Db": {
     "task": "20221123-pool-recovery-helper",
@@ -338,14 +330,6 @@
   "0xf5dECDB1f3d1ee384908Fbe16D2F0348AE43a9eA": {
     "task": "20221124-authorizer-adaptor-entrypoint",
     "name": "AuthorizerAdaptorEntrypoint"
-  },
-  "0x85a80afee867aDf27B50BdB7b76DA70f1E853062": {
-    "task": "20221122-composable-stable-pool-v2",
-    "name": "ComposableStablePoolFactory"
-  },
-  "0x373b347bc87998b151A5E9B6bB6ca692b766648a": {
-    "task": "20221122-composable-stable-pool-v2",
-    "name": "MockComposableStablePool"
   },
   "0xf8ee6f1F9B54F9b2C192D703ea2d22112cBC062b": {
     "task": "20221202-timelock-authorizer",
@@ -378,18 +362,6 @@
   "0x813E3fE1761f714c502d1d2d3a7CCEB33f37F59D": {
     "task": "20221207-aave-rebalanced-linear-pool-v3",
     "name": "MockAaveLinearPool"
-  },
-  "0x2a18B396829bc29F66a1E59fAdd7a0269A6605E8": {
-    "task": "20230217-gnosis-root-gauge-factory",
-    "name": "GnosisRootGaugeFactory"
-  },
-  "0x05277CE7D1e365d660624612d8b8b9B55bFD4518": {
-    "task": "20230217-gnosis-root-gauge-factory",
-    "name": "GnosisRootGauge"
-  },
-  "0xc3ccacE87f6d3A81724075ADcb5ddd85a8A1bB68": {
-    "task": "20230223-protocol-id-registry",
-    "name": "ProtocolIdRegistry"
   },
   "0xE0f34c6AD719e6877062B7D97E12c61c096509AF": {
     "task": "20230109-gauge-adder-migration-v2-to-v3",
@@ -495,9 +467,21 @@
     "task": "20230215-single-recipient-gauge-factory-v2",
     "name": "SingleRecipientGauge"
   },
+  "0x2a18B396829bc29F66a1E59fAdd7a0269A6605E8": {
+    "task": "20230217-gnosis-root-gauge-factory",
+    "name": "GnosisRootGaugeFactory"
+  },
+  "0x05277CE7D1e365d660624612d8b8b9B55bFD4518": {
+    "task": "20230217-gnosis-root-gauge-factory",
+    "name": "GnosisRootGauge"
+  },
   "0xE3881627B8DeeBCCF9c23B291430a549Fc0bE5F7": {
     "task": "20230222-merkle-orchard-v2",
     "name": "MerkleOrchard"
+  },
+  "0xc3ccacE87f6d3A81724075ADcb5ddd85a8A1bB68": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
   },
   "0xf77018c0d817dA22caDbDf504C00c0d32cE1e5C2": {
     "task": "20230314-batch-relayer-v5",
