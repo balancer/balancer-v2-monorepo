@@ -13,8 +13,11 @@ import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/t
 import {
   RawWeightedPoolDeployment,
   WeightedPoolDeployment,
-  WeightedPoolType,
-  BasePoolRights,
+  RawLiquidityBootstrappingPoolDeployment,
+  LiquidityBootstrappingPoolDeployment,
+  RawManagedPoolDeployment,
+  ManagedPoolDeployment,
+  ManagedPoolType,
 } from '../pools/weighted/types';
 import {
   RawTokenApproval,
@@ -25,6 +28,9 @@ import {
   TokenDeployment,
   RawTokenDeployment,
 } from '../tokens/types';
+
+const DEFAULT_PAUSE_WINDOW_DURATION = 3 * MONTH;
+const DEFAULT_BUFFER_PERIOD_DURATION = MONTH;
 
 export function computeDecimalsFromIndex(i: number): number {
   // Produces repeating series (0..18)
@@ -63,50 +69,106 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      swapEnabledOnStart,
-      mustAllowlistLPs,
-      managementAumFeePercentage,
-      aumProtocolFeesCollector,
-      poolType,
-      aumFeeId,
-      factoryVersion,
-      poolVersion,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
     if (!swapFeePercentage) swapFeePercentage = bn(1e16);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!pauseWindowDuration) pauseWindowDuration = DEFAULT_PAUSE_WINDOW_DURATION;
+    if (!bufferPeriodDuration) bufferPeriodDuration = DEFAULT_BUFFER_PERIOD_DURATION;
     if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
-    if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
-    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
+
+    return {
+      tokens,
+      weights,
+      rateProviders,
+      assetManagers,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner: this.toAddress(params.owner),
+      from: params.from,
+    };
+  },
+
+  toLiquidityBootstrappingPoolDeployment(
+    params: RawLiquidityBootstrappingPoolDeployment
+  ): LiquidityBootstrappingPoolDeployment {
+    let { tokens, weights, swapFeePercentage, swapEnabledOnStart, pauseWindowDuration, bufferPeriodDuration } = params;
+    if (!params.owner) params.owner = ZERO_ADDRESS;
+    if (!tokens) tokens = new TokenList();
+    if (!weights) weights = Array(tokens.length).fill(fp(1));
+    weights = toNormalizedWeights(weights.map(bn));
+    if (!swapFeePercentage) swapFeePercentage = bn(1e16);
+    if (!pauseWindowDuration) pauseWindowDuration = DEFAULT_PAUSE_WINDOW_DURATION;
+    if (!bufferPeriodDuration) bufferPeriodDuration = DEFAULT_BUFFER_PERIOD_DURATION;
+    if (swapEnabledOnStart == undefined) swapEnabledOnStart = true;
+
+    return {
+      tokens,
+      weights,
+      swapFeePercentage,
+      swapEnabledOnStart,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner: params.owner,
+      from: params.from,
+    };
+  },
+
+  toManagedPoolDeployment(params: RawManagedPoolDeployment): ManagedPoolDeployment {
+    let {
+      tokens,
+      weights,
+      rateProviders,
+      assetManagers,
+      swapFeePercentage,
+      swapEnabledOnStart,
+      mustAllowlistLPs,
+      managementAumFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      factoryVersion,
+      poolVersion,
+      poolType,
+      aumFeeId,
+    } = params;
+    if (!params.owner) params.owner = ZERO_ADDRESS;
+    if (!tokens) tokens = new TokenList();
+    if (!weights) weights = Array(tokens.length).fill(fp(1));
+    weights = toNormalizedWeights(weights.map(bn));
+    if (!swapFeePercentage) swapFeePercentage = bn(1e16);
+    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!poolType) poolType = ManagedPoolType.MANAGED_POOL;
+    if (swapEnabledOnStart == undefined) swapEnabledOnStart = true;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
     if (undefined == factoryVersion) factoryVersion = 'default factory version';
     if (undefined == poolVersion) poolVersion = 'default pool version';
+    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
+    if (!pauseWindowDuration) pauseWindowDuration = 9 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     return {
       tokens,
       weights,
-      rateProviders: this.toAddresses(rateProviders),
+      rateProviders,
       assetManagers,
       swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       owner: this.toAddress(params.owner),
       from: params.from,
-      poolType,
-      aumFeeId,
       factoryVersion,
       poolVersion,
+      poolType,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      aumFeeId,
     };
   },
 
@@ -115,8 +177,8 @@ export default {
 
     if (!upperTarget) upperTarget = bn(0);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!pauseWindowDuration) pauseWindowDuration = DEFAULT_PAUSE_WINDOW_DURATION;
+    if (!bufferPeriodDuration) bufferPeriodDuration = DEFAULT_BUFFER_PERIOD_DURATION;
     if (!assetManagers) assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];
 
     return {
@@ -149,8 +211,8 @@ export default {
     if (!tokenRateCacheDurations) tokenRateCacheDurations = Array(tokens.length).fill(DAY);
     if (!amplificationParameter) amplificationParameter = bn(200);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!pauseWindowDuration) pauseWindowDuration = DEFAULT_PAUSE_WINDOW_DURATION;
+    if (!bufferPeriodDuration) bufferPeriodDuration = DEFAULT_BUFFER_PERIOD_DURATION;
     if (!exemptFromYieldProtocolFeeFlags) exemptFromYieldProtocolFeeFlags = Array(tokens.length).fill(false);
     if (!version) version = 'test';
 
@@ -248,21 +310,5 @@ export default {
   toBytes32(value: BigNumberish): string {
     const hexy = ethers.utils.hexlify(value);
     return ethers.utils.hexZeroPad(hexy, 32);
-  },
-
-  toEncodedBasePoolRights(basePoolRights: BasePoolRights): string {
-    let value = 0;
-
-    if (basePoolRights.canTransferOwnership) {
-      value += 1;
-    }
-    if (basePoolRights.canChangeSwapFee) {
-      value += 2;
-    }
-    if (basePoolRights.canUpdateMetadata) {
-      value += 4;
-    }
-
-    return this.toBytes32(value);
   },
 };

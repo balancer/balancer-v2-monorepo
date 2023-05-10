@@ -11,9 +11,13 @@ import Vault from '../../vault/Vault';
 export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
   LIQUIDITY_BOOTSTRAPPING_POOL,
-  MANAGED_POOL,
-  MOCK_MANAGED_POOL,
-  MOCK_MANAGED_POOL_SETTINGS,
+}
+
+// These names are used in the helpers to fetch the artifacts
+export enum ManagedPoolType {
+  MANAGED_POOL = 'ManagedPool',
+  MOCK_MANAGED_POOL = 'MockManagedPool',
+  MOCK_MANAGED_POOL_SETTINGS = 'MockManagedPoolSettings',
 }
 
 export type RawWeightedPoolDeployment = {
@@ -24,20 +28,11 @@ export type RawWeightedPoolDeployment = {
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
-  swapEnabledOnStart?: boolean;
-  mustAllowlistLPs?: boolean;
-  managementAumFeePercentage?: BigNumberish;
-  aumProtocolFeesCollector?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   vault?: Vault;
   fromFactory?: boolean;
-  poolType?: WeightedPoolType;
-  aumFeeId?: BigNumberish;
-  mockContractName?: string;
-  factoryVersion?: string;
-  poolVersion?: string;
 };
 
 export type WeightedPoolDeployment = {
@@ -48,17 +43,77 @@ export type WeightedPoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
-  poolType: WeightedPoolType;
+  owner: Account;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+};
+
+export type RawLiquidityBootstrappingPoolDeployment = {
+  tokens?: TokenList;
+  weights?: BigNumberish[];
+  swapFeePercentage?: BigNumberish;
+  swapEnabledOnStart?: boolean;
+  pauseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
+  owner?: Account;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+  vault?: Vault;
+  fromFactory?: boolean;
+};
+
+export type LiquidityBootstrappingPoolDeployment = {
+  tokens: TokenList;
+  weights: BigNumberish[];
+  swapFeePercentage: BigNumberish;
+  swapEnabledOnStart: boolean;
+  pauseWindowDuration: BigNumberish;
+  bufferPeriodDuration: BigNumberish;
+  owner: Account;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+};
+
+export type RawManagedPoolDeployment = {
+  tokens?: TokenList;
+  weights?: BigNumberish[];
+  rateProviders?: Account[];
+  assetManagers?: string[];
+  swapFeePercentage?: BigNumberish;
+  pauseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
+  swapEnabledOnStart?: boolean;
+  mustAllowlistLPs?: boolean;
+  managementAumFeePercentage?: BigNumberish;
+  owner?: Account;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+  vault?: Vault;
+  fromFactory?: boolean;
+  poolType?: ManagedPoolType;
+  factoryVersion?: string;
+  poolVersion?: string;
+  aumFeeId?: BigNumberish;
+};
+
+export type ManagedPoolDeployment = {
+  tokens: TokenList;
+  weights: BigNumberish[];
+  rateProviders: Account[];
+  assetManagers: string[];
+  swapFeePercentage: BigNumberish;
+  pauseWindowDuration: BigNumberish;
+  bufferPeriodDuration: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
-  aumProtocolFeesCollector: string;
   factoryVersion: string;
   poolVersion: string;
-  aumFeeId?: BigNumberish;
-  owner?: string;
+  owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
+  poolType?: ManagedPoolType;
+  aumFeeId?: BigNumberish;
 };
 
 export type SwapWeightedPool = {
@@ -192,23 +247,13 @@ export type GradualSwapFeeUpdateParams = {
   endSwapFeePercentage: BigNumber;
 };
 
-export type BasePoolRights = {
-  canTransferOwnership: boolean;
-  canChangeSwapFee: boolean;
-  canUpdateMetadata: boolean;
-};
-
-export type ManagedPoolRights = {
-  canChangeWeights: boolean;
-  canDisableSwaps: boolean;
-  canSetMustAllowlistLPs: boolean;
-  canSetCircuitBreakers: boolean;
-  canChangeTokens: boolean;
-  canChangeMgmtFees: boolean;
-  canDisableJoinExit: boolean;
-};
-
 export type ManagedPoolParams = {
+  name: string;
+  symbol: string;
+  assetManagers: string[];
+};
+
+export type ManagedPoolSettingsParams = {
   tokens: string[];
   normalizedWeights: BigNumberish[];
   swapFeePercentage: BigNumberish;

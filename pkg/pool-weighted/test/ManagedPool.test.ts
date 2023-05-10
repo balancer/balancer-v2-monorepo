@@ -14,14 +14,14 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import ManagedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/ManagedPool';
 import {
   ExitResult,
   JoinQueryResult,
   JoinResult,
-  RawWeightedPoolDeployment,
+  RawManagedPoolDeployment,
   SwapResult,
-  WeightedPoolType,
+  ManagedPoolType,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
@@ -35,7 +35,7 @@ describe('ManagedPool', function () {
   let allTokens: TokenList;
   let poolTokens: TokenList;
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
-  let pool: WeightedPool;
+  let pool: ManagedPool;
   let vault: Vault;
 
   const poolVersion = JSON.stringify({
@@ -71,18 +71,18 @@ describe('ManagedPool', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
-  async function deployPool(overrides: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
+  async function deployPool(overrides: RawManagedPoolDeployment = {}): Promise<ManagedPool> {
     const params = {
       vault,
       tokens: poolTokens,
       weights: poolWeights,
       owner: owner.address,
       aumFeeId: ProtocolFee.AUM,
-      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
+      poolType: ManagedPoolType.MOCK_MANAGED_POOL,
       poolVersion,
       ...overrides,
     };
-    return WeightedPool.create(params);
+    return ManagedPool.create(params);
   }
 
   async function getUnscaledBptPrice(tokenIndex: number): Promise<BigNumber> {

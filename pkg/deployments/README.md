@@ -94,25 +94,30 @@ Returns an object with all contracts from a deployment and their addresses.
 | Polygon Root Gauges V2, for veBAL voting               | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Pool Recovery Helper                                   | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 | Authorizer Adaptor Entrypoint                          | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
-| Timelock Authorizer, governance contract               | [`20221202-timelock-authorizer`](./tasks/20221202-timelock-authorizer)                               |
 | L2 Gauge Checkpointer                                  | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                           |
 | VeBoost V2                                             | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
 | Gauge Registrant V3, supporting the Adaptor entrypoint | [`20230109-gauge-adder-v3`](./tasks/20230109-gauge-adder-v3)                                         |
-| Linear Pools for ERC4626 Tokens V3                     | [`20230206-erc4626-linear-pool-v3`](./tasks/20230206-erc4626-linear-pool-v3)                         |
-| Linear Pools for Aave aTokens (with rebalancing) V4    | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/20230206-aave-rebalanced-linear-pool-v4)         |
 | Linear Pools for Euler Tokens                          | [`20230208-euler-linear-pool`](./tasks/20230208-euler-linear-pool)                                   |
-| Linear Pools for Yearn Tokens                          | [`20230213-yearn-linear-pool`](./tasks/20230213-yearn-linear-pool)                                   |
-| Linear Pools for Gearbox Tokens                        | [`20230213-gearbox-linear-pool`](./tasks/20230213-gearbox-linear-pool)                               |
 | Single Recipient Stakeless Gauges V2                   | [`20230215-single-recipient-gauge-factory`](./tasks/20230215-single-recipient-gauge-factory-v2)      |
 | Gnosis Root Gauge, for veBAL voting                    | [`20230217-gnosis-root-gauge-factory`](./tasks/20230217-gnosis-root-gauge-factory)                   |
 | Merkle Orchard Distributor V2                          | [`20230222-merkle-orchard-v2`](./tasks/20230222-merkle-orchard-v2)                                   |
 | Protocol ID registry                                   | [`20230223-protocol-id-registry`](./tasks/20230223-protocol-id-registry)                             |
 | Batch Relayer V5                                       | [`20230314-batch-relayer-v5`](./tasks/20230314-batch-relayer-v5)                                     |
-| Linear Pools for Silo Tokens                           | [`20230315-silo-linear-pool`](./tasks/20230315-silo-linear-pool)                                     |
 | L2 Balancer Pseudo Minter                              | [`20230316-l2-balancer-pseudo-minter`](./tasks/20230316-l2-balancer-pseudo-minter)                   |
+| Child Chain Gauge Factory V2                           | [`20230316-child-chain-gauge-factory-v2`](./tasks/20230316-child-chain-gauge-factory-v2)             |
 | L2 Voting Escrow Delegation Proxy                      | [`20230316-l2-ve-delegation-proxy`](./tasks/20230316-l2-ve-delegation-proxy)                         |
 | Weighted Pool V4                                       | [`20230320-weighted-pool-v4`](./tasks/20230320-weighted-pool-v4)                                     |
 | Composable Stable Pools V4                             | [`20230320-composable-stable-pool-v4`](./tasks/20230320-composable-stable-pool-v4)                   |
+| Timelock Authorizer, governance contract               | [`20230403-timelock-authorizer`](./tasks/20230403-timelock-authorizer)                               |
+| L2 Layer0 Bridge Forwarder                             | [`20230404-l2-layer0-bridge-forwarder`](./tasks/20230404-l2-layer0-bridge-forwarder)                 |
+| Linear Pools for ERC4626 Tokens V4                     | [`20230409-erc4626-linear-pool-v4`](./tasks/20230409-erc4626-linear-pool-v4)                         |
+| Linear Pools for Yearn Tokens V2                       | [`20230409-yearn-linear-pool-v2`](./tasks/20230409-yearn-linear-pool-v2)                             |
+| Linear Pools for Gearbox Tokens V2                     | [`20230409-gearbox-linear-pool-v2`](./tasks/20230409-gearbox-linear-pool-v2)                         |
+| Linear Pools for Aave aTokens V5                       | [`20230410-aave-linear-pool-v5`](./tasks/20230410-aave-linear-pool-v5)                               |
+| Linear Pools for Silo Tokens V2                        | [`20230410-silo-linear-pool-v2`](./tasks/20230410-silo-linear-pool-v2)                               |
+| Managed Pool V2                                        | [`20230411-managed-pool-v2`](./tasks/20230411-managed-pool-v2)                                       |
+| Authorizer with Adaptor Validation                     | [`20230414-authorizer-wrapper`](./tasks/20230414-authorizer-wrapper)                                 |
+| Voting Escrow Remapper                                 | [`20230504-vebal-remapper`](./tasks/20230504-vebal-remapper)                                         |
 
 ## Scripts
 
@@ -173,3 +178,9 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for Aave aTokens (with rebalancing) V3 | [`20221207-aave-rebalanced-linear-pool-v3`](./tasks/deprecated/20221207-aave-rebalanced-linear-pool-v3) |
 | Weighted Pool V3                                    | [`20230206-weighted-pool-v3`](./tasks/deprecated/20230206-weighted-pool-v3)                             |
 | Composable Stable Pools V3                          | [`20230206-composable-stable-pool-v3`](./tasks/deprecated/20230206-composable-stable-pool-v3)           |
+| Timelock Authorizer, governance contract            | [`20221202-timelock-authorizer`](./tasks/deprecated/20221202-timelock-authorizer)                       |
+| Linear Pools for ERC4626 Tokens V3                  | [`20230206-erc4626-linear-pool-v3`](./tasks/deprecated/20230206-erc4626-linear-pool-v3)                 |
+| Linear Pools for Aave aTokens (with rebalancing) V4 | [`20230206-aave-rebalanced-linear-pool-v4`](./tasks/deprecated/20230206-aave-rebalanced-linear-pool-v4) |
+| Linear Pools for Yearn Tokens                       | [`20230213-yearn-linear-pool`](./tasks/deprecated/20230213-yearn-linear-pool)                           |
+| Linear Pools for Gearbox Tokens                     | [`20230213-gearbox-linear-pool`](./tasks/deprecated/20230213-gearbox-linear-pool)                       |
+| Linear Pools for Silo Tokens                        | [`20230315-silo-linear-pool`](./tasks/deprecated/20230315-silo-linear-pool)                             |

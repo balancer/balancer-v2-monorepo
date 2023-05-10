@@ -10,4 +10,5 @@ Deployment of the `ProtocolIdRegistry` contract, which keeps track of valid part
 - [Optimism mainnet addresses](./output/optimism.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`ProtocolIdRegistry` artifact](./artifact/ProtocolIdRegistry.json)

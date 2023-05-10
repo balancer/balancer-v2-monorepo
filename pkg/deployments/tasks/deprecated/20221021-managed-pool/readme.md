@@ -4,7 +4,7 @@
 >
 > This factory and associated Pools have been deprecated due to dependencies requiring extra features: this deployment's Pools are not expected to ever be used.
 >
-> An updated version will be released soon.
+> Superseded by this [updated version](../../20230411-managed-pool-v2), which has reentrancy protection, create2, configurable pause window, and other improvements.
 
 Deployment of the `ManagedPoolFactory`, which allows creating Managed Pools.
 
@@ -17,9 +17,10 @@ A Managed Pool is a Weighted Pool with mutable tokens and weights, designed to b
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Polygon addresses](./output/polygon.json)
-- [Arbitrum addresses](./output/arbitrum.json)
-- [Optimism addresses](./output/optimism.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`ManagedPool` artifact](./artifact/ManagedPool.json)
 - [`ManagedPoolFactory` artifact](./artifact/ManagedPoolFactory.json)
 - [`ManagedPoolAddRemoveTokenLib` artifact](./artifact/ManagedPoolAddRemoveTokenLib.json)

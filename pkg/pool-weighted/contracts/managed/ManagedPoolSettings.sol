@@ -119,7 +119,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     /**
      * @dev Reverts if called in the middle of a Vault operation; has no effect otherwise.
      */
-    function _ensureNotInVaultContext() private {
+    function _ensureNotInVaultContext() private view {
         VaultReentrancyLib.ensureNotInVaultContext(getVault());
     }
 

@@ -21,4 +21,7 @@ export default {
   goerli: {
     BPT: '0xf8a0623ab66F985EfFc1C69D05F1af4BaDB01b00', // BPT of an 80-20 BAL-WETH Pool using test BAL
   },
+  sepolia: {
+    BPT: '0x650C15c9CFc6063e5046813f079774f56946dF21', // BPT of an 80-20 BAL-WETH Pool using test BAL
+  },
 };
