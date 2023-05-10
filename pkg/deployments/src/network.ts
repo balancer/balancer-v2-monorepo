@@ -55,7 +55,7 @@ export function saveContractDeploymentAddresses(tasks: Task[], network: string):
 }
 
 /**
- * Builds object that maps deployment addresses to {task ID, contract name} for all the given tasks. 
+ * Builds object that maps deployment addresses to {task ID, contract name} for all the given tasks.
  */
 export function buildContractDeploymentAddressesEntries(tasks: Task[]): object {
   let allTaskEntries = {};
