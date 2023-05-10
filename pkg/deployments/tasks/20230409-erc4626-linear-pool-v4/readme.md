@@ -10,6 +10,7 @@ Supersedes `20230206-erc4626-linear-pool-v3`, modifying the pool factory to use 
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`ERC4626LinearPoolFactory` artifact](./artifact/ERC4626LinearPoolFactory.json)
 - [`ERC4626LinearPool` artifact](./artifact/ERC4626LinearPool.json)
 - [`ERC4626LinearPoolRebalancer` artifact](./artifact/ERC4626LinearPoolRebalancer.json)

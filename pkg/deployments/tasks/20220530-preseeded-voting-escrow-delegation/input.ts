@@ -80,4 +80,8 @@ export default {
     PreseededBoostCalls: [],
     PreseededApprovalCalls: [],
   },
+  sepolia: {
+    PreseededBoostCalls: [],
+    PreseededApprovalCalls: [],
+  },
 };

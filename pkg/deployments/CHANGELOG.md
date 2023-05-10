@@ -40,6 +40,7 @@
 ### New Networks
 
 - Deployed all L2 contracts to Avalanche.
+- Deployed all contracts on Goerli to Sepolia.
 
 ### New Deployments
 

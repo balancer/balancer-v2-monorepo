@@ -11,5 +11,6 @@ This version simplifies the system to distribute BAL and allows veBAL boosts on 
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
 - [Goerli testnet addresses](./output/goerli.json)
+- [Sepolia testnet addresses](./output/sepolia.json)
 - [`ChildChainGauge` artifact](./artifact/ChildChainGauge.json)
 - [`ChildChainGaugeFactory` artifact](./artifact/ChildChainGaugeFactory.json)

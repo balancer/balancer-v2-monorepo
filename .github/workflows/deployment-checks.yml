@@ -40,6 +40,7 @@ jobs:
           GNOSIS_RPC_ENDPOINT: ${{ secrets.GNOSIS_INFURA_ENDPOINT }}
           AVALANCHE_RPC_ENDPOINT: ${{ secrets.AVALANCHE_INFURA_ENDPOINT }}
           GOERLI_RPC_ENDPOINT: ${{ secrets.GOERLI_INFURA_ENDPOINT }}
+          SEPOLIA_RPC_ENDPOINT: ${{ secrets.SEPOLIA_INFURA_ENDPOINT }}
       - name: Check Deployment Addresses
         run: yarn workspace @balancer-labs/v2-deployments check-deployments
 
@@ -62,6 +63,7 @@ jobs:
           GNOSIS_RPC_ENDPOINT: ${{ secrets.GNOSIS_INFURA_ENDPOINT }}
           AVALANCHE_RPC_ENDPOINT: ${{ secrets.AVALANCHE_INFURA_ENDPOINT }}
           GOERLI_RPC_ENDPOINT: ${{ secrets.GOERLI_INFURA_ENDPOINT }}
+          SEPOLIA_RPC_ENDPOINT: ${{ secrets.SEPOLIA_INFURA_ENDPOINT }}
       - name: Check Action IDs
         run: yarn workspace @balancer-labs/v2-deployments check-action-ids
 
