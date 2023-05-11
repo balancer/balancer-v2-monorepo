@@ -412,9 +412,8 @@ export default class Task {
 
   static getAllTaskIds(): string[] {
     return [TASKS_DIRECTORY, DEPRECATED_DIRECTORY, SCRIPTS_DIRECTORY]
-      .map((dir) => fs.readdirSync(dir))
+      .map((dir) => fs.readdirSync(dir).filter((fileName) => fs.lstatSync(path.resolve(dir, fileName)).isDirectory()))
       .flat()
-      .filter((dir) => fs.lstatSync(dir).isDirectory()) // MacOS saves .DS_Store files; we only care about directories.
       .sort();
   }
 }
