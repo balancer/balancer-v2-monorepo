@@ -26,7 +26,7 @@ import {
   getActionIdInfo,
   fetchTheGraphPermissions,
 } from './src/actionId';
-import { saveContractDeploymentAddresses } from './src/network';
+import { checkContractDeploymentAddresses, saveContractDeploymentAddresses } from './src/network';
 import { name } from './package.json';
 
 const THEGRAPHURLS: { [key: string]: string } = {
@@ -256,24 +256,48 @@ task('get-action-ids-info', `Reconstructs all the permissions from TheGraph AP a
   }
 );
 
-task('build-address-lookup', `Build a lookup table from contract addresses to the relevant deployment`)
-  .addOptionalParam('id', 'Specific task ID')
-  .setAction(async (args: { id?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+task('build-address-lookup', `Build a lookup table from contract addresses to the relevant deployment`).setAction(
+  async (args: { verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
     Logger.setDefaults(false, args.verbose || false);
-
-    if (args.id) {
-      const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
-      saveContractDeploymentAddresses(task);
-    } else {
-      for (const taskID of Task.getAllTaskIds()) {
-        if (taskID.startsWith('00000000-')) {
-          continue;
-        }
-        const task = new Task(taskID, TaskMode.READ_ONLY, hre.network.name);
-        saveContractDeploymentAddresses(task);
-      }
+    if (hre.network.name === 'hardhat') {
+      logger.warn(`invalid network: ${hre.network.name}`);
+      return;
     }
-  });
+
+    // Create Task objects, excluding tokens tasks.
+    const tasks = Task.getAllTaskIds()
+      .filter((taskId) => !taskId.startsWith('00000000-'))
+      .map((taskId) => new Task(taskId, TaskMode.READ_ONLY, hre.network.name));
+
+    saveContractDeploymentAddresses(tasks, hre.network.name);
+    logger.success(`Address lookup generated for network ${hre.network.name}`);
+  }
+);
+
+task(
+  'check-address-lookup',
+  `Check whether the existing lookup table from contract addresses to the relevant deployments is correct`
+).setAction(async (args: { verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+  Logger.setDefaults(false, args.verbose || false);
+  if (hre.network.name === 'hardhat') {
+    logger.warn(`invalid network: ${hre.network.name}`);
+    return;
+  }
+
+  // Create Task objects, excluding tokens tasks.
+  const tasks = Task.getAllTaskIds()
+    .filter((taskId) => !taskId.startsWith('00000000-'))
+    .map((taskId) => new Task(taskId, TaskMode.READ_ONLY, hre.network.name));
+
+  const addressLookupFileOk = checkContractDeploymentAddresses(tasks, hre.network.name);
+  if (!addressLookupFileOk) {
+    throw new Error(
+      `Address lookup file is incorrect for network ${hre.network.name}. Please run 'build-address-lookup' to regenerate it`
+    );
+  } else {
+    logger.success(`Address lookup file is correct for network ${hre.network.name}`);
+  }
+});
 
 task(TASK_TEST).addOptionalParam('id', 'Specific task ID of the fork test to run.').setAction(test);
 
