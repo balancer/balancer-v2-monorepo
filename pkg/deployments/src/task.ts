@@ -410,7 +410,12 @@ export default class Task {
     }
   }
 
+  /**
+   * Return all directories inside the top 3 fixed task directories in a flat, sorted array.
+   */
   static getAllTaskIds(): string[] {
+    // Some operating systems may insert hidden files that should not be listed, so we just look for directories when
+    // reading the file system.
     return [TASKS_DIRECTORY, DEPRECATED_DIRECTORY, SCRIPTS_DIRECTORY]
       .map((dir) => fs.readdirSync(dir).filter((fileName) => fs.lstatSync(path.resolve(dir, fileName)).isDirectory()))
       .flat()
