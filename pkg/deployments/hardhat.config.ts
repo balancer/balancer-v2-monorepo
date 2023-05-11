@@ -257,7 +257,7 @@ task('get-action-ids-info', `Reconstructs all the permissions from TheGraph AP a
 );
 
 task('build-address-lookup', `Build a lookup table from contract addresses to the relevant deployment`).setAction(
-  async (args: { id?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+  async (args: { verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
     Logger.setDefaults(false, args.verbose || false);
     if (hre.network.name === 'hardhat') {
       logger.warn(`invalid network: ${hre.network.name}`);
@@ -277,7 +277,7 @@ task('build-address-lookup', `Build a lookup table from contract addresses to th
 task(
   'check-address-lookup',
   `Check whether the existing lookup table from contract addresses to the relevant deployments is correct`
-).setAction(async (args: { id?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+).setAction(async (args: { verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
   Logger.setDefaults(false, args.verbose || false);
   if (hre.network.name === 'hardhat') {
     logger.warn(`invalid network: ${hre.network.name}`);
@@ -292,7 +292,7 @@ task(
   const addressLookupFileOk = checkContractDeploymentAddresses(tasks, hre.network.name);
   if (!addressLookupFileOk) {
     throw new Error(
-      `Address lookup file is incorrect for network ${hre.network.name}. Please re-generate file by running 'build-address-lookup' task`
+      `Address lookup file is incorrect for network ${hre.network.name}. Please run 'build-address-lookup' to regenerate it`
     );
   } else {
     logger.success(`Address lookup file is correct for network ${hre.network.name}`);

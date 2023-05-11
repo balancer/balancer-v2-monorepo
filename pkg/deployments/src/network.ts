@@ -43,7 +43,7 @@ export function getContractDeploymentTransactionHash(deployedAddress: string, ne
 }
 
 /**
- * Saves file with canonical deployment addresses for all the given tasks in the given network,
+ * Saves a file with the canonical deployment addresses for all tasks in a given network.
  */
 export function saveContractDeploymentAddresses(tasks: Task[], network: string): void {
   if (network === 'hardhat') return;
@@ -55,7 +55,7 @@ export function saveContractDeploymentAddresses(tasks: Task[], network: string):
 }
 
 /**
- * Builds object that maps deployment addresses to {task ID, contract name} for all the given tasks.
+ * Builds an object that maps deployment addresses to {task ID, contract name} for all given tasks.
  */
 export function buildContractDeploymentAddressesEntries(tasks: Task[]): object {
   let allTaskEntries = {};
@@ -75,7 +75,7 @@ export function buildContractDeploymentAddressesEntries(tasks: Task[]): object {
 
 /**
  * Returns true if the existing deployment addresses file stored in `CONTRACT_ADDRESSES_DIRECTORY` matches the
- * canonical one for the given set of tasks in the given network; false otherwise.
+ * canonical one for the given network; false otherwise.
  */
 export function checkContractDeploymentAddresses(tasks: Task[], network: string): boolean {
   const allTaskEntries = buildContractDeploymentAddressesEntries(tasks);
