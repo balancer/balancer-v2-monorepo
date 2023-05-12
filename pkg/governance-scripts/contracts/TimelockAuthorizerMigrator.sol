@@ -27,13 +27,13 @@ contract TimelockAuthorizerMigrator {
         public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     // solhint-disable-previous-line max-line-length
     address public constant EVERYWHERE = address(-1);
-    uint256 public constant CHANGE_ROOT_DELAY = 4 weeks;
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
     IVault public immutable vault;
     address public immutable root;
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable newAuthorizer;
+    uint256 public immutable changeRootDelay;
 
     uint256 private _lastScheduledExecutionId;
 
@@ -55,6 +55,7 @@ contract TimelockAuthorizerMigrator {
         address _root,
         IBasicAuthorizer _oldAuthorizer,
         IAuthorizerAdaptorEntrypoint _authorizerAdaptorEntrypoint,
+        uint256 _changeRootDelay,
         RoleData[] memory _rolesData,
         RoleData[] memory _grantersData,
         RoleData[] memory _revokersData,
@@ -67,12 +68,13 @@ contract TimelockAuthorizerMigrator {
             address(this),
             _root,
             _authorizerAdaptorEntrypoint,
-            CHANGE_ROOT_DELAY
+            _changeRootDelay
         );
         newAuthorizer = _newAuthorizer;
         oldAuthorizer = _oldAuthorizer;
         vault = _authorizerAdaptorEntrypoint.getVault();
         root = _root;
+        changeRootDelay = _changeRootDelay;
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
             RoleData memory roleData = _rolesData[i];
@@ -97,7 +99,7 @@ contract TimelockAuthorizerMigrator {
         uint256 lastScheduledExecutionId = 0;
 
         // Setting the initial value for a delay requires us to wait 3 days before we can complete setting it.
-        // We schedule them now to ensure that they're ready to execute once `CHANGE_ROOT_DELAY` has passed.
+        // We schedule them now to ensure that they're ready to execute once `changeRootDelay` has passed.
         for (uint256 i = 0; i < _executeDelaysData.length; i++) {
             // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
             require(_executeDelaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
