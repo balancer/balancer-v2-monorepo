@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/ITimelockAuthorizer.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "./TimelockExecutionHelper.sol";
 
@@ -208,20 +209,20 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function getScheduledExecutionsCount() external view returns (uint256) {
+    function getScheduledExecutionsCount() external view override returns (uint256) {
         return _scheduledExecutions.length;
     }
 
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function getScheduledExecutions(uint256 offset, uint256 limit, bool reverseOrder)
-        external
-        view
-        returns (ITimelockAuthorizer.ScheduledExecution[] memory items)
-    {
+    function getScheduledExecutions(
+        uint256 offset,
+        uint256 limit,
+        bool reverseOrder
+    ) external view override returns (ITimelockAuthorizer.ScheduledExecution[] memory items) {
         require(offset < _scheduledExecutions.length, "INVALID_OFFSET");
-      
+
         uint256 rest = _scheduledExecutions.length - offset;
         uint256 size = Math.min(rest, limit);
         items = new ITimelockAuthorizer.ScheduledExecution[](size);
