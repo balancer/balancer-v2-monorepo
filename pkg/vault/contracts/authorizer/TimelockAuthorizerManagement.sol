@@ -221,8 +221,8 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         uint256 maxSize,
         bool reverseOrder
     ) external view override returns (ITimelockAuthorizer.ScheduledExecution[] memory) {
-        require(skip < _scheduledExecutions.length, "INVALID_SKIP_VALUE");
-        require(maxSize > 0, "INVALID_MAX_SIZE_VALUE");
+        require(skip < _scheduledExecutions.length, "SKIP_VALUE_TOO_LARGE");
+        require(maxSize > 0, "ZERO_MAX_SIZE_VALUE");
 
         uint256 remaining = _scheduledExecutions.length - skip;
         uint256 size = Math.min(remaining, maxSize);

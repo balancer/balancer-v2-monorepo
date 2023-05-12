@@ -53,7 +53,8 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     sharedBeforeEach('set authorizer permission delay', async () => {
-      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
+      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`,
+      // which it must have in order to be able to schedule calls to it.
       const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, 2 * delay, { from: root });
     });
@@ -251,7 +252,8 @@ describe('TimelockAuthorizer execute', () => {
     const functionData = '0x0123456789abcdef';
 
     sharedBeforeEach('grant protected function permission with delay', async () => {
-      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
+      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`,
+      // which it must have in order to be able to schedule calls to it.
       const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay, { from: root });
 
@@ -394,7 +396,8 @@ describe('TimelockAuthorizer execute', () => {
     const delay = DAY;
 
     sharedBeforeEach('grant protected function permission with delay', async () => {
-      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
+      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`,
+      // which it must have in order to be able to schedule calls to it.
       const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
       await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, delay, { from: root });
 
@@ -490,6 +493,177 @@ describe('TimelockAuthorizer execute', () => {
       const id = await schedule();
 
       await expect(authorizer.cancel(id, { from: other })).to.be.revertedWith('SENDER_IS_NOT_CANCELER');
+    });
+  });
+
+  describe('getScheduledExecutions', () => {
+    const delay = DAY * 5;
+
+    sharedBeforeEach('set authorizer permission delay', async () => {
+      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`,
+      // which it must have in order to be able to schedule calls to it.
+      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      await authorizer.scheduleAndExecuteDelayChange(setAuthorizerAction, 2 * delay, { from: root });
+    });
+
+    sharedBeforeEach('grant permission', async () => {
+      const action = await actionId(authenticatedContract, 'protectedFunction');
+      await authorizer.grantPermission(action, user, authenticatedContract, { from: root });
+
+      await authorizer.scheduleAndExecuteDelayChange(action, delay, { from: root });
+    });
+
+    const schedule = async (functionData: string): Promise<number> => {
+      return authorizer.schedule(
+        authenticatedContract.address,
+        authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]),
+        [],
+        { from: user }
+      );
+    };
+
+    // We will schedule 5 calls to `protectedFunction`, with data 0x00, 0x01, 0x02, etc.
+    const SCHEDULED_ENTRIES = 5;
+    // There'll be two extra entries: the one used to set the delay for setAuthorizer, and the one used to set the delay
+    // for `protectedFunction`.
+    const TOTAL_ENTRIES = SCHEDULED_ENTRIES + 2;
+
+    sharedBeforeEach('schedule multiple entries', async () => {
+      for (let i = 0; i < SCHEDULED_ENTRIES; ++i) {
+        await schedule(`0x0${i}`);
+      }
+    });
+
+    it('returns the number of total entries', async () => {
+      expect(await authorizer.instance.getScheduledExecutionsCount()).to.equal(TOTAL_ENTRIES);
+    });
+
+    it('reverts if the skip value is too large', async () => {
+      await expect(authorizer.instance.getScheduledExecutions(TOTAL_ENTRIES, 10, false)).to.be.revertedWith(
+        'SKIP_VALUE_TOO_LARGE'
+      );
+    });
+
+    it('reverts if the maxSize value is zero', async () => {
+      await expect(authorizer.instance.getScheduledExecutions(0, 0, false)).to.be.revertedWith('ZERO_MAX_SIZE_VALUE');
+    });
+
+    context('in chronological order', () => {
+      const reverseOrder = false;
+
+      it('returns entries in chronological order', async () => {
+        const entries = await authorizer.instance.getScheduledExecutions(0, 10, reverseOrder);
+
+        expect(entries.length).to.equal(TOTAL_ENTRIES);
+
+        // The first entry is the one that sets the setAuthorizer delay
+        expect(entries[0].where).to.equal(authorizer.address);
+        expect(entries[0].data).to.equal(
+          authorizer.interface.encodeFunctionData('setDelay', [await actionId(vault, 'setAuthorizer'), 2 * delay])
+        );
+
+        // The last entry is the one that we scheduled
+        expect(entries[entries.length - 1].where).to.equal(authenticatedContract.address);
+        expect(entries[entries.length - 1].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x04`])
+        );
+      });
+
+      it('skips older entries', async () => {
+        // We skip the initial two entries (setDelay for setAuthorizer and setDelay for protectedFunction)
+        const entries = await authorizer.instance.getScheduledExecutions(2, 10, reverseOrder);
+
+        expect(entries.length).to.equal(SCHEDULED_ENTRIES);
+
+        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x00`])
+        );
+
+        // The last entry is the one that we scheduled
+        expect(entries[entries.length - 1].where).to.equal(authenticatedContract.address);
+        expect(entries[entries.length - 1].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x04`])
+        );
+      });
+
+      it('trims newer entries with lower maxSize', async () => {
+        // This skips the initial two entries, but only returns 3 of the `protectedFunction` calls
+        const entries = await authorizer.instance.getScheduledExecutions(2, 3, reverseOrder);
+
+        expect(entries.length).to.equal(3);
+
+        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x00`])
+        );
+
+        expect(entries[2].where).to.equal(authenticatedContract.address);
+        expect(entries[2].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x02`])
+        );
+      });
+    });
+
+    context('in reverse chronological order', () => {
+      const reverseOrder = true;
+
+      it('returns entries in reverse chronological order', async () => {
+        const entries = await authorizer.instance.getScheduledExecutions(0, 10, reverseOrder);
+
+        expect(entries.length).to.equal(TOTAL_ENTRIES);
+
+        // The first entry is the last one that we scheduled
+        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x04`])
+        );
+
+        // The last entry is the one that sets the setAuthorizer delay
+        expect(entries[entries.length - 1].where).to.equal(authorizer.address);
+        expect(entries[entries.length - 1].data).to.equal(
+          authorizer.interface.encodeFunctionData('setDelay', [await actionId(vault, 'setAuthorizer'), 2 * delay])
+        );
+      });
+
+      it('skips newer entries', async () => {
+        // We skip the last two entries (the last two calls to `protectedFunction`)
+        const entries = await authorizer.instance.getScheduledExecutions(2, 10, reverseOrder);
+
+        expect(entries.length).to.equal(TOTAL_ENTRIES - 2);
+
+        // The first entry is the third to last that we scheduled
+        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x02`])
+        );
+
+        // The last entry is the one that sets the setAuthorizer delay
+        expect(entries[entries.length - 1].where).to.equal(authorizer.address);
+        expect(entries[entries.length - 1].data).to.equal(
+          authorizer.interface.encodeFunctionData('setDelay', [await actionId(vault, 'setAuthorizer'), 2 * delay])
+        );
+      });
+
+      it('trims newer entries with lower maxSize', async () => {
+        // This skips the last two calls to `protectedFunction`, but only returns 3 of the `protectedFunction` calls
+        // (trimming the two initial setup actions).
+        const entries = await authorizer.instance.getScheduledExecutions(2, 3, reverseOrder);
+
+        expect(entries.length).to.equal(3);
+
+        // This is the third to last scheduled call to `protectedFunction`
+        expect(entries[0].where).to.equal(authenticatedContract.address);
+        expect(entries[0].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x02`])
+        );
+
+        // This is the first scheduled call to `protectedFunction`
+        expect(entries[2].where).to.equal(authenticatedContract.address);
+        expect(entries[2].data).to.equal(
+          authenticatedContract.interface.encodeFunctionData('protectedFunction', [`0x00`])
+        );
+      });
     });
   });
 });
