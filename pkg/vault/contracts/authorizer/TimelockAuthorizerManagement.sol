@@ -487,6 +487,17 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     function _addCanceler(uint256 scheduledExecutionId, address account) internal {
         require(!isCanceler(scheduledExecutionId, account), "ACCOUNT_IS_ALREADY_CANCELER");
 
+        if (scheduledExecutionId != GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID()) {
+            // It is not possible to predict future execution ids (because they'll depend on the order of scheduled
+            // actions), so it is never a good idea to add cancelers for executions that don't yet exist.
+            require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+
+            // It is also pointless to add a canceler for a scheduled execution that has already been executed or
+            // cancelled, so we disallow this to provide more information to a caller that would attempt this.
+            ScheduledExecution storage execution = _scheduledExecutions[scheduledExecutionId];
+            require(!execution.executed && !execution.cancelled, "ACTION_IS_NOT_PENDING");
+        }
+
         _isCanceler[scheduledExecutionId][account] = true;
         emit CancelerAdded(scheduledExecutionId, account);
     }
