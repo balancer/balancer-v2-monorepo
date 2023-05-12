@@ -10,7 +10,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizer execute', () => {
   let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
@@ -77,6 +77,32 @@ describe('TimelockAuthorizer execute', () => {
       data = authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]);
       return authorizer.schedule(where, data, executors || [], { from: user });
     };
+
+    it('increases the scheduled execution count', async () => {
+      const countBefore = await authorizer.instance.getScheduledExecutionsCount();
+      await schedule(authenticatedContract);
+      const countAfter = await authorizer.instance.getScheduledExecutionsCount();
+
+      expect(countAfter).to.equal(countBefore.add(1));
+    });
+
+    it('stores scheduler information', async () => {
+      const id = await schedule(authenticatedContract);
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.scheduledBy).to.equal(user.address);
+      expect(scheduledExecution.scheduledAt).to.equal(await currentTimestamp());
+    });
+
+    it('stores empty executor and canceler information', async () => {
+      const id = await schedule(authenticatedContract);
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
+      expect(scheduledExecution.executedAt).to.equal(0);
+      expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
+      expect(scheduledExecution.cancelledAt).to.equal(0);
+    });
 
     it('schedules a non-protected execution', async () => {
       const id = await schedule(authenticatedContract);
@@ -258,6 +284,26 @@ describe('TimelockAuthorizer execute', () => {
       expect(scheduledExecution.executed).to.be.true;
     });
 
+    it('stores executor information', async () => {
+      const id = await schedule();
+      await advanceTime(delay);
+      await authorizer.execute(id, { from: executor });
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.executedBy).to.equal(executor.address);
+      expect(scheduledExecution.executedAt).to.equal(await currentTimestamp());
+    });
+
+    it('stores empty canceler information', async () => {
+      const id = await schedule();
+      await advanceTime(delay);
+      await authorizer.execute(id, { from: executor });
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
+      expect(scheduledExecution.cancelledAt).to.equal(0);
+    });
+
     it('execute returns a correct result', async () => {
       const id = await schedule();
       await advanceTime(delay);
@@ -363,6 +409,26 @@ describe('TimelockAuthorizer execute', () => {
       await authorizer.addCanceler(id, canceler, { from: root });
       return id;
     };
+
+    it('stores executor information', async () => {
+      const id = await schedule();
+      await advanceTime(delay);
+      await authorizer.cancel(id, { from: canceler });
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.cancelledBy).to.equal(canceler.address);
+      expect(scheduledExecution.cancelledAt).to.equal(await currentTimestamp());
+    });
+
+    it('stores empty executor information', async () => {
+      const id = await schedule();
+      await advanceTime(delay);
+      await authorizer.cancel(id, { from: canceler });
+
+      const scheduledExecution = await authorizer.getScheduledExecution(id);
+      expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
+      expect(scheduledExecution.executedAt).to.equal(0);
+    });
 
     it('specific canceler can cancel the action', async () => {
       const id = await schedule();

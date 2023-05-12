@@ -77,6 +77,12 @@ export default class TimelockAuthorizer {
     executableAt: BigNumber;
     data: string;
     where: string;
+    scheduledBy: string;
+    scheduledAt: BigNumber;
+    executedBy: string;
+    executedAt: BigNumber;
+    cancelledBy: string;
+    cancelledAt: BigNumber;
   }> {
     return this.instance.getScheduledExecution(id);
   }
