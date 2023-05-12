@@ -217,19 +217,29 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
      * @inheritdoc ITimelockAuthorizer
      */
     function getScheduledExecutions(
-        uint256 offset,
-        uint256 limit,
+        uint256 skip,
+        uint256 maxSize,
         bool reverseOrder
-    ) external view override returns (ITimelockAuthorizer.ScheduledExecution[] memory items) {
-        require(offset < _scheduledExecutions.length, "INVALID_OFFSET");
+    ) external view override returns (ITimelockAuthorizer.ScheduledExecution[] memory) {
+        require(skip < _scheduledExecutions.length, "INVALID_SKIP_VALUE");
+        require(maxSize > 0, "INVALID_MAX_SIZE_VALUE");
 
-        uint256 rest = _scheduledExecutions.length - offset;
-        uint256 size = Math.min(rest, limit);
-        items = new ITimelockAuthorizer.ScheduledExecution[](size);
+        uint256 remaining = _scheduledExecutions.length - skip;
+        uint256 size = Math.min(remaining, maxSize);
+        ITimelockAuthorizer.ScheduledExecution[] memory items = new ITimelockAuthorizer.ScheduledExecution[](size);
 
         for (uint256 i = 0; i < size; i++) {
-            items[i] = _scheduledExecutions[reverseOrder ? rest - i - 1 : offset + i];
+            if (!reverseOrder) {
+                // In chronological order we simply skip the first (older) entries
+                items[i] = _scheduledExecutions[skip + i];
+            } else {
+                // In reverse order we go back to front, skipping the last (newer) entries. Note that `remaining` will
+                // equal the total count if `skip` is 0, meaning we'd start with the newest entry.
+                items[i] = _scheduledExecutions[remaining - 1 - i];
+            }
         }
+
+        return items;
     }
 
     /**

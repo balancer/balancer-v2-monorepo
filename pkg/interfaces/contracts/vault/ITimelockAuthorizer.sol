@@ -259,13 +259,27 @@ interface ITimelockAuthorizer {
     function getScheduledExecutionsCount() external view returns (uint256);
 
     /**
-     * @notice Provides a mechanism to iterate over all scheduled executions. This function will return `limit` items
-     * starting at index `offset`. When `reverseOrder` is true, the items will be returned in reverse chronological
-     * order, with the most recent scheduled execution returned at index 0.
+     * @notice Returns multiple scheduled executions, in either chronological or reverse chronological order (if
+     * `reverseOrder` is true).
+     *
+     * This function will return at most `maxSize` items, starting at index `skip` (meaning the first entries are
+     * skipped). Note that when querying in reverse order, it is the newest entries that are skipped, not the oldest.
+     *
+     * The value of `skip` must be lower than the return value of `getScheduledExecutionsCount()`, which means that not
+     * all scheduled executions can be skipped, and at least one execution will always be returned (assuming there are
+     * any).
+     *
+     * Example calls:
+     *  - { skip: 0, reverseOrder: false } : returns up to `maxSize` of oldest entries, with the oldest at index 0
+     *  - { skip: 0, reverseOrder: true } : returns up to `maxSize` of the newest entries, with the newest at index 0
+     *  - { skip: 5, reverseOrder: false } : returns up to `maxSize` of the oldest entries, skipping the 5 oldest
+     *    entries, with the globally sixth oldest at index 0
+     *  - { skip: 5, reverseOrder: true } : returns up to `maxSize` of the newest entries, skipping the 5 newest
+     *    entries, with the globally sixth nexest at index 0
      */
     function getScheduledExecutions(
-        uint256 offset,
-        uint256 limit,
+        uint256 skip,
+        uint256 maxSize,
         bool reverseOrder
     ) external view returns (ITimelockAuthorizer.ScheduledExecution[] memory items);
 
