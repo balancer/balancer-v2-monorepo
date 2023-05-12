@@ -163,7 +163,7 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 15485000, function () {
           sender: sender.address,
           recipient: sender.address,
         })),
-        0,
+        0, // value: 0 (no need to transfer ETH)
       ]),
     ]);
 
