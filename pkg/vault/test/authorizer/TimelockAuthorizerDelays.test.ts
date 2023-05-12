@@ -62,6 +62,33 @@ describe('TimelockAuthorizer delays', () => {
         expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
       });
 
+      it('increases the scheduled execution count', async () => {
+        const countBefore = await authorizer.instance.getScheduledExecutionsCount();
+        await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+
+        const countAfter = await authorizer.instance.getScheduledExecutionsCount();
+
+        expect(countAfter).to.equal(countBefore.add(1));
+      });
+
+      it('stores scheduler information', async () => {
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.scheduledBy).to.equal(root.address);
+        expect(scheduledExecution.scheduledAt).to.equal(await currentTimestamp());
+      });
+
+      it('stores empty executor and canceler information', async () => {
+        const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.executedAt).to.equal(0);
+        expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.cancelledAt).to.equal(0);
+      });
+
       it('execution can be unprotected', async () => {
         const id = await authorizer.scheduleDelayChange(ACTION_1, ACTION_DELAY, [], { from: root });
         const execution = await authorizer.getScheduledExecution(id);
@@ -232,6 +259,33 @@ describe('TimelockAuthorizer delays', () => {
         );
         expect(where).to.be.equal(authorizer.address);
         expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
+      });
+
+      it('increases the scheduled execution count', async () => {
+        const countBefore = await authorizer.instance.getScheduledExecutionsCount();
+        await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        const countAfter = await authorizer.instance.getScheduledExecutionsCount();
+
+        expect(countAfter).to.equal(countBefore.add(1));
+      });
+
+      it('stores scheduler information', async () => {
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.scheduledBy).to.equal(root.address);
+        expect(scheduledExecution.scheduledAt).to.equal(await currentTimestamp());
+      });
+
+      it('stores empty executor and canceler information', async () => {
+        const id = await authorizer.scheduleGrantDelayChange(ACTION_1, ACTION_GRANT_DELAY, [], { from: root });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.executedAt).to.equal(0);
+        expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.cancelledAt).to.equal(0);
       });
 
       it('execution can be unprotected', async () => {
@@ -407,6 +461,33 @@ describe('TimelockAuthorizer delays', () => {
         );
         expect(where).to.be.equal(authorizer.address);
         expect(executableAt).to.equal((await currentTimestamp()).add(expectedExecutionDelay));
+      });
+
+      it('increases the scheduled execution count', async () => {
+        const countBefore = await authorizer.instance.getScheduledExecutionsCount();
+        await authorizer.scheduleRevokeDelayChange(ACTION_1, ACTION_REVOKE_DELAY, [], { from: root });
+
+        const countAfter = await authorizer.instance.getScheduledExecutionsCount();
+
+        expect(countAfter).to.equal(countBefore.add(1));
+      });
+
+      it('stores scheduler information', async () => {
+        const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, ACTION_REVOKE_DELAY, [], { from: root });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.scheduledBy).to.equal(root.address);
+        expect(scheduledExecution.scheduledAt).to.equal(await currentTimestamp());
+      });
+
+      it('stores empty executor and canceler information', async () => {
+        const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, ACTION_REVOKE_DELAY, [], { from: root });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.executedAt).to.equal(0);
+        expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.cancelledAt).to.equal(0);
       });
 
       it('execution can be unprotected', async () => {

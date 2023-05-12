@@ -9,7 +9,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { randomAddress } from '@balancer-labs/v2-helpers/src/constants';
+import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 
 describe('TimelockAuthorizer permissions', () => {
@@ -379,6 +379,33 @@ describe('TimelockAuthorizer permissions', () => {
         );
         expect(where).to.be.equal(authorizer.address);
         expect(executableAt).to.equal((await currentTimestamp()).add(delay));
+      });
+
+      it('increases the scheduled execution count', async () => {
+        const countBefore = await authorizer.instance.getScheduledExecutionsCount();
+        await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        const countAfter = await authorizer.instance.getScheduledExecutionsCount();
+
+        expect(countAfter).to.equal(countBefore.add(1));
+      });
+
+      it('stores scheduler information', async () => {
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.scheduledBy).to.equal(getSender().address);
+        expect(scheduledExecution.scheduledAt).to.equal(await currentTimestamp());
+      });
+
+      it('stores empty executor and canceler information', async () => {
+        const id = await authorizer.scheduleGrantPermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.executedAt).to.equal(0);
+        expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.cancelledAt).to.equal(0);
       });
 
       it('execution can be unprotected', async () => {
@@ -764,6 +791,33 @@ describe('TimelockAuthorizer permissions', () => {
         );
         expect(where).to.be.equal(authorizer.address);
         expect(executableAt).to.equal((await currentTimestamp()).add(delay));
+      });
+
+      it('increases the scheduled execution count', async () => {
+        const countBefore = await authorizer.instance.getScheduledExecutionsCount();
+        await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        const countAfter = await authorizer.instance.getScheduledExecutionsCount();
+
+        expect(countAfter).to.equal(countBefore.add(1));
+      });
+
+      it('stores scheduler information', async () => {
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.scheduledBy).to.equal(getSender().address);
+        expect(scheduledExecution.scheduledAt).to.equal(await currentTimestamp());
+      });
+
+      it('stores empty executor and canceler information', async () => {
+        const id = await authorizer.scheduleRevokePermission(ACTION_1, user, WHERE_1, [], { from: getSender() });
+
+        const scheduledExecution = await authorizer.getScheduledExecution(id);
+        expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.executedAt).to.equal(0);
+        expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.cancelledAt).to.equal(0);
       });
 
       it('execution can be unprotected', async () => {
