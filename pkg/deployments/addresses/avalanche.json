@@ -1,0 +1,194 @@
+{
+  "0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6": {
+    "task": "20210418-authorizer",
+    "name": "Authorizer"
+  },
+  "0xBA12222222228d8Ba445958a75a0704d566BF2C8": {
+    "task": "20210418-vault",
+    "name": "Vault"
+  },
+  "0xce88686553686DA562CE7Cea497CE749DA109f9F": {
+    "task": "20210418-vault",
+    "name": "ProtocolFeesCollector"
+  },
+  "0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9": {
+    "task": "20210418-vault",
+    "name": "BalancerHelpers"
+  },
+  "0x0F3e0c4218b7b0108a3643cFe9D3ec0d4F57c54e": {
+    "task": "20211202-no-protocol-fee-lbp",
+    "name": "NoProtocolFeeLiquidityBootstrappingPoolFactory"
+  },
+  "0xdAE7e32ADc5d490a43cCba1f0c736033F2b4eFca": {
+    "task": "20220325-authorizer-adaptor",
+    "name": "AuthorizerAdaptor"
+  },
+  "0x41B953164995c11C81DA73D212ED8Af25741b7Ac": {
+    "task": "20220413-child-chain-gauge-factory",
+    "name": "RewardsOnlyGauge"
+  },
+  "0xD7FAD3bd59D6477cbe1BE7f646F7f1BA25b230f8": {
+    "task": "20220413-child-chain-gauge-factory",
+    "name": "ChildChainStreamer"
+  },
+  "0xb08E16cFc07C684dAA2f93C70323BAdb2A6CBFd2": {
+    "task": "20220413-child-chain-gauge-factory",
+    "name": "ChildChainLiquidityGaugeFactory"
+  },
+  "0x8F42aDBbA1B16EaAE3BB5754915E0D06059aDd75": {
+    "task": "20220517-protocol-fee-withdrawer",
+    "name": "ProtocolFeesWithdrawer"
+  },
+  "0xf302f9F50958c5593770FDf4d4812309fF77414f": {
+    "task": "20220527-child-chain-gauge-token-adder",
+    "name": "ChildChainGaugeTokenAdder"
+  },
+  "0xC128a9954e6c874eA3d62ce62B468bA073093F25": {
+    "task": "20220707-distribution-scheduler",
+    "name": "DistributionScheduler"
+  },
+  "0xC128468b7Ce63eA702C1f104D55A2566b13D3ABD": {
+    "task": "20220721-balancer-queries",
+    "name": "BalancerQueries"
+  },
+  "0x239e55F427D44C3cc793f49bFB507ebe76638a2b": {
+    "task": "20220725-protocol-fee-percentages-provider",
+    "name": "ProtocolFeePercentagesProvider"
+  },
+  "0x2E96068b3D5B5BAE3D7515da4A1D2E52d08A2647": {
+    "task": "20220812-child-chain-reward-helper",
+    "name": "ChildChainGaugeRewardHelper"
+  },
+  "0x6f5a2eE11E7a772AeB5114A20d0D7c0ff61EB8A0": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BatchRelayerLibrary"
+  },
+  "0x9A7b723101ba5A4672960A3b65840AB3b7805048": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BalancerRelayer"
+  },
+  "0x3b8cA519122CdD8efb272b0D3085453404B25bD0": {
+    "task": "20221123-pool-recovery-helper",
+    "name": "PoolRecoveryHelper"
+  },
+  "0x4E7bBd911cf1EFa442BC1b2e9Ea01ffE785412EC": {
+    "task": "20221124-authorizer-adaptor-entrypoint",
+    "name": "AuthorizerAdaptorEntrypoint"
+  },
+  "0x94f68b54191F62f781Fe8298A8A5Fa3ed772d227": {
+    "task": "20230206-weighted-pool-v3",
+    "name": "WeightedPoolFactory"
+  },
+  "0xE867AD0a48e8f815DC0cda2CDb275e0F163A480b": {
+    "task": "20230206-weighted-pool-v3",
+    "name": "MockWeightedPool"
+  },
+  "0x45fFd460cC6642B8D8Fb12373DFd77Ceb0f4932B": {
+    "task": "20230314-batch-relayer-v5",
+    "name": "BatchRelayerLibrary"
+  },
+  "0x03F1ab8b19bcE21EB06C364aEc9e40322572a1e9": {
+    "task": "20230314-batch-relayer-v5",
+    "name": "BalancerRelayer"
+  },
+  "0x4b7b369989e613ff2C65768B7Cf930cC927F901E": {
+    "task": "20230316-child-chain-gauge-factory-v2",
+    "name": "ChildChainGauge"
+  },
+  "0x161f4014C27773840ccb4EC1957113e6DD028846": {
+    "task": "20230316-child-chain-gauge-factory-v2",
+    "name": "ChildChainGaugeFactory"
+  },
+  "0xEa924b45a3fcDAAdf4E5cFB1665823B8F8F2039B": {
+    "task": "20230316-l2-balancer-pseudo-minter",
+    "name": "L2BalancerPseudoMinter"
+  },
+  "0x6B1Da720Be2D11d95177ccFc40A917c2688f396c": {
+    "task": "20230316-l2-ve-delegation-proxy",
+    "name": "NullVotingEscrow"
+  },
+  "0x0c6052254551EAe3ECac77B01DFcf1025418828f": {
+    "task": "20230316-l2-ve-delegation-proxy",
+    "name": "VotingEscrowDelegationProxy"
+  },
+  "0x3B1eb8EB7b43882b385aB30533D9A2BeF9052a98": {
+    "task": "20230320-composable-stable-pool-v4",
+    "name": "ComposableStablePoolFactory"
+  },
+  "0xEa4643102dFC03d5e382e7827Bf767f6587E9965": {
+    "task": "20230320-composable-stable-pool-v4",
+    "name": "MockComposableStablePool"
+  },
+  "0x230a59F4d9ADc147480f03B0D3fFfeCd56c3289a": {
+    "task": "20230320-weighted-pool-v4",
+    "name": "WeightedPoolFactory"
+  },
+  "0xb2b5B452d53401391155EA48C4451f6E9b0dD058": {
+    "task": "20230320-weighted-pool-v4",
+    "name": "MockWeightedPool"
+  },
+  "0x4638ab64022927C9bD5947607459D13f57f1551C": {
+    "task": "20230404-l2-layer0-bridge-forwarder",
+    "name": "L2LayerZeroBridgeForwarder"
+  },
+  "0x4507d91Cd2C0D51D9B4F30Bf0B93AFC938A70BA5": {
+    "task": "20230409-erc4626-linear-pool-v4",
+    "name": "ERC4626LinearPoolFactory"
+  },
+  "0x2EbE41E1aa44D61c206A94474932dADC7D3FD9E3": {
+    "task": "20230409-erc4626-linear-pool-v4",
+    "name": "MockERC4626Token"
+  },
+  "0xEd3E2F496cbCd8e212192fb8D1499842f04A0D19": {
+    "task": "20230409-erc4626-linear-pool-v4",
+    "name": "MockERC4626LinearPool"
+  },
+  "0x6caf662b573F577DE01165d2d38D1910bba41F8A": {
+    "task": "20230410-aave-linear-pool-v5",
+    "name": "AaveLinearPoolFactory"
+  },
+  "0x57EA28A99394978D060E483477C0Fd9fb9aFa96c": {
+    "task": "20230410-aave-linear-pool-v5",
+    "name": "MockAaveLendingPool"
+  },
+  "0xD8B6b96c88ad626EB6209c4876e3B14f45f8803A": {
+    "task": "20230410-aave-linear-pool-v5",
+    "name": "MockStaticAToken"
+  },
+  "0xA826a114B0c7dB4d1FF4a4BE845a78998c64564C": {
+    "task": "20230410-aave-linear-pool-v5",
+    "name": "MockAaveLinearPool"
+  },
+  "0xAcf05BE5134d64d150d153818F8C67EE36996650": {
+    "task": "20230411-managed-pool-v2",
+    "name": "ManagedPoolAddRemoveTokenLib"
+  },
+  "0x9129E834e15eA19b6069e8f08a8EcFc13686B8dC": {
+    "task": "20230411-managed-pool-v2",
+    "name": "CircuitBreakerLib"
+  },
+  "0xA69E0Ccf150a29369D8Bbc0B3f510849dB7E8EEE": {
+    "task": "20230411-managed-pool-v2",
+    "name": "ManagedPoolAmmLib"
+  },
+  "0xDF9B5B00Ef9bca66e9902Bd813dB14e4343Be025": {
+    "task": "20230411-managed-pool-v2",
+    "name": "ExternalWeightedMath"
+  },
+  "0x300Ab2038EAc391f26D9F895dc61F8F66a548833": {
+    "task": "20230411-managed-pool-v2",
+    "name": "RecoveryModeHelper"
+  },
+  "0x03F3Fb107e74F2EAC9358862E91ad3c692712054": {
+    "task": "20230411-managed-pool-v2",
+    "name": "ManagedPoolFactory"
+  },
+  "0x3Fb81f6FB0dd94c6fC7e138887f1CA4CDB5E2999": {
+    "task": "20230411-managed-pool-v2",
+    "name": "MockManagedPool"
+  },
+  "0x8df317a729fcaA260306d7de28888932cb579b88": {
+    "task": "20230414-authorizer-wrapper",
+    "name": "AuthorizerWithAdaptorValidation"
+  }
+}

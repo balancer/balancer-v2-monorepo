@@ -1,8 +1,4 @@
 {
-  "0x6CaD2ea22BFA7F4C14Aae92E47F510Cd5C509bc7": {
-    "task": "20230223-protocol-id-registry",
-    "name": "ProtocolIdRegistry"
-  },
   "0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6": {
     "task": "20210418-authorizer",
     "name": "Authorizer"
@@ -31,10 +27,6 @@
     "task": "20220325-authorizer-adaptor",
     "name": "AuthorizerAdaptor"
   },
-  "0xb19382073c7A0aDdbb56Ac6AF1808Fa49e377B75": {
-    "task": "20220325-test-balancer-token",
-    "name": "TestBalancerToken"
-  },
   "0xEF454a7B3f965D3f6723E462405246f8Cd865425": {
     "task": "20220325-bal-token-holder-factory",
     "name": "BALTokenHolderFactory"
@@ -55,6 +47,10 @@
     "task": "20220325-gauge-controller",
     "name": "BalancerMinter"
   },
+  "0xb19382073c7A0aDdbb56Ac6AF1808Fa49e377B75": {
+    "task": "20220325-test-balancer-token",
+    "name": "TestBalancerToken"
+  },
   "0x0c5538098EBe88175078972F514C9e101D325D4F": {
     "task": "20220325-ve-delegation",
     "name": "VotingEscrowDelegation"
@@ -74,6 +70,10 @@
   "0xb1a4FE1C6d25a0DDAb47431A92A723dd71d9021f": {
     "task": "20220530-preseeded-voting-escrow-delegation",
     "name": "PreseededVotingEscrowDelegation"
+  },
+  "0xA6971317Fb06c76Ef731601C64433a4846fCa707": {
+    "task": "20220714-fee-distributor-v2",
+    "name": "FeeDistributor"
   },
   "0x1802953277FD955f9a254B80Aa0582f193cF1d77": {
     "task": "20220721-balancer-queries",
@@ -115,6 +115,10 @@
     "task": "20230215-single-recipient-gauge-factory-v2",
     "name": "SingleRecipientGauge"
   },
+  "0x6CaD2ea22BFA7F4C14Aae92E47F510Cd5C509bc7": {
+    "task": "20230223-protocol-id-registry",
+    "name": "ProtocolIdRegistry"
+  },
   "0x5F6848976C2914403B425F18B589A65772F082E3": {
     "task": "20230314-batch-relayer-v5",
     "name": "BatchRelayerLibrary"
@@ -123,18 +127,6 @@
     "task": "20230314-batch-relayer-v5",
     "name": "BalancerRelayer"
   },
-  "0x475D18169BE8a89357A9ee3Ab00ca386d20fA229": {
-    "task": "20230316-l2-ve-delegation-proxy",
-    "name": "NullVotingEscrow"
-  },
-  "0xD87F44Df0159DC78029AB9CA7D7e57E7249F5ACD": {
-    "task": "20230316-l2-ve-delegation-proxy",
-    "name": "VotingEscrowDelegationProxy"
-  },
-  "0xb51f7fFc97CeDFb6922e8B9Bbf3eF7575fafD630": {
-    "task": "20230316-l2-balancer-pseudo-minter",
-    "name": "L2BalancerPseudoMinter"
-  },
   "0xC49Ca921c4CD1117162eAEEc0ee969649997950c": {
     "task": "20230316-child-chain-gauge-factory-v2",
     "name": "ChildChainGauge"
@@ -142,6 +134,18 @@
   "0xC370cD86d5488c1788b62f11b09adb0C47F47440": {
     "task": "20230316-child-chain-gauge-factory-v2",
     "name": "ChildChainGaugeFactory"
+  },
+  "0xb51f7fFc97CeDFb6922e8B9Bbf3eF7575fafD630": {
+    "task": "20230316-l2-balancer-pseudo-minter",
+    "name": "L2BalancerPseudoMinter"
+  },
+  "0x475D18169BE8a89357A9ee3Ab00ca386d20fA229": {
+    "task": "20230316-l2-ve-delegation-proxy",
+    "name": "NullVotingEscrow"
+  },
+  "0xD87F44Df0159DC78029AB9CA7D7e57E7249F5ACD": {
+    "task": "20230316-l2-ve-delegation-proxy",
+    "name": "VotingEscrowDelegationProxy"
   },
   "0xA3fd20E29358c056B727657E83DFd139abBC9924": {
     "task": "20230320-composable-stable-pool-v4",
