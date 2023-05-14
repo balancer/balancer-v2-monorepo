@@ -4,17 +4,18 @@ import { Contract } from 'ethers';
 import { getForkedNetwork, Task, TaskMode, describeForkTest, getSigners, impersonate } from '../../../src';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpMul, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MONTH, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 
-describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function () {
+describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 17258776, function () {
   let workingBalanceHelper: Contract;
   let veDelegationProxy: Contract;
   let votingEscrow: Contract;
   let veBALHolder: SignerWithAddress;
   let lpTokenHolder: SignerWithAddress;
+  let other: SignerWithAddress;
   let vault: Contract;
   let gauge: Contract;
   let lpToken: Contract;
@@ -28,6 +29,8 @@ describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function (
   const LP_TOKEN_HOLDER = '0x16224283bE3f7C0245d9D259Ea82eaD7fcB8343d';
 
   const GAUGE = '0x68d019f64a7aa97e2d4e7363aee42251d08124fb';
+
+  const LOCK_PERIOD = MONTH * 12;
 
   before('run task', async () => {
     task = new Task('20230427-gauge-working-balance-helper', TaskMode.TEST, getForkedNetwork(hre));
@@ -50,7 +53,7 @@ describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function (
   });
 
   before('setup accounts', async () => {
-    [, veBALHolder] = await getSigners();
+    [, veBALHolder, other] = await getSigners();
 
     veBALHolder = await impersonate(veBALHolder.address, VAULT_BOUNTY.add(fp(5))); // plus gas
     lpTokenHolder = await impersonate(LP_TOKEN_HOLDER, fp(100));
@@ -90,9 +93,13 @@ describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function (
 
     before('stake in gauge', async () => {
       await lpToken.connect(lpTokenHolder).transfer(veBALHolder.address, stakeAmount);
+      await lpToken.connect(lpTokenHolder).transfer(other.address, stakeAmount);
+
       await lpToken.connect(veBALHolder).approve(gauge.address, MAX_UINT256);
+      await lpToken.connect(other).approve(gauge.address, MAX_UINT256);
 
       await gauge.connect(veBALHolder)['deposit(uint256)'](stakeAmount);
+      await gauge.connect(other)['deposit(uint256)'](stakeAmount);
     });
 
     it('projected balance should equal current', async () => {
@@ -129,14 +136,21 @@ describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function (
         { value: VAULT_BOUNTY }
       );
 
+      const totalBalance = await bal80weth20Pool.balanceOf(veBALHolder.address);
+      const whaleBalance = fpMul(totalBalance, fp(0.99));
+      const otherBalance = totalBalance.sub(whaleBalance);
+
+      await bal80weth20Pool.connect(veBALHolder).transfer(other.address, otherBalance);
+
       await bal80weth20Pool.connect(veBALHolder).approve(votingEscrow.address, MAX_UINT256);
+      await bal80weth20Pool.connect(other).approve(votingEscrow.address, MAX_UINT256);
+
       const currentTime = await currentTimestamp();
-      await votingEscrow
-        .connect(veBALHolder)
-        .create_lock(await bal80weth20Pool.balanceOf(veBALHolder.address), currentTime.add(MONTH * 12));
+      await votingEscrow.connect(veBALHolder).create_lock(whaleBalance, currentTime.add(LOCK_PERIOD));
+      await votingEscrow.connect(other).create_lock(otherBalance, currentTime.add(LOCK_PERIOD));
     });
 
-    it(`projected ratio should be greater than current by the maximum ratio (${MAX_BALANCE_RATIO})`, async () => {
+    it(`projected balance should be greater than current by the maximum ratio (${MAX_BALANCE_RATIO})`, async () => {
       const [currentWorkingBalance, projectedWorkingBalance] = await workingBalanceHelper.getWorkingBalances(
         gauge.address,
         veBALHolder.address
@@ -161,13 +175,15 @@ describeForkTest('GaugeWorkingBalanceHelper-L1', 'mainnet', 16627100, function (
         expect(projectedWorkingBalance).to.be.lte(currentWorkingBalance);
       });
 
-      it('current and projected ratios should now be equal', async () => {
-        const [current, projected] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
+      it('projected ratio should be close to or less than current', async () => {
+        const [currentWorkingRatio, projectedWorkingRatio] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
           gauge.address,
           veBALHolder.address
         );
 
-        expect(projected).to.eq(current);
+        expect(projectedWorkingRatio).to.be.almostEqual(currentWorkingRatio);
+        expect(projectedWorkingRatio).to.be.gt(0);
+        expect(projectedWorkingRatio).to.be.lte(currentWorkingRatio);
       });
     });
   });

@@ -147,14 +147,15 @@ describeForkTest('GaugeWorkingBalanceHelper-L2', 'polygon', 42002545, function (
         expect(fromFp(projectedWorkingBalance) / fromFp(currentWorkingBalance)).to.eq(MAX_BALANCE_RATIO);
       });
 
-      it('ratios should equal 1', async () => {
-        const [current, projected] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
+      it('projected ratio should be close to or less than current', async () => {
+        const [currentWorkingRatio, projectedWorkingRatio] = await workingBalanceHelper.getWorkingBalanceToSupplyRatios(
           gauge.address,
           veBALHolder.address
         );
 
-        expect(projected).to.eq(current);
-        expect(projected).to.eq(FP_ONE);
+        expect(projectedWorkingRatio).to.be.almostEqual(currentWorkingRatio);
+        expect(projectedWorkingRatio).to.be.gt(0);
+        expect(projectedWorkingRatio).to.be.lte(currentWorkingRatio);
       });
     });
   });
