@@ -47,15 +47,15 @@ interface ITimelockAuthorizer {
         address where;
         bytes data;
         bool executed;
-        bool cancelled;
+        bool canceled;
         bool protected;
         uint256 executableAt;
         address scheduledBy;
         uint256 scheduledAt;
         address executedBy;
         uint256 executedAt;
-        address cancelledBy;
-        uint256 cancelledAt;
+        address canceledBy;
+        uint256 canceledAt;
     }
 
     /**
@@ -104,9 +104,9 @@ interface ITimelockAuthorizer {
     event ExecutionExecuted(uint256 indexed scheduledExecutionId);
 
     /**
-     * @notice Emitted when an execution `scheduledExecutionId` is cancelled.
+     * @notice Emitted when an execution `scheduledExecutionId` is canceled.
      */
-    event ExecutionCancelled(uint256 indexed scheduledExecutionId);
+    event ExecutionCanceled(uint256 indexed scheduledExecutionId);
 
     /**
      * @notice Emitted when a new `root` is set.
@@ -314,7 +314,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Returns true if execution `scheduledExecutionId` can be executed.
-     * Only true if it is not already executed or cancelled, and if the execution delay has passed.
+     * Only true if it is not already executed or canceled, and if the execution delay has passed.
      */
     function canExecute(uint256 scheduledExecutionId) external view returns (bool);
 

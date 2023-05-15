@@ -258,7 +258,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         return
             !scheduledExecution.executed &&
-            !scheduledExecution.cancelled &&
+            !scheduledExecution.canceled &&
             block.timestamp >= scheduledExecution.executableAt;
     }
 
@@ -314,7 +314,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
 
         ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
-        require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
+        require(!scheduledExecution.canceled, "ACTION_ALREADY_CANCELED");
 
         require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_YET_EXECUTABLE");
 
@@ -346,15 +346,15 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
 
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
-        require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
+        require(!scheduledExecution.canceled, "ACTION_ALREADY_CANCELED");
 
         require(isCanceler(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_CANCELER");
 
-        scheduledExecution.cancelled = true;
-        scheduledExecution.cancelledBy = msg.sender;
-        scheduledExecution.cancelledAt = block.timestamp;
+        scheduledExecution.canceled = true;
+        scheduledExecution.canceledBy = msg.sender;
+        scheduledExecution.canceledAt = block.timestamp;
 
-        emit ExecutionCancelled(scheduledExecutionId);
+        emit ExecutionCanceled(scheduledExecutionId);
     }
 
     /**
@@ -501,15 +501,15 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
                 where: where,
                 data: data,
                 executed: false,
-                cancelled: false,
+                canceled: false,
                 protected: protected,
                 executableAt: executableAt,
                 scheduledBy: msg.sender,
                 scheduledAt: block.timestamp,
                 executedBy: address(0),
                 executedAt: 0,
-                cancelledBy: address(0),
-                cancelledAt: 0
+                canceledBy: address(0),
+                canceledAt: 0
             })
         );
 
@@ -542,9 +542,9 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
             require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
 
             // It is also pointless to add a canceler for a scheduled execution that has already been executed or
-            // cancelled, so we disallow this to provide more information to a caller that would attempt this.
+            // canceled, so we disallow this to provide more information to a caller that would attempt this.
             ScheduledExecution storage execution = _scheduledExecutions[scheduledExecutionId];
-            require(!execution.executed && !execution.cancelled, "ACTION_IS_NOT_PENDING");
+            require(!execution.executed && !execution.canceled, "ACTION_IS_NOT_PENDING");
         }
 
         _isCanceler[scheduledExecutionId][account] = true;
