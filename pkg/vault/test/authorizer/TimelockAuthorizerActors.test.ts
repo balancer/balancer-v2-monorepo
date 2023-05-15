@@ -7,8 +7,11 @@ import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 describe('TimelockAuthorizer actors', () => {
+  let vault: Vault;
   let authorizer: TimelockAuthorizer;
   let root: SignerWithAddress,
     nextRoot: SignerWithAddress,
@@ -31,7 +34,7 @@ describe('TimelockAuthorizer actors', () => {
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
 
   sharedBeforeEach('deploy authorizer', async () => {
-    const vault = await Vault.create({
+    vault = await Vault.create({
       admin: root,
       nextAdmin: nextRoot.address,
     });
@@ -513,11 +516,24 @@ describe('TimelockAuthorizer actors', () => {
   });
 
   describe('cancelers', () => {
+    let executionId: number;
+    let otherExecutionId: number;
+
+    sharedBeforeEach('schedule actions', async () => {
+      // It is only possible to create cancelers for specific scheduled execution ids if they exist, so we must
+      // first schedule them.
+
+      // The only action that is simple to schedule and execute on a clean system is setting a delay for the
+      // `setAuthorizer`, since not having that delay prevents other delays from being set. We schedule two
+      // calls to that function.
+
+      const setAuthorizerAction = await actionId(vault.instance, 'setAuthorizer');
+      executionId = await authorizer.scheduleDelayChange(setAuthorizerAction, DAY, [], { from: root });
+      otherExecutionId = await authorizer.scheduleDelayChange(setAuthorizerAction, DAY, [], { from: root });
+    });
+
     describe('addCanceler', () => {
       context('for a specific scheduled execution id', () => {
-        const executionId = 0;
-        const otherExecutionId = 1;
-
         it('root is a canceler', async () => {
           expect(await authorizer.isCanceler(executionId, root)).to.be.true;
         });
@@ -545,9 +561,33 @@ describe('TimelockAuthorizer actors', () => {
             'ACCOUNT_IS_ALREADY_CANCELER'
           );
         });
+
         it('reverts if the sender is not the root', async () => {
           await expect(authorizer.addCanceler(executionId, canceler, { from: other })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
+          );
+        });
+
+        it('reverts if the scheduled execution does not exist', async () => {
+          await expect(authorizer.addCanceler(42, canceler, { from: root })).to.be.revertedWith(
+            'ACTION_DOES_NOT_EXIST'
+          );
+        });
+
+        it('reverts if the scheduled execution was executed', async () => {
+          await advanceTime(MONTH);
+          await authorizer.execute(executionId);
+
+          await expect(authorizer.addCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
+            'ACTION_IS_NOT_PENDING'
+          );
+        });
+
+        it('reverts if the scheduled execution was canceled', async () => {
+          await authorizer.cancel(executionId, { from: root });
+
+          await expect(authorizer.addCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
+            'ACTION_IS_NOT_PENDING'
           );
         });
       });
@@ -568,9 +608,8 @@ describe('TimelockAuthorizer actors', () => {
 
           expect(await authorizer.isCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler)).to.be.true;
           // check that the canceler can cancel any action
-          expect(await authorizer.isCanceler(0, canceler)).to.be.true;
-          expect(await authorizer.isCanceler(1, canceler)).to.be.true;
-          expect(await authorizer.isCanceler(2, canceler)).to.be.true;
+          expect(await authorizer.isCanceler(executionId, canceler)).to.be.true;
+          expect(await authorizer.isCanceler(otherExecutionId, canceler)).to.be.true;
         });
 
         it('emits an event', async () => {
@@ -584,16 +623,16 @@ describe('TimelockAuthorizer actors', () => {
         });
 
         it('can add specific canceler and then a global', async () => {
-          let receipt = await authorizer.addCanceler(0, canceler, { from: root });
+          let receipt = await authorizer.addCanceler(executionId, canceler, { from: root });
           expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', {
-            scheduledExecutionId: 0,
+            scheduledExecutionId: executionId,
           });
           receipt = await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
           expectEvent.inReceipt(await receipt.wait(), 'CancelerAdded', {
             scheduledExecutionId: GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID,
           });
 
-          expect(await authorizer.isCanceler(0, canceler)).to.be.true;
+          expect(await authorizer.isCanceler(executionId, canceler)).to.be.true;
           expect(await authorizer.isCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler)).to.be.true;
         });
 
@@ -616,52 +655,52 @@ describe('TimelockAuthorizer actors', () => {
     describe('removeCanceler', () => {
       context('for a specific scheduled execution id', () => {
         it('can remove canceler for a specific execution id', async () => {
-          await authorizer.addCanceler(0, canceler, { from: root });
-          await authorizer.removeCanceler(0, canceler, { from: root });
+          await authorizer.addCanceler(executionId, canceler, { from: root });
+          await authorizer.removeCanceler(executionId, canceler, { from: root });
 
-          expect(await authorizer.isCanceler(0, canceler)).to.be.false;
+          expect(await authorizer.isCanceler(executionId, canceler)).to.be.false;
         });
 
         it('emits an event', async () => {
-          await authorizer.addCanceler(0, canceler, { from: root });
-          const receipt = await authorizer.removeCanceler(0, canceler, { from: root });
+          await authorizer.addCanceler(executionId, canceler, { from: root });
+          const receipt = await authorizer.removeCanceler(executionId, canceler, { from: root });
 
           expectEvent.inReceipt(await receipt.wait(), 'CancelerRemoved', {
-            scheduledExecutionId: 0,
+            scheduledExecutionId: executionId,
             canceler: canceler.address,
           });
         });
 
         it('cannot remove if not canceler', async () => {
-          await expect(authorizer.removeCanceler(0, canceler, { from: root })).to.be.revertedWith(
+          await expect(authorizer.removeCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_CANCELER'
           );
         });
 
         it('cannot remove root', async () => {
-          await expect(authorizer.removeCanceler(0, root, { from: root })).to.be.revertedWith(
+          await expect(authorizer.removeCanceler(executionId, root, { from: root })).to.be.revertedWith(
             'CANNOT_REMOVE_ROOT_CANCELER'
           );
         });
 
         it('cannot remove global canceler for a specific execution id', async () => {
           await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
-          await expect(authorizer.removeCanceler(0, canceler, { from: root })).to.be.revertedWith(
+          await expect(authorizer.removeCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_GLOBAL_CANCELER'
           );
         });
 
         it('cannot be removed twice', async () => {
-          await authorizer.addCanceler(0, canceler, { from: root });
-          await authorizer.removeCanceler(0, canceler, { from: root });
+          await authorizer.addCanceler(executionId, canceler, { from: root });
+          await authorizer.removeCanceler(executionId, canceler, { from: root });
 
-          await expect(authorizer.removeCanceler(0, canceler, { from: root })).to.be.revertedWith(
+          await expect(authorizer.removeCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
             'ACCOUNT_IS_NOT_CANCELER'
           );
         });
 
         it('reverts if the sender is not the root', async () => {
-          await expect(authorizer.removeCanceler(0, canceler, { from: canceler })).to.be.revertedWith(
+          await expect(authorizer.removeCanceler(executionId, canceler, { from: canceler })).to.be.revertedWith(
             'SENDER_IS_NOT_ROOT'
           );
         });
@@ -710,21 +749,21 @@ describe('TimelockAuthorizer actors', () => {
         });
 
         it('can remove canceler for any execution id', async () => {
-          await authorizer.addCanceler(0, canceler, { from: root });
+          await authorizer.addCanceler(executionId, canceler, { from: root });
           await authorizer.addCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
 
-          expect(await authorizer.isCanceler(0, canceler)).to.be.true;
-          expect(await authorizer.isCanceler(1, canceler)).to.be.true;
+          expect(await authorizer.isCanceler(executionId, canceler)).to.be.true;
+          expect(await authorizer.isCanceler(otherExecutionId, canceler)).to.be.true;
 
           await authorizer.removeCanceler(GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID, canceler, { from: root });
 
-          expect(await authorizer.isCanceler(0, canceler)).to.be.true;
-          expect(await authorizer.isCanceler(1, canceler)).to.be.false;
+          expect(await authorizer.isCanceler(executionId, canceler)).to.be.true;
+          expect(await authorizer.isCanceler(otherExecutionId, canceler)).to.be.false;
 
-          await authorizer.removeCanceler(0, canceler, { from: root });
+          await authorizer.removeCanceler(executionId, canceler, { from: root });
 
-          expect(await authorizer.isCanceler(0, canceler)).to.be.false;
-          expect(await authorizer.isCanceler(1, canceler)).to.be.false;
+          expect(await authorizer.isCanceler(executionId, canceler)).to.be.false;
+          expect(await authorizer.isCanceler(otherExecutionId, canceler)).to.be.false;
         });
 
         it('reverts if the sender is not the root', async () => {
