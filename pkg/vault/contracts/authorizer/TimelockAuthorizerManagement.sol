@@ -36,7 +36,7 @@ import "./TimelockExecutionHelper.sol";
  * (`setPendingRoot` and 'claimRoot'), scheduling and executing actions (`_scheduleWithDelay`, `execute`, and
  * `cancel`), and managing roles (`addRevoker`, `addGranter`, `addCanceler`).
  *
- * See `TimelockAuthorizer`
+ * See `ITimelockAuthorizer`.
  */
 abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     using Address for address;

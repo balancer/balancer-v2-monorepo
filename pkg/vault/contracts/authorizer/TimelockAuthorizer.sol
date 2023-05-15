@@ -26,31 +26,7 @@ import "./TimelockExecutionHelper.sol";
 import "./TimelockAuthorizerManagement.sol";
 
 /**
- * @title Timelock Authorizer
- * @author Balancer Labs
- * @dev Authorizer with timelocks (delays).
- *
- * Users are allowed to perform actions if they have the permission to do so.
- *
- * This Authorizer implementation allows defining a delay per action identifier. If a delay is set for an action, users
- * are instead allowed to schedule an execution that will be run in the future by the Authorizer instead of executing it
- * directly themselves.
- *
- * Glossary:
- * - Action: Operation that can be performed to a target contract. These are identified by a unique bytes32 `actionId`
- *   defined by each target contract following `IAuthentication.getActionId`.
- * - Scheduled execution: The Authorizer can define different delays per `actionId` in order to determine that a
- *   specific time window must pass before these can be executed. When a delay is set for an `actionId`, executions
- *   must be scheduled. These executions are identified with an unsigned integer called `scheduledExecutionId`.
- * - Permission: Unique identifier to refer to a user (who) that is allowed to perform an action (what) in a specific
- *   target contract (where). This identifier is called `permissionId` and is computed as
- *   `keccak256(actionId, account, where)`.
- *
- * Note that the TimelockAuthorizer doesn't use reentrancy guard on its external functions.
- * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
- * which executes a scheduled execution, protected by the Checks-Effects-Interactions pattern.
- * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
- * is necessary in order to be able to call these.
+ * See ITimelockAuthorizer.
  */
 contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     // solhint-disable-next-line const-name-snakecase
