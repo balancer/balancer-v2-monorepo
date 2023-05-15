@@ -26,6 +26,12 @@ interface ITimelockAuthorizer {
         bool cancelled;
         bool protected;
         uint256 executableAt;
+        address scheduledBy;
+        uint256 scheduledAt;
+        address executedBy;
+        uint256 executedAt;
+        address cancelledBy;
+        uint256 cancelledAt;
     }
 
     /**
@@ -245,6 +251,37 @@ interface ITimelockAuthorizer {
      * @notice Returns the scheduled execution `scheduledExecutionId`.
      */
     function getScheduledExecution(uint256 scheduledExecutionId) external view returns (ScheduledExecution memory);
+
+    /**
+     * @notice Returns the lifetime count of scheduled executions. The most recent scheduled execution will always have
+     * a `scheduledExecutionId` of `getScheduledExecutionsCount() - 1`
+     */
+    function getScheduledExecutionsCount() external view returns (uint256);
+
+    /**
+     * @notice Returns multiple scheduled executions, in either chronological or reverse chronological order (if
+     * `reverseOrder` is true).
+     *
+     * This function will return at most `maxSize` items, starting at index `skip` (meaning the first entries are
+     * skipped). Note that when querying in reverse order, it is the newest entries that are skipped, not the oldest.
+     *
+     * The value of `skip` must be lower than the return value of `getScheduledExecutionsCount()`, which means that not
+     * all scheduled executions can be skipped, and at least one execution will always be returned (assuming there are
+     * any).
+     *
+     * Example calls:
+     *  - { skip: 0, reverseOrder: false } : returns up to `maxSize` of oldest entries, with the oldest at index 0
+     *  - { skip: 0, reverseOrder: true } : returns up to `maxSize` of the newest entries, with the newest at index 0
+     *  - { skip: 5, reverseOrder: false } : returns up to `maxSize` of the oldest entries, skipping the 5 oldest
+     *    entries, with the globally sixth oldest at index 0
+     *  - { skip: 5, reverseOrder: true } : returns up to `maxSize` of the newest entries, skipping the 5 newest
+     *    entries, with the globally sixth nexest at index 0
+     */
+    function getScheduledExecutions(
+        uint256 skip,
+        uint256 maxSize,
+        bool reverseOrder
+    ) external view returns (ITimelockAuthorizer.ScheduledExecution[] memory items);
 
     /**
      * @notice Returns true if `account` is an executor for `scheduledExecutionId`.

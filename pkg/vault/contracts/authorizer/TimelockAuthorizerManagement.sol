@@ -20,8 +20,13 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/ITimelockAuthorizer.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "./TimelockExecutionHelper.sol";
+
+// Scheduled actions are time based and are expected to be on the order of days, so any time changes or manipulation on
+// the order of seconds or minutes is irrelevant.
+// solhint-disable not-rely-on-time
 
 /**
  * @title Timelock Authorizer Management
@@ -204,6 +209,42 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
+    function getScheduledExecutionsCount() external view override returns (uint256) {
+        return _scheduledExecutions.length;
+    }
+
+    /**
+     * @inheritdoc ITimelockAuthorizer
+     */
+    function getScheduledExecutions(
+        uint256 skip,
+        uint256 maxSize,
+        bool reverseOrder
+    ) external view override returns (ITimelockAuthorizer.ScheduledExecution[] memory) {
+        require(skip < _scheduledExecutions.length, "SKIP_VALUE_TOO_LARGE");
+        require(maxSize > 0, "ZERO_MAX_SIZE_VALUE");
+
+        uint256 remaining = _scheduledExecutions.length - skip;
+        uint256 size = Math.min(remaining, maxSize);
+        ITimelockAuthorizer.ScheduledExecution[] memory items = new ITimelockAuthorizer.ScheduledExecution[](size);
+
+        for (uint256 i = 0; i < size; i++) {
+            if (!reverseOrder) {
+                // In chronological order we simply skip the first (older) entries
+                items[i] = _scheduledExecutions[skip + i];
+            } else {
+                // In reverse order we go back to front, skipping the last (newer) entries. Note that `remaining` will
+                // equal the total count if `skip` is 0, meaning we'd start with the newest entry.
+                items[i] = _scheduledExecutions[remaining - 1 - i];
+            }
+        }
+
+        return items;
+    }
+
+    /**
+     * @inheritdoc ITimelockAuthorizer
+     */
     function isExecutor(uint256 scheduledExecutionId, address account) public view override returns (bool) {
         return _isExecutor[scheduledExecutionId][account];
     }
@@ -219,7 +260,6 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
             !scheduledExecution.executed &&
             !scheduledExecution.cancelled &&
             block.timestamp >= scheduledExecution.executableAt;
-        // solhint-disable-previous-line not-rely-on-time
     }
 
     /**
@@ -276,7 +316,6 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
-        // solhint-disable-next-line not-rely-on-time
         require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_YET_EXECUTABLE");
 
         if (scheduledExecution.protected) {
@@ -286,6 +325,8 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         }
 
         scheduledExecution.executed = true;
+        scheduledExecution.executedBy = msg.sender;
+        scheduledExecution.executedAt = block.timestamp;
 
         // Note that this is the only place in the entire contract we perform a non-view call to an external contract,
         // i.e. this is the only context in which this contract can be re-entered, and by this point we've already
@@ -310,6 +351,9 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         require(isCanceler(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_CANCELER");
 
         scheduledExecution.cancelled = true;
+        scheduledExecution.cancelledBy = msg.sender;
+        scheduledExecution.cancelledAt = block.timestamp;
+
         emit ExecutionCancelled(scheduledExecutionId);
     }
 
@@ -449,7 +493,6 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     ) internal returns (uint256 scheduledExecutionId) {
         scheduledExecutionId = _scheduledExecutions.length;
 
-        // solhint-disable-next-line not-rely-on-time
         uint256 executableAt = block.timestamp + delay;
         bool protected = executors.length > 0;
 
@@ -460,7 +503,13 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
                 executed: false,
                 cancelled: false,
                 protected: protected,
-                executableAt: executableAt
+                executableAt: executableAt,
+                scheduledBy: msg.sender,
+                scheduledAt: block.timestamp,
+                executedBy: address(0),
+                executedAt: 0,
+                cancelledBy: address(0),
+                cancelledAt: 0
             })
         );
 
