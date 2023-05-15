@@ -413,7 +413,7 @@ describe('TimelockAuthorizer execute', () => {
       return id;
     };
 
-    it('stores executor information', async () => {
+    it('stores canceler information', async () => {
       const id = await schedule();
       await advanceTime(delay);
       await authorizer.cancel(id, { from: canceler });

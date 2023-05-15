@@ -253,7 +253,7 @@ interface ITimelockAuthorizer {
     function getScheduledExecution(uint256 scheduledExecutionId) external view returns (ScheduledExecution memory);
 
     /**
-     * @notice Returns the lifetime count of scheduled executions. The most recent scheduled exectuion will always have
+     * @notice Returns the lifetime count of scheduled executions. The most recent scheduled execution will always have
      * a `scheduledExecutionId` of `getScheduledExecutionsCount() - 1`
      */
     function getScheduledExecutionsCount() external view returns (uint256);
