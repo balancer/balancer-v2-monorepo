@@ -528,6 +528,8 @@ describe('TimelockAuthorizer execute', () => {
     // for `protectedFunction`.
     const TOTAL_ENTRIES = SCHEDULED_ENTRIES + 2;
 
+    const LARGE_MAX_SIZE = 10; // This is more than there are total entries, so it won't affect the result
+
     sharedBeforeEach('schedule multiple entries', async () => {
       for (let i = 0; i < SCHEDULED_ENTRIES; ++i) {
         await schedule(`0x0${i}`);
@@ -539,7 +541,7 @@ describe('TimelockAuthorizer execute', () => {
     });
 
     it('reverts if the skip value is too large', async () => {
-      await expect(authorizer.instance.getScheduledExecutions(TOTAL_ENTRIES, 10, false)).to.be.revertedWith(
+      await expect(authorizer.instance.getScheduledExecutions(TOTAL_ENTRIES, LARGE_MAX_SIZE, false)).to.be.revertedWith(
         'SKIP_VALUE_TOO_LARGE'
       );
     });
@@ -552,7 +554,7 @@ describe('TimelockAuthorizer execute', () => {
       const reverseOrder = false;
 
       it('returns entries in chronological order', async () => {
-        const entries = await authorizer.instance.getScheduledExecutions(0, 10, reverseOrder);
+        const entries = await authorizer.instance.getScheduledExecutions(0, LARGE_MAX_SIZE, reverseOrder);
 
         expect(entries.length).to.equal(TOTAL_ENTRIES);
 
@@ -571,7 +573,7 @@ describe('TimelockAuthorizer execute', () => {
 
       it('skips older entries', async () => {
         // We skip the initial two entries (setDelay for setAuthorizer and setDelay for protectedFunction)
-        const entries = await authorizer.instance.getScheduledExecutions(2, 10, reverseOrder);
+        const entries = await authorizer.instance.getScheduledExecutions(2, LARGE_MAX_SIZE, reverseOrder);
 
         expect(entries.length).to.equal(SCHEDULED_ENTRIES);
 
@@ -609,7 +611,7 @@ describe('TimelockAuthorizer execute', () => {
       const reverseOrder = true;
 
       it('returns entries in reverse chronological order', async () => {
-        const entries = await authorizer.instance.getScheduledExecutions(0, 10, reverseOrder);
+        const entries = await authorizer.instance.getScheduledExecutions(0, LARGE_MAX_SIZE, reverseOrder);
 
         expect(entries.length).to.equal(TOTAL_ENTRIES);
 
@@ -628,7 +630,7 @@ describe('TimelockAuthorizer execute', () => {
 
       it('skips newer entries', async () => {
         // We skip the last two entries (the last two calls to `protectedFunction`)
-        const entries = await authorizer.instance.getScheduledExecutions(2, 10, reverseOrder);
+        const entries = await authorizer.instance.getScheduledExecutions(2, LARGE_MAX_SIZE, reverseOrder);
 
         expect(entries.length).to.equal(TOTAL_ENTRIES - 2);
 
