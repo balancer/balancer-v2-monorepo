@@ -38,8 +38,8 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     // Registered gauge types, stored as bytes32
     EnumerableSet.Bytes32Set private _gaugeTypes;
 
-    // Mapping from gauge type to a list of address for approved factories for that type
-    mapping(bytes32 => EnumerableSet.AddressSet) internal _gaugeFactoriesByType;
+    // Mapping from gauge type address of approved factory for that type
+    mapping(bytes32 => ILiquidityGaugeFactory) internal _gaugeTypeFactory;
 
     // Mapping from gauge type to type number used by the gauge controller
     mapping(bytes32 => int128) _gaugeTypeNumber;
@@ -55,21 +55,18 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         _balWethBpt = gaugeController.token();
     }
 
-    /**
-     * @notice Returns the address of the Authorizer adaptor entrypoint contract.
-     */
+    /// @inheritdoc IGaugeAdder
     function getAuthorizerAdaptorEntrypoint() external view override returns (IAuthorizerAdaptorEntrypoint) {
         return _authorizerAdaptorEntrypoint;
     }
 
-    /**
-     * @notice Returns the address of the Gauge Controller
-     */
+    /// @inheritdoc IGaugeAdder
     function getGaugeController() external view override returns (IGaugeController) {
         return _gaugeController;
     }
 
-    function getGaugeTypes() external view returns (string[] memory) {
+    /// @inheritdoc IGaugeAdder
+    function getGaugeTypes() external view override returns (string[] memory) {
         uint256 gaugeTypesLength = getGaugeTypesCount();
         string[] memory gaugeTypes = new string[](gaugeTypesLength);
 
@@ -93,47 +90,26 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         return _gaugeTypeNumber[gaugeTypeBytes];
     }
 
-    /**
-     * @notice Returns the `index`'th factory for gauge type `gaugeType`
-     */
-    function getFactoryForGaugeType(string memory gaugeType, uint256 index) external view override returns (address) {
+    /// @inheritdoc IGaugeAdder
+    function getFactoryForGaugeType(string memory gaugeType) external view override returns (ILiquidityGaugeFactory) {
         bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
-        return _gaugeFactoriesByType[gaugeTypeBytes].at(index);
+        return _gaugeTypeFactory[gaugeTypeBytes];
     }
 
-    /**
-     * @notice Returns the number of factories for gauge type `gaugeType`
-     */
-    function getFactoryCountForGaugeType(string memory gaugeType) external view override returns (uint256) {
-        bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
-        return _gaugeFactoriesByType[gaugeTypeBytes].length();
-    }
-
-    /**
-     * @notice Returns whether `gauge` has been deployed by one of the listed factories for the gauge type `gaugeType`
-     */
+    /// @inheritdoc IGaugeAdder
     function isGaugeFromValidFactory(address gauge, string memory gaugeType) external view override returns (bool) {
         bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
         return _isGaugeFromValidFactory(gauge, gaugeTypeBytes);
     }
 
     function _isGaugeFromValidFactory(address gauge, bytes32 gaugeType) internal view returns (bool) {
-        EnumerableSet.AddressSet storage gaugeFactories = _gaugeFactoriesByType[gaugeType];
-        uint256 gaugeFactoriesLength = gaugeFactories.length();
-
-        // This potentially unbounded loop isn't an issue as the GaugeAdder may be redeployed
-        // without affecting the rest of the system.
-        for (uint256 i; i < gaugeFactoriesLength; ++i) {
-            if (ILiquidityGaugeFactory(gaugeFactories.unchecked_at(i)).isGaugeFromFactory(gauge)) {
-                return true;
-            }
-        }
-
-        return false;
+        ILiquidityGaugeFactory gaugeFactory = ILiquidityGaugeFactory(_gaugeTypeFactory[gaugeType]);
+        return gaugeFactory.isGaugeFromFactory(gauge);
     }
 
     // Admin Functions
 
+    /// @inheritdoc IGaugeAdder
     function addGaugeType(string memory gaugeType, int128 typeNumber) external override authenticate {
         require(typeNumber >= 0, "Gauge type has to be greater than 0");
         require(typeNumber < _gaugeController.n_gauge_types(), "Gauge type number not present in gauge controller");
@@ -143,6 +119,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         _gaugeTypeNumber[gaugeTypeBytes] = typeNumber;
     }
 
+    /// @inheritdoc IGaugeAdder
     function addGauge(address gauge, string memory gaugeType) external override authenticate {
         bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
 
@@ -154,32 +131,16 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         _addGauge(gauge, gaugeTypeBytes);
     }
 
-    /**
-     * @notice Adds `factory` as an allowlisted factory contract for gauges with type `gaugeType`.
-     */
-    function addGaugeFactory(ILiquidityGaugeFactory factory, string memory gaugeType) external override authenticate {
+    /// @inheritdoc IGaugeAdder
+    function setGaugeFactory(ILiquidityGaugeFactory factory, string memory gaugeType) external override authenticate {
         bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
 
         // Sanity check that calling `isGaugeFromFactory` won't revert
         require(!factory.isGaugeFromFactory(address(0)), "Invalid factory implementation");
 
-        EnumerableSet.AddressSet storage gaugeFactories = _gaugeFactoriesByType[gaugeTypeBytes];
-        require(gaugeFactories.add(address(factory)), "Factory already added");
+        _gaugeTypeFactory[gaugeTypeBytes] = factory;
 
-        emit GaugeFactoryAdded(gaugeType, factory);
-    }
-
-    // TODO: optional admin functions.
-
-    function setGaugeTypeNumber(string memory gaugeType, int128 gaugeTypeNumber) external authenticate {
-        // TODO: implement.
-        // This would change the gauge type number for an existing gauge type.
-    }
-
-    function removeGaugeType(string memory gaugeType) external authenticate {
-        // TODO: implement.
-        // This would remove an existing gauge type.
-        // It would not clear the existing factories.
+        emit GaugeFactorySet(gaugeType, factory);
     }
 
     // Internal functions
