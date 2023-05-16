@@ -22,11 +22,11 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "./TimelockAuthorizer.sol";
 
 /**
- * @dev Helper contract that is used by the TimelockAuthorizer to execute scheduled actions.
+ * @dev Helper contract that is used by the TimelockAuthorizer to execute scheduled executions.
  *
  * This contract always has permission to call any permissioned function in any contract, as long as they have a delay.
- * That is, `canPerform` always returns true for the ExecutionHelper for delayed actions. Additionally, native Timelock
- * scheduled functions (such as setDelay or setPendingRoot) can also only be called by the ExecutionHelper.
+ * That is, `canPerform` always returns true for the ExecutionHelper for delayed executions. Additionally, native
+ * Timelock scheduled functions (such as setDelay or setPendingRoot) can also only be called by the ExecutionHelper.
  *
  * The ExecutionHelper features a single function, `execute`, which then performs an arbitrary function call on any
  * address. This is how functions that have delays associated are called. However, only the TimelockAuthorizer itself
@@ -52,12 +52,12 @@ contract TimelockExecutionHelper is ReentrancyGuard {
     /**
      * @dev Calls `target` with `data`. Because the ExecutionHelper is authorized to call any permission function that
      * has a delay, this is a very powerful call. However, only the TimelockAuthorizer can initiate it, and it should
-     * only do so after having validated that the conditions to perform a delayed action have been met.
+     * only do so after having validated that the conditions to perform a delayed execution have been met.
      *
      * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
      * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a
-     * scheduled action during the execution of another scheduled action - an unlikely and convoluted scenario that we
-     * knowingly forbid.
+     * scheduled execution during the execution of another scheduled execution - an unlikely and convoluted scenario
+     * that we knowingly forbid.
      */
     function execute(address target, bytes memory data) external nonReentrant returns (bytes memory) {
         require(msg.sender == address(_authorizer), "SENDER_IS_NOT_AUTHORIZER");
