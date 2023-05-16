@@ -302,8 +302,8 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
         emit ExecutionScheduled(actionId, scheduledExecutionId);
 
-        // Accounts that schedule actions are automatically made cancelers for them, so that they can manage their
-        // action. We check that they are not already a canceler since e.g. root may schedule actions (and root is
+        // Accounts that schedule exectutions are automatically made cancelers for them, so that they can manage their
+        // action. We check that they are not already a canceler since e.g. root may schedule exectutions (and root is
         // always a global canceler).
         if (!isCanceler(scheduledExecutionId, msg.sender)) {
             _addCanceler(scheduledExecutionId, msg.sender);
@@ -354,7 +354,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit GrantPermissionScheduled(actionId, account, where, scheduledExecutionId);
-        // Granters that schedule actions are automatically made cancelers for them, so that they can manage their
+        // Granters that schedule exectutions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule grants (and root is
         // always a global canceler).
         if (!isCanceler(scheduledExecutionId, msg.sender)) {
@@ -400,7 +400,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit RevokePermissionScheduled(actionId, account, where, scheduledExecutionId);
-        // Revokers that schedule actions are automatically made cancelers for them, so that they can manage their
+        // Revokers that schedule exectutions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule revokes (and root is
         // always a global canceler).
         if (!isCanceler(scheduledExecutionId, msg.sender)) {
