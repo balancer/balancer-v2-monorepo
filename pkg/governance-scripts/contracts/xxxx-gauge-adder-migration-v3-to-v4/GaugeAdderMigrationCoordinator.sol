@@ -84,43 +84,43 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     function _setupNewGaugeAdder() private {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
 
-        // Set up factories on new gauge adder.
-        // We don't pull these from the old gauge adder as this uses uncapped gauges,
-        // whereas we want to add capped gauges to the new adder.
         {
-            bytes32 addFactoryRole = IAuthentication(address(newGaugeAdder)).getActionId(
-                IGaugeAdder.addGaugeFactory.selector
+            bytes32 addTypeRole = IAuthentication(address(newGaugeAdder)).getActionId(
+                IGaugeAdder.addGaugeType.selector
             );
-            authorizer.grantRole(addFactoryRole, address(this));
+            authorizer.grantRole(addTypeRole, address(this));
 
-            newGaugeAdder.addGaugeFactory(ethereumGaugeFactory, IGaugeAdder.GaugeType.Ethereum);
-            newGaugeAdder.addGaugeFactory(polygonRootGaugeFactory, IGaugeAdder.GaugeType.Polygon);
-            newGaugeAdder.addGaugeFactory(arbitrumRootGaugeFactory, IGaugeAdder.GaugeType.Arbitrum);
-            newGaugeAdder.addGaugeFactory(optimismRootGaugeFactory, IGaugeAdder.GaugeType.Optimism);
+            newGaugeAdder.addGaugeType("Ethereum", 2);
+            newGaugeAdder.addGaugeType("Polygon", 3);
+            newGaugeAdder.addGaugeType("Arbitrum", 4);
+            newGaugeAdder.addGaugeType("Optimism", 5);
+            newGaugeAdder.addGaugeType("Gnosis", 6);
+            newGaugeAdder.addGaugeType("ZkSync", 7);
+        }
 
-            authorizer.renounceRole(addFactoryRole, address(this));
+        // Set up factories on new gauge adder.
+        // Factories for Gnosis and ZKSync are not set as their factories are not deployed.
+        {
+            bytes32 setFactoryRole = IAuthentication(address(newGaugeAdder)).getActionId(
+                IGaugeAdder.setGaugeFactory.selector
+            );
+            authorizer.grantRole(setFactoryRole, address(this));
+
+            newGaugeAdder.setGaugeFactory(ethereumGaugeFactory, "Ethereum");
+            newGaugeAdder.setGaugeFactory(polygonRootGaugeFactory, "Polygon");
+            newGaugeAdder.setGaugeFactory(arbitrumRootGaugeFactory, "Arbitrum");
+            newGaugeAdder.setGaugeFactory(optimismRootGaugeFactory, "Optimism");
+
+            authorizer.renounceRole(setFactoryRole, address(this));
         }
 
         // Grant permissions for adding new Gauges.
-        // Permissions for Gnosis and ZKSync are not granted as their factories are not deployed.
         {
-            bytes32 addEthereumGaugeRole = IAuthentication(address(newGaugeAdder)).getActionId(
-                IGaugeAdder.addEthereumGauge.selector
-            );
-            bytes32 addPolygonGaugeRole = IAuthentication(address(newGaugeAdder)).getActionId(
-                IGaugeAdder.addPolygonGauge.selector
-            );
-            bytes32 addArbitrumGaugeRole = IAuthentication(address(newGaugeAdder)).getActionId(
-                IGaugeAdder.addArbitrumGauge.selector
-            );
-            bytes32 addOptimismGaugeRole = IAuthentication(address(newGaugeAdder)).getActionId(
-                IGaugeAdder.addOptimismGauge.selector
+            bytes32 addGaugeRole = IAuthentication(address(newGaugeAdder)).getActionId(
+                IGaugeAdder.addGauge.selector
             );
 
-            authorizer.grantRole(addEthereumGaugeRole, liquidityMiningCommitteeMultisig);
-            authorizer.grantRole(addPolygonGaugeRole, liquidityMiningCommitteeMultisig);
-            authorizer.grantRole(addArbitrumGaugeRole, liquidityMiningCommitteeMultisig);
-            authorizer.grantRole(addOptimismGaugeRole, liquidityMiningCommitteeMultisig);
+            authorizer.grantRole(addGaugeRole, liquidityMiningCommitteeMultisig);
         }
 
         // Grant the new GaugeAdder powers to add gauges to the GaugeController.
