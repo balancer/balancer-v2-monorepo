@@ -322,8 +322,6 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         uint256 delay = _delaysPerActionId[actionId];
         require(delay > 0, "DELAY_IS_NOT_SET");
 
-        // We do not check if `where` is a contract because it might not be upon
-        // scheduling but it may be deployed later.
         uint256 scheduledExecutionId = _scheduleWithDelay(where, data, delay, executors);
 
         emit ExecutionScheduled(actionId, scheduledExecutionId);
