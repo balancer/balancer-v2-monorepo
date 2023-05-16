@@ -262,6 +262,5 @@ jobs:
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
           GOERLI_RPC_ENDPOINT: ${{ secrets.GOERLI_ARCHIVE_ENDPOINT }}
           SEPOLIA_RPC_ENDPOINT: ${{ secrets.SEPOLIA_ARCHIVE_ENDPOINT }}
-          ZKEVM_RPC_ENDPOINT: ${{ secrets.ZKEVM_RPC_ENDPOINT }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-deployments test
