@@ -12,6 +12,7 @@ Supersedes `20230206-aave-rebalancer-linear-pool`, modifying the pool factory to
 - [BSC mainnet addresses](./output/bsc.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
+- [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Sepolia testnet addresses](./output/sepolia.json)
 - [`AaveLinearPool` artifact](./artifact/AaveLinearPool.json)
 - [`AaveLinearPoolFactory` artifact](./artifact/AaveLinearPoolFactory.json)

@@ -41,4 +41,7 @@ export default {
   sepolia: {
     InitialDeniedTokens: [],
   },
+  zkevm: {
+    InitialDeniedTokens: [],
+  },
 };

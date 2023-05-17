@@ -24,8 +24,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "./TimelockExecutionHelper.sol";
 
-// Scheduled actions are time based and are expected to be on the order of days, so any time changes or manipulation on
-// the order of seconds or minutes is irrelevant.
+// Scheduled executions are time based and are expected to be on the order of days, so any time changes or manipulation
+// on the order of seconds or minutes is irrelevant.
 // solhint-disable not-rely-on-time
 
 /**
@@ -36,7 +36,7 @@ import "./TimelockExecutionHelper.sol";
  * (`setPendingRoot` and 'claimRoot'), scheduling and executing actions (`_scheduleWithDelay`, `execute`, and
  * `cancel`), and managing roles (`addRevoker`, `addGranter`, `addCanceler`).
  *
- * See `TimelockAuthorizer`
+ * See `ITimelockAuthorizer`.
  */
 abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     using Address for address;
@@ -253,12 +253,12 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
      * @inheritdoc ITimelockAuthorizer
      */
     function canExecute(uint256 scheduledExecutionId) external view override returns (bool) {
-        require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        require(scheduledExecutionId < _scheduledExecutions.length, "EXECUTION_DOES_NOT_EXIST");
 
         ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         return
             !scheduledExecution.executed &&
-            !scheduledExecution.cancelled &&
+            !scheduledExecution.canceled &&
             block.timestamp >= scheduledExecution.executableAt;
     }
 
@@ -310,13 +310,13 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
      * @inheritdoc ITimelockAuthorizer
      */
     function execute(uint256 scheduledExecutionId) external override returns (bytes memory result) {
-        require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        require(scheduledExecutionId < _scheduledExecutions.length, "EXECUTION_DOES_NOT_EXIST");
 
         ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
-        require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
-        require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
+        require(!scheduledExecution.executed, "EXECUTION_ALREADY_EXECUTED");
+        require(!scheduledExecution.canceled, "EXECUTION_ALREADY_CANCELED");
 
-        require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_YET_EXECUTABLE");
+        require(block.timestamp >= scheduledExecution.executableAt, "EXECUTION_NOT_YET_EXECUTABLE");
 
         if (scheduledExecution.protected) {
             // Protected scheduled executions can only be executed by a set of accounts designated by the original
@@ -341,20 +341,20 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
      * @inheritdoc ITimelockAuthorizer
      */
     function cancel(uint256 scheduledExecutionId) external override {
-        require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        require(scheduledExecutionId < _scheduledExecutions.length, "EXECUTION_DOES_NOT_EXIST");
 
         ITimelockAuthorizer.ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
 
-        require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
-        require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
+        require(!scheduledExecution.executed, "EXECUTION_ALREADY_EXECUTED");
+        require(!scheduledExecution.canceled, "EXECUTION_ALREADY_CANCELED");
 
         require(isCanceler(scheduledExecutionId, msg.sender), "SENDER_IS_NOT_CANCELER");
 
-        scheduledExecution.cancelled = true;
-        scheduledExecution.cancelledBy = msg.sender;
-        scheduledExecution.cancelledAt = block.timestamp;
+        scheduledExecution.canceled = true;
+        scheduledExecution.canceledBy = msg.sender;
+        scheduledExecution.canceledAt = block.timestamp;
 
-        emit ExecutionCancelled(scheduledExecutionId);
+        emit ExecutionCanceled(scheduledExecutionId);
     }
 
     /**
@@ -501,15 +501,15 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
                 where: where,
                 data: data,
                 executed: false,
-                cancelled: false,
+                canceled: false,
                 protected: protected,
                 executableAt: executableAt,
                 scheduledBy: msg.sender,
                 scheduledAt: block.timestamp,
                 executedBy: address(0),
                 executedAt: 0,
-                cancelledBy: address(0),
-                cancelledAt: 0
+                canceledBy: address(0),
+                canceledAt: 0
             })
         );
 
@@ -539,12 +539,12 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         if (scheduledExecutionId != GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID()) {
             // It is not possible to predict future execution ids (because they'll depend on the order of scheduled
             // actions), so it is never a good idea to add cancelers for executions that don't yet exist.
-            require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+            require(scheduledExecutionId < _scheduledExecutions.length, "EXECUTION_DOES_NOT_EXIST");
 
             // It is also pointless to add a canceler for a scheduled execution that has already been executed or
-            // cancelled, so we disallow this to provide more information to a caller that would attempt this.
+            // canceled, so we disallow this to provide more information to a caller that would attempt this.
             ScheduledExecution storage execution = _scheduledExecutions[scheduledExecutionId];
-            require(!execution.executed && !execution.cancelled, "ACTION_IS_NOT_PENDING");
+            require(!execution.executed && !execution.canceled, "EXECUTION_IS_NOT_PENDING");
         }
 
         _isCanceler[scheduledExecutionId][account] = true;

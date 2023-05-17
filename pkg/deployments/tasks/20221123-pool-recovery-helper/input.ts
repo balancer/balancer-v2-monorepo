@@ -60,4 +60,7 @@ export default {
   sepolia: {
     InitialFactories: [],
   },
+  zkevm: {
+    InitialFactories: [],
+  },
 };

@@ -38,10 +38,6 @@ export default class TimelockAuthorizer {
     return this.instance.hasPermission(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async getPermissionId(action: string, account: Account, where: Account): Promise<string> {
-    return this.instance.getPermissionId(action, this.toAddress(account), this.toAddress(where));
-  }
-
   async isRoot(account: Account): Promise<boolean> {
     return this.instance.isRoot(this.toAddress(account));
   }
@@ -72,7 +68,7 @@ export default class TimelockAuthorizer {
 
   async getScheduledExecution(id: BigNumberish): Promise<{
     executed: boolean;
-    cancelled: boolean;
+    canceled: boolean;
     protected: boolean;
     executableAt: BigNumber;
     data: string;
@@ -81,8 +77,8 @@ export default class TimelockAuthorizer {
     scheduledAt: BigNumber;
     executedBy: string;
     executedAt: BigNumber;
-    cancelledBy: string;
-    cancelledAt: BigNumber;
+    canceledBy: string;
+    canceledAt: BigNumber;
   }> {
     return this.instance.getScheduledExecution(id);
   }

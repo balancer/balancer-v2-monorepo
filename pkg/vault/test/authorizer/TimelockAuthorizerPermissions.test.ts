@@ -404,8 +404,8 @@ describe('TimelockAuthorizer permissions', () => {
         const scheduledExecution = await authorizer.getScheduledExecution(id);
         expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
         expect(scheduledExecution.executedAt).to.equal(0);
-        expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
-        expect(scheduledExecution.cancelledAt).to.equal(0);
+        expect(scheduledExecution.canceledBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.canceledAt).to.equal(0);
       });
 
       it('execution can be unprotected', async () => {
@@ -431,7 +431,7 @@ describe('TimelockAuthorizer permissions', () => {
         expect(await authorizer.isCanceler(id, getSender())).to.be.true;
 
         const receipt = await authorizer.cancel(id, { from: getSender() });
-        expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionCanceled', { scheduledExecutionId: id });
       });
 
       it('can be executed after the expected delay', async () => {
@@ -816,8 +816,8 @@ describe('TimelockAuthorizer permissions', () => {
         const scheduledExecution = await authorizer.getScheduledExecution(id);
         expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
         expect(scheduledExecution.executedAt).to.equal(0);
-        expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
-        expect(scheduledExecution.cancelledAt).to.equal(0);
+        expect(scheduledExecution.canceledBy).to.equal(ZERO_ADDRESS);
+        expect(scheduledExecution.canceledAt).to.equal(0);
       });
 
       it('execution can be unprotected', async () => {
@@ -843,7 +843,7 @@ describe('TimelockAuthorizer permissions', () => {
         expect(await authorizer.isCanceler(id, getSender())).to.be.true;
 
         const receipt = await authorizer.cancel(id, { from: getSender() });
-        expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+        expectEvent.inReceipt(await receipt.wait(), 'ExecutionCanceled', { scheduledExecutionId: id });
       });
 
       it('can be executed after the expected delay', async () => {

@@ -26,31 +26,7 @@ import "./TimelockExecutionHelper.sol";
 import "./TimelockAuthorizerManagement.sol";
 
 /**
- * @title Timelock Authorizer
- * @author Balancer Labs
- * @dev Authorizer with timelocks (delays).
- *
- * Users are allowed to perform actions if they have the permission to do so.
- *
- * This Authorizer implementation allows defining a delay per action identifier. If a delay is set for an action, users
- * are instead allowed to schedule an execution that will be run in the future by the Authorizer instead of executing it
- * directly themselves.
- *
- * Glossary:
- * - Action: Operation that can be performed to a target contract. These are identified by a unique bytes32 `actionId`
- *   defined by each target contract following `IAuthentication.getActionId`.
- * - Scheduled execution: The Authorizer can define different delays per `actionId` in order to determine that a
- *   specific time window must pass before these can be executed. When a delay is set for an `actionId`, executions
- *   must be scheduled. These executions are identified with an unsigned integer called `scheduledExecutionId`.
- * - Permission: Unique identifier to refer to a user (who) that is allowed to perform an action (what) in a specific
- *   target contract (where). This identifier is called `permissionId` and is computed as
- *   `keccak256(actionId, account, where)`.
- *
- * Note that the TimelockAuthorizer doesn't use reentrancy guard on its external functions.
- * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
- * which executes a scheduled execution, protected by the Checks-Effects-Interactions pattern.
- * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
- * is necessary in order to be able to call these.
+ * See ITimelockAuthorizer.
  */
 contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     // solhint-disable-next-line const-name-snakecase
@@ -68,8 +44,8 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     mapping(bytes32 => uint256) private _revokeDelays;
 
     // External permissions
-    // keccak256(abi.encodePacked(actionId, account, where)) -> isGranted
-    mapping(bytes32 => bool) private _isPermissionGranted;
+    // actionId -> account -> where -> isGranted
+    mapping(bytes32 => mapping(address => mapping(address => bool))) private _isPermissionGranted;
     // actionId -> delay (in seconds)
     mapping(bytes32 => uint256) private _delaysPerActionId;
 
@@ -117,23 +93,12 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function getPermissionId(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(actionId, account, where));
-    }
-
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
     function isPermissionGrantedOnTarget(
         bytes32 actionId,
         address account,
         address where
     ) external view override returns (bool) {
-        return _isPermissionGranted[getPermissionId(actionId, account, where)];
+        return _isPermissionGranted[actionId][account][where];
     }
 
     /**
@@ -144,9 +109,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address account,
         address where
     ) public view override returns (bool) {
-        return
-            _isPermissionGranted[getPermissionId(actionId, account, where)] ||
-            _isPermissionGranted[getPermissionId(actionId, account, EVERYWHERE())];
+        return _isPermissionGranted[actionId][account][where] || _isPermissionGranted[actionId][account][EVERYWHERE()];
     }
 
     /**
@@ -326,8 +289,8 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
         emit ExecutionScheduled(actionId, scheduledExecutionId);
 
-        // Accounts that schedule actions are automatically made cancelers for them, so that they can manage their
-        // action. We check that they are not already a canceler since e.g. root may schedule actions (and root is
+        // Accounts that schedule executions are automatically made cancelers for them, so that they can manage their
+        // actions. We check that they are not already a canceler since e.g. root may schedule executions (and root is
         // always a global canceler).
         if (!isCanceler(scheduledExecutionId, msg.sender)) {
             _addCanceler(scheduledExecutionId, msg.sender);
@@ -352,11 +315,9 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
             require(msg.sender == getTimelockExecutionHelper(), "GRANT_MUST_BE_SCHEDULED");
         }
 
-        bytes32 permission = getPermissionId(actionId, account, where);
+        require(!_isPermissionGranted[actionId][account][where], "PERMISSION_ALREADY_GRANTED");
 
-        require(!_isPermissionGranted[permission], "PERMISSION_ALREADY_GRANTED");
-
-        _isPermissionGranted[permission] = true;
+        _isPermissionGranted[actionId][account][where] = true;
         emit PermissionGranted(actionId, account, where);
     }
 
@@ -378,7 +339,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit GrantPermissionScheduled(actionId, account, where, scheduledExecutionId);
-        // Granters that schedule actions are automatically made cancelers for them, so that they can manage their
+        // Granters that schedule executions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule grants (and root is
         // always a global canceler).
         if (!isCanceler(scheduledExecutionId, msg.sender)) {
@@ -424,7 +385,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
         uint256 scheduledExecutionId = _scheduleWithDelay(address(this), data, delay, executors);
         emit RevokePermissionScheduled(actionId, account, where, scheduledExecutionId);
-        // Revokers that schedule actions are automatically made cancelers for them, so that they can manage their
+        // Revokers that schedule executions are automatically made cancelers for them, so that they can manage their
         // action. We check that they are not already a canceler since e.g. root may schedule revokes (and root is
         // always a global canceler).
         if (!isCanceler(scheduledExecutionId, msg.sender)) {
@@ -451,11 +412,9 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address account,
         address where
     ) private {
-        bytes32 permission = getPermissionId(actionId, account, where);
+        require(_isPermissionGranted[actionId][account][where], "PERMISSION_NOT_GRANTED");
 
-        require(_isPermissionGranted[permission], "PERMISSION_NOT_GRANTED");
-
-        _isPermissionGranted[permission] = false;
+        _isPermissionGranted[actionId][account][where] = false;
         emit PermissionRevoked(actionId, account, where);
     }
 
