@@ -101,8 +101,8 @@ describe('TimelockAuthorizer execute', () => {
       const scheduledExecution = await authorizer.getScheduledExecution(id);
       expect(scheduledExecution.executedBy).to.equal(ZERO_ADDRESS);
       expect(scheduledExecution.executedAt).to.equal(0);
-      expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
-      expect(scheduledExecution.cancelledAt).to.equal(0);
+      expect(scheduledExecution.canceledBy).to.equal(ZERO_ADDRESS);
+      expect(scheduledExecution.canceledAt).to.equal(0);
     });
 
     it('schedules a non-protected execution', async () => {
@@ -139,7 +139,7 @@ describe('TimelockAuthorizer execute', () => {
       const id = await schedule(authenticatedContract);
       // should not revert
       const receipt = await authorizer.cancel(id, { from: user });
-      expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+      expectEvent.inReceipt(await receipt.wait(), 'ExecutionCanceled', { scheduledExecutionId: id });
     });
 
     it('schedules the protected execution', async () => {
@@ -302,8 +302,8 @@ describe('TimelockAuthorizer execute', () => {
       await authorizer.execute(id, { from: executor });
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
-      expect(scheduledExecution.cancelledBy).to.equal(ZERO_ADDRESS);
-      expect(scheduledExecution.cancelledAt).to.equal(0);
+      expect(scheduledExecution.canceledBy).to.equal(ZERO_ADDRESS);
+      expect(scheduledExecution.canceledAt).to.equal(0);
     });
 
     it('execute returns a correct result', async () => {
@@ -372,23 +372,23 @@ describe('TimelockAuthorizer execute', () => {
       const id = await schedule();
       await advanceTime(delay);
       await authorizer.execute(id, { from: executor });
-      await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
+      await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('EXECUTION_ALREADY_EXECUTED');
     });
 
-    it('reverts if action was cancelled', async () => {
+    it('reverts if action was canceled', async () => {
       const id = await schedule();
       await advanceTime(delay);
       await authorizer.cancel(id, { from: user });
-      await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('ACTION_ALREADY_CANCELLED');
+      await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('EXECUTION_ALREADY_CANCELED');
     });
 
     it('reverts if the delay has not passed', async () => {
       const id = await schedule();
-      await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
+      await expect(authorizer.execute(id, { from: executor })).to.be.revertedWith('EXECUTION_NOT_YET_EXECUTABLE');
     });
 
     it('reverts if the scheduled id is invalid', async () => {
-      await expect(authorizer.execute(100)).to.be.revertedWith('ACTION_DOES_NOT_EXIST');
+      await expect(authorizer.execute(100)).to.be.revertedWith('EXECUTION_DOES_NOT_EXIST');
     });
   });
 
@@ -419,8 +419,8 @@ describe('TimelockAuthorizer execute', () => {
       await authorizer.cancel(id, { from: canceler });
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
-      expect(scheduledExecution.cancelledBy).to.equal(canceler.address);
-      expect(scheduledExecution.cancelledAt).to.equal(await currentTimestamp());
+      expect(scheduledExecution.canceledBy).to.equal(canceler.address);
+      expect(scheduledExecution.canceledAt).to.equal(await currentTimestamp());
     });
 
     it('stores empty executor information', async () => {
@@ -438,7 +438,7 @@ describe('TimelockAuthorizer execute', () => {
       await authorizer.cancel(id, { from: canceler });
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
-      expect(scheduledExecution.cancelled).to.be.true;
+      expect(scheduledExecution.canceled).to.be.true;
     });
 
     it('global canceler can cancel the action', async () => {
@@ -452,7 +452,7 @@ describe('TimelockAuthorizer execute', () => {
       await authorizer.cancel(id, { from: canceler });
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
-      expect(scheduledExecution.cancelled).to.be.true;
+      expect(scheduledExecution.canceled).to.be.true;
     });
 
     it('root canceler can cancel the action', async () => {
@@ -460,25 +460,25 @@ describe('TimelockAuthorizer execute', () => {
       await authorizer.cancel(id, { from: root });
 
       const scheduledExecution = await authorizer.getScheduledExecution(id);
-      expect(scheduledExecution.cancelled).to.be.true;
+      expect(scheduledExecution.canceled).to.be.true;
     });
 
     it('emits an event', async () => {
       const id = await schedule();
       const receipt = await authorizer.cancel(id, { from: canceler });
 
-      expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
+      expectEvent.inReceipt(await receipt.wait(), 'ExecutionCanceled', { scheduledExecutionId: id });
     });
 
-    it('cannot be cancelled twice', async () => {
+    it('cannot be canceled twice', async () => {
       const id = await schedule();
       await authorizer.cancel(id, { from: canceler });
 
-      await expect(authorizer.cancel(id, { from: canceler })).to.be.revertedWith('ACTION_ALREADY_CANCELLED');
+      await expect(authorizer.cancel(id, { from: canceler })).to.be.revertedWith('EXECUTION_ALREADY_CANCELED');
     });
 
     it('reverts if the scheduled id is invalid', async () => {
-      await expect(authorizer.cancel(100)).to.be.revertedWith('ACTION_DOES_NOT_EXIST');
+      await expect(authorizer.cancel(100)).to.be.revertedWith('EXECUTION_DOES_NOT_EXIST');
     });
 
     it('reverts if action was executed', async () => {
@@ -486,7 +486,7 @@ describe('TimelockAuthorizer execute', () => {
       await advanceTime(delay);
       await authorizer.execute(id);
 
-      await expect(authorizer.cancel(id, { from: canceler })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
+      await expect(authorizer.cancel(id, { from: canceler })).to.be.revertedWith('EXECUTION_ALREADY_EXECUTED');
     });
 
     it('reverts if sender is not canceler', async () => {
