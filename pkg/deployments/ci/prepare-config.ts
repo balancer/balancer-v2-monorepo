@@ -33,11 +33,15 @@ if (process.env.CI) {
       },
       "sepolia": {
         "url": "${process.env.SEPOLIA_RPC_ENDPOINT}"
+      },
+      "zkevm": {
+        "url": "${process.env.ZKEVM_RPC_ENDPOINT}"
       }
     },
     "defaultConfig": {
       "gasPrice": "auto",
-      "gasMultiplier": 1
+      "gasMultiplier": 1,
+      "accounts": []
     }
   }`;
 

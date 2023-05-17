@@ -1,0 +1,6 @@
+{
+  "GearboxLinearPoolFactory": "0x687b8C9b41E01Be8B591725fac5d5f52D0564d79",
+  "MockGearboxVault": "0x88ED12A90142fDBFe2a28f7d5b48927254C7e760",
+  "MockGearboxDieselToken": "0x698CaED853bE9cEA96C268f565e2b61D3b2BcDA4",
+  "MockGearboxLinearPool": "0x32f03464FdF909FDf3798f87Ff3712b10c59bd86"
+}
