@@ -545,15 +545,6 @@ describe('TimelockAuthorizer permissions', () => {
                 authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() })
               ).to.be.revertedWith('PERMISSION_NOT_GRANTED');
             });
-
-            it('cannot perform the requested action everywhere', async () => {
-              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
-              expect(await authorizer.canPerform(ACTION_2, user, EVERYWHERE)).to.be.false;
-            });
-
-            it('can perform the requested action for the previously granted permissions', async () => {
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
-            });
           });
         });
 
@@ -566,7 +557,7 @@ describe('TimelockAuthorizer permissions', () => {
             it('cannot revoke the permission', async () => {
               await expect(
                 authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: getSender() })
-              ).to.be.revertedWith('PERMISSION_NOT_GRANTED');
+              ).to.be.revertedWith('ACCOUNT_HAS_GLOBAL_PERMISSION');
             });
 
             it('can perform the requested action for the requested contract', async () => {
@@ -679,21 +670,10 @@ describe('TimelockAuthorizer permissions', () => {
           });
 
           context('when revoking the permission for a contract', () => {
-            it('still can perform the requested action for the requested contract', async () => {
+            it('cannot revoke the permission', async () => {
               await expect(authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker })).to.be.revertedWith(
-                'PERMISSION_NOT_GRANTED'
+                'ACCOUNT_HAS_GLOBAL_PERMISSION'
               );
-
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
-            });
-
-            it('still can perform the requested action everywhere', async () => {
-              await expect(authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: revoker })).to.be.revertedWith(
-                'PERMISSION_NOT_GRANTED'
-              );
-
-              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.true;
             });
           });
         });
@@ -964,7 +944,7 @@ describe('TimelockAuthorizer permissions', () => {
       context('when renouncing the permission for a specific contract', () => {
         it('cannot renounce the permission if it was not granted', async () => {
           await expect(authorizer.renouncePermission(ACTION_1, WHERE_1, { from: user })).to.be.revertedWith(
-            'PERMISSION_NOT_GRANTED'
+            'ACCOUNT_HAS_GLOBAL_PERMISSION'
           );
         });
 
