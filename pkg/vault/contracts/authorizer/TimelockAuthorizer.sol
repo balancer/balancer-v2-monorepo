@@ -412,6 +412,8 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address account,
         address where
     ) private {
+        require(hasPermission(actionId, account, where), "PERMISSION_NOT_GRANTED");
+
         if (_isPermissionGranted[actionId][account][EVERYWHERE()]) {
             // If an account has global permission, then it must explicitly lose this global privilege. This prevents
             // scenarios where an account has their permission revoked over a specific contract, but they can still
@@ -420,9 +422,6 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
             // permission over some contracts after losing global privilege. This is considered an unlikely scenario,
             // and would require manual removal of the specific permissions even after removal of the global one.
             require(where == EVERYWHERE(), "ACCOUNT_HAS_GLOBAL_PERMISSION");
-        } else {
-            // Alternatively, they must currently have the permission in order to have it revoked.
-            require(_isPermissionGranted[actionId][account][where], "PERMISSION_NOT_GRANTED");
         }
 
         _isPermissionGranted[actionId][account][where] = false;
