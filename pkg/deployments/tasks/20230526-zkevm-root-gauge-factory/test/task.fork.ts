@@ -4,7 +4,14 @@ import { Contract } from 'ethers';
 
 import { BigNumber, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { advanceTime, currentTimestamp, currentWeekTimestamp, DAY, MONTH, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import {
+  advanceTime,
+  currentTimestamp,
+  currentWeekTimestamp,
+  DAY,
+  MONTH,
+  WEEK,
+} from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
@@ -21,7 +28,6 @@ describeForkTest('PolygonZkEVMRootGaugeFactory', 'mainnet', 17268518, function (
   let factory: Contract, gauge: Contract;
   let vault: Contract,
     authorizer: Contract,
-    authorizerAdaptor: Contract,
     adaptorEntrypoint: Contract,
     BALTokenAdmin: Contract,
     gaugeController: Contract,
@@ -35,7 +41,7 @@ describeForkTest('PolygonZkEVMRootGaugeFactory', 'mainnet', 17268518, function (
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
   const VEBAL_POOL = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56';
   const VAULT_BOUNTY = fp(1000);
-  
+
   const weightCap = fp(0.001);
 
   const POLYGON_ZKEVM_NETWORK_ID = 1;
@@ -83,7 +89,10 @@ describeForkTest('PolygonZkEVMRootGaugeFactory', 'mainnet', 17268518, function (
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
-    veBAL = await gaugeControllerTask.instanceAt('VotingEscrow', gaugeControllerTask.output({ network: 'mainnet' }).VotingEscrow);
+    veBAL = await gaugeControllerTask.instanceAt(
+      'VotingEscrow',
+      gaugeControllerTask.output({ network: 'mainnet' }).VotingEscrow
+    );
 
     const weightedPoolTask = new Task('20210418-weighted-pool', TaskMode.READ_ONLY, getForkedNetwork(hre));
     bal80weth20Pool = await weightedPoolTask.instanceAt('WeightedPool2Tokens', VEBAL_POOL);
@@ -111,7 +120,6 @@ describeForkTest('PolygonZkEVMRootGaugeFactory', 'mainnet', 17268518, function (
       .connect(veBALHolder)
       .create_lock(await bal80weth20Pool.balanceOf(veBALHolder.address), currentTime.add(MONTH * 12));
   });
-
 
   it('create gauge', async () => {
     const tx = await factory.create(recipient.address, weightCap);
