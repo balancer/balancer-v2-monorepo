@@ -24,8 +24,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "./TimelockExecutionHelper.sol";
 
-// Scheduled executions are time based and are expected to be on the order of days, so any time changes or manipulation on
-// the order of seconds or minutes is irrelevant.
+// Scheduled executions are time based and are expected to be on the order of days, so any time changes or manipulation
+// on the order of seconds or minutes is irrelevant.
 // solhint-disable not-rely-on-time
 
 /**
