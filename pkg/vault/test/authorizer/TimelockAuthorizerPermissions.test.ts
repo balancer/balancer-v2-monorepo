@@ -598,6 +598,48 @@ describe('TimelockAuthorizer permissions', () => {
             });
           });
         });
+
+        context('when the user has the permission in a specific contract and everywhere', () => {
+          sharedBeforeEach('grants the permissions', async () => {
+            await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: root });
+            await authorizer.grantPermissionGlobally(ACTION_1, user, { from: root });
+          });
+
+          context('when revoking the permission for a contract', () => {
+            it('cannot revoke the permission', async () => {
+              await expect(
+                authorizer.revokePermission(ACTION_1, user, WHERE_1, { from: getSender() })
+              ).to.be.revertedWith('ACCOUNT_HAS_GLOBAL_PERMISSION');
+            });
+          });
+
+          context('when revoking the permission for a everywhere', () => {
+            it('revokes the requested global permission', async () => {
+              await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() });
+
+              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+            });
+
+            it('can still perform the requested action in the specific contract', async () => {
+              await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() });
+
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
+            });
+
+            it('emits an event', async () => {
+              const receipt = await (
+                await authorizer.revokePermissionGlobally(ACTION_1, user, { from: getSender() })
+              ).wait();
+
+              expectEvent.inReceipt(receipt, 'PermissionRevoked', {
+                actionId: ACTION_1,
+                account: user.address,
+                where: TimelockAuthorizer.EVERYWHERE,
+              });
+            });
+          });
+        });
       }
 
       context('when the sender is root', () => {
@@ -985,6 +1027,60 @@ describe('TimelockAuthorizer permissions', () => {
           await authorizer.renouncePermissionGlobally(ACTION_1, { from: user });
 
           expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+        });
+      });
+    });
+
+    context('when the user has the permission for a specific contract and everywhere', () => {
+      sharedBeforeEach('grants the permission', async () => {
+        await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: root });
+        await authorizer.grantPermissionGlobally(ACTION_1, user, { from: root });
+      });
+
+      context('when renouncing the permission for a specific contract', () => {
+        it('cannot renounce the permission', async () => {
+          await expect(authorizer.renouncePermission(ACTION_1, WHERE_1, { from: user })).to.be.revertedWith(
+            'ACCOUNT_HAS_GLOBAL_PERMISSION'
+          );
+        });
+
+        it('can perform the requested actions for the requested contract', async () => {
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
+        });
+
+        it('can perform the requested action everywhere', async () => {
+          expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
+        });
+      });
+
+      context('when renouncing the permission for everywhere', () => {
+        it('revokes the requested permissions everywhere', async () => {
+          await authorizer.renouncePermissionGlobally(ACTION_1, { from: user });
+
+          expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
+        });
+
+        it('can still perform the requested action in the specific contract', async () => {
+          await authorizer.renouncePermissionGlobally(ACTION_1, { from: user });
+
+          expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
+        });
+
+        it('can revoke even if the permission has a delay', async () => {
+          await authorizer.scheduleAndExecuteDelayChange(await actionId(vault, 'setAuthorizer'), delay, { from: root });
+          const id = await authorizer.scheduleRevokeDelayChange(ACTION_1, delay, [], { from: root });
+          await advanceTime(MINIMUM_EXECUTION_DELAY);
+          await authorizer.execute(id);
+          expect(authorizer.revokePermissionGlobally(ACTION_1, user, { from: user })).to.be.revertedWith(
+            'REVOKE_MUST_BE_SCHEDULED'
+          );
+          await authorizer.renouncePermissionGlobally(ACTION_1, { from: user });
+
+          expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.false;
           expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.false;
         });
       });
