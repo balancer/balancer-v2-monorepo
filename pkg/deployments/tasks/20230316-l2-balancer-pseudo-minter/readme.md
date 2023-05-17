@@ -11,6 +11,7 @@ The main difference between the two is that the pseudo minter does not actually 
 - [Optimism mainnet addresses](./output/optimism.json)
 - [Gnosis mainnet addresses](./output/gnosis.json)
 - [Avalanche mainnet addresses](./output/avalanche.json)
+- [Polygon zkeVM mainnet addresses](./output/zkevm.json)
 - [Goerli testnet addresses](./output/goerli.json)
 - [Sepolia testnet addresses](./output/sepolia.json)
 - [`L2BalancerPseudoMinter` artifact](./artifact/L2BalancerPseudoMinter.json)

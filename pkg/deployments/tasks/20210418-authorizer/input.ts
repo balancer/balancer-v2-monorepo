@@ -33,4 +33,7 @@ export default {
   sepolia: {
     admin: '0x171C0fF5943CE5f133130436A29bF61E26516003',
   },
+  zkevm: {
+    admin: '0x2f237e7643a3bF6Ef265dd6FCBcd26a7Cc38dbAa',
+  },
 };
