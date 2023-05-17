@@ -16,7 +16,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
-describeForkTest('PolygonZkEVMRootGaugeFactoryV2', 'mainnet', 17268518, function () {
+describeForkTest('PolygonZkEVMRootGaugeFactory', 'mainnet', 17268518, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
   let factory: Contract, gauge: Contract;
   let vault: Contract,
@@ -242,7 +242,7 @@ describeForkTest('PolygonZkEVMRootGaugeFactoryV2', 'mainnet', 17268518, function
     const expectedEmissions = weightCap.mul(numberOfWeeks).mul(weeklyRate).div(FP_ONE);
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
-    const tx = await authorizerAdaptor.connect(admin).performAction(gauge.address, calldata);
+    const tx = await adaptorEntrypoint.connect(admin).performAction(gauge.address, calldata);
 
     await Promise.all(
       range(1, numberOfWeeks + 1).map(async (weekIndex) =>

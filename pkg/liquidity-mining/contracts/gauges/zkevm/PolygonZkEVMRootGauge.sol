@@ -74,7 +74,7 @@ contract PolygonZkEVMRootGauge is StakelessGauge {
             mintAmount,
             address(_balToken),
             _FORCE_UPDATE_GLOBAL_EXIT_ROOT,
-            "0x"
+            ""
         );
     }
 }
