@@ -16,22 +16,46 @@ pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
 /**
- * @dev We need this interface to avoid overriding functions at TimelockAuthorizer
+ * @title Timelock Authorizer
+ * @author Balancer Labs
+ * @dev Authorizer with timelocks (delays).
+ *
+ * Users are allowed to perform actions if they have the permission to do so.
+ *
+ * This Authorizer implementation allows defining delays per action identifier. If a delay is set for an action, users
+ * are not allowed to execute it directly themselves. Instead, they schedule an execution that the Authorizer will
+ * run in the future.
+ *
+ * Glossary:
+ * - Action: Operation that can be performed on a target contract. These are identified by a unique bytes32 `actionId`
+ *   defined by each target contract following `IAuthentication.getActionId`.
+ * - Scheduled execution: The Authorizer can define a delay for an `actionId` to require that a specific
+ *   time window must pass before it can be executed. When a delay is set for an `actionId`, executions
+ *   must be scheduled. These executions are identified by an unsigned integer called `scheduledExecutionId`.
+ * - Permission: Unique identifier to refer to a user (who) that is allowed to perform an action (what) on a specific
+ *   target contract (where). This identifier is called `permissionId` and is computed as
+ *   `keccak256(actionId, account, where)`.
+ *
+ * Note that the TimelockAuthorizer doesn't use reentrancy guard on its external functions.
+ * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
+ * which executes a scheduled execution, protected by the Checks-Effects-Interactions pattern.
+ * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
+ * is necessary in order to be able to call these.
  */
 interface ITimelockAuthorizer {
     struct ScheduledExecution {
         address where;
         bytes data;
         bool executed;
-        bool cancelled;
+        bool canceled;
         bool protected;
         uint256 executableAt;
         address scheduledBy;
         uint256 scheduledAt;
         address executedBy;
         uint256 executedAt;
-        address cancelledBy;
-        uint256 cancelledAt;
+        address canceledBy;
+        uint256 canceledAt;
     }
 
     /**
@@ -80,9 +104,9 @@ interface ITimelockAuthorizer {
     event ExecutionExecuted(uint256 indexed scheduledExecutionId);
 
     /**
-     * @notice Emitted when an execution `scheduledExecutionId` is cancelled.
+     * @notice Emitted when an execution `scheduledExecutionId` is canceled.
      */
-    event ExecutionCancelled(uint256 indexed scheduledExecutionId);
+    event ExecutionCanceled(uint256 indexed scheduledExecutionId);
 
     /**
      * @notice Emitted when a new `root` is set.
@@ -173,7 +197,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice A constant value for `scheduledExecutionId` that will match any execution Id.
-     * Cancelers assigned to this Id will be able to cancel *any* scheduled action,
+     * Cancelers assigned to this Id will be able to cancel *any* scheduled execution,
      * which is very useful for e.g. emergency response dedicated teams that analyze these.
      */
     // solhint-disable-next-line func-name-mixedcase
@@ -290,7 +314,7 @@ interface ITimelockAuthorizer {
 
     /**
      * @notice Returns true if execution `scheduledExecutionId` can be executed.
-     * Only true if it is not already executed or cancelled, and if the execution delay has passed.
+     * Only true if it is not already executed or canceled, and if the execution delay has passed.
      */
     function canExecute(uint256 scheduledExecutionId) external view returns (bool);
 
@@ -369,7 +393,7 @@ interface ITimelockAuthorizer {
     function claimRoot() external;
 
     /**
-     * @notice Executes a scheduled action `scheduledExecutionId`. This is used to execute all scheduled executions,
+     * @notice Executes a scheduled execution `scheduledExecutionId`. This is used to execute all scheduled executions,
      * not only those that originate from `schedule`, but also internal TimelockAuthorizer functions such as
      * `scheduleRootChange` or `scheduleDelayChange`.
      *
@@ -380,8 +404,8 @@ interface ITimelockAuthorizer {
      *
      * We mark this function as `nonReentrant` out of an abundance of caution, as in theory this and the Authorizer
      * should be resilient to reentrant executions. The non-reentrancy check means that it is not possible to execute a
-     * scheduled action during the execution of another scheduled action - an unlikely and convoluted scenario that we
-     * explicitly forbid.
+     * scheduled execution during the execution of another scheduled execution - an unlikely and convoluted scenario
+     * that we explicitly forbid.
      *
      * Note that while `execute` is nonReentrant, other functions are not - indeed, we rely on reentrancy to e.g. call
      * `setPendingRoot` or `setDelay`.
@@ -389,8 +413,8 @@ interface ITimelockAuthorizer {
     function execute(uint256 scheduledExecutionId) external returns (bytes memory result);
 
     /**
-     * @notice Cancels a scheduled action `scheduledExecutionId`, which prevents execution via `execute`. Canceling is
-     * irreversible. Scheduled executions that have already been executed cannot be canceled. This is the only way to
+     * @notice Cancels a scheduled execution `scheduledExecutionId`, which prevents execution via `execute`. Canceling
+     * is irreversible. Scheduled executions that have already been executed cannot be canceled. This is the only way to
      * prevent a scheduled execution from being executed (assuming there are willing executors).
      *
      * The caller must be a canceler, a permission which is managed by the `addCanceler` and `removeCanceler` functions.
@@ -399,7 +423,7 @@ interface ITimelockAuthorizer {
     function cancel(uint256 scheduledExecutionId) external;
 
     /**
-     * @notice Grants canceler status to `account` for scheduled action `scheduledExecutionId`.
+     * @notice Grants canceler status to `account` for scheduled execution `scheduledExecutionId`.
      * @dev Only the root can add a canceler.
      *
      * Note that there are no delays associated with adding or removing cancelers. This is based on the assumption that
@@ -409,7 +433,7 @@ interface ITimelockAuthorizer {
     function addCanceler(uint256 scheduledExecutionId, address account) external;
 
     /**
-     * @notice Remove canceler status from `account` for scheduled action `scheduledExecutionId`.
+     * @notice Remove canceler status from `account` for scheduled execution `scheduledExecutionId`.
      * @dev Only the root can remove a canceler.
      */
     function removeCanceler(uint256 scheduledExecutionId, address account) external;
@@ -511,7 +535,7 @@ interface ITimelockAuthorizer {
      * 5 days, then the time difference between the delays must pass. Otherwise, the minimum delay change execution
      * delay of 5 days must pass instead.
      *
-     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * Only `executors` will be able to execute the scheduled execution, unless `executors` is an empty array, in which
      * case any account can execute it.
      *
      * Avoid scheduling multiple delay changes for the same action at the same time, as this makes it harder to reason
@@ -539,7 +563,7 @@ interface ITimelockAuthorizer {
      * than 5 days, then the time difference between the grant delays must pass. Otherwise, the minimum delay change
      * execution delay of 5 days must pass instead.
      *
-     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * Only `executors` will be able to execute the scheduled execution, unless `executors` is an empty array, in which
      * case any account can execute it.
      *
      * Avoid scheduling multiple grant delay changes for the same action at the same time, as this makes it harder to
@@ -568,7 +592,7 @@ interface ITimelockAuthorizer {
      * than 5 days, then the time difference between the revoke delays must pass. Otherwise, the minimum delay change
      * execution delay of 5 days must pass instead.
      *
-     * Only `executors` will be able to execute the scheduled action, unless `executors` is an empty array, in which
+     * Only `executors` will be able to execute the scheduled execution, unless `executors` is an empty array, in which
      * case any account can execute it.
      *
      * Avoid scheduling multiple revoke delay changes for the same action at the same time, as this makes it harder to

@@ -570,7 +570,7 @@ describe('TimelockAuthorizer actors', () => {
 
         it('reverts if the scheduled execution does not exist', async () => {
           await expect(authorizer.addCanceler(42, canceler, { from: root })).to.be.revertedWith(
-            'ACTION_DOES_NOT_EXIST'
+            'EXECUTION_DOES_NOT_EXIST'
           );
         });
 
@@ -579,7 +579,7 @@ describe('TimelockAuthorizer actors', () => {
           await authorizer.execute(executionId);
 
           await expect(authorizer.addCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
-            'ACTION_IS_NOT_PENDING'
+            'EXECUTION_IS_NOT_PENDING'
           );
         });
 
@@ -587,7 +587,7 @@ describe('TimelockAuthorizer actors', () => {
           await authorizer.cancel(executionId, { from: root });
 
           await expect(authorizer.addCanceler(executionId, canceler, { from: root })).to.be.revertedWith(
-            'ACTION_IS_NOT_PENDING'
+            'EXECUTION_IS_NOT_PENDING'
           );
         });
       });

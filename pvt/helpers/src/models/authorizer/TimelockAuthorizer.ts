@@ -72,7 +72,7 @@ export default class TimelockAuthorizer {
 
   async getScheduledExecution(id: BigNumberish): Promise<{
     executed: boolean;
-    cancelled: boolean;
+    canceled: boolean;
     protected: boolean;
     executableAt: BigNumber;
     data: string;
@@ -81,8 +81,8 @@ export default class TimelockAuthorizer {
     scheduledAt: BigNumber;
     executedBy: string;
     executedAt: BigNumber;
-    cancelledBy: string;
-    cancelledAt: BigNumber;
+    canceledBy: string;
+    canceledAt: BigNumber;
   }> {
     return this.instance.getScheduledExecution(id);
   }
