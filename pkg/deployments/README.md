@@ -118,6 +118,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Managed Pool V2                                        | [`20230411-managed-pool-v2`](./tasks/20230411-managed-pool-v2)                                       |
 | Authorizer with Adaptor Validation                     | [`20230414-authorizer-wrapper`](./tasks/20230414-authorizer-wrapper)                                 |
 | Voting Escrow Remapper                                 | [`20230504-vebal-remapper`](./tasks/20230504-vebal-remapper)                                         |
+| Polygon ZkEVM Root Gauge, for veBAL voting             | [`20230526-zkevm-root-gauge-factory`](./tasks/20230526-zkevm-root-gauge-factory)                     |
 
 ## Scripts
 
