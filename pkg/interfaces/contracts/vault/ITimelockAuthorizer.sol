@@ -32,9 +32,9 @@ pragma experimental ABIEncoderV2;
  * - Scheduled execution: The Authorizer can define a delay for an `actionId` to require that a specific
  *   time window must pass before it can be executed. When a delay is set for an `actionId`, executions
  *   must be scheduled. These executions are identified by an unsigned integer called `scheduledExecutionId`.
- * - Permission: Unique identifier to refer to a user (who) that is allowed to perform an action (what) on a specific
- *   target contract (where). This identifier is called `permissionId` and is computed as
- *   `keccak256(actionId, account, where)`.
+ * - Permission: Accounts have or don't have permission to perform an action identified by its `actionId` on a specific
+ *   contract `where`. Note that if the action has a delay, then accounts with permission cannot perform the action
+ *   directly, but are instead allowed to schedule future executions for them.
  *
  * Note that the TimelockAuthorizer doesn't use reentrancy guard on its external functions.
  * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
