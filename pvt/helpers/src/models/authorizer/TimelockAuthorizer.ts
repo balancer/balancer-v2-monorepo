@@ -38,10 +38,6 @@ export default class TimelockAuthorizer {
     return this.instance.hasPermission(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async getPermissionId(action: string, account: Account, where: Account): Promise<string> {
-    return this.instance.getPermissionId(action, this.toAddress(account), this.toAddress(where));
-  }
-
   async isRoot(account: Account): Promise<boolean> {
     return this.instance.isRoot(this.toAddress(account));
   }

@@ -344,15 +344,6 @@ interface ITimelockAuthorizer {
     function getActionIdRevokeDelay(bytes32 actionId) external view returns (uint256);
 
     /**
-     * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
-     */
-    function getPermissionId(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external pure returns (bytes32);
-
-    /**
      * @notice Returns true if `account` has the permission defined by action `actionId` and target `where`.
      * @dev This function is specific for the strict permission defined by the tuple `(actionId, where)`: `account` may
      * instead hold the global permission for the action `actionId`, also granting them permission on `where`, but this
