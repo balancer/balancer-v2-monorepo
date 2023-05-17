@@ -34,7 +34,7 @@ import "./arbitrum/ArbitrumRootGauge.sol";
 contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    mapping(IGaugeAdder.GaugeType => EnumerableSet.AddressSet) private _gauges;
+    mapping(GaugeType => EnumerableSet.AddressSet) private _gauges;
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IGaugeController private immutable _gaugeController;
 
@@ -43,17 +43,8 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
     }
 
-    modifier withSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) {
-        require(_isSupportedGaugeType(gaugeType), "Unsupported gauge type");
-        _;
-    }
-
     /// @inheritdoc IL2GaugeCheckpointer
-    function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
-        external
-        override
-        withSupportedGaugeType(gaugeType)
-    {
+    function addGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external override {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gauges.length; i++) {
@@ -69,11 +60,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
-        external
-        override
-        withSupportedGaugeType(gaugeType)
-    {
+    function removeGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external override {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gauges.length; i++) {
@@ -88,35 +75,17 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function hasGauge(IGaugeAdder.GaugeType gaugeType, IStakelessGauge gauge)
-        external
-        view
-        override
-        withSupportedGaugeType(gaugeType)
-        returns (bool)
-    {
+    function hasGauge(GaugeType gaugeType, IStakelessGauge gauge) external view override returns (bool) {
         return _gauges[gaugeType].contains(address(gauge));
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function getTotalGauges(IGaugeAdder.GaugeType gaugeType)
-        external
-        view
-        override
-        withSupportedGaugeType(gaugeType)
-        returns (uint256)
-    {
+    function getTotalGauges(GaugeType gaugeType) external view override returns (uint256) {
         return _gauges[gaugeType].length();
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function getGaugeAtIndex(IGaugeAdder.GaugeType gaugeType, uint256 index)
-        external
-        view
-        override
-        withSupportedGaugeType(gaugeType)
-        returns (IStakelessGauge)
-    {
+    function getGaugeAtIndex(GaugeType gaugeType, uint256 index) external view override returns (IStakelessGauge) {
         return IStakelessGauge(_gauges[gaugeType].at(index));
     }
 
@@ -125,22 +94,24 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
 
-        _checkpointGauges(IGaugeAdder.GaugeType.Polygon, minRelativeWeight, currentPeriod);
-        _checkpointGauges(IGaugeAdder.GaugeType.Arbitrum, minRelativeWeight, currentPeriod);
-        _checkpointGauges(IGaugeAdder.GaugeType.Optimism, minRelativeWeight, currentPeriod);
-        _checkpointGauges(IGaugeAdder.GaugeType.Gnosis, minRelativeWeight, currentPeriod);
-        _checkpointGauges(IGaugeAdder.GaugeType.ZKSync, minRelativeWeight, currentPeriod);
+        _checkpointGauges(GaugeType.Ethereum, minRelativeWeight, currentPeriod);
+        _checkpointGauges(GaugeType.Polygon, minRelativeWeight, currentPeriod);
+        _checkpointGauges(GaugeType.Arbitrum, minRelativeWeight, currentPeriod);
+        _checkpointGauges(GaugeType.Optimism, minRelativeWeight, currentPeriod);
+        _checkpointGauges(GaugeType.Gnosis, minRelativeWeight, currentPeriod);
+        _checkpointGauges(GaugeType.Avalanche, minRelativeWeight, currentPeriod);
+        _checkpointGauges(GaugeType.PolygonZKEvm, minRelativeWeight, currentPeriod);
+        _checkpointGauges(GaugeType.ZKSync, minRelativeWeight, currentPeriod);
 
         // Send back any leftover ETH to the caller.
         Address.sendValue(msg.sender, address(this).balance);
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function checkpointGaugesOfTypeAboveRelativeWeight(IGaugeAdder.GaugeType gaugeType, uint256 minRelativeWeight)
+    function checkpointGaugesOfTypeAboveRelativeWeight(GaugeType gaugeType, uint256 minRelativeWeight)
         external
         payable
         override
-        withSupportedGaugeType(gaugeType)
         nonReentrant
     {
         // solhint-disable-next-line not-rely-on-time
@@ -160,8 +131,8 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
-        uint256 totalArbitrumGauges = _gauges[IGaugeAdder.GaugeType.Arbitrum].length();
-        EnumerableSet.AddressSet storage arbitrumGauges = _gauges[IGaugeAdder.GaugeType.Arbitrum];
+        uint256 totalArbitrumGauges = _gauges[GaugeType.Arbitrum].length();
+        EnumerableSet.AddressSet storage arbitrumGauges = _gauges[GaugeType.Arbitrum];
         uint256 totalCost;
 
         for (uint256 i = 0; i < totalArbitrumGauges; ++i) {
@@ -179,19 +150,19 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function isSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) external pure override returns (bool) {
-        return _isSupportedGaugeType(gaugeType);
+    function isSupportedGaugeType(GaugeType gaugeType) external pure override returns (bool) {
+        return gaugeType >= GaugeType.Ethereum && gaugeType <= GaugeType.ZKSync;
     }
 
     /**
      * @dev Performs checkpoints for all gauges of the given type whose relative weight is at least the specified one.
-     * @param gaugeType - Type of the gauges to checkpoint.
-     * @param minRelativeWeight - Threshold to filter out gauges below it.
-     * @param currentPeriod - Current block time rounded down to the start of the week.
+     * @param gaugeType Type of the gauges to checkpoint.
+     * @param minRelativeWeight Threshold to filter out gauges below it.
+     * @param currentPeriod Current block time rounded down to the start of the week.
      * This method doesn't check whether the caller transferred enough ETH to cover the whole operation.
      */
     function _checkpointGauges(
-        IGaugeAdder.GaugeType gaugeType,
+        GaugeType gaugeType,
         uint256 minRelativeWeight,
         uint256 currentPeriod
     ) private {
@@ -205,7 +176,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
 
         // Arbitrum gauges need to send ETH when performing the checkpoint to pay for bridge costs. Furthermore,
         // if gauges come from different factories, the cost per gauge might not be the same for all gauges.
-        function(address) internal performCheckpoint = gaugeType == IGaugeAdder.GaugeType.Arbitrum
+        function(address) internal performCheckpoint = gaugeType == GaugeType.Arbitrum
             ? _checkpointArbitrumGauge
             : _checkpointCostlessBridgeGauge;
 
@@ -243,14 +214,5 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     function _roundDownTimestamp(uint256 timestamp) private pure returns (uint256) {
         // Division by zero or overflows are impossible here.
         return (timestamp / 1 weeks) * 1 weeks;
-    }
-
-    function _isSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) private pure returns (bool) {
-        return
-            gaugeType == IGaugeAdder.GaugeType.Polygon ||
-            gaugeType == IGaugeAdder.GaugeType.Arbitrum ||
-            gaugeType == IGaugeAdder.GaugeType.Optimism ||
-            gaugeType == IGaugeAdder.GaugeType.Gnosis ||
-            gaugeType == IGaugeAdder.GaugeType.ZKSync;
     }
 }

@@ -28,16 +28,14 @@ describe('L2GaugeCheckpointer', () => {
   let testGauges: string[], otherTypeGauges: string[];
 
   const GAUGES_PER_TYPE = 3;
-  const FIRST_VALID_GAUGE = GaugeType.Polygon;
+  const FIRST_VALID_GAUGE = GaugeType.Ethereum;
 
   // Allowed gauges: Polygon, Arbitrum, Optimism, Gnosis, ZKSync.
   const GAUGE_TYPES = Object.values(GaugeType)
     .filter((v) => !isNaN(Number(v)) && Number(v) >= FIRST_VALID_GAUGE)
     .map((t) => Number(t));
 
-  const UNSUPPORTED_GAUGE_TYPES = Object.values(GaugeType)
-    .filter((v) => !isNaN(Number(v)) && Number(v) < FIRST_VALID_GAUGE)
-    .map((t) => Number(t));
+  const UNSUPPORTED_GAUGE_TYPES = [Number(GaugeType.ZkSync) + 1];
 
   before('setup signers', async () => {
     [, admin] = await ethers.getSigners();
@@ -106,27 +104,25 @@ describe('L2GaugeCheckpointer', () => {
   });
 
   function itTestsUnsupportedGaugeType(gaugeType: GaugeType) {
-    const REVERT_MSG = 'Unsupported gauge type';
-
     describe(`test unsupported gauge type: ${GaugeType[gaugeType]}`, () => {
       it('reverts adding gauge', async () => {
-        await expect(L2GaugeCheckpointer.addGauges(gaugeType, [ANY_ADDRESS])).to.be.revertedWith(REVERT_MSG);
+        await expect(L2GaugeCheckpointer.addGauges(gaugeType, [ANY_ADDRESS])).to.be.reverted;
       });
 
       it('reverts removing gauge', async () => {
-        await expect(L2GaugeCheckpointer.removeGauges(gaugeType, [ANY_ADDRESS])).to.be.revertedWith(REVERT_MSG);
+        await expect(L2GaugeCheckpointer.removeGauges(gaugeType, [ANY_ADDRESS])).to.be.reverted;
       });
 
       it('reverts checking if it has gauge', async () => {
-        await expect(L2GaugeCheckpointer.hasGauge(gaugeType, ANY_ADDRESS)).to.be.revertedWith(REVERT_MSG);
+        await expect(L2GaugeCheckpointer.hasGauge(gaugeType, ANY_ADDRESS)).to.be.reverted;
       });
 
       it('reverts getting total gauge gauges', async () => {
-        await expect(L2GaugeCheckpointer.getTotalGauges(gaugeType)).to.be.revertedWith(REVERT_MSG);
+        await expect(L2GaugeCheckpointer.getTotalGauges(gaugeType)).to.be.reverted;
       });
 
       it('reverts getting gauge at index', async () => {
-        await expect(L2GaugeCheckpointer.getGaugeAtIndex(gaugeType, 0)).to.be.revertedWith(REVERT_MSG);
+        await expect(L2GaugeCheckpointer.getGaugeAtIndex(gaugeType, 0)).to.be.reverted;
       });
     });
   }
