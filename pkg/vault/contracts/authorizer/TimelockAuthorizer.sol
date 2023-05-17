@@ -44,8 +44,8 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     mapping(bytes32 => uint256) private _revokeDelays;
 
     // External permissions
-    // keccak256(abi.encodePacked(actionId, account, where)) -> isGranted
-    mapping(bytes32 => bool) private _isPermissionGranted;
+    // actionId -> account -> where -> isGranted
+    mapping(bytes32 => mapping(address => mapping(address => bool))) private _isPermissionGranted;
     // actionId -> delay (in seconds)
     mapping(bytes32 => uint256) private _delaysPerActionId;
 
@@ -93,23 +93,12 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function getPermissionId(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(actionId, account, where));
-    }
-
-    /**
-     * @inheritdoc ITimelockAuthorizer
-     */
     function isPermissionGrantedOnTarget(
         bytes32 actionId,
         address account,
         address where
     ) external view override returns (bool) {
-        return _isPermissionGranted[getPermissionId(actionId, account, where)];
+        return _isPermissionGranted[actionId][account][where];
     }
 
     /**
@@ -120,9 +109,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address account,
         address where
     ) public view override returns (bool) {
-        return
-            _isPermissionGranted[getPermissionId(actionId, account, where)] ||
-            _isPermissionGranted[getPermissionId(actionId, account, EVERYWHERE())];
+        return _isPermissionGranted[actionId][account][where] || _isPermissionGranted[actionId][account][EVERYWHERE()];
     }
 
     /**
@@ -328,11 +315,9 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
             require(msg.sender == getTimelockExecutionHelper(), "GRANT_MUST_BE_SCHEDULED");
         }
 
-        bytes32 permission = getPermissionId(actionId, account, where);
+        require(!_isPermissionGranted[actionId][account][where], "PERMISSION_ALREADY_GRANTED");
 
-        require(!_isPermissionGranted[permission], "PERMISSION_ALREADY_GRANTED");
-
-        _isPermissionGranted[permission] = true;
+        _isPermissionGranted[actionId][account][where] = true;
         emit PermissionGranted(actionId, account, where);
     }
 
@@ -427,11 +412,9 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address account,
         address where
     ) private {
-        bytes32 permission = getPermissionId(actionId, account, where);
+        require(_isPermissionGranted[actionId][account][where], "PERMISSION_NOT_GRANTED");
 
-        require(_isPermissionGranted[permission], "PERMISSION_NOT_GRANTED");
-
-        _isPermissionGranted[permission] = false;
+        _isPermissionGranted[actionId][account][where] = false;
         emit PermissionRevoked(actionId, account, where);
     }
 
