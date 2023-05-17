@@ -29,7 +29,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // "Ethereum" as bytes32.
-    bytes32 private constant ETHEREUM = 0x457468657265756d000000000000000000000000000000000000000000000000;
+    bytes32 private constant _ETHEREUM = 0x457468657265756d000000000000000000000000000000000000000000000000;
 
     IGaugeController private immutable _gaugeController;
     IERC20 private immutable _balWethBpt;
@@ -39,11 +39,10 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     EnumerableSet.Bytes32Set private _gaugeTypes;
 
     // Mapping from gauge type address of approved factory for that type
-    mapping(bytes32 => ILiquidityGaugeFactory) internal _gaugeTypeFactory;
+    mapping(bytes32 => ILiquidityGaugeFactory) private _gaugeTypeFactory;
 
     // Mapping from gauge type to type number used by the gauge controller
-    mapping(bytes32 => int128) _gaugeTypeNumber;
-
+    mapping(bytes32 => int128) private _gaugeTypeNumber;
 
     constructor(IGaugeController gaugeController, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint)
         SingletonAuthentication(gaugeController.admin().getVault())
@@ -77,21 +76,30 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         return gaugeTypes;
     }
 
+    /**
+     * @notice Returns gauge type name registered at the given index.
+     */
     function getGaugeTypeAtIndex(uint256 index) external view returns (string memory) {
         return _bytes32ToString(_gaugeTypes.at(index));
     }
 
+    /**
+     * @notice Returns gauge types total.
+     */
     function getGaugeTypesCount() public view returns (uint256) {
         return _gaugeTypes.length();
     }
 
+    /**
+     * @notice Returns gauge type number for the given gauge type.
+     */
     function getGaugeTypeNumber(string memory gaugeType) external view returns (int128) {
         bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
         return _gaugeTypeNumber[gaugeTypeBytes];
     }
 
     /// @inheritdoc IGaugeAdder
-    function getFactoryForGaugeType(string memory gaugeType) external view override returns (ILiquidityGaugeFactory) {
+    function getFactoryForGaugeType(string memory gaugeType) public view override returns (ILiquidityGaugeFactory) {
         bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
         return _gaugeTypeFactory[gaugeTypeBytes];
     }
@@ -102,28 +110,25 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         return _isGaugeFromValidFactory(gauge, gaugeTypeBytes);
     }
 
-    function _isGaugeFromValidFactory(address gauge, bytes32 gaugeType) internal view returns (bool) {
-        ILiquidityGaugeFactory gaugeFactory = ILiquidityGaugeFactory(_gaugeTypeFactory[gaugeType]);
-        return gaugeFactory.isGaugeFromFactory(gauge);
-    }
-
     // Admin Functions
 
     /// @inheritdoc IGaugeAdder
     function addGaugeType(string memory gaugeType, int128 typeNumber) external override authenticate {
-        require(typeNumber >= 0, "Gauge type has to be greater than 0");
+        require(typeNumber >= 0, "Gauge type number has to be greater than 0");
         require(typeNumber < _gaugeController.n_gauge_types(), "Gauge type number not present in gauge controller");
         bytes32 gaugeTypeBytes = _stringToBytes32(gaugeType); // Reverts if `gaugeType` does not fit in 32 bytes.
 
         require(_gaugeTypes.add(gaugeTypeBytes), "Gauge type already added");
         _gaugeTypeNumber[gaugeTypeBytes] = typeNumber;
+
+        emit GaugeTypeAdded(gaugeType, gaugeType, typeNumber);
     }
 
     /// @inheritdoc IGaugeAdder
     function addGauge(address gauge, string memory gaugeType) external override authenticate {
         bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
 
-        if (gaugeTypeBytes == ETHEREUM) {
+        if (gaugeTypeBytes == _ETHEREUM) {
             IERC20 pool = IStakingLiquidityGauge(gauge).lp_token();
             require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
         }
@@ -140,10 +145,15 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
 
         _gaugeTypeFactory[gaugeTypeBytes] = factory;
 
-        emit GaugeFactorySet(gaugeType, factory);
+        emit GaugeFactorySet(gaugeType, gaugeType, factory);
     }
 
     // Internal functions
+
+    function _isGaugeFromValidFactory(address gauge, bytes32 gaugeType) internal view returns (bool) {
+        ILiquidityGaugeFactory gaugeFactory = _gaugeTypeFactory[gaugeType];
+        return gaugeFactory == ILiquidityGaugeFactory(0) ? false : gaugeFactory.isGaugeFromFactory(gauge);
+    }
 
     /**
      * @dev Adds `gauge` to the GaugeController with type `gaugeType` and an initial weight of zero
@@ -160,20 +170,27 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     }
 
     function _stringToBytes32(string memory str) internal pure returns (bytes32 bytesString) {
-        require(bytes(str).length <= 32, "Input string should be 32 characters long at the most");
+        uint256 length = bytes(str).length;
+        require(length > 0 && bytes(str).length <= 32, "Input string should be between 1 and 32 characters long");
 
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             bytesString := mload(add(str, 32))
         }
     }
 
     function _bytes32ToString(bytes32 _bytes32) internal pure returns (string memory) {
-        bytes memory bytesArray = new bytes(32);
-        for (uint256 i = 0; i < 32; ++i) {
-            bytesArray[i] = _bytes32[i];
+        uint256 length = 0;
+        while (length < 32 && _bytes32[length] != 0) {
+            ++length;
         }
 
-        return string(bytesArray);
+        bytes memory byteArray = new bytes(length);
+        for (uint256 i = 0; i < length; ++i) {
+            byteArray[i] = _bytes32[i];
+        }
+
+        return string(byteArray);
     }
 
     function _validateAndCastGaugeType(string memory gaugeType) internal view returns (bytes32 gaugeTypeBytes) {

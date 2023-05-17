@@ -25,7 +25,8 @@ interface IGaugeAdder is IAuthentication {
     // Deprecated. TODO: remove from interfaces, and remove references.
     enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum, Optimism, Gnosis, ZKSync }
 
-    event GaugeFactorySet(string indexed gaugeType, ILiquidityGaugeFactory gaugeFactory);
+    event GaugeTypeAdded(string indexed indexedGaugeType, string gaugeType, int128 gaugeTypeNumber);
+    event GaugeFactorySet(string indexed indexedGaugeType, string gaugeType, ILiquidityGaugeFactory gaugeFactory);
 
     /**
      * @notice Returns the address of the Authorizer adaptor entrypoint contract.
@@ -51,7 +52,6 @@ interface IGaugeAdder is IAuthentication {
      * @notice Returns true if `gauge` has been deployed by the factory for the gauge type `gaugeType`; false otherwise.
      */
     function isGaugeFromValidFactory(address gauge, string memory gaugeType) external view returns (bool);
-
 
     /**
      * @notice Adds a new `gaugeType` corresponding to a new network, which allows setting a factory and adding gauges
