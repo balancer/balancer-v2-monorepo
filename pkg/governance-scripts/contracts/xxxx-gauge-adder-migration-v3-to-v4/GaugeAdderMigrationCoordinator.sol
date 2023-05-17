@@ -116,9 +116,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
 
         // Grant permissions for adding new Gauges.
         {
-            bytes32 addGaugeRole = IAuthentication(address(newGaugeAdder)).getActionId(
-                IGaugeAdder.addGauge.selector
-            );
+            bytes32 addGaugeRole = IAuthentication(address(newGaugeAdder)).getActionId(IGaugeAdder.addGauge.selector);
 
             authorizer.grantRole(addGaugeRole, liquidityMiningCommitteeMultisig);
         }
