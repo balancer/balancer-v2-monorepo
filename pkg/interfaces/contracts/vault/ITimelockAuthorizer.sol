@@ -22,17 +22,17 @@ pragma experimental ABIEncoderV2;
  *
  * Users are allowed to perform actions if they have the permission to do so.
  *
- * This Authorizer implementation allows defining a delay per action identifier. If a delay is set for an action, users
- * are instead allowed to schedule an execution that will be run in the future by the Authorizer instead of executing it
- * directly themselves.
+ * This Authorizer implementation allows defining delays per action identifier. If a delay is set for an action, users
+ * are not allowed to execute it directly themselves. Instead, they schedule an execution that the Authorizer will
+ * run in the future.
  *
  * Glossary:
- * - Action: Operation that can be performed to a target contract. These are identified by a unique bytes32 `actionId`
+ * - Action: Operation that can be performed on a target contract. These are identified by a unique bytes32 `actionId`
  *   defined by each target contract following `IAuthentication.getActionId`.
- * - Scheduled execution: The Authorizer can define different delays per `actionId` in order to determine that a
- *   specific time window must pass before these can be executed. When a delay is set for an `actionId`, executions
- *   must be scheduled. These executions are identified with an unsigned integer called `scheduledExecutionId`.
- * - Permission: Unique identifier to refer to a user (who) that is allowed to perform an action (what) in a specific
+ * - Scheduled execution: The Authorizer can define a delay for an `actionId` to require that a specific
+ *   time window must pass before it can be executed. When a delay is set for an `actionId`, executions
+ *   must be scheduled. These executions are identified by an unsigned integer called `scheduledExecutionId`.
+ * - Permission: Unique identifier to refer to a user (who) that is allowed to perform an action (what) on a specific
  *   target contract (where). This identifier is called `permissionId` and is computed as
  *   `keccak256(actionId, account, where)`.
  *
