@@ -138,6 +138,7 @@ describe('TimelockAuthorizer permissions', () => {
           sharedBeforeEach('grant a permission', async () => {
             await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: getSender() });
           });
+
           it('cannot grant the permission twice', async () => {
             await expect(authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: getSender() })).to.be.revertedWith(
               'PERMISSION_ALREADY_GRANTED'
@@ -149,14 +150,7 @@ describe('TimelockAuthorizer permissions', () => {
               await authorizer.grantPermissionGlobally(ACTION_1, user, { from: getSender() });
 
               expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.true;
-            });
-
-            it('still can perform the requested action for the previously granted contracts', async () => {
-              await authorizer.grantPermissionGlobally(ACTION_2, user, { from: getSender() });
-
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_2, user, WHERE_1)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_2, user, WHERE_2)).to.be.true;
+              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
             });
 
             it('emits an event', async () => {
@@ -179,36 +173,10 @@ describe('TimelockAuthorizer permissions', () => {
           });
 
           context('when granting the permission for a contract', () => {
-            it('grants the permission to perform the requested action for the requested contract', async () => {
-              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: getSender() });
-
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
-            });
-
-            it('still can perform the requested actions everywhere', async () => {
-              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: getSender() });
-
-              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
-            });
-
-            it('still can perform the requested actions for other contracts', async () => {
-              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: getSender() });
-
-              expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
-            });
-
-            it('emits an event', async () => {
-              const receipt = await (
-                await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: getSender() })
-              ).wait();
-              expectEvent.inReceipt(receipt, 'PermissionGranted', {
-                actionId: ACTION_1,
-                account: user.address,
-                where: WHERE_1,
-              });
+            it('cannot grant the permission twice', async () => {
+              await expect(
+                authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: getSender() })
+              ).to.be.revertedWith('PERMISSION_ALREADY_GRANTED');
             });
           });
 
@@ -310,36 +278,10 @@ describe('TimelockAuthorizer permissions', () => {
           });
 
           context('when granting the permission for a contract', () => {
-            it('grants the permission to perform the requested action for the requested contract', async () => {
-              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
-
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_1)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
-            });
-
-            it('still can perform the requested actions everywhere', async () => {
-              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
-
-              expect(await authorizer.canPerform(ACTION_1, user, EVERYWHERE)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
-            });
-
-            it('still can perform the requested actions for other contracts', async () => {
-              await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter });
-
-              expect(await authorizer.canPerform(ACTION_1, user, NOT_WHERE)).to.be.true;
-              expect(await authorizer.canPerform(ACTION_1, user, WHERE_2)).to.be.true;
-            });
-
-            it('emits an event', async () => {
-              const receipt = await (
-                await authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter })
-              ).wait();
-              expectEvent.inReceipt(receipt, 'PermissionGranted', {
-                actionId: ACTION_1,
-                account: user.address,
-                where: WHERE_1,
-              });
+            it('cannot grant the permission twice', async () => {
+              await expect(authorizer.grantPermission(ACTION_1, user, WHERE_1, { from: granter })).to.be.revertedWith(
+                'PERMISSION_ALREADY_GRANTED'
+              );
             });
           });
         });

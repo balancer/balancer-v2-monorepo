@@ -315,7 +315,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
             require(msg.sender == getTimelockExecutionHelper(), "GRANT_MUST_BE_SCHEDULED");
         }
 
-        require(!_isPermissionGranted[actionId][account][where], "PERMISSION_ALREADY_GRANTED");
+        require(!hasPermission(actionId, account, where), "PERMISSION_ALREADY_GRANTED");
 
         _isPermissionGranted[actionId][account][where] = true;
         emit PermissionGranted(actionId, account, where);
