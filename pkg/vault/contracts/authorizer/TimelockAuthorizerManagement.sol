@@ -374,6 +374,8 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         // The root account is always a canceler, and this cannot be revoked.
         require(!isRoot(account), "CANNOT_REMOVE_ROOT_CANCELER");
 
+        require(isCanceler(scheduledExecutionId, account), "ACCOUNT_IS_NOT_CANCELER");
+
         if (_isCanceler[GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID()][account]) {
             // If an account is a global canceler, then it must explicitly lose this global privilege. This prevents
             // scenarios where an account has their canceler status revoked over a specific scheduled execution id, but
@@ -383,9 +385,6 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
             // scenario, and would require manual removal of the specific canceler privileges even after removal
             // of the global one.
             require(scheduledExecutionId == GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID(), "ACCOUNT_IS_GLOBAL_CANCELER");
-        } else {
-            // Alternatively, they must currently be a canceler in order to be revoked.
-            require(_isCanceler[scheduledExecutionId][account], "ACCOUNT_IS_NOT_CANCELER");
         }
 
         _isCanceler[scheduledExecutionId][account] = false;
