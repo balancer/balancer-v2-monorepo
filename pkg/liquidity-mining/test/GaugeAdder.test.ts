@@ -8,7 +8,6 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
@@ -21,6 +20,8 @@ describe('GaugeAdder', () => {
   let gaugeAdder: Contract;
 
   let admin: SignerWithAddress, other: SignerWithAddress;
+
+  const ETHEREUM_GAUGE_CONTROLLER_TYPE = 2;
 
   before('setup signers', async () => {
     [, admin, other] = await ethers.getSigners();
@@ -319,7 +320,7 @@ describe('GaugeAdder', () => {
 
           expectEvent.inIndirectReceipt(await tx.wait(), gaugeController.interface, 'NewGauge', {
             addr: gauge,
-            gauge_type: GaugeType.Ethereum,
+            gauge_type: ETHEREUM_GAUGE_CONTROLLER_TYPE,
             weight: 0,
           });
         });
@@ -328,7 +329,7 @@ describe('GaugeAdder', () => {
           const tx = await gaugeAdder.connect(admin).addGauge(gauge, 'Ethereum');
           expectEvent.inIndirectReceipt(await tx.wait(), gaugeController.interface, 'NewGauge', {
             addr: gauge,
-            gauge_type: GaugeType.Ethereum,
+            gauge_type: ETHEREUM_GAUGE_CONTROLLER_TYPE,
             weight: 0,
           });
 
@@ -336,7 +337,7 @@ describe('GaugeAdder', () => {
           const dupeTx = await gaugeAdder.connect(admin).addGauge(dupeGauge, 'Ethereum');
           expectEvent.inIndirectReceipt(await dupeTx.wait(), gaugeController.interface, 'NewGauge', {
             addr: dupeGauge,
-            gauge_type: GaugeType.Ethereum,
+            gauge_type: ETHEREUM_GAUGE_CONTROLLER_TYPE,
             weight: 0,
           });
         });
