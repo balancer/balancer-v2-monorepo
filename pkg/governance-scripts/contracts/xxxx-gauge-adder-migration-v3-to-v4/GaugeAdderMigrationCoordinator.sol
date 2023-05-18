@@ -93,12 +93,12 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
             );
             authorizer.grantRole(addTypeRole, address(this));
 
-            newGaugeAdder.addGaugeType("Ethereum", 2);
-            newGaugeAdder.addGaugeType("Polygon", 3);
-            newGaugeAdder.addGaugeType("Arbitrum", 4);
-            newGaugeAdder.addGaugeType("Optimism", 5);
-            newGaugeAdder.addGaugeType("Gnosis", 6);
-            newGaugeAdder.addGaugeType("ZkSync", 7);
+            newGaugeAdder.addGaugeType("Ethereum");
+            newGaugeAdder.addGaugeType("Polygon");
+            newGaugeAdder.addGaugeType("Arbitrum");
+            newGaugeAdder.addGaugeType("Optimism");
+            newGaugeAdder.addGaugeType("Gnosis");
+            newGaugeAdder.addGaugeType("ZkSync");
         }
 
         // Set up factories on new gauge adder.
