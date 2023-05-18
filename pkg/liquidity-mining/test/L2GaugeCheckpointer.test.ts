@@ -32,11 +32,11 @@ describe('L2GaugeCheckpointer', () => {
 
   // Allowed gauges: Polygon, Arbitrum, Optimism, Gnosis, ZKSync.
   const GAUGE_TYPES = Object.values(GaugeType)
-    .filter((v) => !isNaN(Number(v)) && v >= FIRST_VALID_GAUGE)
+    .filter((v) => !isNaN(Number(v)) && Number(v) >= FIRST_VALID_GAUGE)
     .map((t) => Number(t));
 
   const UNSUPPORTED_GAUGE_TYPES = Object.values(GaugeType)
-    .filter((v) => !isNaN(Number(v)) && v < FIRST_VALID_GAUGE)
+    .filter((v) => !isNaN(Number(v)) && Number(v) < FIRST_VALID_GAUGE)
     .map((t) => Number(t));
 
   before('setup signers', async () => {
@@ -75,9 +75,7 @@ describe('L2GaugeCheckpointer', () => {
     const action = await actionId(gaugeAdder, 'setGaugeFactory');
     await vault.grantPermissionGlobally(action, admin);
 
-    await Promise.all(
-      GAUGE_TYPES.map((gaugeType) => gaugeAdder.connect(admin).addGaugeType(GaugeType[gaugeType], gaugeType))
-    );
+    await Promise.all(GAUGE_TYPES.map((gaugeType) => gaugeAdder.connect(admin).addGaugeType(GaugeType[gaugeType])));
 
     await Promise.all(
       gaugeFactories.map((factory) =>
