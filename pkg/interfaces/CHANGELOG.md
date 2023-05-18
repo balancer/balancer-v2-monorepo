@@ -16,6 +16,9 @@
   - Removed specific `add<Network>Gauge` in favor of a single `addGauge` method with a type argument.
   - Added event `GaugeTypeAdded`, and changed `GaugeFactoryAdded` for `GaugeFactorySet`.
   - Added `getGaugeTypes` method.
+- Moved `GaugeType` from `IGaugeAdder` to `IL2GaugeCheckpointer`, and adjusted types to accept new networks.
+- Refactored `IL2GaugeCheckpointer`.
+  - Removed `isSupportedGaugeType` from interface.
 
 ## 0.4.0 (2023-03-15)
 
