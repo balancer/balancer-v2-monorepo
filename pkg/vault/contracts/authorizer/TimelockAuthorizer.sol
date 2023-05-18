@@ -315,7 +315,12 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
             require(msg.sender == getTimelockExecutionHelper(), "GRANT_MUST_BE_SCHEDULED");
         }
 
-        require(!_isPermissionGranted[actionId][account][where], "PERMISSION_ALREADY_GRANTED");
+        require(!hasPermission(actionId, account, where), "PERMISSION_ALREADY_GRANTED");
+        // Note that it is possible for `account` to have permission for an `actionId` in some specific `where`, and
+        // then be granted permission over `EVERYWHERE`, resulting in 'duplicate' permissions. This is not an issue per
+        // se, but removing these permissions status will require undoing these actions in inverse order.
+        // To avoid these issues, it is recommended to revoke any prior prermissions over specific contracts before
+        // granting an account a global permissions.
 
         _isPermissionGranted[actionId][account][where] = true;
         emit PermissionGranted(actionId, account, where);
@@ -412,7 +417,17 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         address account,
         address where
     ) private {
-        require(_isPermissionGranted[actionId][account][where], "PERMISSION_NOT_GRANTED");
+        require(hasPermission(actionId, account, where), "PERMISSION_NOT_GRANTED");
+
+        if (_isPermissionGranted[actionId][account][EVERYWHERE()]) {
+            // If an account has global permission, then it must explicitly lose this global privilege. This prevents
+            // scenarios where an account has their permission revoked over a specific contract, but they can still
+            // use it (including in that contract!) because they have global permission.
+            // There's an edge case in which an account could have both specific and global permission, and still have
+            // permission over some contracts after losing global privilege. This is considered an unlikely scenario,
+            // and would require manual removal of the specific permissions even after removal of the global one.
+            require(where == EVERYWHERE(), "ACCOUNT_HAS_GLOBAL_PERMISSION");
+        }
 
         _isPermissionGranted[actionId][account][where] = false;
         emit PermissionRevoked(actionId, account, where);

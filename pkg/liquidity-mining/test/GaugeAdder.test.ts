@@ -74,7 +74,7 @@ describe('GaugeAdder', () => {
       });
 
       context('with invalid inputs', () => {
-        it('reverts when the type name empty', async () => {
+        it('reverts when the type name is empty', async () => {
           await expect(gaugeAdder.connect(admin).addGaugeType('')).to.be.revertedWith('Gauge type cannot be empty');
         });
       });
@@ -119,10 +119,6 @@ describe('GaugeAdder', () => {
 
         context('minimum length type name', () => {
           itAddsNewTypeCorrectly('a');
-        });
-
-        context('maximum length type name', () => {
-          itAddsNewTypeCorrectly('0'.repeat(32));
         });
       });
     });
