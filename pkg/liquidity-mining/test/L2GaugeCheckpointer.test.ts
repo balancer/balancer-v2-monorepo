@@ -32,11 +32,11 @@ describe('L2GaugeCheckpointer', () => {
 
   // Allowed gauges: Polygon, Arbitrum, Optimism, Gnosis, ZKSync.
   const GAUGE_TYPES = Object.values(GaugeType)
-    .filter((v) => !isNaN(Number(v)) && v >= FIRST_VALID_GAUGE)
+    .filter((v) => !isNaN(Number(v)) && Number(v) >= FIRST_VALID_GAUGE)
     .map((t) => Number(t));
 
   const UNSUPPORTED_GAUGE_TYPES = Object.values(GaugeType)
-    .filter((v) => !isNaN(Number(v)) && v < FIRST_VALID_GAUGE)
+    .filter((v) => !isNaN(Number(v)) && Number(v) < FIRST_VALID_GAUGE)
     .map((t) => Number(t));
 
   before('setup signers', async () => {
@@ -68,17 +68,25 @@ describe('L2GaugeCheckpointer', () => {
     gaugeAdder = await deploy('GaugeAdder', {
       args: [gaugeController.address, adaptorEntrypoint.address],
     });
-    const action = await actionId(gaugeAdder, 'addGaugeFactory');
+
+    const addGaugeTypeAction = await actionId(gaugeAdder, 'addGaugeType');
+    await vault.grantPermissionGlobally(addGaugeTypeAction, admin);
+
+    const action = await actionId(gaugeAdder, 'setGaugeFactory');
     await vault.grantPermissionGlobally(action, admin);
 
+    await Promise.all(GAUGE_TYPES.map((gaugeType) => gaugeAdder.connect(admin).addGaugeType(GaugeType[gaugeType])));
+
     await Promise.all(
-      gaugeFactories.map((factory) => gaugeAdder.connect(admin).addGaugeFactory(factory.contract.address, factory.type))
+      gaugeFactories.map((factory) =>
+        gaugeAdder.connect(admin).setGaugeFactory(factory.contract.address, GaugeType[factory.type])
+      )
     );
 
     // Create some gauges from each factory.
     await Promise.all(
       gaugeFactories.map(async (factory) =>
-        gauges.set(factory.type, await createGauges(factory.contract, factory.type, GAUGES_PER_TYPE))
+        gauges.set(factory.type, await createGauges(factory.contract, GAUGES_PER_TYPE))
       )
     );
   });
@@ -307,11 +315,10 @@ describe('L2GaugeCheckpointer', () => {
   /**
    * Creates an array of gauges from the given factory, using pseudo random addresses as input pool addresses.
    * @param factory Gauge factory to create gauges.
-   * @param seed Number to start generating the pseudo random addresses. Use different inputs to get different outputs.
    * @param amount Number of gauges to create.
    * @returns A promise with the array of addresses corresponding to the created gauges.
    */
-  async function createGauges(factory: Contract, seed: number, amount: number): Promise<string[]> {
+  async function createGauges(factory: Contract, amount: number): Promise<string[]> {
     const randomAddresses = await range(amount).map(randomAddress);
     const txArray = await Promise.all(randomAddresses.map((address) => factory.create(address, fp(1)))); // No weight cap.
     const receipts = await Promise.all(txArray.map((tx) => tx.wait()));

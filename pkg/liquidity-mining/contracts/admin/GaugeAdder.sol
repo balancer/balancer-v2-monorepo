@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidityGauge.sol";
@@ -20,18 +21,23 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
-    using EnumerableSet for EnumerableSet.AddressSet;
+    // This is the gauge type as used in the GaugeController for Ethereum gauges, which we'll use for all gauges of all
+    // networks from now on.
+    int128 private constant _ETHEREUM_GAUGE_CONTROLLER_TYPE = 2;
 
+    bytes32 private immutable _ethereum = keccak256(abi.encodePacked("Ethereum"));
     IGaugeController private immutable _gaugeController;
     IERC20 private immutable _balWethBpt;
     IAuthorizerAdaptorEntrypoint private _authorizerAdaptorEntrypoint;
 
-    // Mapping from gauge type to a list of address for approved factories for that type
-    mapping(GaugeType => EnumerableSet.AddressSet) internal _gaugeFactoriesByType;
+    // Registered gauge types. Append-only.
+    string[] private _gaugeTypes;
+
+    // Mapping from gauge type to address of approved factory for that type
+    mapping(string => ILiquidityGaugeFactory) private _gaugeTypeFactory;
 
     constructor(IGaugeController gaugeController, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint)
         SingletonAuthentication(gaugeController.admin().getVault())
@@ -43,143 +49,131 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         _balWethBpt = gaugeController.token();
     }
 
-    /**
-     * @notice Returns the address of the Authorizer adaptor entrypoint contract.
-     */
+    modifier withValidGaugeType(string memory gaugeType) {
+        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
+        _;
+    }
+
+    /// @inheritdoc IGaugeAdder
     function getAuthorizerAdaptorEntrypoint() external view override returns (IAuthorizerAdaptorEntrypoint) {
         return _authorizerAdaptorEntrypoint;
     }
 
-    /**
-     * @notice Returns the address of the Gauge Controller
-     */
+    /// @inheritdoc IGaugeAdder
     function getGaugeController() external view override returns (IGaugeController) {
         return _gaugeController;
     }
 
-    /**
-     * @notice Returns the `index`'th factory for gauge type `gaugeType`
-     */
-    function getFactoryForGaugeType(GaugeType gaugeType, uint256 index) external view override returns (address) {
-        return _gaugeFactoriesByType[gaugeType].at(index);
+    /// @inheritdoc IGaugeAdder
+    function getGaugeTypes() external view override returns (string[] memory) {
+        return _gaugeTypes;
+    }
+
+    /// @inheritdoc IGaugeAdder
+    function getGaugeTypeAtIndex(uint256 index) external view override returns (string memory) {
+        return _gaugeTypes[index];
+    }
+
+    /// @inheritdoc IGaugeAdder
+    function getGaugeTypesCount() external view override returns (uint256) {
+        return _gaugeTypes.length;
+    }
+
+    /// @inheritdoc IGaugeAdder
+    function getFactoryForGaugeType(string memory gaugeType)
+        external
+        view
+        override
+        withValidGaugeType(gaugeType)
+        returns (ILiquidityGaugeFactory)
+    {
+        return _gaugeTypeFactory[gaugeType];
+    }
+
+    /// @inheritdoc IGaugeAdder
+    function isGaugeFromValidFactory(address gauge, string memory gaugeType)
+        external
+        view
+        override
+        withValidGaugeType(gaugeType)
+        returns (bool)
+    {
+        return _isGaugeFromValidFactory(gauge, gaugeType);
+    }
+
+    // Admin Functions
+
+    /// @inheritdoc IGaugeAdder
+    function addGaugeType(string memory gaugeType) external override authenticate {
+        require(bytes(gaugeType).length > 0, "Gauge type cannot be empty");
+        require(!_isValidGaugeType(gaugeType), "Gauge type already added");
+
+        _gaugeTypes.push(gaugeType);
+
+        emit GaugeTypeAdded(gaugeType, gaugeType);
+    }
+
+    /// @inheritdoc IGaugeAdder
+    function addGauge(address gauge, string memory gaugeType)
+        external
+        override
+        authenticate
+        withValidGaugeType(gaugeType)
+    {
+        if (keccak256(abi.encodePacked(gaugeType)) == _ethereum) {
+            IERC20 pool = IStakingLiquidityGauge(gauge).lp_token();
+            require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
+        }
+
+        _addGauge(gauge, gaugeType);
+    }
+
+    /// @inheritdoc IGaugeAdder
+    function setGaugeFactory(ILiquidityGaugeFactory factory, string memory gaugeType)
+        external
+        override
+        authenticate
+        withValidGaugeType(gaugeType)
+    {
+        // Sanity check that calling `isGaugeFromFactory` won't revert
+        require(
+            (factory == ILiquidityGaugeFactory(0)) || (!factory.isGaugeFromFactory(address(0))),
+            "Invalid factory implementation"
+        );
+
+        _gaugeTypeFactory[gaugeType] = factory;
+
+        emit GaugeFactorySet(gaugeType, gaugeType, factory);
+    }
+
+    // Internal functions
+
+    function _isGaugeFromValidFactory(address gauge, string memory gaugeType) internal view returns (bool) {
+        ILiquidityGaugeFactory gaugeFactory = _gaugeTypeFactory[gaugeType];
+        return gaugeFactory == ILiquidityGaugeFactory(0) ? false : gaugeFactory.isGaugeFromFactory(gauge);
     }
 
     /**
-     * @notice Returns the number of factories for gauge type `gaugeType`
+     * @dev Adds `gauge` to the GaugeController with type `gaugeType` and an initial weight of zero
      */
-    function getFactoryForGaugeTypeCount(GaugeType gaugeType) external view override returns (uint256) {
-        return _gaugeFactoriesByType[gaugeType].length();
+    function _addGauge(address gauge, string memory gaugeType) private {
+        require(_isGaugeFromValidFactory(gauge, gaugeType), "Invalid gauge");
+
+        // `_gaugeController` enforces that duplicate gauges may not be added so we do not need to check here.
+        _authorizerAdaptorEntrypoint.performAction(
+            address(_gaugeController),
+            abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, _ETHEREUM_GAUGE_CONTROLLER_TYPE)
+        );
     }
 
-    /**
-     * @notice Returns whether `gauge` has been deployed by one of the listed factories for the gauge type `gaugeType`
-     */
-    function isGaugeFromValidFactory(address gauge, GaugeType gaugeType) public view override returns (bool) {
-        EnumerableSet.AddressSet storage gaugeFactories = _gaugeFactoriesByType[gaugeType];
-        uint256 gaugeFactoriesLength = gaugeFactories.length();
-
-        // This potentially unbounded loop isn't an issue as the GaugeAdder may be redeployed
-        // without affecting the rest of the system.
-        for (uint256 i; i < gaugeFactoriesLength; ++i) {
-            if (ILiquidityGaugeFactory(gaugeFactories.unchecked_at(i)).isGaugeFromFactory(gauge)) {
+    function _isValidGaugeType(string memory gaugeType) internal view returns (bool) {
+        bytes32 gaugeTypeHash = keccak256(abi.encodePacked(gaugeType));
+        for (uint256 i = 0; i < _gaugeTypes.length; ++i) {
+            if (gaugeTypeHash == keccak256(abi.encodePacked(_gaugeTypes[i]))) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    // Admin Functions
-
-    // Functions for the "LiquidityMiningCommittee" and "veBAL" types are purposefully omitted as there is
-    // no reason for new gauges to be deployed for these types so there is no need to expose methods to add them.
-
-    /**
-     * @notice Adds a new gauge to the GaugeController for the "Ethereum" type.
-     */
-    function addEthereumGauge(IStakingLiquidityGauge gauge) external override authenticate {
-        // Each gauge factory prevents deploying multiple gauges for the same Balancer pool
-        // however two separate factories can each deploy their own gauge for the same pool.
-        // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller.
-        IERC20 pool = gauge.lp_token();
-        require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
-
-        _addGauge(address(gauge), GaugeType.Ethereum);
-    }
-
-    /**
-     * @notice Adds a new gauge to the GaugeController for the "Polygon" type.
-     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
-     * It should not be called with the address of the gauge which is deployed on Polygon
-     */
-    function addPolygonGauge(address rootGauge) external override authenticate {
-        _addGauge(rootGauge, GaugeType.Polygon);
-    }
-
-    /**
-     * @notice Adds a new gauge to the GaugeController for the "Arbitrum" type.
-     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
-     * It should not be called with the address of the gauge which is deployed on Arbitrum
-     */
-    function addArbitrumGauge(address rootGauge) external override authenticate {
-        _addGauge(rootGauge, GaugeType.Arbitrum);
-    }
-
-    /**
-     * @notice Adds a new gauge to the GaugeController for the "Optimism" type.
-     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
-     * It should not be called with the address of the gauge which is deployed on Optimism.
-     */
-    function addOptimismGauge(address rootGauge) external override authenticate {
-        _addGauge(rootGauge, GaugeType.Optimism);
-    }
-
-    /**
-     * @notice Adds a new gauge to the GaugeController for the "Gnosis" type.
-     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
-     * It should not be called with the address of the gauge which is deployed on Gnosis Chain.
-     */
-    function addGnosisGauge(address rootGauge) external override authenticate {
-        _addGauge(rootGauge, GaugeType.Gnosis);
-    }
-
-    /**
-     * @notice Adds a new gauge to the GaugeController for the "ZKSync" type.
-     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
-     * It should not be called with the address of the gauge which is deployed on ZKSync.
-     */
-    function addZKSyncGauge(address rootGauge) external override authenticate {
-        _addGauge(rootGauge, GaugeType.ZKSync);
-    }
-
-    /**
-     * @notice Adds `factory` as an allowlisted factory contract for gauges with type `gaugeType`.
-     */
-    function addGaugeFactory(ILiquidityGaugeFactory factory, GaugeType gaugeType) external override authenticate {
-        // Casting is safe as n_gauge_types return value is >= 0.
-        require(uint256(gaugeType) < uint256(_gaugeController.n_gauge_types()), "Invalid gauge type");
-
-        // Sanity check that calling `isGaugeFromFactory` won't revert
-        require(!factory.isGaugeFromFactory(address(0)), "Invalid factory implementation");
-
-        EnumerableSet.AddressSet storage gaugeFactories = _gaugeFactoriesByType[gaugeType];
-        require(gaugeFactories.add(address(factory)), "Factory already added");
-
-        emit GaugeFactoryAdded(gaugeType, factory);
-    }
-
-    // Internal functions
-
-    /**
-     * @dev Adds `gauge` to the GaugeController with type `gaugeType` and an initial weight of zero
-     */
-    function _addGauge(address gauge, GaugeType gaugeType) private {
-        require(isGaugeFromValidFactory(gauge, gaugeType), "Invalid gauge");
-
-        // `_gaugeController` enforces that duplicate gauges may not be added so we do not need to check here.
-        _authorizerAdaptorEntrypoint.performAction(
-            address(_gaugeController),
-            abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, gaugeType)
-        );
     }
 }
