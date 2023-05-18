@@ -370,7 +370,7 @@ describe('GaugeAdder', () => {
 
       context('with invalid indexes', () => {
         it('reverts', async () => {
-          await expect(gaugeAdder.getGaugeTypeAtIndex(3)).to.be.revertedWith('OUT_OF_BOUNDS');
+          await expect(gaugeAdder.getGaugeTypeAtIndex(3)).to.be.reverted;
         });
       });
     });

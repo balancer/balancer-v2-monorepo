@@ -21,26 +21,22 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
-    using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableSet for EnumerableSet.Bytes32Set;
-
-    // "Ethereum" as bytes32.
-    bytes32 private constant _ETHEREUM = 0x457468657265756d000000000000000000000000000000000000000000000000;
+    // "Ethereum" string abi encoded and hashed.
+    bytes32 private constant _ETHEREUM = 0x564ccaf7594d66b1eaaea24fe01f0585bf52ee70852af4eac0cc4b04711cd0e2;
     int128 private constant _ETHEREUM_TYPE_GAUGE = 2;
 
     IGaugeController private immutable _gaugeController;
     IERC20 private immutable _balWethBpt;
     IAuthorizerAdaptorEntrypoint private _authorizerAdaptorEntrypoint;
 
-    // Registered gauge types, stored as bytes32
-    EnumerableSet.Bytes32Set private _gaugeTypes;
+    // Registered gauge types
+    string[] private _gaugeTypes;
 
-    // Mapping from gauge type address of approved factory for that type
-    mapping(bytes32 => ILiquidityGaugeFactory) private _gaugeTypeFactory;
+    // Mapping from gauge type to address of approved factory for that type
+    mapping(string => ILiquidityGaugeFactory) private _gaugeTypeFactory;
 
     constructor(IGaugeController gaugeController, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint)
         SingletonAuthentication(gaugeController.admin().getVault())
@@ -64,80 +60,78 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
 
     /// @inheritdoc IGaugeAdder
     function getGaugeTypes() external view override returns (string[] memory) {
-        uint256 gaugeTypesLength = getGaugeTypesCount();
-        string[] memory gaugeTypes = new string[](gaugeTypesLength);
-
-        for (uint256 i = 0; i < gaugeTypesLength; ++i) {
-            gaugeTypes[i] = _bytes32ToString(_gaugeTypes.at(i));
-        }
-
-        return gaugeTypes;
+        return _gaugeTypes;
     }
 
     /**
      * @notice Returns gauge type name registered at the given index.
      */
     function getGaugeTypeAtIndex(uint256 index) external view returns (string memory) {
-        return _bytes32ToString(_gaugeTypes.at(index));
+        return _gaugeTypes[index];
     }
 
     /**
      * @notice Returns gauge types total.
      */
     function getGaugeTypesCount() public view returns (uint256) {
-        return _gaugeTypes.length();
+        return _gaugeTypes.length;
     }
 
     /// @inheritdoc IGaugeAdder
     function getFactoryForGaugeType(string memory gaugeType) public view override returns (ILiquidityGaugeFactory) {
-        bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
-        return _gaugeTypeFactory[gaugeTypeBytes];
+        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
+        return _gaugeTypeFactory[gaugeType];
     }
 
     /// @inheritdoc IGaugeAdder
     function isGaugeFromValidFactory(address gauge, string memory gaugeType) external view override returns (bool) {
-        bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
-        return _isGaugeFromValidFactory(gauge, gaugeTypeBytes);
+        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
+        return _isGaugeFromValidFactory(gauge, gaugeType);
     }
 
     // Admin Functions
 
     /// @inheritdoc IGaugeAdder
     function addGaugeType(string memory gaugeType) external override authenticate {
-        bytes32 gaugeTypeBytes = _stringToBytes32(gaugeType); // Reverts if `gaugeType` does not fit in 32 bytes.
+        uint256 gaugeTypeLength = bytes(gaugeType).length;
+        require(
+            gaugeTypeLength > 0 && gaugeTypeLength <= 32,
+            "Input string should be between 1 and 32 characters long"
+        );
+        require(!_isValidGaugeType(gaugeType), "Gauge type already added");
 
-        require(_gaugeTypes.add(gaugeTypeBytes), "Gauge type already added");
+        _gaugeTypes.push(gaugeType);
 
         emit GaugeTypeAdded(gaugeType, gaugeType, _ETHEREUM_TYPE_GAUGE);
     }
 
     /// @inheritdoc IGaugeAdder
     function addGauge(address gauge, string memory gaugeType) external override authenticate {
-        bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
+        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
 
-        if (gaugeTypeBytes == _ETHEREUM) {
+        if (keccak256(abi.encodePacked(gaugeType)) == _ETHEREUM) {
             IERC20 pool = IStakingLiquidityGauge(gauge).lp_token();
             require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
         }
 
-        _addGauge(gauge, gaugeTypeBytes);
+        _addGauge(gauge, gaugeType);
     }
 
     /// @inheritdoc IGaugeAdder
     function setGaugeFactory(ILiquidityGaugeFactory factory, string memory gaugeType) external override authenticate {
-        bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
+        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
 
         // Sanity check that calling `isGaugeFromFactory` won't revert
         require(!factory.isGaugeFromFactory(address(0)), "Invalid factory implementation");
 
-        _gaugeTypeFactory[gaugeTypeBytes] = factory;
+        _gaugeTypeFactory[gaugeType] = factory;
 
         emit GaugeFactorySet(gaugeType, gaugeType, factory);
     }
 
     // Internal functions
 
-    function _isGaugeFromValidFactory(address gauge, bytes32 gaugeType) internal view returns (bool) {
+    function _isGaugeFromValidFactory(address gauge, string memory gaugeType) internal view returns (bool) {
         ILiquidityGaugeFactory gaugeFactory = _gaugeTypeFactory[gaugeType];
         return gaugeFactory == ILiquidityGaugeFactory(0) ? false : gaugeFactory.isGaugeFromFactory(gauge);
     }
@@ -145,7 +139,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     /**
      * @dev Adds `gauge` to the GaugeController with type `gaugeType` and an initial weight of zero
      */
-    function _addGauge(address gauge, bytes32 gaugeType) private {
+    function _addGauge(address gauge, string memory gaugeType) private {
         require(_isGaugeFromValidFactory(gauge, gaugeType), "Invalid gauge");
 
         // `_gaugeController` enforces that duplicate gauges may not be added so we do not need to check here.
@@ -155,32 +149,14 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         );
     }
 
-    function _stringToBytes32(string memory str) internal pure returns (bytes32 bytesString) {
-        uint256 length = bytes(str).length;
-        require(length > 0 && bytes(str).length <= 32, "Input string should be between 1 and 32 characters long");
-
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            bytesString := mload(add(str, 32))
-        }
-    }
-
-    function _bytes32ToString(bytes32 _bytes32) internal pure returns (string memory) {
-        uint256 length = 0;
-        while (length < 32 && _bytes32[length] != 0) {
-            ++length;
+    function _isValidGaugeType(string memory gaugeType) internal view returns (bool) {
+        bytes32 gaugeTypeHash = keccak256(abi.encodePacked(gaugeType));
+        for (uint256 i = 0; i < _gaugeTypes.length; ++i) {
+            if (gaugeTypeHash == keccak256(abi.encodePacked(_gaugeTypes[i]))) {
+                return true;
+            }
         }
 
-        bytes memory byteArray = new bytes(length);
-        for (uint256 i = 0; i < length; ++i) {
-            byteArray[i] = _bytes32[i];
-        }
-
-        return string(byteArray);
-    }
-
-    function _validateAndCastGaugeType(string memory gaugeType) internal view returns (bytes32 gaugeTypeBytes) {
-        gaugeTypeBytes = _stringToBytes32(gaugeType);
-        require(_gaugeTypes.contains(gaugeTypeBytes), "Invalid gauge type");
+        return false;
     }
 }
