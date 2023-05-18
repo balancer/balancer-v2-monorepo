@@ -103,7 +103,7 @@ interface IL2GaugeCheckpointer {
      * @param gaugeType Type of the gauge.
      * @param gauge Address of the gauge to checkpoint.
      */
-    function checkpointSingleGauge(IGaugeAdder.GaugeType gaugeType, address gauge) external payable;
+    function checkpointSingleGauge(GaugeType gaugeType, address gauge) external payable;
 
     /**
      * @notice Returns the ETH cost to checkpoint a single given gauge.
@@ -111,7 +111,7 @@ interface IL2GaugeCheckpointer {
      * @param gaugeType Type of the gauge.
      * @param gauge Address of the gauge to check the bridge costs.
      */
-    function getSingleBridgeCost(IGaugeAdder.GaugeType gaugeType, address gauge) external view returns (uint256);
+    function getSingleBridgeCost(GaugeType gaugeType, address gauge) external view returns (uint256);
 
     /**
      * @notice Returns the ETH cost to checkpoint all gauges for a given minimum relative weight.

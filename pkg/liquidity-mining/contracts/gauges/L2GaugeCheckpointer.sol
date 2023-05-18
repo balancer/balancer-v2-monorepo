@@ -123,13 +123,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function checkpointSingleGauge(IGaugeAdder.GaugeType gaugeType, address gauge)
-        external
-        payable
-        override
-        withSupportedGaugeType(gaugeType)
-        nonReentrant
-    {
+    function checkpointSingleGauge(GaugeType gaugeType, address gauge) external payable override nonReentrant {
         uint256 checkpointCost = getSingleBridgeCost(gaugeType, gauge);
 
         _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
@@ -141,16 +135,10 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function getSingleBridgeCost(IGaugeAdder.GaugeType gaugeType, address gauge)
-        public
-        view
-        override
-        withSupportedGaugeType(gaugeType)
-        returns (uint256)
-    {
+    function getSingleBridgeCost(GaugeType gaugeType, address gauge) public view override returns (uint256) {
         require(_gauges[gaugeType].contains(gauge), "Gauge was not added to the checkpointer");
 
-        if (gaugeType == IGaugeAdder.GaugeType.Arbitrum) {
+        if (gaugeType == GaugeType.Arbitrum) {
             return ArbitrumRootGauge(gauge).getTotalBridgeCost();
         } else {
             return 0;
