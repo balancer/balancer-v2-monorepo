@@ -30,6 +30,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     ILiquidityGaugeFactory public immutable polygonRootGaugeFactory;
     ILiquidityGaugeFactory public immutable arbitrumRootGaugeFactory;
     ILiquidityGaugeFactory public immutable optimismRootGaugeFactory;
+    ILiquidityGaugeFactory public immutable gnosisRootGaugeFactory;
 
     address public immutable liquidityMiningCommitteeMultisig;
     address public immutable gaugeCheckpointingMultisig;
@@ -42,6 +43,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         ILiquidityGaugeFactory _polygonRootGaugeFactory,
         ILiquidityGaugeFactory _arbitrumRootGaugeFactory,
         ILiquidityGaugeFactory _optimismRootGaugeFactory,
+        ILiquidityGaugeFactory _gnosisRootGaugeFactory,
         address _liquidityMiningCommitteeMultisig,
         address _gaugeCheckpointingMultisig
     ) BaseCoordinator(authorizerAdaptor) {
@@ -51,6 +53,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         polygonRootGaugeFactory = _polygonRootGaugeFactory;
         arbitrumRootGaugeFactory = _arbitrumRootGaugeFactory;
         optimismRootGaugeFactory = _optimismRootGaugeFactory;
+        gnosisRootGaugeFactory = _gnosisRootGaugeFactory;
         liquidityMiningCommitteeMultisig = _liquidityMiningCommitteeMultisig;
         gaugeCheckpointingMultisig = _gaugeCheckpointingMultisig;
 
@@ -110,6 +113,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
             newGaugeAdder.setGaugeFactory(polygonRootGaugeFactory, "Polygon");
             newGaugeAdder.setGaugeFactory(arbitrumRootGaugeFactory, "Arbitrum");
             newGaugeAdder.setGaugeFactory(optimismRootGaugeFactory, "Optimism");
+            newGaugeAdder.setGaugeFactory(gnosisRootGaugeFactory, "Gnosis");
 
             authorizer.renounceRole(setFactoryRole, address(this));
         }
