@@ -57,9 +57,8 @@ interface IGaugeAdder is IAuthentication {
      * @notice Adds a new `gaugeType` corresponding to a new network, which allows setting a factory and adding gauges
      * for the type later on.
      * @param gaugeType Name of the new gauge type.
-     * @param typeNumber Type identification that should match the one in the gauge controller.
      */
-    function addGaugeType(string memory gaugeType, int128 typeNumber) external;
+    function addGaugeType(string memory gaugeType) external;
 
     /**
      * @notice Adds a new gauge to the GaugeController for the given `gaugeType` type.

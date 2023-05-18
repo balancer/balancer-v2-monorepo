@@ -30,6 +30,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
 
     // "Ethereum" as bytes32.
     bytes32 private constant _ETHEREUM = 0x457468657265756d000000000000000000000000000000000000000000000000;
+    int128 private constant _ETHEREUM_TYPE_GAUGE = 2;
 
     IGaugeController private immutable _gaugeController;
     IERC20 private immutable _balWethBpt;
@@ -40,9 +41,6 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
 
     // Mapping from gauge type address of approved factory for that type
     mapping(bytes32 => ILiquidityGaugeFactory) private _gaugeTypeFactory;
-
-    // Mapping from gauge type to type number used by the gauge controller
-    mapping(bytes32 => int128) private _gaugeTypeNumber;
 
     constructor(IGaugeController gaugeController, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint)
         SingletonAuthentication(gaugeController.admin().getVault())
@@ -90,14 +88,6 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         return _gaugeTypes.length();
     }
 
-    /**
-     * @notice Returns gauge type number for the given gauge type.
-     */
-    function getGaugeTypeNumber(string memory gaugeType) external view returns (int128) {
-        bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
-        return _gaugeTypeNumber[gaugeTypeBytes];
-    }
-
     /// @inheritdoc IGaugeAdder
     function getFactoryForGaugeType(string memory gaugeType) public view override returns (ILiquidityGaugeFactory) {
         bytes32 gaugeTypeBytes = _validateAndCastGaugeType(gaugeType);
@@ -113,15 +103,12 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     // Admin Functions
 
     /// @inheritdoc IGaugeAdder
-    function addGaugeType(string memory gaugeType, int128 typeNumber) external override authenticate {
-        require(typeNumber >= 0, "Gauge type number has to be greater than 0");
-        require(typeNumber < _gaugeController.n_gauge_types(), "Gauge type number not present in gauge controller");
+    function addGaugeType(string memory gaugeType) external override authenticate {
         bytes32 gaugeTypeBytes = _stringToBytes32(gaugeType); // Reverts if `gaugeType` does not fit in 32 bytes.
 
         require(_gaugeTypes.add(gaugeTypeBytes), "Gauge type already added");
-        _gaugeTypeNumber[gaugeTypeBytes] = typeNumber;
 
-        emit GaugeTypeAdded(gaugeType, gaugeType, typeNumber);
+        emit GaugeTypeAdded(gaugeType, gaugeType, _ETHEREUM_TYPE_GAUGE);
     }
 
     /// @inheritdoc IGaugeAdder
@@ -160,12 +147,11 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
      */
     function _addGauge(address gauge, bytes32 gaugeType) private {
         require(_isGaugeFromValidFactory(gauge, gaugeType), "Invalid gauge");
-        int128 gaugeTypeNumber = _gaugeTypeNumber[gaugeType];
 
         // `_gaugeController` enforces that duplicate gauges may not be added so we do not need to check here.
         _authorizerAdaptorEntrypoint.performAction(
             address(_gaugeController),
-            abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, gaugeTypeNumber)
+            abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, _ETHEREUM_TYPE_GAUGE)
         );
     }
 

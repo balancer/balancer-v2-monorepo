@@ -22,6 +22,8 @@ describe('GaugeAdder', () => {
 
   let admin: SignerWithAddress, other: SignerWithAddress;
 
+  const ETHEREUM_TYPE_NUMBER = 2;
+
   before('setup signers', async () => {
     [, admin, other] = await ethers.getSigners();
   });
@@ -62,9 +64,7 @@ describe('GaugeAdder', () => {
   describe('addGaugeType', () => {
     context('when caller is not authorized', () => {
       it('reverts', async () => {
-        await expect(gaugeAdder.connect(other).addGaugeType('Ethereum', GaugeType.Ethereum)).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
-        );
+        await expect(gaugeAdder.connect(other).addGaugeType('Ethereum')).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
@@ -75,46 +75,31 @@ describe('GaugeAdder', () => {
       });
 
       context('with invalid inputs', () => {
-        it('reverts when the type number is invalid', async () => {
-          await expect(gaugeAdder.connect(admin).addGaugeType('Any', -1)).to.be.revertedWith(
-            'Gauge type number has to be greater than 0'
-          );
-        });
-
-        it('reverts when the type number does not exist in the gauge controller', async () => {
-          await expect(
-            gaugeAdder.connect(admin).addGaugeType('Some network', (await gaugeController.n_gauge_types()).add(1))
-          ).to.be.revertedWith('Gauge type number not present in gauge controller');
-        });
-
         it('reverts when the type name is too long', async () => {
           await expect(
-            gaugeAdder
-              .connect(admin)
-              .addGaugeType('VeryLongAndFancyZKOptimisticRollupPrivateFastScalableAINetwork', GaugeType.Ethereum)
+            gaugeAdder.connect(admin).addGaugeType('VeryLongAndFancyZKOptimisticRollupPrivateFastScalableAINetwork')
           ).to.be.revertedWith('Input string should be between 1 and 32 characters long');
         });
 
         it('reverts when the type name empty', async () => {
-          await expect(gaugeAdder.connect(admin).addGaugeType('', GaugeType.Ethereum)).to.be.revertedWith(
+          await expect(gaugeAdder.connect(admin).addGaugeType('')).to.be.revertedWith(
             'Input string should be between 1 and 32 characters long'
           );
         });
       });
 
       context('with valid inputs', () => {
-        function itAddsNewTypeCorrectly(gaugeType: string, typeNumber: number) {
+        function itAddsNewTypeCorrectly(gaugeType: string) {
           it('adds new type correctly', async () => {
-            await gaugeAdder.connect(admin).addGaugeType(gaugeType, typeNumber);
+            await gaugeAdder.connect(admin).addGaugeType(gaugeType);
 
             expect(await gaugeAdder.getGaugeTypes()).to.be.deep.eq([gaugeType]);
             expect(await gaugeAdder.getGaugeTypeAtIndex(0)).to.be.eq(gaugeType);
             expect(await gaugeAdder.getGaugeTypesCount()).to.be.eq(1);
-            expect(await gaugeAdder.getGaugeTypeNumber(gaugeType)).to.be.eq(typeNumber);
           });
 
           it('emits an event', async () => {
-            const tx = await gaugeAdder.connect(admin).addGaugeType(gaugeType, typeNumber);
+            const tx = await gaugeAdder.connect(admin).addGaugeType(gaugeType);
             const receipt = await tx.wait();
 
             // `expectEvent` does not work with indexed strings, so we decode the pieces we are interested in manually.
@@ -126,28 +111,28 @@ describe('GaugeAdder', () => {
             // Contains expected `gaugeType` and `gaugeFactory`.
             const decodedArgs = event.decode(event.data);
             expect(decodedArgs.gaugeType).to.be.eq(gaugeType);
-            expect(decodedArgs.gaugeTypeNumber).to.be.eq(typeNumber);
+            expect(decodedArgs.gaugeTypeNumber).to.be.eq(ETHEREUM_TYPE_NUMBER);
           });
 
           it('reverts when adding the same type twice', async () => {
-            await gaugeAdder.connect(admin).addGaugeType(gaugeType, typeNumber);
+            await gaugeAdder.connect(admin).addGaugeType(gaugeType);
 
-            await expect(gaugeAdder.connect(admin).addGaugeType(gaugeType, typeNumber)).to.be.revertedWith(
+            await expect(gaugeAdder.connect(admin).addGaugeType(gaugeType)).to.be.revertedWith(
               'Gauge type already added'
             );
           });
         }
 
         context('with a regular type name', () => {
-          itAddsNewTypeCorrectly('Ethereum', GaugeType.Ethereum);
+          itAddsNewTypeCorrectly('Ethereum');
         });
 
         context('minimum length type name', () => {
-          itAddsNewTypeCorrectly('a', 0);
+          itAddsNewTypeCorrectly('a');
         });
 
         context('maximum length type name', () => {
-          itAddsNewTypeCorrectly('0'.repeat(32), GaugeType.Ethereum);
+          itAddsNewTypeCorrectly('0'.repeat(32));
         });
       });
     });
@@ -211,7 +196,7 @@ describe('GaugeAdder', () => {
         }
 
         sharedBeforeEach(async () => {
-          await gaugeAdder.connect(admin).addGaugeType('Ethereum', GaugeType.Ethereum);
+          await gaugeAdder.connect(admin).addGaugeType('Ethereum');
         });
 
         context('when factory does not already exist on GaugeAdder', () => {
@@ -245,9 +230,9 @@ describe('GaugeAdder', () => {
       const action = await actionId(gaugeAdder, 'addGaugeType');
       await vault.grantPermissionGlobally(action, admin);
 
-      await gaugeAdder.connect(admin).addGaugeType('Ethereum', GaugeType.Ethereum);
-      await gaugeAdder.connect(admin).addGaugeType('Polygon', GaugeType.Polygon);
-      await gaugeAdder.connect(admin).addGaugeType('Arbitrum', GaugeType.Arbitrum);
+      await gaugeAdder.connect(admin).addGaugeType('Ethereum');
+      await gaugeAdder.connect(admin).addGaugeType('Polygon');
+      await gaugeAdder.connect(admin).addGaugeType('Arbitrum');
     });
 
     context('when factory has been added to GaugeAdder', () => {
@@ -287,7 +272,7 @@ describe('GaugeAdder', () => {
       const action = await actionId(gaugeAdder, 'addGaugeType');
       await vault.grantPermissionGlobally(action, admin);
 
-      await gaugeAdder.connect(admin).addGaugeType('Ethereum', GaugeType.Ethereum);
+      await gaugeAdder.connect(admin).addGaugeType('Ethereum');
     });
 
     context('when caller is not authorized', () => {
@@ -363,9 +348,9 @@ describe('GaugeAdder', () => {
       const action = await actionId(gaugeAdder, 'addGaugeType');
       await vault.grantPermissionGlobally(action, admin);
 
-      await gaugeAdder.connect(admin).addGaugeType('Ethereum', GaugeType.Ethereum);
-      await gaugeAdder.connect(admin).addGaugeType('Polygon', GaugeType.Polygon);
-      await gaugeAdder.connect(admin).addGaugeType('Arbitrum', GaugeType.Arbitrum);
+      await gaugeAdder.connect(admin).addGaugeType('Ethereum');
+      await gaugeAdder.connect(admin).addGaugeType('Polygon');
+      await gaugeAdder.connect(admin).addGaugeType('Arbitrum');
     });
 
     describe('getGaugeTypes', () => {
@@ -393,22 +378,6 @@ describe('GaugeAdder', () => {
     describe('getGaugeTypesCount', () => {
       it('returns registered gauge types count', async () => {
         expect(await gaugeAdder.getGaugeTypesCount()).to.be.eq(3);
-      });
-    });
-
-    describe('getGaugeTypeNumber', () => {
-      context('with valid gauge types', () => {
-        it('returns registered gauge type numbers', async () => {
-          expect(await gaugeAdder.getGaugeTypeNumber('Ethereum')).to.be.eq(GaugeType.Ethereum);
-          expect(await gaugeAdder.getGaugeTypeNumber('Polygon')).to.be.eq(GaugeType.Polygon);
-          expect(await gaugeAdder.getGaugeTypeNumber('Arbitrum')).to.be.eq(GaugeType.Arbitrum);
-        });
-      });
-
-      context('with invalid gauge types', () => {
-        it('reverts', async () => {
-          await expect(gaugeAdder.getGaugeTypeNumber('Invalid')).to.be.revertedWith('Invalid gauge type');
-        });
       });
     });
   });
