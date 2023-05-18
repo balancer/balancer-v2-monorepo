@@ -48,6 +48,11 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         _balWethBpt = gaugeController.token();
     }
 
+    modifier withValidGaugeType(string memory gaugeType) {
+        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
+        _;
+    }
+
     /// @inheritdoc IGaugeAdder
     function getAuthorizerAdaptorEntrypoint() external view override returns (IAuthorizerAdaptorEntrypoint) {
         return _authorizerAdaptorEntrypoint;
@@ -78,14 +83,24 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     }
 
     /// @inheritdoc IGaugeAdder
-    function getFactoryForGaugeType(string memory gaugeType) public view override returns (ILiquidityGaugeFactory) {
-        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
+    function getFactoryForGaugeType(string memory gaugeType)
+        public
+        view
+        override
+        withValidGaugeType(gaugeType)
+        returns (ILiquidityGaugeFactory)
+    {
         return _gaugeTypeFactory[gaugeType];
     }
 
     /// @inheritdoc IGaugeAdder
-    function isGaugeFromValidFactory(address gauge, string memory gaugeType) external view override returns (bool) {
-        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
+    function isGaugeFromValidFactory(address gauge, string memory gaugeType)
+        external
+        view
+        override
+        withValidGaugeType(gaugeType)
+        returns (bool)
+    {
         return _isGaugeFromValidFactory(gauge, gaugeType);
     }
 
@@ -106,9 +121,12 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     }
 
     /// @inheritdoc IGaugeAdder
-    function addGauge(address gauge, string memory gaugeType) external override authenticate {
-        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
-
+    function addGauge(address gauge, string memory gaugeType)
+        external
+        override
+        authenticate
+        withValidGaugeType(gaugeType)
+    {
         if (keccak256(abi.encodePacked(gaugeType)) == _ETHEREUM) {
             IERC20 pool = IStakingLiquidityGauge(gauge).lp_token();
             require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
@@ -118,9 +136,12 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     }
 
     /// @inheritdoc IGaugeAdder
-    function setGaugeFactory(ILiquidityGaugeFactory factory, string memory gaugeType) external override authenticate {
-        require(_isValidGaugeType(gaugeType), "Invalid gauge type");
-
+    function setGaugeFactory(ILiquidityGaugeFactory factory, string memory gaugeType)
+        external
+        override
+        authenticate
+        withValidGaugeType(gaugeType)
+    {
         // Sanity check that calling `isGaugeFromFactory` won't revert
         require(!factory.isGaugeFromFactory(address(0)), "Invalid factory implementation");
 
