@@ -102,10 +102,4 @@ interface IL2GaugeCheckpointer {
      * in the checkpoint.
      */
     function getTotalBridgeCost(uint256 minRelativeWeight) external view returns (uint256);
-
-    /**
-     * @notice Returns true if gauge type is valid.
-     * @dev This is a method for EOAs; contracts should just use a value from `GaugeType` enum here and elsewhere.
-     */
-    function isSupportedGaugeType(GaugeType gaugeType) external pure returns (bool);
 }
