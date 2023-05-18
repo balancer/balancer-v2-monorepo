@@ -99,6 +99,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
             newGaugeAdder.addGaugeType("Optimism");
             newGaugeAdder.addGaugeType("Gnosis");
             newGaugeAdder.addGaugeType("ZkSync");
+            authorizer.renounceRole(addTypeRole, address(this));
         }
 
         // Set up factories on new gauge adder.

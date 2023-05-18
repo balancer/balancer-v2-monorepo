@@ -25,6 +25,7 @@ interface IGaugeAdder is IAuthentication {
     // Deprecated. TODO: remove from interfaces, and remove references.
     enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum, Optimism, Gnosis, ZKSync }
 
+    // String values are hashed when indexed, so we also emit the raw string as a data field for ease of use.
     event GaugeTypeAdded(string indexed indexedGaugeType, string gaugeType, int128 gaugeTypeNumber);
     event GaugeFactorySet(string indexed indexedGaugeType, string gaugeType, ILiquidityGaugeFactory gaugeFactory);
 
@@ -39,7 +40,7 @@ interface IGaugeAdder is IAuthentication {
     function getGaugeController() external view returns (IGaugeController);
 
     /**
-     * @notice Returns list of allowlisted gauge types.
+     * @notice Returns the list of gauge types.
      */
     function getGaugeTypes() external view returns (string[] memory);
 
@@ -49,7 +50,9 @@ interface IGaugeAdder is IAuthentication {
     function getFactoryForGaugeType(string memory gaugeType) external view returns (ILiquidityGaugeFactory);
 
     /**
-     * @notice Returns true if `gauge` has been deployed by the factory for the gauge type `gaugeType`; false otherwise.
+     * @notice Returns true if `gauge` has been deployed by the factory for the gauge type `gaugeType`.
+     * Note that if a gauge type's factory changes then this function will start returning false for previously
+     * valid gauges.
      */
     function isGaugeFromValidFactory(address gauge, string memory gaugeType) external view returns (bool);
 
@@ -62,8 +65,9 @@ interface IGaugeAdder is IAuthentication {
 
     /**
      * @notice Adds a new gauge to the GaugeController for the given `gaugeType` type.
-     * @dev This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
-     * It should not be called with the address of the child gauge which is deployed on the L2 / sidechain.
+     * @dev When adding gauges for L2 networks or sidechains, this must be called with the address of the *root* gauge
+     * which is deployed on Ethereum. It should *not* be called with the address of the child gauge which is deployed on
+     * the L2 / sidechain.
      *
      * If the gauge added is an Ethereum gauge, it cannot be a gauge for the 80BAL-20WETH pool.
      */
