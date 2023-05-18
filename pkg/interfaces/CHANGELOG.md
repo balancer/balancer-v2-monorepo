@@ -14,7 +14,7 @@
 - Refactored `IGaugeAdder`
   - Gauge types changed from enum to string across the interface.
   - Removed specific `add<Network>Gauge` in favor of a single `addGauge` method with a type argument.
-  - Added event `GaugeTypeAdded`, and changed `GaugeFactoryAdded` for `GaugeFactorySet`.
+  - Added event `GaugeTypeAdded`, and changed `GaugeFactoryAdded` to `GaugeFactorySet`.
   - Added `getGaugeTypes` method.
 
 ## 0.4.0 (2023-03-15)
