@@ -153,7 +153,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
      * @notice Returns true if gauge type is valid.
      * @dev This is a method for EOAs; contracts should just use a value from `GaugeType` enum here and elsewhere.
      */
-    function isSupportedGaugeType(GaugeType gaugeType) external pure override returns (bool) {
+    function isSupportedGaugeType(GaugeType gaugeType) external pure returns (bool) {
         return gaugeType >= GaugeType.Ethereum && gaugeType <= GaugeType.ZKSync;
     }
 
