@@ -316,6 +316,11 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         }
 
         require(!hasPermission(actionId, account, where), "PERMISSION_ALREADY_GRANTED");
+        // Note that it is possible for `account` to have permission for an `actionId` in some specific `where`, and
+        // then be granted permission over `EVERYWHERE`, resulting in 'duplicate' permissions. This is not an issue per
+        // se, but removing these permissions status will require undoing these actions in inverse order.
+        // To avoid these issues, it is recommended to revoke any prior prermissions over specific contracts before
+        // granting an account a global permissions.
 
         _isPermissionGranted[actionId][account][where] = true;
         emit PermissionGranted(actionId, account, where);

@@ -402,7 +402,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(!isGranter(actionId, account, where), "ACCOUNT_IS_ALREADY_GRANTER");
-        // Note that it is possible for `account` to be a granter for the same `actionId` in some specific `where`, and
+        // Note that it is possible for `account` to be a granter for an `actionId` in some specific `where`, and
         // then be granted permission over `EVERYWHERE`, resulting in 'duplicate' permissions. This is not an issue per
         // se, but removing this granter status will require undoing these actions in inverse order.
         // To avoid these issues, it is recommended to revoke any prior granter status over specific contracts before
