@@ -24,11 +24,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
-    bytes32 private immutable _ETHEREUM = keccak256(abi.encodePacked("Ethereum"));
     // This is the gauge type as used in the GaugeController for Ethereum gauges, which we'll use for all gauges of all
     // networks from now on.
     int128 private constant _ETHEREUM_GAUGE_CONTROLLER_TYPE = 2;
 
+    bytes32 private immutable _ethereum = keccak256(abi.encodePacked("Ethereum"));
     IGaugeController private immutable _gaugeController;
     IERC20 private immutable _balWethBpt;
     IAuthorizerAdaptorEntrypoint private _authorizerAdaptorEntrypoint;
@@ -69,23 +69,19 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         return _gaugeTypes;
     }
 
-    /**
-     * @notice Returns gauge type name registered at the given index.
-     */
-    function getGaugeTypeAtIndex(uint256 index) external view returns (string memory) {
+    /// @inheritdoc IGaugeAdder
+    function getGaugeTypeAtIndex(uint256 index) external view override returns (string memory) {
         return _gaugeTypes[index];
     }
 
-    /**
-     * @notice Returns the number of gauge types.
-     */
-    function getGaugeTypesCount() public view returns (uint256) {
+    /// @inheritdoc IGaugeAdder
+    function getGaugeTypesCount() external view override returns (uint256) {
         return _gaugeTypes.length;
     }
 
     /// @inheritdoc IGaugeAdder
     function getFactoryForGaugeType(string memory gaugeType)
-        public
+        external
         view
         override
         withValidGaugeType(gaugeType)
@@ -109,6 +105,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
 
     /// @inheritdoc IGaugeAdder
     function addGaugeType(string memory gaugeType) external override authenticate {
+        require(bytes(gaugeType).length > 0, "Gauge type cannot be empty");
         require(!_isValidGaugeType(gaugeType), "Gauge type already added");
 
         _gaugeTypes.push(gaugeType);
@@ -123,7 +120,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         authenticate
         withValidGaugeType(gaugeType)
     {
-        if (keccak256(abi.encodePacked(gaugeType)) == _ETHEREUM) {
+        if (keccak256(abi.encodePacked(gaugeType)) == _ethereum) {
             IERC20 pool = IStakingLiquidityGauge(gauge).lp_token();
             require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
         }
@@ -139,7 +136,10 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         withValidGaugeType(gaugeType)
     {
         // Sanity check that calling `isGaugeFromFactory` won't revert
-        require((factory == ILiquidityGaugeFactory(0)) || (!factory.isGaugeFromFactory(address(0))), "Invalid factory implementation");
+        require(
+            (factory == ILiquidityGaugeFactory(0)) || (!factory.isGaugeFromFactory(address(0))),
+            "Invalid factory implementation"
+        );
 
         _gaugeTypeFactory[gaugeType] = factory;
 
@@ -162,7 +162,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         // `_gaugeController` enforces that duplicate gauges may not be added so we do not need to check here.
         _authorizerAdaptorEntrypoint.performAction(
             address(_gaugeController),
-            abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, _ETHEREUM_TYPE_GAUGE)
+            abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, _ETHEREUM_GAUGE_CONTROLLER_TYPE)
         );
     }
 

@@ -22,8 +22,6 @@ describe('GaugeAdder', () => {
 
   let admin: SignerWithAddress, other: SignerWithAddress;
 
-  const ETHEREUM_TYPE_NUMBER = 2;
-
   before('setup signers', async () => {
     [, admin, other] = await ethers.getSigners();
   });
@@ -75,16 +73,8 @@ describe('GaugeAdder', () => {
       });
 
       context('with invalid inputs', () => {
-        it('reverts when the type name is too long', async () => {
-          await expect(
-            gaugeAdder.connect(admin).addGaugeType('VeryLongAndFancyZKOptimisticRollupPrivateFastScalableAINetwork')
-          ).to.be.revertedWith('Input string should be between 1 and 32 characters long');
-        });
-
         it('reverts when the type name empty', async () => {
-          await expect(gaugeAdder.connect(admin).addGaugeType('')).to.be.revertedWith(
-            'Input string should be between 1 and 32 characters long'
-          );
+          await expect(gaugeAdder.connect(admin).addGaugeType('')).to.be.revertedWith('Gauge type cannot be empty');
         });
       });
 
@@ -111,7 +101,6 @@ describe('GaugeAdder', () => {
             // Contains expected `gaugeType` and `gaugeFactory`.
             const decodedArgs = event.decode(event.data);
             expect(decodedArgs.gaugeType).to.be.eq(gaugeType);
-            expect(decodedArgs.gaugeTypeNumber).to.be.eq(ETHEREUM_TYPE_NUMBER);
           });
 
           it('reverts when adding the same type twice', async () => {
@@ -200,7 +189,7 @@ describe('GaugeAdder', () => {
         });
 
         context('when factory does not already exist on GaugeAdder', () => {
-          sharedBeforeEach('add gauge factory', async () => {
+          sharedBeforeEach(async () => {
             existingGaugeFactory = ZERO_ADDRESS;
             newGaugeFactory = otherGaugeFactory.address;
           });
@@ -209,13 +198,25 @@ describe('GaugeAdder', () => {
         });
 
         context('when factory already exists on GaugeAdder', () => {
-          sharedBeforeEach('add gauge factory', async () => {
-            await gaugeAdder.connect(admin).setGaugeFactory(gaugeFactory.address, 'Ethereum');
-            existingGaugeFactory = gaugeFactory.address;
-            newGaugeFactory = otherGaugeFactory.address;
+          context('replacing with valid factory', () => {
+            sharedBeforeEach(async () => {
+              await gaugeAdder.connect(admin).setGaugeFactory(gaugeFactory.address, 'Ethereum');
+              existingGaugeFactory = gaugeFactory.address;
+              newGaugeFactory = otherGaugeFactory.address;
+            });
+
+            itSetsFactoryForGaugeTypeCorrectly();
           });
 
-          itSetsFactoryForGaugeTypeCorrectly();
+          context('replacing with zero address', () => {
+            sharedBeforeEach(async () => {
+              await gaugeAdder.connect(admin).setGaugeFactory(gaugeFactory.address, 'Ethereum');
+              existingGaugeFactory = gaugeFactory.address;
+              newGaugeFactory = ZERO_ADDRESS;
+            });
+
+            itSetsFactoryForGaugeTypeCorrectly();
+          });
         });
       });
     });
@@ -236,7 +237,7 @@ describe('GaugeAdder', () => {
     });
 
     context('when factory has been added to GaugeAdder', () => {
-      sharedBeforeEach('add gauge factory', async () => {
+      sharedBeforeEach(async () => {
         const action = await actionId(gaugeAdder, 'setGaugeFactory');
         await vault.grantPermissionGlobally(action, admin);
 
@@ -306,7 +307,7 @@ describe('GaugeAdder', () => {
       });
 
       context('when gauge has been deployed from a valid factory', () => {
-        sharedBeforeEach('add gauge factory', async () => {
+        sharedBeforeEach(async () => {
           const action = await actionId(gaugeAdder, 'setGaugeFactory');
           await vault.grantPermissionGlobally(action, admin);
 

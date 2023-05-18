@@ -26,7 +26,7 @@ interface IGaugeAdder is IAuthentication {
     enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum, Optimism, Gnosis, ZKSync }
 
     // String values are hashed when indexed, so we also emit the raw string as a data field for ease of use.
-    event GaugeTypeAdded(string indexed indexedGaugeType, string gaugeType, int128 gaugeTypeNumber);
+    event GaugeTypeAdded(string indexed indexedGaugeType, string gaugeType);
     event GaugeFactorySet(string indexed indexedGaugeType, string gaugeType, ILiquidityGaugeFactory gaugeFactory);
 
     /**
@@ -43,6 +43,16 @@ interface IGaugeAdder is IAuthentication {
      * @notice Returns the list of gauge types.
      */
     function getGaugeTypes() external view returns (string[] memory);
+
+    /**
+     * @notice Returns gauge type name registered at the given index.
+     */
+    function getGaugeTypeAtIndex(uint256 index) external view returns (string memory);
+
+    /**
+     * @notice Returns the number of gauge types.
+     */
+    function getGaugeTypesCount() external view returns (uint256);
 
     /**
      * @notice Returns the factory for gauge type `gaugeType`.
