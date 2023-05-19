@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
@@ -34,17 +35,30 @@ import "./arbitrum/ArbitrumRootGauge.sol";
 contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    mapping(GaugeType => EnumerableSet.AddressSet) private _gauges;
+    bytes32 private immutable _arbitrum = keccak256(abi.encodePacked("Arbitrum"));
+
+    mapping(string => EnumerableSet.AddressSet) private _gauges;
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
+    IGaugeAdder private immutable _gaugeAdder;
     IGaugeController private immutable _gaugeController;
 
-    constructor(IGaugeController gaugeController, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) {
-        _gaugeController = gaugeController;
+    constructor(IGaugeAdder gaugeAdder, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) {
+        _gaugeAdder = gaugeAdder;
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
+        _gaugeController = gaugeAdder.getGaugeController();
+    }
+
+    modifier withValidGaugeType(string memory gaugeType) {
+        require(_gaugeAdder.isValidGaugeType(gaugeType), "Invalid gauge type");
+        _;
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function addGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external override {
+    function addGauges(string memory gaugeType, IStakelessGauge[] calldata gauges)
+        external
+        override
+        withValidGaugeType(gaugeType)
+    {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gauges.length; i++) {
@@ -55,12 +69,16 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
             require(!gauge.is_killed(), "Gauge was killed");
             require(gaugesForType.add(address(gauge)), "Gauge already added to the checkpointer");
 
-            emit IL2GaugeCheckpointer.GaugeAdded(gaugeType, gauge);
+            emit IL2GaugeCheckpointer.GaugeAdded(gauge, gaugeType, gaugeType);
         }
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function removeGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external override {
+    function removeGauges(string memory gaugeType, IStakelessGauge[] calldata gauges)
+        external
+        override
+        withValidGaugeType(gaugeType)
+    {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gauges.length; i++) {
@@ -70,22 +88,40 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
             require(gauge.is_killed(), "Gauge was not killed");
             require(gaugesForType.remove(address(gauge)), "Gauge was not added to the checkpointer");
 
-            emit IL2GaugeCheckpointer.GaugeRemoved(gaugeType, gauge);
+            emit IL2GaugeCheckpointer.GaugeRemoved(gauge, gaugeType, gaugeType);
         }
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function hasGauge(GaugeType gaugeType, IStakelessGauge gauge) external view override returns (bool) {
+    function hasGauge(string memory gaugeType, IStakelessGauge gauge)
+        external
+        view
+        override
+        withValidGaugeType(gaugeType)
+        returns (bool)
+    {
         return _gauges[gaugeType].contains(address(gauge));
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function getTotalGauges(GaugeType gaugeType) external view override returns (uint256) {
+    function getTotalGauges(string memory gaugeType)
+        external
+        view
+        override
+        withValidGaugeType(gaugeType)
+        returns (uint256)
+    {
         return _gauges[gaugeType].length();
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function getGaugeAtIndex(GaugeType gaugeType, uint256 index) external view override returns (IStakelessGauge) {
+    function getGaugeAtIndex(string memory gaugeType, uint256 index)
+        external
+        view
+        override
+        withValidGaugeType(gaugeType)
+        returns (IStakelessGauge)
+    {
         return IStakelessGauge(_gauges[gaugeType].at(index));
     }
 
@@ -94,25 +130,22 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
 
-        _checkpointGauges(GaugeType.Ethereum, minRelativeWeight, currentPeriod);
-        _checkpointGauges(GaugeType.Polygon, minRelativeWeight, currentPeriod);
-        _checkpointGauges(GaugeType.Arbitrum, minRelativeWeight, currentPeriod);
-        _checkpointGauges(GaugeType.Optimism, minRelativeWeight, currentPeriod);
-        _checkpointGauges(GaugeType.Gnosis, minRelativeWeight, currentPeriod);
-        _checkpointGauges(GaugeType.Avalanche, minRelativeWeight, currentPeriod);
-        _checkpointGauges(GaugeType.PolygonZKEvm, minRelativeWeight, currentPeriod);
-        _checkpointGauges(GaugeType.ZKSync, minRelativeWeight, currentPeriod);
+        string[] memory gaugeTypes = _gaugeAdder.getGaugeTypes();
+        for (uint256 i = 0; i < gaugeTypes.length; ++i) {
+            _checkpointGauges(gaugeTypes[i], minRelativeWeight, currentPeriod);
+        }
 
         // Send back any leftover ETH to the caller.
         Address.sendValue(msg.sender, address(this).balance);
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
-    function checkpointGaugesOfTypeAboveRelativeWeight(GaugeType gaugeType, uint256 minRelativeWeight)
+    function checkpointGaugesOfTypeAboveRelativeWeight(string memory gaugeType, uint256 minRelativeWeight)
         external
         payable
         override
         nonReentrant
+        withValidGaugeType(gaugeType)
     {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
@@ -131,8 +164,8 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
-        uint256 totalArbitrumGauges = _gauges[GaugeType.Arbitrum].length();
-        EnumerableSet.AddressSet storage arbitrumGauges = _gauges[GaugeType.Arbitrum];
+        uint256 totalArbitrumGauges = _gauges["Arbitrum"].length();
+        EnumerableSet.AddressSet storage arbitrumGauges = _gauges["Arbitrum"];
         uint256 totalCost;
 
         for (uint256 i = 0; i < totalArbitrumGauges; ++i) {
@@ -149,12 +182,9 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return totalCost;
     }
 
-    /**
-     * @notice Returns true if gauge type is valid.
-     * @dev This is a method for EOAs; contracts should just use a value from `GaugeType` enum here and elsewhere.
-     */
-    function isSupportedGaugeType(GaugeType gaugeType) external pure returns (bool) {
-        return gaugeType >= GaugeType.Ethereum && gaugeType <= GaugeType.ZKSync;
+    /// @inheritdoc IL2GaugeCheckpointer
+    function isValidGaugeType(string memory gaugeType) external view override returns (bool) {
+        return _gaugeAdder.isValidGaugeType(gaugeType);
     }
 
     /**
@@ -165,7 +195,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
      * This method doesn't check whether the caller transferred enough ETH to cover the whole operation.
      */
     function _checkpointGauges(
-        GaugeType gaugeType,
+        string memory gaugeType,
         uint256 minRelativeWeight,
         uint256 currentPeriod
     ) private {
@@ -179,7 +209,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
 
         // Arbitrum gauges need to send ETH when performing the checkpoint to pay for bridge costs. Furthermore,
         // if gauges come from different factories, the cost per gauge might not be the same for all gauges.
-        function(address) internal performCheckpoint = gaugeType == GaugeType.Arbitrum
+        function(address) internal performCheckpoint = (keccak256(abi.encodePacked(gaugeType)) == _arbitrum)
             ? _checkpointArbitrumGauge
             : _checkpointCostlessBridgeGauge;
 

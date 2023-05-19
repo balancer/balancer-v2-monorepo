@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "./IGaugeAdder.sol";
 import "./IStakelessGauge.sol";
@@ -25,17 +26,16 @@ import "./IStakelessGauge.sol";
  * Gauges to be checkpointed need to be added to the controller beforehand.
  */
 interface IL2GaugeCheckpointer {
-    enum GaugeType { Ethereum, Polygon, Arbitrum, Optimism, Gnosis, Avalanche, PolygonZKEvm, ZKSync }
-
+    // String values are hashed when indexed, so we also emit the raw string as a data field for ease of use.
     /**
      * @notice Emitted when a gauge is added to the checkpointer.
      */
-    event GaugeAdded(GaugeType indexed gaugeType, IStakelessGauge indexed gauge);
+    event GaugeAdded(IStakelessGauge indexed gauge, string indexed indexedGaugeType, string gaugeType);
 
     /**
      * @notice Emitted when a gauge is removed from the checkpointer.
      */
-    event GaugeRemoved(GaugeType indexed gaugeType, IStakelessGauge indexed gauge);
+    event GaugeRemoved(IStakelessGauge indexed gauge, string indexed indexedGaugeType, string gaugeType);
 
     /**
      * @notice Adds an array of gauges from the given type.
@@ -48,7 +48,7 @@ interface IL2GaugeCheckpointer {
      * @param gaugeType Type of the gauge.
      * @param gauges Gauges to add.
      */
-    function addGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
+    function addGauges(string memory gaugeType, IStakelessGauge[] calldata gauges) external;
 
     /**
      * @notice Removes an array of gauges from the given type.
@@ -58,20 +58,20 @@ interface IL2GaugeCheckpointer {
      * @param gaugeType Type of the gauge.
      * @param gauges Gauges to remove.
      */
-    function removeGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
+    function removeGauges(string memory gaugeType, IStakelessGauge[] calldata gauges) external;
 
     /**
      * @notice Returns true if the given gauge was added for the given type; false otherwise.
      * @param gaugeType Type of the gauge.
      * @param gauge Gauge to check.
      */
-    function hasGauge(GaugeType gaugeType, IStakelessGauge gauge) external view returns (bool);
+    function hasGauge(string memory gaugeType, IStakelessGauge gauge) external view returns (bool);
 
     /**
      * @notice Returns the amount of added gauges for a given type.
      * @param gaugeType Type of the gauge.
      */
-    function getTotalGauges(GaugeType gaugeType) external view returns (uint256);
+    function getTotalGauges(string memory gaugeType) external view returns (uint256);
 
     /**
      * @notice Returns the gauge of a given type at the given index.
@@ -79,7 +79,7 @@ interface IL2GaugeCheckpointer {
      * @param gaugeType Type of the gauge.
      * @param index - Index of the added gauge.
      */
-    function getGaugeAtIndex(GaugeType gaugeType, uint256 index) external view returns (IStakelessGauge);
+    function getGaugeAtIndex(string memory gaugeType, uint256 index) external view returns (IStakelessGauge);
 
     /**
      * @notice Performs a checkpoint for all added gauges above the given relative weight threshold.
@@ -94,7 +94,9 @@ interface IL2GaugeCheckpointer {
      * @param gaugeType Type of the gauge.
      * @param minRelativeWeight - Threshold to filter out gauges below it.
      */
-    function checkpointGaugesOfTypeAboveRelativeWeight(GaugeType gaugeType, uint256 minRelativeWeight) external payable;
+    function checkpointGaugesOfTypeAboveRelativeWeight(string memory gaugeType, uint256 minRelativeWeight)
+        external
+        payable;
 
     /**
      * @notice Returns the ETH cost to checkpoint all gauges for a given minimum relative weight.
@@ -102,4 +104,9 @@ interface IL2GaugeCheckpointer {
      * in the checkpoint.
      */
     function getTotalBridgeCost(uint256 minRelativeWeight) external view returns (uint256);
+
+    /**
+     * @notice Returns true if gauge type is valid; false otherwise.
+     */
+    function isValidGaugeType(string memory gaugeType) external view returns (bool);
 }
