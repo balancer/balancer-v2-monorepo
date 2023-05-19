@@ -54,6 +54,11 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
+    function getGaugeAdder() external view override returns (IGaugeAdder) {
+        return _gaugeAdder;
+    }
+
+    /// @inheritdoc IL2GaugeCheckpointer
     function addGauges(string memory gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
@@ -68,6 +73,10 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
             require(_gaugeController.gauge_exists(address(gauge)), "Gauge was not added to the GaugeController");
             require(!gauge.is_killed(), "Gauge was killed");
             require(gaugesForType.add(address(gauge)), "Gauge already added to the checkpointer");
+            require(
+                _gaugeAdder.getFactoryForGaugeType(gaugeType).isGaugeFromFactory(address(gauge)),
+                "Gauge does not correspond to the selected type"
+            );
 
             emit IL2GaugeCheckpointer.GaugeAdded(gauge, gaugeType, gaugeType);
         }

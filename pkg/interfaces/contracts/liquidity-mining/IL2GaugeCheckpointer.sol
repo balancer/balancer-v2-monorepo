@@ -20,9 +20,9 @@ import "./IStakelessGauge.sol";
 
 /**
  * @title L2 Gauge Checkpointer interface
- * @notice Manages checkpoints for L2 and mainnet stakeless gauges, allowing to perform mutiple checkpoints in a
+ * @notice Manages checkpoints for L2 and mainnet stakeless root gauges, allowing to perform mutiple checkpoints in a
  * single call.
- * @dev Supports Ethereum, Polygon, Arbitrum, Optimism, Gnosis, Avalanche, Polygon's ZK EVM and ZKSync stakeless gauges.
+ * @dev Supports gauge types registered in `GaugeAdder`.
  * Gauges to be checkpointed need to be added to the controller beforehand.
  */
 interface IL2GaugeCheckpointer {
@@ -36,6 +36,11 @@ interface IL2GaugeCheckpointer {
      * @notice Emitted when a gauge is removed from the checkpointer.
      */
     event GaugeRemoved(IStakelessGauge indexed gauge, string indexed indexedGaugeType, string gaugeType);
+
+    /**
+     * @notice Returns `GaugeAdder` contract.
+     */
+    function getGaugeAdder() external view returns (IGaugeAdder);
 
     /**
      * @notice Adds an array of gauges from the given type.

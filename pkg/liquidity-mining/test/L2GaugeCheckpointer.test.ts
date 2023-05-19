@@ -35,7 +35,7 @@ describe('L2GaugeCheckpointer', () => {
     .filter((v) => !isNaN(Number(v)) && Number(v) >= FIRST_VALID_GAUGE)
     .map((t) => GaugeType[Number(t)]);
 
-  const UNSUPPORTED_GAUGE_TYPES = ['Extra network'];
+  const UNSUPPORTED_GAUGE_TYPES = ['Extra network not present in GaugeAdder'];
 
   before('setup signers', async () => {
     [, admin] = await ethers.getSigners();
@@ -93,6 +93,12 @@ describe('L2GaugeCheckpointer', () => {
     });
   });
 
+  describe('getters', () => {
+    it('returns gauge adder', async () => {
+      expect(await L2GaugeCheckpointer.getGaugeAdder()).to.be.eq(gaugeAdder.address);
+    });
+  });
+
   GAUGE_TYPES.forEach((gaugeType) => {
     itAddsAndRemovesGaugesForType(gaugeType);
   });
@@ -142,7 +148,6 @@ describe('L2GaugeCheckpointer', () => {
       // factory check will be rejected by the controller.
       context('with incorrect factory and controller setup', () => {
         it('reverts', async () => {
-          const otherGaugeType = GaugeType[GaugeType.Optimism];
           await expect(L2GaugeCheckpointer.addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
             'Gauge was not added to the GaugeController'
           );
@@ -196,6 +201,12 @@ describe('L2GaugeCheckpointer', () => {
         it('enumerates added gauges correctly', async () => {
           await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
           await expectGaugesAt(testGaugeType, testGauges);
+        });
+
+        it("reverts if gauge type does not match gauges' type", async () => {
+          await expect(L2GaugeCheckpointer.addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
+            'Gauge does not correspond to the selected type'
+          );
         });
 
         context('when one of the gauges to add was killed', () => {
