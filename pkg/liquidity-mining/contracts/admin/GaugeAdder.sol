@@ -80,6 +80,11 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     }
 
     /// @inheritdoc IGaugeAdder
+    function isValidGaugeType(string memory gaugeType) external view override returns (bool) {
+        return _isValidGaugeType(gaugeType);
+    }
+
+    /// @inheritdoc IGaugeAdder
     function getFactoryForGaugeType(string memory gaugeType)
         external
         view
