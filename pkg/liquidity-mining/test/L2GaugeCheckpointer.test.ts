@@ -22,7 +22,7 @@ describe('L2GaugeCheckpointer', () => {
   let L2GaugeCheckpointer: Contract;
 
   const gauges = new Map<string, string[]>();
-  let admin: SignerWithAddress;
+  let admin: SignerWithAddress, other: SignerWithAddress;
 
   let testGaugeType: string, otherGaugeType: string;
   let testGauges: string[], otherTypeGauges: string[];
@@ -38,7 +38,7 @@ describe('L2GaugeCheckpointer', () => {
   const UNSUPPORTED_GAUGE_TYPES = ['Extra network not present in GaugeAdder'];
 
   before('setup signers', async () => {
-    [, admin] = await ethers.getSigners();
+    [, other, admin] = await ethers.getSigners();
   });
 
   before('deploy dependencies: gauge controller and gauge factories', async () => {
@@ -134,6 +134,8 @@ describe('L2GaugeCheckpointer', () => {
   }
 
   function itAddsAndRemovesGaugesForType(gaugeType: string) {
+    let addGauges: (gaugeType: string, gauges: string[]) => Promise<Contract>;
+
     sharedBeforeEach(`setup test gauges for ${gaugeType}`, async () => {
       testGaugeType = gaugeType;
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -143,98 +145,135 @@ describe('L2GaugeCheckpointer', () => {
       otherTypeGauges = gauges.get(otherGaugeType)!;
     });
 
-    describe(`add gauges for ${gaugeType}`, () => {
-      // Gauges must come from a valid factory to be added to the gauge controller, so gauges that don't pass the valid
-      // factory check will be rejected by the controller.
-      context('with incorrect factory and controller setup', () => {
-        it('reverts', async () => {
-          await expect(L2GaugeCheckpointer.addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
-            'Gauge was not added to the GaugeController'
-          );
-        });
+    describe('addGauge', () => {
+      sharedBeforeEach(() => {
+        addGauges = (gaugeType, gauges) => L2GaugeCheckpointer.addGauges(gaugeType, gauges);
       });
 
-      context('with correct factory and wrong controller setup', () => {
-        it('reverts', async () => {
-          await expect(L2GaugeCheckpointer.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
-            'Gauge was not added to the GaugeController'
-          );
-        });
-      });
-
-      context('with correct factory and controller setup', () => {
-        sharedBeforeEach('add gauges to controller', async () => {
-          await addGaugesToController(gaugeController, testGauges);
-        });
-
-        it('adds stakeless gauges correctly', async () => {
-          await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
-          await expectHasGauges(testGaugeType, testGauges);
-        });
-
-        it('does not modify any gauge to other gauge types', async () => {
-          await expectOtherGaugeTypesEmpty([]);
-          await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
-          await expectOtherGaugeTypesEmpty([testGaugeType]);
-        });
-
-        it('emits one event per added gauge', async () => {
-          const tx = await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
-          const receipt = await tx.wait();
-          expect(receipt.events.length).to.be.eq(testGauges.length);
-
-          for (let i = 0; i < testGauges.length; ++i) {
-            const testGauge = testGauges[i];
-
-            // `expectEvent` does not work with indexed strings, so we decode the pieces we are interested in manually.
-            // Each event should be named `GaugeAdded`
-            const event = receipt.events[i];
-            expect(event.event).to.be.eq('GaugeAdded');
-
-            // Contains expected `gaugeType` (decoded) and `gauge` (first argument, raw).
-            const decodedArgs = event.decode(event.data);
-            expect(decodedArgs.gaugeType).to.be.eq(testGaugeType);
-            expect(event.args[0]).to.be.eq(testGauge);
-          }
-        });
-
-        it('enumerates added gauges correctly', async () => {
-          await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
-          await expectGaugesAt(testGaugeType, testGauges);
-        });
-
-        it("reverts if gauge type does not match gauges' type", async () => {
-          await expect(L2GaugeCheckpointer.addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
+      function itRevertsAddingMismatchingType() {
+        it("reverts if the given gauge type does not match gauges' type registered in gauge adder", async () => {
+          await expect(addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
             'Gauge does not correspond to the selected type'
           );
         });
+      }
 
-        context('when one of the gauges to add was killed', () => {
-          sharedBeforeEach('kill one gauge', async () => {
-            const gaugeContract = await deployedAt('MockLiquidityGauge', testGauges[0]);
-            await gaugeContract.killGauge();
-          });
+      itAddsGauges(itRevertsAddingMismatchingType);
+    });
 
+    describe('addGaugeWithVerifiedType', () => {
+      sharedBeforeEach(async () => {
+        const action = await actionId(L2GaugeCheckpointer, 'addGaugesWithVerifiedType');
+        await vault.grantPermissionGlobally(action, admin);
+
+        addGauges = (gaugeType, gauges) =>
+          L2GaugeCheckpointer.connect(admin).addGaugesWithVerifiedType(gaugeType, gauges);
+      });
+
+      function itAddsMismatchingType() {
+        it('works even if the gauge does not come from the factory registered in gauge adder', async () => {
+          await addGauges(otherGaugeType, testGauges);
+          await expectHasGauges(otherGaugeType, testGauges);
+        });
+      }
+
+      itAddsGauges(itAddsMismatchingType);
+
+      it('reverts when caller is not authorized', async () => {
+        await expect(
+          L2GaugeCheckpointer.connect(other).addGaugesWithVerifiedType(gaugeType, testGauges)
+        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+
+    function itAddsGauges(handleAddMismatchingTypeGauges: () => void) {
+      describe(`add gauges for ${gaugeType}`, () => {
+        // Gauges must come from a valid factory to be added to the gauge controller, so gauges that don't pass the valid
+        // factory check will be rejected by the controller.
+        context('with incorrect factory and controller setup', () => {
           it('reverts', async () => {
-            await expect(L2GaugeCheckpointer.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
-              'Gauge was killed'
+            await expect(addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
+              'Gauge was not added to the GaugeController'
             );
           });
         });
 
-        context('when one of the gauges to add was already added to the checkpointer', () => {
-          sharedBeforeEach('add gauges beforehand', async () => {
-            await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
+        context('with correct factory and wrong controller setup', () => {
+          it('reverts', async () => {
+            await expect(addGauges(testGaugeType, testGauges)).to.be.revertedWith(
+              'Gauge was not added to the GaugeController'
+            );
+          });
+        });
+
+        context('with correct factory and controller setup', () => {
+          sharedBeforeEach('add gauges to controller', async () => {
+            await addGaugesToController(gaugeController, testGauges);
           });
 
-          it('reverts', async () => {
-            await expect(L2GaugeCheckpointer.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
-              'Gauge already added to the checkpointer'
-            );
+          it('adds stakeless gauges correctly', async () => {
+            await addGauges(testGaugeType, testGauges);
+            await expectHasGauges(testGaugeType, testGauges);
+          });
+
+          it('does not modify any gauge to other gauge types', async () => {
+            await expectOtherGaugeTypesEmpty([]);
+            await addGauges(testGaugeType, testGauges);
+            await expectOtherGaugeTypesEmpty([testGaugeType]);
+          });
+
+          it('emits one event per added gauge', async () => {
+            const tx = await addGauges(testGaugeType, testGauges);
+            const receipt = await tx.wait();
+            expect(receipt.events.length).to.be.eq(testGauges.length);
+
+            for (let i = 0; i < testGauges.length; ++i) {
+              const testGauge = testGauges[i];
+
+              // `expectEvent` does not work with indexed strings, so we decode the pieces we are interested in manually.
+              // Each event should be named `GaugeAdded`
+              const event = receipt.events[i];
+              expect(event.event).to.be.eq('GaugeAdded');
+
+              // Contains expected `gaugeType` (decoded) and `gauge` (first argument, raw).
+              const decodedArgs = event.decode(event.data);
+              expect(decodedArgs.gaugeType).to.be.eq(testGaugeType);
+              expect(event.args[0]).to.be.eq(testGauge);
+            }
+          });
+
+          it('enumerates added gauges correctly', async () => {
+            await addGauges(testGaugeType, testGauges);
+            await expectGaugesAt(testGaugeType, testGauges);
+          });
+
+          handleAddMismatchingTypeGauges();
+
+          context('when one of the gauges to add was killed', () => {
+            sharedBeforeEach('kill one gauge', async () => {
+              const gaugeContract = await deployedAt('MockLiquidityGauge', testGauges[0]);
+              await gaugeContract.killGauge();
+            });
+
+            it('reverts', async () => {
+              await expect(addGauges(testGaugeType, testGauges)).to.be.revertedWith('Gauge was killed');
+            });
+          });
+
+          context('when one of the gauges to add was already added to the checkpointer', () => {
+            sharedBeforeEach('add gauges beforehand', async () => {
+              await addGauges(testGaugeType, testGauges);
+            });
+
+            it('reverts', async () => {
+              await expect(addGauges(testGaugeType, testGauges)).to.be.revertedWith(
+                'Gauge already added to the checkpointer'
+              );
+            });
           });
         });
       });
-    });
+    }
 
     describe(`remove gauges for ${gaugeType}`, () => {
       sharedBeforeEach('add gauges to the gauge controller and the checkpointer', async () => {

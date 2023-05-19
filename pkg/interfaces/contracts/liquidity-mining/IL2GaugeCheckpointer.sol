@@ -43,11 +43,25 @@ interface IL2GaugeCheckpointer {
     function getGaugeAdder() external view returns (IGaugeAdder);
 
     /**
+     * @notice Adds an array of gauges from the given type. This is a permissioned function.
+     * @dev Gauges added will be considered when performing checkpoints.
+     * The gauges to add should meet the following preconditions:
+     * - They must exist in the GaugeController, according to GaugeController#gauge_exists.
+     * - They must not be killed.
+     * - They must not have been previously added to the checkpointer.
+     * Unlike `addGauges`, this function can add gauges that were created by factories registered in a deprecated
+     * `GaugeAdder`, and therefore cannot be validated by the current `GaugeAdder`.
+     * @param gaugeType Type of the gauge.
+     * @param gauges Gauges to add.
+     */
+    function addGaugesWithVerifiedType(string memory gaugeType, IStakelessGauge[] calldata gauges) external;
+
+    /**
      * @notice Adds an array of gauges from the given type.
      * @dev Gauges added will be considered when performing checkpoints.
      * The gauges to add should meet the following preconditions:
-     * - They must have been created in a valid GaugeFactory, according to GaugeAdder#isGaugeFromValidFactory.
-     * - They must exist in the GaugeController, according to GaugeController#gauge_exists.
+     * - They must have been created in a valid `GaugeFactory`, according to `GaugeAdder#isGaugeFromValidFactory`.
+     * - They must exist in the `GaugeController`, according to `GaugeController#gauge_exists`.
      * - They must not be killed.
      * - They must not have been previously added to the checkpointer.
      * @param gaugeType Type of the gauge.

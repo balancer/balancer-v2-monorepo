@@ -32,7 +32,7 @@ import "./arbitrum/ArbitrumRootGauge.sol";
  * @title L2 Gauge Checkpointer
  * @notice Implements IL2GaugeCheckpointer; refer to it for API documentation.
  */
-contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
+contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     bytes32 private immutable _arbitrum = keccak256(abi.encodePacked("Arbitrum"));
@@ -42,7 +42,9 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     IGaugeAdder private immutable _gaugeAdder;
     IGaugeController private immutable _gaugeController;
 
-    constructor(IGaugeAdder gaugeAdder, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) {
+    constructor(IGaugeAdder gaugeAdder, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint)
+        SingletonAuthentication(authorizerAdaptorEntrypoint.getVault())
+    {
         _gaugeAdder = gaugeAdder;
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
         _gaugeController = gaugeAdder.getGaugeController();
@@ -59,27 +61,26 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
+    function addGaugesWithVerifiedType(string memory gaugeType, IStakelessGauge[] calldata gauges)
+        external
+        override
+        withValidGaugeType(gaugeType)
+        authenticate
+    {
+        // This is a permissioned call, so we can assume that the gauges' type matches the given one.
+        // Therefore, we indicate `_addGauges` not to verify the gauge type.
+        _addGauges(gaugeType, gauges, true);
+    }
+
+
+    /// @inheritdoc IL2GaugeCheckpointer
     function addGauges(string memory gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
         withValidGaugeType(gaugeType)
     {
-        EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
-
-        for (uint256 i = 0; i < gauges.length; i++) {
-            IStakelessGauge gauge = gauges[i];
-            // Gauges must come from a valid factory to be added to the gauge controller, so gauges that don't pass
-            // the valid factory check will be rejected by the controller.
-            require(_gaugeController.gauge_exists(address(gauge)), "Gauge was not added to the GaugeController");
-            require(!gauge.is_killed(), "Gauge was killed");
-            require(gaugesForType.add(address(gauge)), "Gauge already added to the checkpointer");
-            require(
-                _gaugeAdder.getFactoryForGaugeType(gaugeType).isGaugeFromFactory(address(gauge)),
-                "Gauge does not correspond to the selected type"
-            );
-
-            emit IL2GaugeCheckpointer.GaugeAdded(gauge, gaugeType, gaugeType);
-        }
+        // Since everyone can call this method, the type needs to be verified in the internal `_addGauges` method.
+        _addGauges(gaugeType, gauges, false);
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
@@ -194,6 +195,30 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     /// @inheritdoc IL2GaugeCheckpointer
     function isValidGaugeType(string memory gaugeType) external view override returns (bool) {
         return _gaugeAdder.isValidGaugeType(gaugeType);
+    }
+
+    function _addGauges(string memory gaugeType, IStakelessGauge[] calldata gauges, bool isGaugeTypeVerified) internal {
+        EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
+
+        for (uint256 i = 0; i < gauges.length; i++) {
+            IStakelessGauge gauge = gauges[i];
+            // Gauges must come from a valid factory to be added to the gauge controller, so gauges that don't pass
+            // the valid factory check will be rejected by the controller.
+            require(_gaugeController.gauge_exists(address(gauge)), "Gauge was not added to the GaugeController");
+            require(!gauge.is_killed(), "Gauge was killed");
+            require(gaugesForType.add(address(gauge)), "Gauge already added to the checkpointer");
+
+            // To ensure that the gauge effectively corresponds to the given type, we query the gauge factory registered
+            // in the gauge adder for the gauge type.
+            // However, since gauges may come from older factories from previous adders, we need to be able to override
+            // this check. This way we can effectively still add older gauges to the checkpointer via authorized calls.
+            require(
+                isGaugeTypeVerified || _gaugeAdder.getFactoryForGaugeType(gaugeType).isGaugeFromFactory(address(gauge)),
+                "Gauge does not correspond to the selected type"
+            );
+
+            emit IL2GaugeCheckpointer.GaugeAdded(gauge, gaugeType, gaugeType);
+        }
     }
 
     /**
