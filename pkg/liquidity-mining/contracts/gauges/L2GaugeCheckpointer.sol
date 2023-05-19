@@ -72,7 +72,6 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         _addGauges(gaugeType, gauges, true);
     }
 
-
     /// @inheritdoc IL2GaugeCheckpointer
     function addGauges(string memory gaugeType, IStakelessGauge[] calldata gauges)
         external
@@ -197,7 +196,11 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         return _gaugeAdder.isValidGaugeType(gaugeType);
     }
 
-    function _addGauges(string memory gaugeType, IStakelessGauge[] calldata gauges, bool isGaugeTypeVerified) internal {
+    function _addGauges(
+        string memory gaugeType,
+        IStakelessGauge[] calldata gauges,
+        bool isGaugeTypeVerified
+    ) internal {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gauges.length; i++) {
