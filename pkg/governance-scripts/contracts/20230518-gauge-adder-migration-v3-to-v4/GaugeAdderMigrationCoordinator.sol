@@ -31,6 +31,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     ILiquidityGaugeFactory public immutable arbitrumRootGaugeFactory;
     ILiquidityGaugeFactory public immutable optimismRootGaugeFactory;
     ILiquidityGaugeFactory public immutable gnosisRootGaugeFactory;
+    ILiquidityGaugeFactory public immutable polygonZkEvmRootGaugeFactory;
 
     address public immutable liquidityMiningCommitteeMultisig;
     address public immutable gaugeCheckpointingMultisig;
@@ -44,6 +45,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         ILiquidityGaugeFactory _arbitrumRootGaugeFactory,
         ILiquidityGaugeFactory _optimismRootGaugeFactory,
         ILiquidityGaugeFactory _gnosisRootGaugeFactory,
+        ILiquidityGaugeFactory _polygonZkvmMRootGaugeFactory,
         address _liquidityMiningCommitteeMultisig,
         address _gaugeCheckpointingMultisig
     ) BaseCoordinator(authorizerAdaptor) {
@@ -54,6 +56,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         arbitrumRootGaugeFactory = _arbitrumRootGaugeFactory;
         optimismRootGaugeFactory = _optimismRootGaugeFactory;
         gnosisRootGaugeFactory = _gnosisRootGaugeFactory;
+        polygonZkEvmRootGaugeFactory = _polygonZkvmMRootGaugeFactory;
         liquidityMiningCommitteeMultisig = _liquidityMiningCommitteeMultisig;
         gaugeCheckpointingMultisig = _gaugeCheckpointingMultisig;
 
@@ -98,6 +101,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
             newGaugeAdder.addGaugeType("Arbitrum");
             newGaugeAdder.addGaugeType("Optimism");
             newGaugeAdder.addGaugeType("Gnosis");
+            newGaugeAdder.addGaugeType("PolygonZkEvm");
             newGaugeAdder.addGaugeType("ZkSync");
             authorizer.renounceRole(addTypeRole, address(this));
         }
@@ -115,6 +119,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
             newGaugeAdder.setGaugeFactory(arbitrumRootGaugeFactory, "Arbitrum");
             newGaugeAdder.setGaugeFactory(optimismRootGaugeFactory, "Optimism");
             newGaugeAdder.setGaugeFactory(gnosisRootGaugeFactory, "Gnosis");
+            newGaugeAdder.setGaugeFactory(polygonZkEvmRootGaugeFactory, "PolygonZkEvm");
 
             authorizer.renounceRole(setFactoryRole, address(this));
         }
