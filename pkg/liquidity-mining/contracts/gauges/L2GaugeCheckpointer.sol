@@ -161,11 +161,29 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
 
         _checkpointGauges(gaugeType, minRelativeWeight, currentPeriod);
 
-        // Send back any leftover ETH to the caller.
-        // Most gauge types don't need to send value, and this step can be skipped in those cases.
-        uint256 remainingBalance = address(this).balance;
-        if (remainingBalance > 0) {
-            Address.sendValue(msg.sender, remainingBalance);
+        _returnLeftoverEthIfAny();
+    }
+
+    /// @inheritdoc IL2GaugeCheckpointer
+    function checkpointSingleGauge(string memory gaugeType, address gauge) external payable override nonReentrant {
+        uint256 checkpointCost = getSingleBridgeCost(gaugeType, gauge);
+
+        _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
+            gauge,
+            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
+        );
+
+        _returnLeftoverEthIfAny();
+    }
+
+    /// @inheritdoc IL2GaugeCheckpointer
+    function getSingleBridgeCost(string memory gaugeType, address gauge) public view override returns (uint256) {
+        require(_gauges[gaugeType].contains(gauge), "Gauge was not added to the checkpointer");
+
+        if (keccak256(abi.encodePacked(gaugeType)) == _arbitrum) {
+            return ArbitrumRootGauge(gauge).getTotalBridgeCost();
+        } else {
+            return 0;
         }
     }
 
@@ -276,6 +294,15 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
      */
     function _checkpointCostlessBridgeGauge(address gauge) private {
         _authorizerAdaptorEntrypoint.performAction(gauge, abi.encodeWithSelector(IStakelessGauge.checkpoint.selector));
+    }
+
+    function _returnLeftoverEthIfAny() private {
+        // Send back any leftover ETH to the caller.
+        // Most gauge types don't need to send value, and this step can be skipped in those cases.
+        uint256 remainingBalance = address(this).balance;
+        if (remainingBalance > 0) {
+            Address.sendValue(msg.sender, remainingBalance);
+        }
     }
 
     /**

@@ -146,7 +146,7 @@ describe('L2GaugeCheckpointer', () => {
     });
 
     describe('addGauge', () => {
-      sharedBeforeEach(() => {
+      sharedBeforeEach(async () => {
         addGauges = (gaugeType, gauges) => L2GaugeCheckpointer.addGauges(gaugeType, gauges);
       });
 

@@ -103,7 +103,7 @@ interface IL2GaugeCheckpointer {
     /**
      * @notice Performs a checkpoint for all added gauges above the given relative weight threshold.
      * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
-     * @param minRelativeWeight - Threshold to filter out gauges below it.
+     * @param minRelativeWeight Threshold to filter out gauges below it.
      */
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable;
 
@@ -111,11 +111,28 @@ interface IL2GaugeCheckpointer {
      * @notice Performs a checkpoint for all added gauges of a given type above the given relative weight threshold.
      * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
      * @param gaugeType Type of the gauge.
-     * @param minRelativeWeight - Threshold to filter out gauges below it.
+     * @param minRelativeWeight Threshold to filter out gauges below it.
      */
     function checkpointGaugesOfTypeAboveRelativeWeight(string memory gaugeType, uint256 minRelativeWeight)
         external
         payable;
+
+    /**
+     * @notice Performs a checkpoint for a single added gauge of a given type.
+     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * Reverts if the gauge was not added to the checkpointer beforehand.
+     * @param gaugeType Type of the gauge.
+     * @param gauge Address of the gauge to checkpoint.
+     */
+    function checkpointSingleGauge(string memory gaugeType, address gauge) external payable;
+
+    /**
+     * @notice Returns the ETH cost to checkpoint a single given gauge.
+     * @dev Reverts if the gauge was not added to the checkpointer beforehand.
+     * @param gaugeType Type of the gauge.
+     * @param gauge Address of the gauge to check the bridge costs.
+     */
+    function getSingleBridgeCost(string memory gaugeType, address gauge) external view returns (uint256);
 
     /**
      * @notice Returns the ETH cost to checkpoint all gauges for a given minimum relative weight.
