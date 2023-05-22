@@ -10,7 +10,7 @@ This package contains the source code of Balancer V2's main contract, the [`Vaul
 It is generally not used directly, as two other packages should fulfill all development needs:
 
 - To get the Solidity interface of the Vault and related contracts, see [`v2-interfaces`](../interfaces).
-- To get the deployment address in all networks, as well as ABIs and tools to deploy to a test network, see [`v2-deployments`](../deployments).
+- To get the deployment address in all networks, as well as ABIs and tools to deploy to a test network, see [`balancer-deployments` repository](https://github.com/balancer/balancer-deployments).
 
 ## Overview
 
