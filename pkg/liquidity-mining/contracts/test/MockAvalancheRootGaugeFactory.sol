@@ -20,24 +20,26 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
-import "../BaseGaugeFactory.sol";
-import "./AvalancheRootGauge.sol";
+import "./MockAvalancheRootGauge.sol";
 
-contract AvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider, BaseGaugeFactory, SingletonAuthentication {
+contract MockAvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider {
+    address private immutable _implementation;
+
     uint256 private _minBridgeAmount;
     uint256 private _maxBridgeAmount;
 
     event AvalancheBridgeLimitsModified(uint256 minBridgeAmount, uint256 maxBridgeAmount);
 
     constructor(
-        IVault vault,
         IMainnetBalancerMinter minter,
-        IMultichainV4Router multichainRouter,
+        IMultichainV4Router router,
         uint256 minBridgeAmount,
         uint256 maxBridgeAmount
-    ) BaseGaugeFactory(address(new AvalancheRootGauge(minter, multichainRouter))) SingletonAuthentication(vault) {
+    ) {
         _minBridgeAmount = minBridgeAmount;
         _maxBridgeAmount = maxBridgeAmount;
+
+        _implementation = address(new MockAvalancheRootGauge(minter, router));
     }
 
     function getAvalancheBridgeLimits()
@@ -49,24 +51,14 @@ contract AvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider, BaseGaugeF
         return (_minBridgeAmount, _maxBridgeAmount);
     }
 
-    /**
-     * @notice Deploys a new gauge which bridges all of its BAL allowance to a single recipient on Avalanche.
-     * @dev Care must be taken to ensure that gauges deployed from this factory are suitable before they are added
-     * to the GaugeController.
-     * @param recipient The address to receive BAL minted from the gauge
-     * @param relativeWeightCap The relative weight cap for the created gauge
-     * @return The address of the deployed gauge
-     */
-    function create(address recipient, uint256 relativeWeightCap) external returns (address) {
-        address gauge = _create();
-        AvalancheRootGauge(gauge).initialize(recipient, relativeWeightCap);
-        return gauge;
+    function getImplementation() external view returns (address) {
+        return _implementation;
     }
 
     /**
      * @notice Set the bridge limits for the Avalanche side of the bridging transaction
      */
-    function setAvalancheBridgeLimits(uint256 minBridgeAmount, uint256 maxBridgeAmount) external override authenticate {
+    function setAvalancheBridgeLimits(uint256 minBridgeAmount, uint256 maxBridgeAmount) external override {
         _minBridgeAmount = minBridgeAmount;
         _maxBridgeAmount = maxBridgeAmount;
 

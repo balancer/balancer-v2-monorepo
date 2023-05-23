@@ -23,18 +23,22 @@ import "../StakelessGauge.sol";
 
 // Initiate the bridge transfer on the Router.
 interface IMultichainV4Router {
-    function anySwapOutUnderlying(address token, address to, uint amount, uint toChainID) external;
+    function anySwapOutUnderlying(
+        address token,
+        address to,
+        uint256 amount,
+        uint256 toChainID
+    ) external;
 }
 
 interface IAnyswapV6ERC20 is IERC20 {
-    function underlying() external returns(address);
+    function underlying() external returns (address);
 }
 
 /**
  * @notice Root Gauge for the Avalanche network.
  * @dev Uses the multichain bridge.
  * See general docs here: https://docs.multichain.org/getting-started/how-it-works/cross-chain-router
- * 
  */
 contract AvalancheRootGauge is StakelessGauge {
     using SafeERC20 for IERC20;
@@ -42,28 +46,25 @@ contract AvalancheRootGauge is StakelessGauge {
 
     uint256 private constant _AVALANCHE_CHAIN_ID = 43114;
 
-    IAnyswapV6ERC20 private constant _ANYSWAP_BAL_WRAPPER = IAnyswapV6ERC20(
-        0xcb9d0b8CfD8371143ba5A794c7218D4766c493e2
-    );
+    IAnyswapV6ERC20 private constant _ANYSWAP_BAL_WRAPPER = IAnyswapV6ERC20(0xcb9d0b8CfD8371143ba5A794c7218D4766c493e2);
 
+    IMainnetBalancerMinter private immutable _minter;
     IMultichainV4Router private immutable _multichainRouter;
     IAvalancheBridgeLimitsProvider private immutable _factory;
 
     // This value is kept in storage and not made immutable to allow for this contract to be proxyable
     address private _recipient;
 
-    constructor(
-        IMainnetBalancerMinter minter,
-        IMultichainV4Router multichainRouter
-    ) StakelessGauge(minter) {
-        // Sanity check that the underlying token of the minter is the same we've wrapped for Avalanche.
-        require(_ANYSWAP_BAL_WRAPPER.underlying() == address(minter.getBalancerToken()), "Invalid Wrapper Token");
-        
+    constructor(IMainnetBalancerMinter minter, IMultichainV4Router multichainRouter) StakelessGauge(minter) {
+        _minter = minter;
         _multichainRouter = multichainRouter;
         _factory = IAvalancheBridgeLimitsProvider(msg.sender);
     }
 
     function initialize(address recipient, uint256 relativeWeightCap) external {
+        // Sanity check that the underlying token of the minter is the same we've wrapped for Avalanche.
+        require(_ANYSWAP_BAL_WRAPPER.underlying() == address(_minter.getBalancerToken()), "Invalid Wrapper Token");
+
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
 
@@ -92,7 +93,7 @@ contract AvalancheRootGauge is StakelessGauge {
     }
 
     function _postMintAction(uint256 mintAmount) internal override {
-        (uint256 minBridgeAmount, uint256 maxBridgeAmount) =_factory.getAvalancheBridgeLimits();
+        (uint256 minBridgeAmount, uint256 maxBridgeAmount) = _factory.getAvalancheBridgeLimits();
 
         // This bridge extracts a fee in the token being transferred.
         // It is 0.1%, but subject to a minimum and a maximum, so it can be quite significant for small amounts

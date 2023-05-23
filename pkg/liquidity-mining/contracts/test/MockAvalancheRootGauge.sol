@@ -12,19 +12,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity ^0.7.0;
 
-interface IAvalancheBridgeLimitsProvider {
-    function getAvalancheBridgeLimits()
-        external
-        view
-        returns (
-            uint256 minBridgeAmount,
-            uint256 maxBridgeAmount
-        );
+import "../gauges/avalanche/AvalancheRootGauge.sol";
 
-    function setAvalancheBridgeLimits(
-        uint256 minBridgeAmount,
-        uint256 maxBridgeAmount
-    ) external;
+contract MockAvalancheRootGauge is AvalancheRootGauge {
+    constructor(IMainnetBalancerMinter minter, IMultichainV4Router multichainRouter)
+        AvalancheRootGauge(minter, multichainRouter)
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function bridge(uint256 mintAmount) external {
+        _postMintAction(mintAmount);
+    }
 }
