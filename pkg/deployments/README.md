@@ -2,6 +2,11 @@
 
 # Balancer V2 Deployments
 
+> ⚠️ This workspace has been moved to https://github.com/balancer/balancer-deployments, and is no longer maintained here.
+>
+> Please start using `balancer-deployments` repository as a source of truth for existing and upcoming deployments.
+> This workspace will be removed from the monorepo by 2023-06-09.
+
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-deployments.svg)](https://www.npmjs.org/package/@balancer-labs/v2-deployments)
 [![GitHub Repository](https://img.shields.io/badge/github-deployments-lightgrey?logo=github)](https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments)
 
