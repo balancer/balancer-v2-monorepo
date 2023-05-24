@@ -28,8 +28,6 @@ contract MockAvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider {
     uint256 private _minBridgeAmount;
     uint256 private _maxBridgeAmount;
 
-    event AvalancheBridgeLimitsModified(uint256 minBridgeAmount, uint256 maxBridgeAmount);
-
     constructor(
         IMainnetBalancerMinter minter,
         IMultichainV4Router router,
@@ -51,17 +49,11 @@ contract MockAvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider {
         return (_minBridgeAmount, _maxBridgeAmount);
     }
 
-    function getImplementation() external view returns (address) {
-        return _implementation;
+    function setAvalancheBridgeLimits(uint256, uint256) external pure override {
+        _revert(Errors.UNIMPLEMENTED);
     }
 
-    /**
-     * @notice Set the bridge limits for the Avalanche side of the bridging transaction
-     */
-    function setAvalancheBridgeLimits(uint256 minBridgeAmount, uint256 maxBridgeAmount) external override {
-        _minBridgeAmount = minBridgeAmount;
-        _maxBridgeAmount = maxBridgeAmount;
-
-        emit AvalancheBridgeLimitsModified(minBridgeAmount, maxBridgeAmount);
+    function getImplementation() external view returns (address) {
+        return _implementation;
     }
 }

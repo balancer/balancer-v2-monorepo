@@ -40,6 +40,7 @@ contract AvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider, BaseGaugeF
         _maxBridgeAmount = maxBridgeAmount;
     }
 
+    /// @inheritdoc IAvalancheBridgeLimitsProvider
     function getAvalancheBridgeLimits()
         external
         view
@@ -63,9 +64,7 @@ contract AvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider, BaseGaugeF
         return gauge;
     }
 
-    /**
-     * @notice Set the bridge limits for the Avalanche side of the bridging transaction
-     */
+    /// @inheritdoc IAvalancheBridgeLimitsProvider
     function setAvalancheBridgeLimits(uint256 minBridgeAmount, uint256 maxBridgeAmount) external override authenticate {
         _minBridgeAmount = minBridgeAmount;
         _maxBridgeAmount = maxBridgeAmount;

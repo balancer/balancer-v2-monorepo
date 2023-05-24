@@ -34,6 +34,8 @@ describe('AvalancheRootGauge', () => {
     BAL = await deploy('TestBalancerToken', { args: [admin.address, 'Balancer', 'BAL'] });
     const balTokenAdmin = await deploy('MockBalancerTokenAdmin', { args: [vault.address, BAL.address] });
     const balMinter = await deploy('MainnetBalancerMinter', { args: [balTokenAdmin.address, gaugeController.address] });
+
+    // Because the limits are stored in the factory, we need both factory and root gauge mocks.
     const factory = await deploy('MockAvalancheRootGaugeFactory', {
       args: [balMinter.address, ZERO_ADDRESS, MIN_BRIDGE_LIMIT, MAX_BRIDGE_LIMIT],
     });

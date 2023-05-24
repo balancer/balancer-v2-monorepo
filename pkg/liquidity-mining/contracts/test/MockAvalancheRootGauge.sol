@@ -23,6 +23,11 @@ contract MockAvalancheRootGauge is AvalancheRootGauge {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /**
+     * @dev It would be very difficult to contrive a fork test that set the mintAmount to a precise value,
+     * so the bridge limits are best tested with a mock and unit tests.
+     * @param mintAmount Amount to be bridged
+     */
     function bridge(uint256 mintAmount) external {
         _postMintAction(mintAmount);
     }

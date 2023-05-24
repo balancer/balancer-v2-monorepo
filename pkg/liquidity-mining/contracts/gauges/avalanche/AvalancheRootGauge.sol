@@ -21,7 +21,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "../StakelessGauge.sol";
 
-// Initiate the bridge transfer on the Router.
+/**
+ * @dev Initiate an outgoing bridge transaction.
+ */
 interface IMultichainV4Router {
     function anySwapOutUnderlying(
         address token,
@@ -31,6 +33,10 @@ interface IMultichainV4Router {
     ) external;
 }
 
+/**
+ * @dev Tokens to be bridged have AnySwap wrappers. This is necessary because some functions required by the bridge
+ * (e.g., `burn`) might not be exposed by the native token contracts.
+ */
 interface IAnyswapV6ERC20 is IERC20 {
     function underlying() external returns (address);
 }
@@ -99,8 +105,9 @@ contract AvalancheRootGauge is StakelessGauge {
         // It is 0.1%, but subject to a minimum and a maximum, so it can be quite significant for small amounts
         // (e.g., around 50% if you transfer the current minimum of ~1.5 BAL).
         //
-        // The bridge operation will fail (and not return the tokens) if the amount bounds are exceeded,
-        // so validate the amount first.
+        // The bridge operation will fail in a silent and deadly manner if the amount bounds are exceeded -
+        // the transaction will succeed, but the tokens will be locked forever in the AnySwap wrapper - so validate
+        // the amounts first before attempting to bridge.
         require(mintAmount >= minBridgeAmount, "Below Bridge Limit");
         require(mintAmount <= maxBridgeAmount, "Above Bridge Limit");
 
