@@ -23,11 +23,11 @@ pragma solidity >=0.7.0 <0.9.0;
  * the current limits. (They do not seem to be available anywhere on-chain.) Exceeding these limits will *not*
  * cause the source chain transaction to revert - but it *will* irretrievably lock tokens in the AnySwap token
  * wrapper contract.
- * 
+ *
  * These docs <https://medium.com/multichainorg/anyswap-fees-explained-bceddf535b83> say the limits are intended
  * to roughly correspond to a range of ~$10 to ~$5 million, but this is very approximate, and they do not seem to
  * have ever changed the limits from their starting values (there are permissioned functions to change them).
- * 
+ *
  * To avoid loss of funds, the Avalance Root Gauge checks the amount to be bridged against these limits, and reverts
  * if they are exceeded.
  */
@@ -35,20 +35,11 @@ interface IAvalancheBridgeLimitsProvider {
     /**
      * @dev Getter for the Avalanche bridge limits.
      */
-    function getAvalancheBridgeLimits()
-        external
-        view
-        returns (
-            uint256 minBridgeAmount,
-            uint256 maxBridgeAmount
-        );
+    function getAvalancheBridgeLimits() external view returns (uint256 minBridgeAmount, uint256 maxBridgeAmount);
 
     /**
      * @dev Setter for the Avalanche bridge limits. This is a permissioned function, as setting inappropriate limits
      * could either prevent distribution or cause loss of funds.
      */
-    function setAvalancheBridgeLimits(
-        uint256 minBridgeAmount,
-        uint256 maxBridgeAmount
-    ) external;
+    function setAvalancheBridgeLimits(uint256 minBridgeAmount, uint256 maxBridgeAmount) external;
 }
