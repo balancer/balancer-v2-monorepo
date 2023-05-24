@@ -80,7 +80,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     }
 
     function _afterLastStage() internal virtual override {
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
+        ICurrentActualAuthorizer authorizer = _getActualAuthorizer();
 
         authorizer.renounceRole(authorizer.DEFAULT_ADMIN_ROLE(), address(this));
     }
@@ -88,7 +88,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     // Internal functions
 
     function _setupNewGaugeAdder() private {
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
+        ICurrentActualAuthorizer authorizer = _getActualAuthorizer();
 
         {
             bytes32 addTypeRole = IAuthentication(address(newGaugeAdder)).getActionId(
@@ -137,7 +137,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     }
 
     function _deprecateOldGaugeAdder() private {
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
+        ICurrentActualAuthorizer authorizer = _getActualAuthorizer();
 
         // Revoke the powers to add gauges to the GaugeController from the old GaugeAdder.
         bytes32 addGaugeRole = getAuthorizerAdaptor().getActionId(IGaugeController.add_gauge.selector);
@@ -146,5 +146,9 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         // `liquidityMiningCommitteeMultisig` retains the permissions to call functions on `oldGaugeAdder`.
         // This is acceptable as any interactions with `oldGaugeAdder` will fail as it can no longer interact
         // with the `GaugeController`.
+    }
+
+    function _getActualAuthorizer() private view returns (ICurrentActualAuthorizer) {
+        return ICurrentAuthorizerWrapper(address(getAuthorizer())).getActualAuthorizer();
     }
 }
