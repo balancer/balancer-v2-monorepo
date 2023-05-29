@@ -144,36 +144,36 @@ describe('BaseRelayerLibrary', function () {
         });
 
         it('peeks uninitialized references as zero', async () => {
-          expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(0);
+          expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference)).to.be.eq(0);
         });
 
         it('peeks stored references', async () => {
           await relayerLibrary.setChainedReferenceValue(reference, 23);
-          expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(23);
+          expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference)).to.be.eq(23);
         });
 
         it('peeks overwritten data', async () => {
           await relayerLibrary.setChainedReferenceValue(reference, 42);
           await relayerLibrary.setChainedReferenceValue(reference, 17);
-          expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(17);
+          expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference)).to.be.eq(17);
         });
 
         it('peeks stored data in independent slots', async () => {
           await relayerLibrary.setChainedReferenceValue(reference, 5);
-          expect(await relayerLibrary.peekChainedReferenceValue(reference.add(1))).to.be.eq(0);
+          expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference.add(1))).to.be.eq(0);
         });
 
         it('peeks same slot multiple times', async () => {
           await relayerLibrary.setChainedReferenceValue(reference, 19);
-          expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
-          expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
-          expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
+          expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference)).to.be.eq(19);
+          expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference)).to.be.eq(19);
+          expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference)).to.be.eq(19);
         });
 
         it('peeks and reads same slot', async () => {
           await relayerLibrary.setChainedReferenceValue(reference, 31);
 
-          expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(31);
+          expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference)).to.be.eq(31);
           await expectChainedReferenceContents(reference, 31);
         });
       }
@@ -316,6 +316,10 @@ describe('BaseRelayerLibrary', function () {
             });
           });
         });
+
+        it('is payable', async () => {
+          await expect(relayer.connect(signer).multicall([approvalData], { value: fp(1) })).to.not.be.reverted;
+        });
       });
 
       context('when relayer is not authorised by governance', () => {
@@ -335,6 +339,11 @@ describe('BaseRelayerLibrary', function () {
           relayerLibrary.interface.encodeFunctionData('peekChainedReferenceValue', [reference]),
         ]);
         expect(result).to.be.deep.eq(['0x', ethers.utils.hexZeroPad(value.toHexString(), 32)]);
+      });
+
+      it('is payable', async () => {
+        const reference = toChainedReference(174);
+        await expect(relayerLibrary.peekChainedReferenceValue(reference, { value: fp(1) })).to.not.be.reverted;
       });
     });
   });

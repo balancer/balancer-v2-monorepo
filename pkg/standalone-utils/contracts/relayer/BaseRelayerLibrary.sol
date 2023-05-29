@@ -89,8 +89,11 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     /**
      * @notice Returns the amount referenced by chained reference `ref`.
      * @dev It does not alter the reference (even if it's marked as temporary).
+     *
+     * This function does not alter the state in any way. It is not marked as view because it has to be `payable`
+     * in order to be used in a batch transaction.
      */
-    function peekChainedReferenceValue(uint256 ref) public view override returns (uint256 value) {
+    function peekChainedReferenceValue(uint256 ref) public payable override returns (uint256 value) {
         (, value) = _peekChainedReferenceValue(ref);
     }
 
