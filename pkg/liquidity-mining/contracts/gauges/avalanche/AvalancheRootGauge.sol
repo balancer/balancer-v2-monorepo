@@ -43,8 +43,10 @@ interface IAnyswapV6ERC20 is IERC20 {
 
 /**
  * @notice Root Gauge for the Avalanche network.
- * @dev Uses the multichain bridge.
- * See general docs here: https://docs.multichain.org/getting-started/how-it-works/cross-chain-router
+ * @dev Uses the multichain bridge. This stores a reference to the factory, which implements
+ * `IAvalancheBridgeLimitsProvider`, so the deployer must be the factory (or at least implement this interface).
+ *
+ * See general bridge docs here: https://docs.multichain.org/getting-started/how-it-works/cross-chain-router
  */
 contract AvalancheRootGauge is StakelessGauge {
     using SafeERC20 for IERC20;
@@ -56,15 +58,22 @@ contract AvalancheRootGauge is StakelessGauge {
 
     IMainnetBalancerMinter private immutable _minter;
     IMultichainV4Router private immutable _multichainRouter;
-    IAvalancheBridgeLimitsProvider private immutable _factory;
+
+    // The bridge limits are set in the factory on deployment, and can be changed through a
+    // permissioned function defined there.
+    IAvalancheBridgeLimitsProvider private immutable _bridgeLimitsProvider;
 
     // This value is kept in storage and not made immutable to allow for this contract to be proxyable
     address private _recipient;
 
+    /**
+     * @dev Must be deployed by the AvalancheRootGaugeFactory, or other contract that implements
+     * `IAvalancheBridgeLimitsProvider`.
+     */
     constructor(IMainnetBalancerMinter minter, IMultichainV4Router multichainRouter) StakelessGauge(minter) {
         _minter = minter;
         _multichainRouter = multichainRouter;
-        _factory = IAvalancheBridgeLimitsProvider(msg.sender);
+        _bridgeLimitsProvider = IAvalancheBridgeLimitsProvider(msg.sender);
     }
 
     function initialize(address recipient, uint256 relativeWeightCap) external {
@@ -99,7 +108,7 @@ contract AvalancheRootGauge is StakelessGauge {
     }
 
     function _postMintAction(uint256 mintAmount) internal override {
-        (uint256 minBridgeAmount, uint256 maxBridgeAmount) = _factory.getAvalancheBridgeLimits();
+        (uint256 minBridgeAmount, uint256 maxBridgeAmount) = _bridgeLimitsProvider.getAvalancheBridgeLimits();
 
         // This bridge extracts a fee in the token being transferred.
         // It is 0.1%, but subject to a minimum and a maximum, so it can be quite significant for small amounts

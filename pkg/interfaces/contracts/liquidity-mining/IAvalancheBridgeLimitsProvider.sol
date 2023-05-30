@@ -20,7 +20,7 @@ pragma solidity >=0.7.0 <0.9.0;
  * @notice The Avalanche bridge (Multichain V4) sets both minimum and maximum limits on the number of tokens
  * that can be successfully bridged.
  * @dev See the Multichain Dapp UI <https://app.multichain.org/#/router> and select a chain and token to see
- * the current limits. (They do not seem to be available anywhere on-chain.) Exceeding these limits will *not*
+ * the current limits; they do not seem to be available anywhere on-chain. Exceeding these limits will *not*
  * cause the source chain transaction to revert - but it *will* irretrievably lock tokens in the AnySwap token
  * wrapper contract.
  *
