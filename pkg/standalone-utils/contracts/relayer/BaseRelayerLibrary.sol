@@ -53,7 +53,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         return _vault;
     }
 
-    function getEntrypoint() public view returns (IBalancerRelayer) {
+    function getEntrypoint() external view returns (IBalancerRelayer) {
         return _entrypoint;
     }
 
@@ -78,7 +78,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @notice Approves the Vault to use tokens held in the relayer
      * @dev This is needed to avoid having to send intermediate tokens back to the user
      */
-    function approveVault(IERC20 token, uint256 amount) public payable override {
+    function approveVault(IERC20 token, uint256 amount) external payable override {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
         }
@@ -93,7 +93,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * This function does not alter the state in any way. It is not marked as view because it has to be `payable`
      * in order to be used in a batch transaction.
      */
-    function peekChainedReferenceValue(uint256 ref) public payable override returns (uint256 value) {
+    function peekChainedReferenceValue(uint256 ref) external payable override returns (uint256 value) {
         (, value) = _peekChainedReferenceValue(ref);
     }
 
