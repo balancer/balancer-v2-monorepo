@@ -143,6 +143,9 @@ describe('BaseRelayerLibrary', function () {
           await expectChainedReferenceContents(reference.add(1), 0);
         });
 
+        // `peekChainedReferenceValue` is not a `view` function because it has to be flagged as `payable`, but
+        // it does not alter the contract's state.
+        // Therefore, we use `callStatic` to read the state from an off-chain call.
         it('peeks uninitialized references as zero', async () => {
           expect(await relayerLibrary.callStatic.peekChainedReferenceValue(reference)).to.be.eq(0);
         });

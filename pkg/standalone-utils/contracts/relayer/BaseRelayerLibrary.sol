@@ -36,6 +36,10 @@ import "./BalancerRelayer.sol";
  *
  * This contract should neither be allowlisted as a relayer, nor called directly by the user.
  * No guarantees can be made about fund safety when calling this contract in an improper manner.
+ *
+ * All functions that are meant to be called from the entrypoint via `multicall` must be payable so that they
+ * do not revert in a call involving ETH. This also applies to functions that do not alter the state and would be
+ * usually labeled as `view`.
  */
 contract BaseRelayerLibrary is IBaseRelayerLibrary {
     using Address for address;
@@ -92,6 +96,8 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      *
      * This function does not alter the state in any way. It is not marked as view because it has to be `payable`
      * in order to be used in a batch transaction.
+     *
+     * Use a static call to read the state off-chain.
      */
     function peekChainedReferenceValue(uint256 ref) external payable override returns (uint256 value) {
         (, value) = _peekChainedReferenceValue(ref);
