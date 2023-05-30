@@ -66,6 +66,8 @@ contract AvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider, BaseGaugeF
 
     /// @inheritdoc IAvalancheBridgeLimitsProvider
     function setAvalancheBridgeLimits(uint256 minBridgeAmount, uint256 maxBridgeAmount) external override authenticate {
+        require(_maxBridgeAmount > _minBridgeAmount, "Invalid Bridge Limits");
+
         _minBridgeAmount = minBridgeAmount;
         _maxBridgeAmount = maxBridgeAmount;
 
