@@ -30,13 +30,23 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
     using SafeERC20 for IERC20;
 
     IBalancerMinter private immutable _balancerMinter;
+    bool private immutable _isL2Relayer;
 
     /**
      * @dev The zero address may be passed as balancerMinter to safely disable features
      *      which only exist on mainnet
      */
-    constructor(IBalancerMinter balancerMinter) {
+    constructor(IBalancerMinter balancerMinter, bool isL2Relayer) {
         _balancerMinter = balancerMinter;
+        _isL2Relayer = isL2Relayer;
+    }
+
+    /**
+     * @notice Returns true if the relayer is configured to checkpoint L2 gauges.
+     * @dev This method is not expected to be called inside `multicall` so it is not marked as `payable`.
+     */
+    function isL2Relayer() external view returns (bool) {
+        return _isL2Relayer;
     }
 
     function gaugeDeposit(
@@ -95,5 +105,47 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         for (uint256 i; i < numGauges; ++i) {
             gauges[i].claim_rewards(msg.sender);
         }
+    }
+
+    /**
+     * @notice Perform a user checkpoint for the given user at the given set of gauges.
+     * @dev Both mainnet and child chain gauges are supported.
+     */
+    function gaugesCheckpoint(address user, IStakingLiquidityGauge[] calldata gauges) external payable {
+        if (_isL2Relayer) {
+            _checkpointL2Gauges(user, gauges);
+        } else {
+            _checkpointL1Gauges(user, gauges);
+        }
+    }
+
+    function _checkpointL2Gauges(address user, IStakingLiquidityGauge[] calldata gauges) internal {
+        uint256 numGauges = gauges.length;
+        // In L2s (child chain gauges), `user_checkpoint` is not permissioned, so we can just call it directly.
+        for (uint256 i = 0; i < numGauges; ++i) {
+            gauges[i].user_checkpoint(user);
+        }
+    }
+
+    function _checkpointL1Gauges(address user, IStakingLiquidityGauge[] calldata gauges) internal {
+        uint256 numGauges = gauges.length;
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](numGauges);
+
+        // In mainnet, `user_checkpoint` is permissioned for liquidity gauges, so we cannot call it directly.
+        // The checkpoint in this case is triggered by a gauge token transfer from the user to itself.
+        // This is done using the Vault's allowance which is unlimited for gauge tokens.
+        // The amount has to be greater than 0 for the checkpoint to take place, so we use 1 wei.
+        for (uint256 i = 0; i < numGauges; ++i) {
+            // We first prepare all the transfer operations for each of the gauges.
+            ops[i] = IVault.UserBalanceOp({
+                asset: IAsset(address(gauges[i])),
+                amount: 1,
+                sender: user,
+                recipient: payable(address(user)),
+                kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+            });
+        }
+        // And we execute all of them at once.
+        getVault().manageUserBalance(ops);
     }
 }
