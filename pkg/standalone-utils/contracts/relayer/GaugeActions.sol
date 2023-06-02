@@ -111,7 +111,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
      * @notice Perform a user checkpoint for the given user at the given set of gauges.
      * @dev Both mainnet and child chain gauges are supported.
      */
-    function gaugesCheckpoint(address user, IStakingLiquidityGauge[] calldata gauges) external payable {
+    function gaugeCheckpoint(address user, IStakingLiquidityGauge[] calldata gauges) external payable {
         if (_isL2Relayer) {
             _checkpointL2Gauges(user, gauges);
         } else {
@@ -135,6 +135,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         // The checkpoint in this case is triggered by a gauge token transfer from the user to itself.
         // This is done using the Vault's allowance which is unlimited for gauge tokens.
         // The amount has to be greater than 0 for the checkpoint to take place, so we use 1 wei.
+        // There is no actual value transfer since the sender and the recipient are the same.
         for (uint256 i = 0; i < numGauges; ++i) {
             // We first prepare all the transfer operations for each of the gauges.
             ops[i] = IVault.UserBalanceOp({
