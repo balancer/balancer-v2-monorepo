@@ -9,7 +9,7 @@ Supersedes `20221122-composable-stable-pool-v2`, fixing the reentrancy issue des
 
 ## Useful Files
 
-- [Ethereum addresses](./output/mainnet.json)
+- [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)

@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 
 import { BigNumber, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { describeForkTest } from '../../../src/forkTests';
@@ -15,6 +14,12 @@ import { impersonate } from '../../../src/signers';
 // This test verifies the checkpointer against the manual transactions for the given period.
 describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
+
+  enum GaugeType {
+    Polygon = 3,
+    Arbitrum,
+    Optimism,
+  }
 
   let L2GaugeCheckpointer: Contract;
   let vault: Contract, authorizer: Contract, authorizerAdaptor: Contract;

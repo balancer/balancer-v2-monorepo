@@ -11,4 +11,5 @@ Deployment of the `AaveLinearPoolFactory`, for Linear Pools with a wrapped aToke
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`AaveLinearPoolFactory` artifact](./artifact/AaveLinearPoolFactory.json)

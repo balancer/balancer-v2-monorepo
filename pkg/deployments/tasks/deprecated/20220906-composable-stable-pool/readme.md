@@ -8,8 +8,10 @@ Deployment of `ComposableStablePoolFactory`, which allows creating Stable Pools 
 
 ## Useful Files
 
-- [Ethereum addresses](./output/mainnet.json)
-- [Polygon addresses](./output/polygon.json)
-- [Arbitrum addresses](./output/arbitrum.json)
-- [Optimism addresses](./output/optimism.json)
+- [Ethereum mainnet addresses](./output/mainnet.json)
+- [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet addresses](./output/optimism.json)
+- [BSC mainnet addresses](./output/bsc.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`ComposableStablePoolFactory` artifact](./artifact/ComposableStablePoolFactory.json)

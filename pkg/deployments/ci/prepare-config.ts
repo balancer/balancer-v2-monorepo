@@ -30,11 +30,18 @@ if (process.env.CI) {
       },
       "goerli": {
         "url": "${process.env.GOERLI_RPC_ENDPOINT}"
+      },
+      "sepolia": {
+        "url": "${process.env.SEPOLIA_RPC_ENDPOINT}"
+      },
+      "zkevm": {
+        "url": "${process.env.ZKEVM_RPC_ENDPOINT}"
       }
     },
     "defaultConfig": {
       "gasPrice": "auto",
-      "gasMultiplier": 1
+      "gasMultiplier": 1,
+      "accounts": []
     }
   }`;
 

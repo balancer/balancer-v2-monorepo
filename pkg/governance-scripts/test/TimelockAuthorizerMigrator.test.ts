@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
@@ -37,6 +37,9 @@ describe('TimelockAuthorizerMigrator', () => {
   let revokersData: RoleData[];
   let executeDelaysData: DelayData[];
   let grantDelaysData: DelayData[];
+
+  const CHANGE_ROOT_DELAY = WEEK * 4;
+
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
@@ -89,6 +92,7 @@ describe('TimelockAuthorizerMigrator', () => {
       root.address,
       oldAuthorizer.address,
       adaptorEntrypoint.address,
+      CHANGE_ROOT_DELAY,
       rolesData,
       grantersData,
       revokersData,
@@ -114,6 +118,7 @@ describe('TimelockAuthorizerMigrator', () => {
           root.address,
           tempAuthorizer.address,
           adaptorEntrypoint.address,
+          CHANGE_ROOT_DELAY,
           rolesData,
           grantersData,
           revokersData,
@@ -158,7 +163,7 @@ describe('TimelockAuthorizerMigrator', () => {
   context('executeDelays', () => {
     context("when MINIMUM_CHANGE_DELAY_EXECUTION_DELAY hasn't passed", () => {
       it('reverts', async () => {
-        await expect(migrator.executeDelays()).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
+        await expect(migrator.executeDelays()).to.be.revertedWith('EXECUTION_NOT_YET_EXECUTABLE');
       });
     });
 

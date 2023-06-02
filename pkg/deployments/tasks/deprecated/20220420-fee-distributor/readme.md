@@ -2,12 +2,12 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
-This distributor has been deprecated due to issues related to multiple checkpoints. Use this [updated version](../../20220714-fee-distributor-v2) instead.
-
+> This distributor has been deprecated due to issues related to multiple checkpoints. Use this [updated version](../../20220714-fee-distributor-v2) instead.
 
 Deployment of `FeeDistributor`, responsible for distributing tokens to veBAL holders.
 
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
+- [Goerli testnet addresses](./output/goerli.json)
 - [`FeeDistributor` artifact](./artifact/FeeDistributor.json)

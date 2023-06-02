@@ -33,6 +33,7 @@ import * as parser from '@solidity-parser/parser';
 import Task from './task';
 import logger from './logger';
 import { findContractSourceName, getAllFullyQualifiedNames } from './buildinfo';
+import hardhatConfig from '../hardhat.config';
 
 const MAX_VERIFICATION_INTENTS = 3;
 
@@ -56,7 +57,12 @@ export default class Verifier {
     const response = await this.verify(task, name, address, constructorArguments, libraries);
 
     if (response.isVerificationSuccess()) {
-      const etherscanEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name, chainConfig, []);
+      const etherscanEndpoints = await getEtherscanEndpoints(
+        this.network.provider,
+        this.network.name,
+        chainConfig,
+        hardhatConfig.etherscan.customChains ?? []
+      );
 
       const contractURL = new URL(`/address/${address}#code`, etherscanEndpoints.urls.browserURL);
       return contractURL.toString();
@@ -102,7 +108,12 @@ export default class Verifier {
 
     const solcFullVersion = await getLongVersion(contractInformation.solcVersion);
 
-    const etherscanEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name, chainConfig, []);
+    const etherscanEndpoints = await getEtherscanEndpoints(
+      this.network.provider,
+      this.network.name,
+      chainConfig,
+      hardhatConfig.etherscan.customChains ?? []
+    );
 
     const verificationStatus = await this.attemptVerification(
       etherscanEndpoints,
