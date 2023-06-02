@@ -81,19 +81,8 @@ describe('GaugeActions', function () {
     });
 
     // Deploy Relayer: vault and BAL minter are required; we can skip wstETH.
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
-      args: [vault.address, ZERO_ADDRESS, balMinter.address],
-    });
-    relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
-
-    // Authorize Relayer for all actions
-    const relayerActionIds = await Promise.all(
-      ['setRelayerApproval', 'manageUserBalance'].map((action) => actionId(vault.instance, action))
-    );
-    await Promise.all(relayerActionIds.map((action) => vault.grantPermissionGlobally(action, relayer)));
-
-    // Approve relayer by BPT holder
-    await vault.setRelayerApproval(userSender, relayer, true);
+    const isL2Relayer = false;
+    ({ relayerLibrary, relayer } = await deployRelayer(isL2Relayer));
   });
 
   sharedBeforeEach('set up liquidity gauge factory', async () => {
@@ -123,6 +112,24 @@ describe('GaugeActions', function () {
       args: [rewardsOnlyGaugeImplementation.address, streamer.address],
     });
   });
+
+  async function deployRelayer(isL2Relayer: boolean): Promise<{ relayerLibrary: Contract; relayer: Contract }> {
+    const relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+      args: [vault.address, ZERO_ADDRESS, balMinter.address, isL2Relayer],
+    });
+    const relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
+
+    // Authorize Relayer for all actions
+    const relayerActionIds = await Promise.all(
+      ['setRelayerApproval', 'manageUserBalance'].map((action) => actionId(vault.instance, action))
+    );
+    await Promise.all(relayerActionIds.map((action) => vault.grantPermissionGlobally(action, relayer)));
+
+    // Approve relayer by BPT holder
+    await vault.setRelayerApproval(userSender, relayer, true);
+
+    return { relayerLibrary, relayer };
+  }
 
   describe('Liquidity gauge', () => {
     sharedBeforeEach(async () => {
