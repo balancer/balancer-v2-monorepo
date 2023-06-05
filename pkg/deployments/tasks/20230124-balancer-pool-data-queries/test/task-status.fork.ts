@@ -12,37 +12,6 @@ const BB_E_DAI_ID = '0xeb486af868aeb3b6e53066abc9623b1041b42bc000000000000000000
 const BB_E_USDT_ID = '0x3c640f0d3036ad85afa2d5a9e32be651657b874f00000000000000000000046b';
 const BB_E_USD_ID = '0x50cf90b954958480b8df7958a9e965752f62712400000000000000000000046f';
 
-enum TotalSupplyType {
-  TOTAL_SUPPLY = 0,
-  VIRTUAL_SUPPLY,
-  ACTUAL_SUPPLY,
-}
-
-enum SwapFeeType {
-  SWAP_FEE_PERCENTAGE = 0,
-  PERCENT_FEE,
-}
-
-const defaultPoolDataQueryConfig = {
-  loadTokenBalanceUpdatesAfterBlock: false,
-  loadTotalSupply: false,
-  loadSwapFees: false,
-  loadLinearWrappedTokenRates: false,
-  loadNormalizedWeights: false,
-  loadScalingFactors: false,
-  loadAmps: false,
-  loadRates: false,
-
-  blockNumber: 0,
-  totalSupplyTypes: [],
-  swapFeeTypes: [],
-  linearPoolIdxs: [],
-  weightedPoolIdxs: [],
-  scalingFactorPoolIdxs: [],
-  ampPoolIdxs: [],
-  ratePoolIdxs: [],
-};
-
 describeForkTest('BalancerPoolDataQueries', 'mainnet', 17413298, function () {
   let balancerPoolDataQueries: Contract;
 
