@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.1 (2023-06-05)
+
+### Bugfix
+
+- Reduce gas limit to 10000 inside the static call in `ensureNotInVaultContext` from `VaultReentrancyLib`.
+
 ## 4.1.0 (2023-06-05)
 
 ### Bugfix
