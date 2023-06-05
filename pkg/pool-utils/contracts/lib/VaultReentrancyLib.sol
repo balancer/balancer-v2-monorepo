@@ -45,12 +45,14 @@ library VaultReentrancyLib {
         // view.
         //
         // This staticcall always reverts, but we need to make sure it doesn't fail due to a re-entrancy attack.
-        // Staticcalls consume all gas forwarded to them on a revert. By default, almost the entire available gas
-        // is forwarded to the staticcall, causing the entire call to revert with an 'out of gas' error.
+        // Staticcalls consume all gas forwarded to them on a revert caused by storage modification.
+        // By default, almost the entire available gas is forwarded to the staticcall,
+        // causing the entire call to revert with an 'out of gas' error.
         //
-        // We set the gas limit to 100k, but the exact number doesn't matter because view calls are free, and non-view
-        // calls won't waste the entire gas limit on a revert. `manageUserBalance` is a non-reentrant function in the
-        // Vault, so calling it invokes `_enterNonReentrant` in the `ReentrancyGuard` contract, reproduced here:
+        // We set the gas limit to 10k for the staticcall to
+        // avoid wasting gas when it reverts due to storage modification.
+        // `manageUserBalance` is a non-reentrant function in the Vault, so calling it invokes `_enterNonReentrant`
+        // in the `ReentrancyGuard` contract, reproduced here:
         //
         //    function _enterNonReentrant() private {
         //        // If the Vault is actually being reentered, it will revert in the first line, at the `_require` that
@@ -73,7 +75,7 @@ library VaultReentrancyLib {
         // `manageUserBalance` even gets called), any other error would generate non-zero revertData, so checking for
         // empty data guards against this case too.
 
-        (, bytes memory revertData) = address(vault).staticcall{ gas: 100_000 }(
+        (, bytes memory revertData) = address(vault).staticcall{ gas: 10_000 }(
             abi.encodeWithSelector(vault.manageUserBalance.selector, 0)
         );
 
