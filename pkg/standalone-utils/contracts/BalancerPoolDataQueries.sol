@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/ITemporarilyPausable.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryMode.sol";
 
 enum TotalSupplyType { TOTAL_SUPPLY, VIRTUAL_SUPPLY, ACTUAL_SUPPLY }
 enum SwapFeeType { SWAP_FEE_PERCENTAGE, PERCENT_FEE }
@@ -71,6 +73,8 @@ struct PoolDataQueryConfig {
     bool loadScalingFactors;
     bool loadAmps;
     bool loadRates;
+    bool loadInRecoveryMode;
+    bool loadIsPaused;
     uint256 blockNumber;
     TotalSupplyType[] totalSupplyTypes;
     SwapFeeType[] swapFeeTypes;
@@ -79,6 +83,11 @@ struct PoolDataQueryConfig {
     uint256[] scalingFactorPoolIdxs;
     uint256[] ampPoolIdxs;
     uint256[] ratePoolIdxs;
+}
+
+struct PoolStatusQueryConfig {
+    bool loadInRecoveryMode;
+    bool loadIsPaused;
 }
 
 /**
@@ -194,8 +203,34 @@ contract BalancerPoolDataQueries {
             swapFees,
             linearWrappedTokenRates,
             amps,
-            rates
+            rates,
+            scalingFactors,
+            weights
         );
+    }
+
+    function getPoolStatus(bytes32[] memory poolIds, PoolStatusQueryConfig memory config)
+        external
+        view
+        returns (
+            bool[] memory isPaused,
+            bool[] memory inRecoveryMode
+        )
+    {
+        uint256 i;
+        address[] memory pools = new address[](poolIds.length);
+
+        for (i = 0; i < poolIds.length; i++) {
+            (pools[i], ) = vault.getPool(poolIds[i]);
+        }
+
+        if (config.loadIsPaused) {
+            isPaused = getIsPausedForPools(pools);
+        }
+
+        if (config.loadInRecoveryMode) {
+            inRecoveryMode = getInRecoveryModeForPools(pools);
+        }
     }
 
     function getPoolTokenBalancesWithUpdatesAfterBlock(bytes32[] memory poolIds, uint256 blockNumber)
@@ -232,7 +267,7 @@ contract BalancerPoolDataQueries {
         uint256[] memory amps = new uint256[](poolAddresses.length);
 
         for (uint256 i = 0; i < poolAddresses.length; i++) {
-            (amps[i], , ) = IPoolWithAmp(poolAddresses[i]).getAmplificationParameter();
+            amps[i] = _getPoolAmp(poolAddresses[i]);
         }
 
         return amps;
@@ -257,7 +292,11 @@ contract BalancerPoolDataQueries {
 
         for (uint256 i = 0; i < poolAddresses.length; i++) {
             if (swapFeeTypes[i] == SwapFeeType.PERCENT_FEE) {
-                swapFees[i] = IPoolWithPercentFee(poolAddresses[i]).percentFee();
+                try IPoolWithPercentFee(poolAddresses[i]).percentFee() returns (uint256 swapFee) {
+                    swapFees[i] = swapFee;
+                } catch {
+                    swapFees[i] = 0;
+                }
             } else {
                 // In instances where we get an unknown pool type that does not support the default getSwapFeePercentage
                 // we return a 0 swap fee.
@@ -285,7 +324,7 @@ contract BalancerPoolDataQueries {
             } else if (totalSupplyTypes[i] == TotalSupplyType.ACTUAL_SUPPLY) {
                 totalSupplies[i] = _getPoolActualSupply(poolAddresses[i]);
             } else {
-                totalSupplies[i] = IERC20(poolAddresses[i]).totalSupply();
+                totalSupplies[i] = _getPoolTotalSupply(poolAddresses[i]);
             }
         }
 
@@ -296,7 +335,7 @@ contract BalancerPoolDataQueries {
         uint256[][] memory allWeights = new uint256[][](poolAddresses.length);
 
         for (uint256 i = 0; i < poolAddresses.length; i++) {
-            allWeights[i] = IWeightedPool(poolAddresses[i]).getNormalizedWeights();
+            allWeights[i] = _getPoolNormalizedWeights(poolAddresses[i]);
         }
 
         return allWeights;
@@ -306,10 +345,30 @@ contract BalancerPoolDataQueries {
         uint256[][] memory allScalingFactors = new uint256[][](poolAddresses.length);
 
         for (uint256 i = 0; i < poolAddresses.length; i++) {
-            allScalingFactors[i] = IPoolWithScalingFactors(poolAddresses[i]).getScalingFactors();
+            allScalingFactors[i] = _getPoolScalingFactors(poolAddresses[i]);
         }
 
         return allScalingFactors;
+    }
+
+    function getInRecoveryModeForPools(address[] memory poolAddresses) public view returns (bool[] memory) {
+        bool[] memory inRecoveryModes = new bool[](poolAddresses.length);
+
+        for (uint256 i = 0; i < poolAddresses.length; i++) {
+            inRecoveryModes[i] = _getPoolInRecoveryMode(poolAddresses[i]);
+        }
+
+        return inRecoveryModes;
+    }
+
+    function getIsPausedForPools(address[] memory poolAddresses) public view returns (bool[] memory) {
+        bool[] memory isPaused = new bool[](poolAddresses.length);
+
+        for (uint256 i = 0; i < poolAddresses.length; i++) {
+            isPaused[i] = _getPoolIsPaused(poolAddresses[i]);
+        }
+
+        return isPaused;
     }
 
     /**
@@ -343,11 +402,64 @@ contract BalancerPoolDataQueries {
         }
     }
 
+    function _getPoolTotalSupply(address poolAddress) internal view returns (uint256) {
+        try IERC20(poolAddress).totalSupply() returns (uint256 totalSupply) {
+            return totalSupply;
+        } catch {
+            return 0;
+        }
+    }
+
     function _getPoolRate(address poolAddress) internal view returns (uint256) {
         try IRateProvider(poolAddress).getRate() returns (uint256 rate) {
             return rate;
         } catch {
             return 0;
+        }
+    }
+
+    function _getPoolScalingFactors(address poolAddress) internal view returns (uint256[] memory) {
+        try IPoolWithScalingFactors(poolAddress).getScalingFactors() returns (uint256[] memory scalingFactors) {
+            return scalingFactors;
+        } catch {
+            uint256[] memory empty = new uint256[](0);
+
+            return empty;
+        }
+    }
+
+    function _getPoolNormalizedWeights(address poolAddress) internal view returns (uint256[] memory) {
+        try IWeightedPool(poolAddress).getNormalizedWeights() returns (uint256[] memory normalizedWeights) {
+            return normalizedWeights;
+        } catch {
+            uint256[] memory empty = new uint256[](0);
+
+            return empty;
+        }
+    }
+
+
+    function _getPoolAmp(address poolAddress) internal view returns (uint256) {
+        try IPoolWithAmp(poolAddress).getAmplificationParameter() returns (uint256 value, bool, uint256) {
+            return value;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _getPoolInRecoveryMode(address poolAddress) internal view returns (bool) {
+        try IRecoveryMode(poolAddress).inRecoveryMode() returns (bool inRecoveryMode) {
+            return inRecoveryMode;
+        } catch {
+            return false;
+        }
+    }
+
+    function _getPoolIsPaused(address poolAddress) internal view returns (bool) {
+        try ITemporarilyPausable(poolAddress).getPausedState() returns (bool paused, uint256, uint256) {
+            return paused;
+        } catch {
+            return false;
         }
     }
 
@@ -358,7 +470,9 @@ contract BalancerPoolDataQueries {
         uint256[] memory swapFees,
         uint256[] memory linearWrappedTokenRates,
         uint256[] memory amps,
-        uint256[] memory rates
+        uint256[] memory rates,
+        uint256[][] memory scalingFactors,
+        uint256[][] memory weights
     ) internal pure returns (uint256[] memory) {
         bool[] memory errors = new bool[](poolIds.length);
         uint256 numErrors = 0;
@@ -390,6 +504,24 @@ contract BalancerPoolDataQueries {
             for (i = 0; i < config.ratePoolIdxs.length; i++) {
                 if (rates[i] == 0) {
                     errors[config.ratePoolIdxs[i]] = true;
+                }
+            }
+        }
+
+        if (config.loadScalingFactors) {
+            for (i = 0; i < config.scalingFactorPoolIdxs.length; i++) {
+                // any failed fetches to scaling factors returns an empty array
+                if (scalingFactors[i].length == 0) {
+                    errors[config.scalingFactorPoolIdxs[i]] = true;
+                }
+            }
+        }
+
+        if (config.loadNormalizedWeights) {
+            for (i = 0; i < config.weightedPoolIdxs.length; i++) {
+                // any failed fetches to normalized weights returns an empty array
+                if (weights[i].length == 0) {
+                    errors[config.weightedPoolIdxs[i]] = true;
                 }
             }
         }
