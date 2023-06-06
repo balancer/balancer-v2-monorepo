@@ -95,11 +95,29 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    function manageUserBalance(IVault.UserBalanceOp[] calldata ops, uint256 value) external payable {
+    function manageUserBalance(
+        IVault.UserBalanceOp[] memory ops,
+        uint256 value,
+        OutputReference[] calldata outputReferences
+    ) external payable {
         for (uint256 i = 0; i < ops.length; i++) {
             require(ops[i].sender == msg.sender || ops[i].sender == address(this), "Incorrect sender");
+
+            uint256 amount = ops[i].amount;
+            if (_isChainedReference(amount)) {
+                ops[i].amount = _getChainedReferenceValue(amount);
+            }
         }
+
         getVault().manageUserBalance{ value: value }(ops);
+
+        // `manageUserBalance` does not return results, but there is no calculation of amounts as with swaps.
+        // We can just use the original amounts.
+        for (uint256 i = 0; i < outputReferences.length; ++i) {
+            require(_isChainedReference(outputReferences[i].key), "invalid chained reference");
+
+            _setChainedReferenceValue(outputReferences[i].key, ops[outputReferences[i].index].amount);
+        }
     }
 
     enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE, COMPOSABLE_STABLE_V2 }

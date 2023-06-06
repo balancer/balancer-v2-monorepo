@@ -3,7 +3,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { getPoolAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { getPoolAddress, SwapKind, UserBalanceOpKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_INT256, MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -121,6 +121,34 @@ describe('VaultActions', function () {
       },
       new Array(tokens.length).fill(MAX_INT256),
       MAX_UINT256,
+      0,
+      outputReferences,
+    ]);
+  }
+
+  function encodeManageUserBalance(params: {
+    ops: Array<{
+      kind: UserBalanceOpKind;
+      asset: string;
+      amount: BigNumberish;
+      sender: Account;
+      recipient?: Account;
+    }>;
+    outputReferences?: Dictionary<BigNumberish>;
+  }): string {
+    const outputReferences = Object.entries(params.outputReferences ?? {}).map(([index, key]) => ({
+      index,
+      key,
+    }));
+
+    return relayerLibrary.interface.encodeFunctionData('manageUserBalance', [
+      params.ops.map((op) => ({
+        kind: op.kind,
+        asset: op.asset,
+        amount: op.amount,
+        sender: TypesConverter.toAddress(op.sender),
+        recipient: op.recipient ?? TypesConverter.toAddress(recipient),
+      })),
       0,
       outputReferences,
     ]);
@@ -386,7 +414,7 @@ describe('VaultActions', function () {
             ])
           ).wait();
 
-          // Note that the ouput references are for MKR (an output) and for SNX (an input)
+          // Note that the output references are for MKR (an output) and for SNX (an input)
 
           const {
             args: { amountOut: amountOutMKR },
@@ -1159,6 +1187,237 @@ describe('VaultActions', function () {
           }
         }
       });
+    });
+  });
+
+  describe('user balance ops', () => {
+    const amountDAI = fp(2);
+    const amountSNX = fp(5);
+
+    context('when caller is not authorized', () => {
+      it('reverts', async () => {
+        await expect(
+          relayer.connect(other).multicall([
+            encodeManageUserBalance({
+              ops: [
+                {
+                  kind: UserBalanceOpKind.DepositInternal,
+                  asset: tokens.DAI.address,
+                  amount: amountDAI,
+                  sender: user.address,
+                },
+              ],
+            }),
+          ])
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
+
+    context('when caller is authorized', () => {
+      let sender: Account;
+
+      context('sender = user', () => {
+        beforeEach(() => {
+          sender = user;
+        });
+
+        itTestsUserBalance();
+      });
+
+      context('sender = relayer', () => {
+        sharedBeforeEach('fund relayer with tokens and approve vault', async () => {
+          sender = relayer;
+          await tokens.DAI.transfer(relayer, amountDAI, { from: user });
+          await tokens.SNX.transfer(relayer, amountSNX, { from: user });
+          await approveVaultForRelayer(relayerLibrary, user, tokens);
+        });
+
+        itTestsUserBalance();
+      });
+
+      function itTestsUserBalance() {
+        it('sends immediate amounts', async () => {
+          // Internal balance of sender doesn't change
+          // Tokens are transferred from sender to recipient's internal balance
+
+          await expectBalanceChange(
+            () =>
+              relayer.connect(user).multicall([
+                encodeManageUserBalance({
+                  ops: [
+                    { kind: UserBalanceOpKind.DepositInternal, asset: tokens.DAI.address, amount: amountDAI, sender },
+                    { kind: UserBalanceOpKind.DepositInternal, asset: tokens.SNX.address, amount: amountSNX, sender },
+                  ],
+                }),
+              ]),
+            tokens,
+            [
+              {
+                account: TypesConverter.toAddress(sender),
+                changes: {
+                  DAI: 0,
+                  SNX: 0,
+                },
+              },
+              {
+                account: TypesConverter.toAddress(recipient),
+                changes: {
+                  DAI: amountDAI,
+                  SNX: amountSNX,
+                },
+              },
+            ],
+            vault.instance
+          );
+        });
+
+        it('stores vault deltas as chained references', async () => {
+          const receipt = await (
+            await relayer.connect(user).multicall([
+              encodeManageUserBalance({
+                ops: [
+                  { kind: UserBalanceOpKind.DepositInternal, asset: tokens.DAI.address, amount: amountDAI, sender },
+                  { kind: UserBalanceOpKind.DepositInternal, asset: tokens.SNX.address, amount: amountSNX, sender },
+                ],
+                outputReferences: {
+                  0: toChainedReference(0),
+                  1: toChainedReference(1),
+                },
+              }),
+            ])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
+            user: TypesConverter.toAddress(recipient),
+            token: tokens.DAI.address,
+            delta: amountDAI,
+          });
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
+            user: TypesConverter.toAddress(recipient),
+            token: tokens.SNX.address,
+            delta: amountSNX,
+          });
+
+          await expectChainedReferenceContents(relayer, toChainedReference(0), amountDAI);
+
+          await expectChainedReferenceContents(relayer, toChainedReference(1), amountSNX);
+        });
+
+        it('uses chained references', async () => {
+          await setChainedReferenceContents(relayer, toChainedReference(0), amountDAI);
+
+          const receipt = await (
+            await relayer.connect(user).multicall([
+              encodeManageUserBalance({
+                ops: [
+                  {
+                    kind: UserBalanceOpKind.DepositInternal,
+                    asset: tokens.DAI.address,
+                    amount: toChainedReference(0),
+                    sender,
+                  },
+                ],
+              }),
+            ])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
+            user: TypesConverter.toAddress(recipient),
+            token: tokens.DAI.address,
+            delta: amountDAI,
+          });
+        });
+
+        it('is chainable via multicall', async () => {
+          const receipt = await (
+            await expectBalanceChange(
+              () =>
+                relayer.connect(user).multicall([
+                  encodeManageUserBalance({
+                    ops: [
+                      {
+                        kind: UserBalanceOpKind.DepositInternal,
+                        asset: tokens.DAI.address,
+                        amount: amountDAI,
+                        sender,
+                        recipient: relayer.address,
+                      },
+                      {
+                        kind: UserBalanceOpKind.DepositInternal,
+                        asset: tokens.SNX.address,
+                        amount: amountSNX,
+                        sender,
+                        recipient: relayer.address,
+                      },
+                    ],
+                    outputReferences: {
+                      0: toChainedReference(0),
+                      1: toChainedReference(1),
+                    },
+                  }),
+                  encodeManageUserBalance({
+                    ops: [
+                      {
+                        kind: UserBalanceOpKind.TransferInternal,
+                        asset: tokens.DAI.address,
+                        amount: toChainedReference(0),
+                        sender: relayer.address,
+                        recipient: TypesConverter.toAddress(sender),
+                      },
+                      {
+                        kind: UserBalanceOpKind.TransferInternal,
+                        asset: tokens.SNX.address,
+                        amount: toChainedReference(1),
+                        sender: relayer.address,
+                        recipient: TypesConverter.toAddress(recipient),
+                      },
+                    ],
+                  }),
+                ]),
+              tokens,
+              [
+                {
+                  account: TypesConverter.toAddress(sender),
+                  changes: {
+                    DAI: amountDAI,
+                    SNX: 0,
+                  },
+                },
+                {
+                  account: TypesConverter.toAddress(recipient),
+                  changes: {
+                    DAI: 0,
+                    SNX: amountSNX,
+                  },
+                },
+              ],
+              vault.instance
+            )
+          ).wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
+            user: TypesConverter.toAddress(sender),
+            token: tokens.DAI.address,
+            delta: amountDAI,
+          });
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
+            user: TypesConverter.toAddress(relayer),
+            token: tokens.DAI.address,
+            delta: amountDAI,
+          });
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
+            user: TypesConverter.toAddress(relayer),
+            token: tokens.SNX.address,
+            delta: amountSNX,
+          });
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
+            user: TypesConverter.toAddress(recipient),
+            token: tokens.SNX.address,
+            delta: amountSNX,
+          });
+        });
+      }
     });
   });
 });
