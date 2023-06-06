@@ -97,11 +97,16 @@ describe('VaultActions', function () {
     outputReferences?: Dictionary<BigNumberish>;
     sender: Account;
     recipient?: Account;
+    useInternalBalance?: boolean;
   }): string {
     const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
       index: tokens.findIndexBySymbol(symbol),
       key,
     }));
+
+    if (params.useInternalBalance == undefined) {
+      params.useInternalBalance = false;
+    }
 
     return relayerLibrary.interface.encodeFunctionData('batchSwap', [
       SwapKind.GivenIn,
@@ -116,8 +121,8 @@ describe('VaultActions', function () {
       {
         sender: TypesConverter.toAddress(params.sender),
         recipient: params.recipient ?? TypesConverter.toAddress(recipient),
-        fromInternalBalance: false,
-        toInternalBalance: false,
+        fromInternalBalance: params.useInternalBalance,
+        toInternalBalance: params.useInternalBalance,
       },
       new Array(tokens.length).fill(MAX_INT256),
       MAX_UINT256,
@@ -152,6 +157,10 @@ describe('VaultActions', function () {
       0,
       outputReferences,
     ]);
+  }
+
+  async function getBPT(poolId: string): Promise<TokenList> {
+    return new TokenList([await Token.deployedAt(getPoolAddress(poolId))]);
   }
 
   describe('simple swap', () => {
@@ -783,10 +792,6 @@ describe('VaultActions', function () {
   describe('exit pool', () => {
     const amountInBPT = fp(1);
 
-    async function getBPT(poolId: string): Promise<TokenList> {
-      return new TokenList([await Token.deployedAt(getPoolAddress(poolId))]);
-    }
-
     context('when caller is not authorized', () => {
       it('reverts', async () => {
         await expect(
@@ -1416,6 +1421,94 @@ describe('VaultActions', function () {
             token: tokens.SNX.address,
             delta: amountSNX,
           });
+        });
+
+        it('allows emergency exit', async () => {
+          const BPT = (await getBPT(poolIdA)).get(0).instance;
+          BPT.connect(user).transfer(TypesConverter.toAddress(sender), await BPT.balanceOf(user.address));
+
+          const amountInBPT = fp(1);
+
+          // Exit Pool A (DAI, MKR) to internal balance
+          // Pretend MKR is bricked
+          // Trade with Pool B MKR -> SNX (from and to internal balance)
+          // Withdraw DAI and SNX back out to wallet
+          // So external token balances of DAI/MKR should be unchanged, and SNX should equal token out from swap
+          const receipt = await (
+            await relayer.connect(user).multicall([
+              encodeExitPool(vault, relayerLibrary, tokens, {
+                poolKind: PoolKind.WEIGHTED,
+                poolId: poolIdA,
+                userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
+                toInternalBalance: true,
+                outputReferences: {
+                  DAI: toChainedReference(0),
+                  MKR: toChainedReference(1),
+                },
+                sender,
+                recipient: relayer.address,
+              }),
+              encodeBatchSwap({
+                swaps: [{ poolId: poolIdB, tokenIn: tokens.MKR, tokenOut: tokens.SNX, amount: toChainedReference(1) }],
+                outputReferences: {
+                  SNX: toChainedReference(1),
+                },
+                sender: relayer.address,
+                recipient: TypesConverter.toAddress(sender),
+                useInternalBalance: true,
+              }),
+              encodeManageUserBalance({
+                ops: [
+                  {
+                    kind: UserBalanceOpKind.WithdrawInternal,
+                    asset: tokens.SNX.address,
+                    amount: toChainedReference(1),
+                    sender,
+                  },
+                ],
+              }),
+            ])
+          ).wait();
+
+          let daiAmountOut = Zero;
+
+          const daiTransfer = expectEvent.inIndirectReceipt(
+            receipt,
+            vault.instance.interface,
+            'InternalBalanceChanged',
+            {
+              user: TypesConverter.toAddress(relayer),
+              token: tokens.DAI.address,
+            }
+          );
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
+            user: TypesConverter.toAddress(relayer),
+            token: tokens.MKR.address,
+          });
+
+          daiAmountOut = daiTransfer.args.delta;
+
+          const snxTransfer = expectEvent.inIndirectReceipt(
+            receipt,
+            vault.instance.interface,
+            'InternalBalanceChanged',
+            {
+              user: TypesConverter.toAddress(sender),
+              token: tokens.SNX.address,
+            }
+          );
+          const snxAmountWithdrawn = snxTransfer.args.delta;
+
+          const {
+            args: { amountOut: amountOutSNX },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdB });
+
+          await expectChainedReferenceContents(relayer, toChainedReference(0), daiAmountOut);
+          expect(snxAmountWithdrawn).to.eq(amountOutSNX);
+
+          // SNX should be in recipient's account.
+          expect(await tokens.SNX.balanceOf(recipient)).to.eq(amountOutSNX);
         });
       }
     });
