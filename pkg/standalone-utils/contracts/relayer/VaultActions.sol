@@ -48,7 +48,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 deadline,
         uint256 value,
         uint256 outputReference
-    ) external payable {
+    ) external payable virtual {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         if (_isChainedReference(singleSwap.amount)) {
@@ -71,7 +71,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 deadline,
         uint256 value,
         OutputReference[] calldata outputReferences
-    ) external payable {
+    ) external payable virtual {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         for (uint256 i = 0; i < swaps.length; ++i) {
@@ -112,7 +112,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         IVault.JoinPoolRequest memory request,
         uint256 value,
         uint256 outputReference
-    ) external payable {
+    ) external payable virtual {
         require(sender == msg.sender || sender == address(this), "Incorrect sender");
 
         // The output of a join will be the Pool's token contract, typically known as BPT (Balancer Pool Tokens).
@@ -139,7 +139,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
      * references as necessary.
      */
     function _doJoinPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
-        private
+        internal
         returns (bytes memory)
     {
         if (kind == PoolKind.WEIGHTED) {
@@ -228,7 +228,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         address payable recipient,
         IVault.ExitPoolRequest memory request,
         OutputReference[] calldata outputReferences
-    ) external payable {
+    ) external payable virtual {
         require(sender == msg.sender || sender == address(this), "Incorrect sender");
 
         // To track the changes of internal balances, we need an array of token addresses.
@@ -282,7 +282,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
      * references as necessary.
      */
     function _doExitPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
-        private
+        internal
         returns (bytes memory)
     {
         if (kind == PoolKind.WEIGHTED) {
