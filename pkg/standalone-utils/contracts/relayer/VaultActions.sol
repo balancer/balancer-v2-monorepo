@@ -19,7 +19,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/VaultHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
