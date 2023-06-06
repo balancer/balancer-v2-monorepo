@@ -116,12 +116,12 @@ export type PoolBalanceOp = {
 // Stakeless gauges
 
 export enum GaugeType {
-  LiquidityMiningCommittee = 0,
-  veBAL,
   Ethereum,
   Polygon,
   Arbitrum,
   Optimism,
   Gnosis,
+  Avalanche,
+  PolygonZKEvm,
   ZkSync,
 }

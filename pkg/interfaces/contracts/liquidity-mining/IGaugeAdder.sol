@@ -55,6 +55,11 @@ interface IGaugeAdder is IAuthentication {
     function getGaugeTypesCount() external view returns (uint256);
 
     /**
+     * @notice Returns true if the given gauge type is valid; false otherwise.
+     */
+    function isValidGaugeType(string memory gaugeType) external view returns (bool);
+
+    /**
      * @notice Returns the factory for gauge type `gaugeType`.
      */
     function getFactoryForGaugeType(string memory gaugeType) external view returns (ILiquidityGaugeFactory);
