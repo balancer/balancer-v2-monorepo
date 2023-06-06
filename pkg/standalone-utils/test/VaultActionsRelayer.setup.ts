@@ -20,7 +20,7 @@ export enum PoolKind {
   COMPOSABLE_STABLE_V2,
 }
 
-export async function setupRelayerEnvironment(): Promise<{
+export async function setupRelayerEnvironment(useQueryLibrary = false): Promise<{
   user: SignerWithAddress;
   other: SignerWithAddress;
   vault: Vault;
@@ -33,7 +33,9 @@ export async function setupRelayerEnvironment(): Promise<{
   const vault = await Vault.create({ admin });
 
   // Deploy Relayer
-  const relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
+  const relayerLibrary = useQueryLibrary
+    ? await deploy('MockBatchRelayerQueryLibrary', { args: [vault.address] })
+    : await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
   const relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
   // Authorize Relayer for all actions
