@@ -28,6 +28,7 @@ import {
   getJoinExitAmounts,
   approveVaultForRelayer,
   PoolKind,
+  OutputReference,
 } from './VaultActionsRelayer.setup';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
@@ -139,13 +140,8 @@ describe('VaultActions', function () {
       sender: Account;
       recipient?: Account;
     }>;
-    outputReferences?: Dictionary<BigNumberish>;
+    outputReferences?: OutputReference[];
   }): string {
-    const outputReferences = Object.entries(params.outputReferences ?? {}).map(([index, key]) => ({
-      index,
-      key,
-    }));
-
     return relayerLibrary.interface.encodeFunctionData('manageUserBalance', [
       params.ops.map((op) => ({
         kind: op.kind,
@@ -155,7 +151,7 @@ describe('VaultActions', function () {
         recipient: op.recipient ?? TypesConverter.toAddress(recipient),
       })),
       0,
-      outputReferences,
+      params.outputReferences ?? [],
     ]);
   }
 
@@ -1284,10 +1280,10 @@ describe('VaultActions', function () {
                   { kind: UserBalanceOpKind.DepositInternal, asset: tokens.DAI.address, amount: amountDAI, sender },
                   { kind: UserBalanceOpKind.DepositInternal, asset: tokens.SNX.address, amount: amountSNX, sender },
                 ],
-                outputReferences: {
-                  0: toChainedReference(0),
-                  1: toChainedReference(1),
-                },
+                outputReferences: [
+                  { index: 0, key: toChainedReference(0) },
+                  { index: 1, key: toChainedReference(1) },
+                ],
               }),
             ])
           ).wait();
@@ -1356,10 +1352,10 @@ describe('VaultActions', function () {
                         recipient: relayer.address,
                       },
                     ],
-                    outputReferences: {
-                      0: toChainedReference(0),
-                      1: toChainedReference(1),
-                    },
+                    outputReferences: [
+                      { index: 0, key: toChainedReference(0) },
+                      { index: 1, key: toChainedReference(1) },
+                    ],
                   }),
                   encodeManageUserBalance({
                     ops: [
