@@ -1426,8 +1426,8 @@ describe('VaultActions', function () {
           const amountInBPT = fp(1);
 
           // Exit Pool A (DAI, MKR) to internal balance
-          // Pretend MKR is bricked
-          // Trade with Pool B MKR -> SNX (from and to internal balance)
+          // Pretend MKR is bricked (i.e., external transfers fail)
+          // Swap *internally* with Pool B MKR -> SNX
           // Withdraw DAI and SNX back out to wallet
           // So external token balances of DAI/MKR should be unchanged, and SNX should equal token out from swap
           const receipt = await (
@@ -1478,12 +1478,12 @@ describe('VaultActions', function () {
             }
           );
 
+          daiAmountOut = daiTransfer.args.delta;
+
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'InternalBalanceChanged', {
             user: TypesConverter.toAddress(relayer),
             token: tokens.MKR.address,
           });
-
-          daiAmountOut = daiTransfer.args.delta;
 
           const snxTransfer = expectEvent.inIndirectReceipt(
             receipt,
@@ -1494,6 +1494,7 @@ describe('VaultActions', function () {
               token: tokens.SNX.address,
             }
           );
+
           const snxAmountWithdrawn = snxTransfer.args.delta;
 
           const {
