@@ -73,8 +73,6 @@ struct PoolDataQueryConfig {
     bool loadScalingFactors;
     bool loadAmps;
     bool loadRates;
-    bool loadInRecoveryMode;
-    bool loadIsPaused;
     uint256 blockNumber;
     TotalSupplyType[] totalSupplyTypes;
     SwapFeeType[] swapFeeTypes;
