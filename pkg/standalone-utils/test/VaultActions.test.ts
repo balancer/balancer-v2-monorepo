@@ -1240,6 +1240,9 @@ describe('VaultActions', function () {
         it('sends immediate amounts', async () => {
           // Internal balance of sender doesn't change
           // Tokens are transferred from sender to recipient's internal balance
+          // Note that `expectBalanceChange` can check *either* the accounts' external or internal balances: not both.
+          // In this case, we are checking the *internal* balances, so we need to pass the vault contract optional
+          // parameter to make it do this.
 
           await expectBalanceChange(
             () =>
@@ -1268,11 +1271,32 @@ describe('VaultActions', function () {
                 },
               },
             ],
-            vault.instance
+            vault.instance // passing this argument tells it to compare *internal* balances
           );
         });
 
         it('stores vault deltas as chained references', async () => {
+          await (
+            await relayer.connect(user).multicall([
+              encodeManageUserBalance({
+                ops: [
+                  { kind: UserBalanceOpKind.DepositInternal, asset: tokens.DAI.address, amount: amountDAI, sender },
+                  { kind: UserBalanceOpKind.DepositInternal, asset: tokens.SNX.address, amount: amountSNX, sender },
+                ],
+                outputReferences: [
+                  { index: 0, key: toChainedReference(0) },
+                  { index: 1, key: toChainedReference(1) },
+                ],
+              }),
+            ])
+          ).wait();
+
+          await expectChainedReferenceContents(relayer, toChainedReference(0), amountDAI);
+
+          await expectChainedReferenceContents(relayer, toChainedReference(1), amountSNX);
+        });
+
+        it('emits internal balance events', async () => {
           const receipt = await (
             await relayer.connect(user).multicall([
               encodeManageUserBalance({
@@ -1299,10 +1323,6 @@ describe('VaultActions', function () {
             token: tokens.SNX.address,
             delta: amountSNX,
           });
-
-          await expectChainedReferenceContents(relayer, toChainedReference(0), amountDAI);
-
-          await expectChainedReferenceContents(relayer, toChainedReference(1), amountSNX);
         });
 
         it('uses chained references', async () => {
@@ -1331,6 +1351,9 @@ describe('VaultActions', function () {
         });
 
         it('is chainable via multicall', async () => {
+          // `expectBalanceChange` can check *either* internal or external balances, depending on the presence or
+          // absence of the vault parameter. Here we are checking *internal* balances.
+
           const receipt = await (
             await expectBalanceChange(
               () =>
@@ -1393,7 +1416,7 @@ describe('VaultActions', function () {
                   },
                 },
               ],
-              vault.instance
+              vault.instance // Pass this so that `expectBalanceChange` compares *internal* balances
             )
           ).wait();
 
@@ -1428,7 +1451,7 @@ describe('VaultActions', function () {
           // Exit Pool A (DAI, MKR) to internal balance
           // Pretend MKR is bricked (i.e., external transfers fail)
           // Swap *internally* with Pool B MKR -> SNX
-          // Withdraw DAI and SNX back out to wallet
+          // Withdraw SNX back out to wallet
           // So external token balances of DAI/MKR should be unchanged, and SNX should equal token out from swap
           const receipt = await (
             await relayer.connect(user).multicall([
@@ -1503,6 +1526,13 @@ describe('VaultActions', function () {
 
           await expectChainedReferenceContents(relayer, toChainedReference(0), daiAmountOut);
           expect(snxAmountWithdrawn).to.eq(amountOutSNX);
+
+          // Check for the actual SNX withdrawal (in addition to the Swap event from the Vault)
+          expectEvent.inIndirectReceipt(receipt, tokens.SNX.instance.interface, 'Transfer', {
+            from: vault.address,
+            to: TypesConverter.toAddress(recipient),
+            value: amountOutSNX,
+          });
 
           // SNX should be in recipient's account.
           expect(await tokens.SNX.balanceOf(recipient)).to.eq(amountOutSNX);
