@@ -36,6 +36,20 @@ import "./IBaseRelayerLibrary.sol";
 abstract contract VaultActions is IBaseRelayerLibrary {
     using Math for uint256;
 
+    /**
+     * @dev In a relayer, "chaining" - passing values between otherwise independent operations in a multicall - is
+     * achieved by passing reference structures between operations. Each reference has an index, corresponding to
+     * an offset into the input or output array (e.g., 0 means the first element of the inputs or results), and
+     * a key (computed from a hash of the index and some text), which is interpreted as a storage slot. Note that
+     * the actual data of the reference is NOT stored in the reference structure, but rather at the storage slot
+     * given by the key.
+     *
+     * The relayer uses masking on the unused MSB bits of all incoming and outgoing values to identify which are
+     * references, and which are simply values that can be used directly. Incoming references are replaced with
+     * their values before being forwarded to the underlying function. Likewise, outputs of underlying functions
+     * that need to be chained are converted to references before being passed as inputs to the next function.
+     * See `BaseRelayerLibrary`.
+     */
     struct OutputReference {
         uint256 index;
         uint256 key;
