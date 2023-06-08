@@ -61,7 +61,7 @@ export function inIndirectReceipt(
   }
 
   const exceptions: Array<string> = [];
-  const event = expectedEvents.find(function (e) {
+  const events = expectedEvents.filter(function (e) {
     for (const [k, v] of Object.entries(eventArgs)) {
       try {
         if (e.args == undefined) {
@@ -77,13 +77,33 @@ export function inIndirectReceipt(
     return true;
   });
 
-  if (event === undefined) {
-    // Each event entry may have failed to match for different reasons,
-    // throw the first one
-    throw exceptions[0];
+  if (amount !== undefined) {
+    if (events.length !== expectedEvents.length) {
+      if (exceptions.length > 0) {
+        // Each event entry may have failed to match for different reasons,
+        // throw the first one
+        throw exceptions[0];
+      } else {
+        throw Error(
+          `${expectedEvents.length} '${eventName}' events found, but only ${events.length} match the given arguments`
+        );
+      }
+    }
+    return events;
+  } else {
+    if (events.length === 0) {
+      if (exceptions.length > 0) {
+        // Each event entry may have failed to match for different reasons,
+        // throw the first one
+        throw exceptions[0];
+      } else {
+        throw Error(`No events match the given arguments`);
+      }
+    }
+    return events[0];
   }
 
-  return event;
+  return events.length == 1 ? events[1] : events;
 }
 
 export function notEmitted(receipt: ContractReceipt, eventName: string): void {
