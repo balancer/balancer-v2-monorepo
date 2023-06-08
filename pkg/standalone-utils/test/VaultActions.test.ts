@@ -549,6 +549,11 @@ describe('VaultActions', function () {
           });
 
           expect(amountOutBAT).to.equal(amountInBAT);
+          const events = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {}, vault.address, 4);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expect(events.map((e: any) => e.signature)).to.deep.equal(
+            Array(4).fill('Swap(bytes32,address,address,uint256,uint256)')
+          );
         });
       }
     });
