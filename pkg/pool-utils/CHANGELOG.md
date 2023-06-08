@@ -8,7 +8,7 @@
 
 ## 4.1.0 (2023-06-05)
 
-### Bugfix
+### New Features
 
 - `ensureNotInVaultContext` changed to `view` in `VaultReentrancyLib`.
 
