@@ -61,7 +61,7 @@ export function inIndirectReceipt(
   }
 
   const exceptions: Array<string> = [];
-  const events = expectedEvents.filter(function (e) {
+  const filteredEvents = expectedEvents.filter(function (e) {
     for (const [k, v] of Object.entries(eventArgs)) {
       try {
         if (e.args == undefined) {
@@ -77,33 +77,20 @@ export function inIndirectReceipt(
     return true;
   });
 
-  if (amount !== undefined) {
-    if (events.length !== expectedEvents.length) {
-      if (exceptions.length > 0) {
-        // Each event entry may have failed to match for different reasons,
-        // throw the first one
-        throw exceptions[0];
-      } else {
-        throw Error(
-          `${expectedEvents.length} '${eventName}' events found, but only ${events.length} match the given arguments`
-        );
-      }
+  // Each event entry may have failed to match for different reasons; in case of failure we throw the first one.
+  if (amount === undefined) {
+    // If amount is undefined, we don't care about the amount of events. If no events were found, we throw.
+    if (filteredEvents.length === 0) {
+      throw exceptions[0];
     }
-    return events;
+    return filteredEvents[0]; // In this case we just return the first appearance. This is backwards compatible.
   } else {
-    if (events.length === 0) {
-      if (exceptions.length > 0) {
-        // Each event entry may have failed to match for different reasons,
-        // throw the first one
-        throw exceptions[0];
-      } else {
-        throw Error(`No events match the given arguments`);
-      }
+    // If amount was defined, we want the filtered events length to match the events length. If it doesn't, we throw.
+    if (filteredEvents.length !== expectedEvents.length) {
+      throw exceptions[0];
     }
-    return events[0];
+    return filteredEvents; // In this case we care about all of the events, so we return them all.
   }
-
-  return events.length == 1 ? events[1] : events;
 }
 
 export function notEmitted(receipt: ContractReceipt, eventName: string): void {
