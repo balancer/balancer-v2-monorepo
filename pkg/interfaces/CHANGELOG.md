@@ -20,6 +20,7 @@
 - Moved `GaugeType` from `IGaugeAdder` to `IL2GaugeCheckpointer`, and adjusted types to accept new networks.
 - Refactored `IL2GaugeCheckpointer`.
   - Removed `isSupportedGaugeType` from interface.
+- Bumped minimum compiler version from `0.7.0` to `0.7.1` in `BalancerErrors`.
 
 ## 0.4.0 (2023-03-15)
 
