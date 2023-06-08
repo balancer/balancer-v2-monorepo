@@ -51,9 +51,9 @@ export function inReceipt(receipt: ContractReceipt, eventName: string, eventArgs
  * @param eventArgs Arguments of the event(s). This does not need to be a complete list; as long as the event contains
  *  the specified ones, the function will not throw.
  * @param address Contract address that emits the event(s). If undefined, the logs will not be filtered by address.
- * @param amount Amount of expected events that match all the specified conditions. If not specified, at least one is
+ * @param amount Number of expected events that match all the specified conditions. If not specified, at least one is
  *  expected.
- * @returns First matching event if the amount is not specified, all matching events otherwise.
+ * @returns First matching event if the amount is not specified; all matching events otherwise.
  */
 export function inIndirectReceipt(
   receipt: ContractReceipt,
@@ -92,7 +92,7 @@ export function inIndirectReceipt(
 
   // Each event entry may have failed to match for different reasons; in case of failure we throw the first one.
   if (amount === undefined) {
-    // If amount is undefined, we don't care about the amount of events. If no events were found, we throw.
+    // If amount is undefined, we don't care about the number of events. If no events were found, we throw.
     if (filteredEvents.length === 0) {
       throw exceptions[0];
     }
