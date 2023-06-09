@@ -12,6 +12,8 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import LiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/LiquidityBootstrappingPool';
+import BaseWeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/BaseWeightedPool';
 
 export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: WeightedPoolType): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -22,22 +24,31 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
 
   let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
   let vault: Vault;
-  let pool: WeightedPool, allTokens: TokenList, tokens: TokenList;
+  let pool: BaseWeightedPool, allTokens: TokenList, tokens: TokenList;
 
   const ZEROS = Array(numberOfTokens).fill(bn(0));
   const weights: BigNumberish[] = WEIGHTS.slice(0, numberOfTokens);
   const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
   async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
-    pool = await WeightedPool.create({
-      vault,
-      tokens,
-      weights,
-      swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-      poolType,
-      owner: lp, // needed for LBP tests
-      ...params,
-    });
+    if (poolType == WeightedPoolType.WEIGHTED_POOL) {
+      pool = await WeightedPool.create({
+        vault,
+        tokens,
+        weights,
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        ...params,
+      });
+    } else if (poolType == WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL) {
+      pool = await LiquidityBootstrappingPool.create({
+        vault,
+        tokens,
+        weights,
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        owner: lp.address, // needed for LBP tests (only owner can join)
+        ...params,
+      });
+    }
   }
 
   before('setup signers', async () => {

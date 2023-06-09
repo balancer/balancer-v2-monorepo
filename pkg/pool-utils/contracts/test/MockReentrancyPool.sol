@@ -71,6 +71,10 @@ contract MockReentrancyPool is BaseGeneralPool {
         emit ProtectedFunctionCalled();
     }
   
+    function protectedViewFunction() public view {
+        VaultReentrancyLib.ensureNotInVaultContext(getVault());
+    }
+
     // Vault hooks
 
     // Overriding all the hooks is technically overkill: if it works in one Vault context, it works in all.
@@ -156,6 +160,11 @@ contract MockReentrancyPool is BaseGeneralPool {
         protectedFunction();
 
         return (bptAmountIn, balances);
+    }
+
+    // Mock Vault hook to test read-only reentrancy
+    function viewHook() external view {
+        protectedViewFunction();
     }
 
     // Stubbed functions

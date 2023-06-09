@@ -29,7 +29,7 @@ $ npm install @balancer-labs/v2-pool-weighted
 
 This package can be used in multiple ways, including interacting with already deployed Pools, performing local testing, or even creating new Pool types that also use the Constant Weighted Product invariant.
 
-To get the address of deployed contracts in both mainnet and various test networks, see [`v2-deployments`](../deployments).
+To get the address of deployed contracts in both mainnet and various test networks, see [`balancer-deployments` repository](https://github.com/balancer/balancer-deployments).
 
 Sample Weighted Pool that computes weights dynamically on every swap, join and exit:
 

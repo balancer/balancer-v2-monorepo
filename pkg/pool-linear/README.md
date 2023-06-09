@@ -3,11 +3,11 @@
 # Balancer V2 Linear Pools
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-pool-linear.svg)](https://www.npmjs.org/package/@balancer-labs/v2-pool-linear)
-[![Docs](https://img.shields.io/badge/docs-%F0%9F%93%84-blue)](https://docs.balancer.fi/products/balancer-pools/boosted-pools)
+[![Docs](https://img.shields.io/badge/docs-%F0%9F%93%84-blue)](https://docs.balancer.fi/concepts/pools/boosted.html#boosted-pools)
 
 This package contains the source code of Balancer V2 Linear Pools. These are three-token pools which contain "Main" and "Wrapped" tokens, where the wrapped token is typically yield-bearing: e.g., USDC and aUSDC. The third token is the BPT itself, enabling "joins" and "exits" to be performed as part of a batch swap.
 
-Linear Pools are not designed to be accessed directly by end users. Rather, they are typically components of other pools, mainly as constituents of a `ComposableStablePool`, which enables the ["Boosted Pool"](https://docs.balancer.fi/products/balancer-pools/boosted-pools) behavior.
+Linear Pools are not designed to be accessed directly by end users. Rather, they are typically components of other pools, mainly as constituents of a `ComposableStablePool`, which enables the ["Boosted Pool"](https://docs.balancer.fi/concepts/pools/boosted.html#boosted-pools) behavior.
 
 ## Overview
 

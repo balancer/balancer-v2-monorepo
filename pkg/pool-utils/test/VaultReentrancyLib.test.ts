@@ -26,7 +26,6 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VaultReentrancyLib', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress;
-  let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
   const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
@@ -38,18 +37,15 @@ describe('VaultReentrancyLib', function () {
     [, admin, poolOwner] = await ethers.getSigners();
   });
 
-  sharedBeforeEach(async () => {
-    ({ instance: vault, authorizer } = await Vault.create({ admin }));
-    tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
-  });
-
   function deployPool(
     params: {
       tokens?: TokenList | string[];
       owner?: Account;
       from?: SignerWithAddress;
+      vault?: string;
     } = {}
   ): Promise<Contract> {
+    const { vault } = params;
     let { owner } = params;
 
     if (!owner) owner = ZERO_ADDRESS;
@@ -57,7 +53,7 @@ describe('VaultReentrancyLib', function () {
     return deploy('MockReentrancyPool', {
       from: params.from,
       args: [
-        vault.address,
+        vault,
         PoolSpecialization.GeneralPool,
         'Balancer Pool Token',
         'BPT',
@@ -71,12 +67,17 @@ describe('VaultReentrancyLib', function () {
     });
   }
 
-  describe('VaultReentrancyLib', () => {
-    let pool: Contract;
+  describe('VaultReentrancyLib - standard non-view pool hooks', () => {
+    let authorizer: Contract, vault: Contract, pool: Contract;
     let poolId: string;
 
+    sharedBeforeEach('deploy vault', async () => {
+      ({ instance: vault, authorizer } = await Vault.create({ admin }));
+      tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
+    });
+
     sharedBeforeEach('deploy pool', async () => {
-      pool = await deployPool({ tokens, owner: poolOwner });
+      pool = await deployPool({ vault: vault.address, tokens, owner: poolOwner });
     });
 
     context('in Vault context', () => {
@@ -187,6 +188,27 @@ describe('VaultReentrancyLib', function () {
 
         expectEvent.inReceipt(receipt, 'ProtectedFunctionCalled');
       });
+
+      it('can call a protected view function outside the Vault context', async () => {
+        await expect(pool.protectedViewFunction()).to.not.be.reverted;
+      });
+
+      it('do not waste gas', async () => {
+        await expect(pool.protectedFunction({ gasLimit: 40000 })).to.not.be.reverted;
+      });
+    });
+  });
+
+  describe('VaultReentrancyLib - read-only hooks', () => {
+    let vault: Contract, pool: Contract;
+
+    sharedBeforeEach('deploy mock vault', async () => {
+      ({ instance: vault } = await Vault.create({ admin, mocked: true }));
+      pool = await deployPool({ vault: vault.address, tokens, owner: poolOwner });
+    });
+
+    it('reverts when calling a protected view function', async () => {
+      await expect(vault.connect(poolOwner).functionWithHook(pool.address)).to.be.revertedWith('REENTRANCY');
     });
   });
 });

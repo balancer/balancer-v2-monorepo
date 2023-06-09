@@ -18,7 +18,7 @@ $ npm install @balancer-labs/v2-interfaces
 
 This package can be used in multiple ways, including interacting with already deployed Pools, or performing local testing. It contains all interfaces used in the system, from the foundational [Vault](contracts/vault/IVault.sol) to very specific contracts (e.g., [Optimism Gas Limit Provider](contracts/liquidity-mining/IOptimismGasLimitProvider.sol)).
 
-The following are a couple code samples to help get you started. To get the address of deployed contracts in both production and test networks, see [`v2-deployments`](../deployments).
+The following are a couple code samples to help get you started. To get the address of deployed contracts in both production and test networks, see [`balancer-deployments` repository](https://github.com/balancer/balancer-deployments).
 
 Sample contract that joins a Balancer Pool:
 

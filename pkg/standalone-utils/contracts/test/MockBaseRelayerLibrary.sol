@@ -30,7 +30,7 @@ contract MockBaseRelayerLibrary is BaseRelayerLibrary {
         return _isChainedReference(amount);
     }
 
-    function setChainedReferenceValue(uint256 ref, uint256 value) public {
+    function setChainedReferenceValue(uint256 ref, uint256 value) public payable {
         _setChainedReferenceValue(ref, value);
     }
 
