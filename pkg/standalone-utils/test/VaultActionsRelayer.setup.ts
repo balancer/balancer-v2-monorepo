@@ -25,7 +25,7 @@ export type OutputReference = {
   key: BigNumber;
 };
 
-export async function setupRelayerEnvironment(): Promise<{
+export async function setupRelayerEnvironment(useQueryLibrary = false): Promise<{
   user: SignerWithAddress;
   other: SignerWithAddress;
   vault: Vault;
