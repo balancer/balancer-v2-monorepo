@@ -36,6 +36,20 @@ import "./IBaseRelayerLibrary.sol";
 abstract contract VaultActions is IBaseRelayerLibrary {
     using Math for uint256;
 
+    /**
+     * @dev In a relayer, "chaining" - passing values between otherwise independent operations in a multicall - is
+     * achieved by passing reference structures between operations. Each reference has an index, corresponding to
+     * an offset into the input or output array (e.g., 0 means the first element of the inputs or results), and
+     * a key (computed from a hash of the index and some text), which is interpreted as a storage slot. Note that
+     * the actual data of the reference is NOT stored in the reference structure, but rather at the storage slot
+     * given by the key.
+     *
+     * The relayer uses masking on the unused MSB bits of all incoming and outgoing values to identify which are
+     * references, and which are simply values that can be used directly. Incoming references are replaced with
+     * their values before being forwarded to the underlying function. Likewise, outputs of underlying functions
+     * that need to be chained are converted to references before being passed as inputs to the next function.
+     * See `BaseRelayerLibrary`.
+     */
     struct OutputReference {
         uint256 index;
         uint256 key;
@@ -95,11 +109,29 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    function manageUserBalance(IVault.UserBalanceOp[] calldata ops, uint256 value) external payable {
+    function manageUserBalance(
+        IVault.UserBalanceOp[] memory ops,
+        uint256 value,
+        OutputReference[] calldata outputReferences
+    ) external payable {
         for (uint256 i = 0; i < ops.length; i++) {
             require(ops[i].sender == msg.sender || ops[i].sender == address(this), "Incorrect sender");
+
+            uint256 amount = ops[i].amount;
+            if (_isChainedReference(amount)) {
+                ops[i].amount = _getChainedReferenceValue(amount);
+            }
         }
+
         getVault().manageUserBalance{ value: value }(ops);
+
+        // `manageUserBalance` does not return results, but there is no calculation of amounts as with swaps.
+        // We can just use the original amounts.
+        for (uint256 i = 0; i < outputReferences.length; ++i) {
+            require(_isChainedReference(outputReferences[i].key), "invalid chained reference");
+
+            _setChainedReferenceValue(outputReferences[i].key, ops[outputReferences[i].index].amount);
+        }
     }
 
     enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE, COMPOSABLE_STABLE_V2 }
