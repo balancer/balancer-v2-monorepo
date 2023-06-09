@@ -408,7 +408,7 @@ describe('GaugeActions', function () {
 
       context('when the user has not approved the relayer', () => {
         sharedBeforeEach(async () => {
-          otherAddress = other.address;
+          user = other.address;
         });
 
         itCheckpointsGauges(fp(0));
