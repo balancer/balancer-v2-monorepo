@@ -329,7 +329,7 @@ describe('GaugeActions', function () {
     describe('gaugeCheckpoint - L2', () => {
       let gauges: Contract[];
       let relayer: Contract, childChainGaugeFactory: Contract;
-      let user: string, otherAddress: string;
+      let user: string;
 
       sharedBeforeEach('create relayer configured for L2', async () => {
         const isL2Relayer = true;
