@@ -246,6 +246,85 @@ describe('GaugeActions', function () {
         expectTransferEvent(await tx.wait(), { from: gauge.address, to: userSender.address }, rewardToken.address);
       });
     });
+
+    describe('gaugeCheckpoint', () => {
+      let gauges: Contract[];
+
+      sharedBeforeEach('create more than one gauge', async () => {
+        const tx = await liquidityGaugeFactory.create(lpToken.address, fp(1)); // No weight cap.
+        const otherGauge = await deployedAt(
+          'v2-liquidity-mining/LiquidityGaugeV5',
+          expectEvent.inReceipt(await tx.wait(), 'GaugeCreated').args.gauge
+        );
+        gauges = [gauge, otherGauge];
+      });
+
+      sharedBeforeEach('stake BPT in gauges', async () => {
+        await lpToken.connect(userSender).approve(gauge.address, MAX_UINT256);
+        await Promise.all(gauges.map((gauge) => lpToken.connect(userSender).approve(gauge.address, MAX_UINT256)));
+        const stakePerGauge = (await lpToken.balanceOf(userSender.address)).div(gauges.length);
+        await Promise.all(gauges.map((gauge) => gauge.connect(userSender)['deposit(uint256)'](stakePerGauge)));
+      });
+
+      function itCheckpointsGauges(value: BigNumber) {
+        it('checkpoints the gauges when the user has a stake', async () => {
+          const receipt = await (
+            await relayer.multicall(
+              [encodeGaugeCheckpoint({ user: userSender, gauges: gauges.map((gauge) => gauge.address) })],
+              { value }
+            )
+          ).wait();
+
+          // We expect two update liquidity events per gauge, since in the L1 the checkpoint is accomplished
+          // by transferring 1 wei from the user to itself, and both the 'withdrawal' and the 'deposit' trigger a
+          // checkpoint. Then, since it's the same user who 'withdraws' and 'deposits' in the same transfer, we get
+          // two events.
+          expectEvent.inIndirectReceipt(
+            receipt,
+            gauge.interface,
+            'UpdateLiquidityLimit',
+            {
+              user: userSender.address,
+            },
+            gauges[0].address,
+            2
+          );
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            gauge.interface,
+            'UpdateLiquidityLimit',
+            {
+              user: userSender.address,
+            },
+            gauges[1].address,
+            2
+          );
+        });
+      }
+
+      context('when no value is forwarded in the multicall', () => {
+        itCheckpointsGauges(fp(0));
+      });
+
+      context('when value is forwarded in the multicall', () => {
+        itCheckpointsGauges(fp(1));
+      });
+
+      it('reverts when the user does not have a stake', async () => {
+        await gauge.connect(userSender)['withdraw(uint256)'](await gauge.balanceOf(userSender.address));
+        await expect(
+          relayer.multicall([encodeGaugeCheckpoint({ user: userSender, gauges: [gauge.address] })])
+        ).to.be.revertedWith('LOW_LEVEL_CALL_FAILED');
+      });
+
+      it('reverts when the user has not approved the relayer', async () => {
+        await gauge.connect(userSender)['withdraw(uint256)'](await gauge.balanceOf(userSender.address));
+        await expect(
+          relayer.multicall([encodeGaugeCheckpoint({ user: other.address, gauges: [gauge.address] })])
+        ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+      });
+    });
   });
 
   describe('Rewards only gauge', () => {
@@ -776,5 +855,12 @@ describe('GaugeActions', function () {
 
   function encodeGaugeClaimRewards(params: { gauges: string[] }): string {
     return relayerLibrary.interface.encodeFunctionData('gaugeClaimRewards', [params.gauges]);
+  }
+
+  function encodeGaugeCheckpoint(params: { user: Account; gauges: string[] }): string {
+    return relayerLibrary.interface.encodeFunctionData('gaugeCheckpoint', [
+      TypesConverter.toAddress(params.user),
+      params.gauges,
+    ]);
   }
 });
