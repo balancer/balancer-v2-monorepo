@@ -63,7 +63,7 @@ describe('TimelockAuthorizer root', () => {
             const newPendingRoot: SignerWithAddress = getNewPendingRoot();
             const id = await authorizer.scheduleRootChange(newPendingRoot, [], { from: root });
 
-            await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_YET_EXECUTABLE');
+            await expect(authorizer.execute(id)).to.be.revertedWith('EXECUTION_NOT_YET_EXECUTABLE');
 
             await advanceTime(ROOT_CHANGE_DELAY);
             await authorizer.execute(id);

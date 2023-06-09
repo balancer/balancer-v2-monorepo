@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOmniVotingEscrowAdaptor.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVotingEscrowRemapper.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
@@ -33,15 +34,20 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  */
 contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication, ReentrancyGuard {
     IVotingEscrow private immutable _votingEscrow;
-    IOmniVotingEscrow private _omniVotingEscrow;
+    IOmniVotingEscrowAdaptor private _omniVotingEscrowAdaptor;
     mapping(uint16 => mapping(address => address)) private _localToRemoteAddressMap;
     mapping(uint16 => mapping(address => address)) private _remoteToLocalAddressMap;
 
     // Records a mapping from an address to another address which is authorized to manage its remote users.
     mapping(address => address) private _localRemappingManager;
 
-    constructor(IVotingEscrow votingEscrow, IVault vault) SingletonAuthentication(vault) {
+    constructor(
+        IVault vault,
+        IVotingEscrow votingEscrow,
+        IOmniVotingEscrowAdaptor omniVotingEscrowAdaptor
+    ) SingletonAuthentication(vault) {
         _votingEscrow = votingEscrow;
+        _omniVotingEscrowAdaptor = omniVotingEscrowAdaptor;
     }
 
     /// @inheritdoc IVotingEscrowRemapper
@@ -50,8 +56,8 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
     }
 
     /// @inheritdoc IVotingEscrowRemapper
-    function getOmniVotingEscrow() public view override returns (IOmniVotingEscrow) {
-        return _omniVotingEscrow;
+    function getOmniVotingEscrowAdaptor() public view override returns (IOmniVotingEscrowAdaptor) {
+        return _omniVotingEscrowAdaptor;
     }
 
     /// @inheritdoc IVotingEscrowRemapper
@@ -88,12 +94,6 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         return _localRemappingManager[localUser];
     }
 
-    /// @inheritdoc IVotingEscrowRemapper
-    function setOmniVotingEscrow(IOmniVotingEscrow omniVotingEscrow) external override authenticate nonReentrant {
-        _omniVotingEscrow = omniVotingEscrow;
-        emit OmniVotingEscrowUpdated(omniVotingEscrow);
-    }
-
     // Remapping Setters
 
     /// @inheritdoc IVotingEscrowRemapper
@@ -105,8 +105,7 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         _require(msg.sender == localUser || msg.sender == _localRemappingManager[localUser], Errors.SENDER_NOT_ALLOWED);
         require(_isAllowedContract(localUser), "Only contracts which can hold veBAL can set up a mapping");
         require(remoteUser != address(0), "Zero address cannot be used as remote user");
-        IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
-        require(address(omniVotingEscrow) != address(0), "Omni voting escrow not set");
+        IOmniVotingEscrowAdaptor omniVotingEscrowAdaptor = getOmniVotingEscrowAdaptor();
 
         // We keep a 1-to-1 local-remote mapping for each chain.
         // If A --> B (i.e. A in the local chain is remapped to B in the remote chain), to keep the state consistent
@@ -162,24 +161,18 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
 
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
-        (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(chainId, false, "");
+        (uint256 nativeFee, ) = omniVotingEscrowAdaptor.estimateSendUserBalance(chainId);
         if (oldRemoteUser != address(0)) {
             require(msg.value >= nativeFee * 2, "Insufficient ETH to bridge user balance");
             // If there was an old mapping, send balance from (local) oldRemoteUser --> (remote) oldRemoteUser
             // This should clean up the existing bridged balance from localUser --> oldRemoteUser.
-            omniVotingEscrow.sendUserBalance{ value: nativeFee }(
-                oldRemoteUser,
-                chainId,
-                payable(msg.sender),
-                address(0),
-                ""
-            );
+            omniVotingEscrowAdaptor.sendUserBalance{ value: nativeFee }(oldRemoteUser, chainId, payable(msg.sender));
         } else {
             require(msg.value >= nativeFee, "Insufficient ETH to bridge user balance");
         }
 
         // Bridge balance for new mapping localUser --> remoteUser.
-        omniVotingEscrow.sendUserBalance{ value: nativeFee }(localUser, chainId, payable(msg.sender), address(0), "");
+        omniVotingEscrowAdaptor.sendUserBalance{ value: nativeFee }(localUser, chainId, payable(msg.sender));
 
         // Send back any leftover ETH to the caller.
         uint256 remainingBalance = address(this).balance;
@@ -205,8 +198,7 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
     function clearNetworkRemapping(address localUser, uint16 chainId) external payable override nonReentrant {
         require(localUser != address(0), "localUser cannot be zero address");
         require(!_isAllowedContract(localUser) || localUser == msg.sender, "localUser is still in good standing");
-        IOmniVotingEscrow omniVotingEscrow = getOmniVotingEscrow();
-        require(address(omniVotingEscrow) != address(0), "Omni voting escrow not set");
+        IOmniVotingEscrowAdaptor omniVotingEscrowAdaptor = getOmniVotingEscrowAdaptor();
 
         address remoteUser = _localToRemoteAddressMap[chainId][localUser];
         require(remoteUser != address(0), "Remapping to clear does not exist");
@@ -220,11 +212,11 @@ contract VotingEscrowRemapper is IVotingEscrowRemapper, SingletonAuthentication,
         // Note: it is important to perform the bridge calls _after_ the mappings are settled, since the
         // omni voting escrow will rely on the correct mappings to bridge the balances.
         // Clean up the balance for the old mapping, and bridge the new (default) one.
-        (uint256 nativeFee, ) = omniVotingEscrow.estimateSendUserBalance(chainId, false, "");
+        (uint256 nativeFee, ) = omniVotingEscrowAdaptor.estimateSendUserBalance(chainId);
         require(msg.value >= nativeFee * 2, "Insufficient ETH to bridge user balance");
 
-        omniVotingEscrow.sendUserBalance{ value: nativeFee }(localUser, chainId, payable(msg.sender), address(0), "");
-        omniVotingEscrow.sendUserBalance{ value: nativeFee }(remoteUser, chainId, payable(msg.sender), address(0), "");
+        omniVotingEscrowAdaptor.sendUserBalance{ value: nativeFee }(localUser, chainId, payable(msg.sender));
+        omniVotingEscrowAdaptor.sendUserBalance{ value: nativeFee }(remoteUser, chainId, payable(msg.sender));
 
         // Send back any leftover ETH to the caller.
         uint256 remainingBalance = address(this).balance;

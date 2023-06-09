@@ -22,10 +22,20 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 // solhint-disable not-rely-on-time
 
 /**
- * @dev The currently deployed Authorizer has a different interface relative to the Authorizer in the monorepo
- * for granting/revoking roles(referred to as permissions in the new Authorizer) and so we require a one-off interface
+ * @dev The currently deployed authorizer is a thin wrapper that is compatible with the `AuthorizerAdaptorEntrypoint`.
+ * It cannot grant, revoke or renounce roles directly, but it can provide the address of the base authorizer that can
+ * do so.
  */
-interface ICurrentAuthorizer is IAuthorizer {
+interface ICurrentAuthorizerWrapper is IAuthorizer {
+    function getActualAuthorizer() external view returns (ICurrentActualAuthorizer);
+}
+
+/**
+ * @dev The underlying actual authorizer that holds the permissions and can manage them has a different interface
+ * relative to the Authorizer in the monorepo for granting/revoking roles (referred to as permissions in the new
+ * Authorizer) and so we require a one-off interface.
+ */
+interface ICurrentActualAuthorizer is IAuthorizer {
     // solhint-disable-next-line func-name-mixedcase
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
 

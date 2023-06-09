@@ -30,7 +30,7 @@ class TokensDeployer {
 
     let instance;
     if (symbol !== 'WETH') {
-      instance = await deploy('v2-standalone-utils/TestToken', {
+      instance = await deploy('v2-solidity-utils/TestToken', {
         from: sender,
         args: [name, symbol, decimals],
       });

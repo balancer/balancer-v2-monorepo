@@ -55,7 +55,7 @@ export default {
   },
 
   async _deployBasicAuthorizer(admin: SignerWithAddress): Promise<Contract> {
-    return deploy('v2-vault/MockBasicAuthorizer', { args: [], from: admin });
+    return deploy('v2-solidity-utils/MockBasicAuthorizer', { args: [], from: admin });
   },
 
   async _deployAuthorizer(
