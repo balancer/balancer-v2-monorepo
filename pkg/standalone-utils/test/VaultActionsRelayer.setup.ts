@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -20,7 +20,12 @@ export enum PoolKind {
   COMPOSABLE_STABLE_V2,
 }
 
-export async function setupRelayerEnvironment(useQueryLibrary = false): Promise<{
+export type OutputReference = {
+  index: number;
+  key: BigNumber;
+};
+
+export async function setupRelayerEnvironment(): Promise<{
   user: SignerWithAddress;
   other: SignerWithAddress;
   vault: Vault;

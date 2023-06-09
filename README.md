@@ -6,7 +6,8 @@
 [![CI Status](https://github.com/balancer-labs/balancer-v2-monorepo/workflows/CI/badge.svg)](https://github.com/balancer-labs/balancer-v2-monorepo/actions)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-This repository contains the Balancer Protocol V2 core smart contracts, including the `Vault` and standard Pools, along with their tests, configuration, and deployment information.
+This repository contains the Balancer Protocol V2 core smart contracts, including the `Vault` and standard Pools, along with their tests.
+Deployment configuration and information can be found at the [`balancer-deployments` repository](https://github.com/balancer/balancer-deployments).
 
 For a high-level introduction to Balancer V2, see [Introducing Balancer V2: Generalized AMMs](https://medium.com/balancer-protocol/balancer-v2-generalizing-amms-16343c4563ff).
 
@@ -18,7 +19,6 @@ Active development occurs in this repository, which means some contracts in it m
 
 ### Packages
 
-- [`v2-deployments`](./pkg/deployments): addresses and ABIs of all Balancer V2 deployed contracts, for mainnet and various test networks.
 - [`v2-interfaces`](./pkg/interfaces): Solidity interfaces for all contracts.
 - [`v2-vault`](./pkg/vault): the [`Vault`](./pkg/vault/contracts/Vault.sol) contract and all core interfaces, including [`IVault`](./pkg/interfaces/contracts/vault/IVault.sol) and the Pool interfaces: [`IBasePool`](./pkg/interfaces/contracts/vault/IBasePool.sol), [`IGeneralPool`](./pkg/interfaces/contracts/vault/IGeneralPool.sol) and [`IMinimalSwapInfoPool`](./pkg/interfaces/contracts/vault/IMinimalSwapInfoPool.sol).
 - [`v2-pool-weighted`](./pkg/pool-weighted): the [`WeightedPool`](./pkg/pool-weighted/contracts/WeightedPool.sol), and [`LiquidityBootstrappingPool`](./pkg/pool-weighted/contracts/lbp/LiquidityBootstrappingPool.sol) contracts, along with their associated factories.
@@ -65,7 +65,7 @@ $ yarn workspace @balancer-labs/balancer-js build # build balancer-js first
 $ yarn build # compile all contracts
 ```
 
-Most tests are standalone and simply require installation of dependencies and compilation. Some packages however have extra requirements. Notably, the [`v2-deployments`](./pkg/deployments) package must have access to mainnet archive nodes in order to perform fork tests. For more details, head to [its readme file](./pkg/deployments/README.md).
+Most tests are standalone and simply require installation of dependencies and compilation.
 
 In order to run all tests (including those with extra dependencies), run:
 
