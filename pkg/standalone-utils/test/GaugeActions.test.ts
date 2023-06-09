@@ -27,7 +27,7 @@ describe('GaugeActions', function () {
   let relayer: Contract, relayerLibrary: Contract;
   let admin: SignerWithAddress, userSender: SignerWithAddress, other: SignerWithAddress;
 
-  let gaugeController: Contract, balMinter: Contract;
+  let gaugeController: Contract, balMinter: Contract, veBalDelegationProxy: Contract;
   let adaptorEntrypoint: Contract;
   let BAL: Contract, veBAL: Contract, rewardToken: Contract, lpToken: Contract;
 
@@ -89,7 +89,7 @@ describe('GaugeActions', function () {
     const adaptor = vault.authorizerAdaptor;
     const veBalDelegation = await deploy('v2-liquidity-mining/MockVeDelegation');
 
-    const veBalDelegationProxy = await deploy('v2-liquidity-mining/VotingEscrowDelegationProxy', {
+    veBalDelegationProxy = await deploy('v2-liquidity-mining/VotingEscrowDelegationProxy', {
       args: [vault.address, veBAL.address, veBalDelegation.address],
     });
 
@@ -247,7 +247,7 @@ describe('GaugeActions', function () {
       });
     });
 
-    describe('gaugeCheckpoint', () => {
+    describe('gaugeCheckpoint - L1', () => {
       let gauges: Contract[];
 
       sharedBeforeEach('create more than one gauge', async () => {
@@ -323,6 +323,95 @@ describe('GaugeActions', function () {
         await expect(
           relayer.multicall([encodeGaugeCheckpoint({ user: other.address, gauges: [gauge.address] })])
         ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+      });
+    });
+
+    describe('gaugeCheckpoint - L2', () => {
+      let gauges: Contract[];
+      let relayer: Contract, childChainGaugeFactory: Contract;
+      let user: string, otherAddress: string;
+
+      sharedBeforeEach('create relayer configured for L2', async () => {
+        const isL2Relayer = true;
+        ({ relayer } = await deployRelayer(isL2Relayer));
+        user = userSender.address;
+      });
+
+      sharedBeforeEach('create child chain gauges', async () => {
+        const version = 'test';
+        const childChainGaugeImplementation = await deploy('v2-liquidity-mining/ChildChainGauge', {
+          args: [veBalDelegationProxy.address, balMinter.address, vault.authorizerAdaptor.address, version],
+        });
+
+        childChainGaugeFactory = await deploy('v2-liquidity-mining/ChildChainGaugeFactory', {
+          args: [childChainGaugeImplementation.address, version, version],
+        });
+      });
+
+      sharedBeforeEach('create more than one gauge', async () => {
+        let tx = await childChainGaugeFactory.create(lpToken.address);
+        const gauge0 = await deployedAt(
+          'v2-liquidity-mining/ChildChainGauge',
+          expectEvent.inReceipt(await tx.wait(), 'GaugeCreated').args.gauge
+        );
+
+        tx = await childChainGaugeFactory.create(lpToken.address);
+        const gauge1 = await deployedAt(
+          'v2-liquidity-mining/ChildChainGauge',
+          expectEvent.inReceipt(await tx.wait(), 'GaugeCreated').args.gauge
+        );
+        gauges = [gauge0, gauge1];
+      });
+
+      function itCheckpointsGauges(value: BigNumber) {
+        // `user_checkpoint` is permissionless for child chain gauges, so the relayer calls it directly.
+        // We expect only one liquidity limit update per gauge, and we don't need the user to have a stake in it.
+        // Also, since we are not managing user balances using the relayer we don't need user approval for it.
+        it('checkpoints the gauges when the user has a stake', async () => {
+          const receipt = await (
+            await relayer.multicall([encodeGaugeCheckpoint({ user, gauges: gauges.map((gauge) => gauge.address) })], {
+              value,
+            })
+          ).wait();
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            gauge.interface,
+            'UpdateLiquidityLimit',
+            {
+              user,
+            },
+            gauges[0].address,
+            1
+          );
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            gauge.interface,
+            'UpdateLiquidityLimit',
+            {
+              user,
+            },
+            gauges[1].address,
+            1
+          );
+        });
+      }
+
+      context('when no value is forwarded in the multicall', () => {
+        itCheckpointsGauges(fp(0));
+      });
+
+      context('when value is forwarded in the multicall', () => {
+        itCheckpointsGauges(fp(1));
+      });
+
+      context('when the user has not approved the relayer', () => {
+        sharedBeforeEach(async () => {
+          otherAddress = other.address;
+        });
+
+        itCheckpointsGauges(fp(0));
       });
     });
   });
