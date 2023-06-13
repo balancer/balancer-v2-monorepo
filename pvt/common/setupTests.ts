@@ -78,7 +78,7 @@ chai.use(function (chai, utils) {
   Assertion.addMethod('almostEqual', function (expectedValue: NAry<BigNumberish>, error?: BigNumberish) {
     if (Array.isArray(expectedValue)) {
       const actuals: BigNumberish[] = this._obj;
-      actuals.forEach(async (actual, i) => expectEqualWithError(actual, expectedValue[i], error));
+      actuals.forEach((actual, i) => expectEqualWithError(actual, expectedValue[i], error));
     } else {
       expectEqualWithError(this._obj, expectedValue, error);
     }
@@ -87,7 +87,7 @@ chai.use(function (chai, utils) {
   Assertion.addMethod('almostEqualFp', function (expectedValue: NAry<BigNumberish>, error?: BigNumberish) {
     if (Array.isArray(expectedValue)) {
       const actuals: BigNumberish[] = this._obj;
-      actuals.forEach(async (actual, i) => expectEqualWithError(actual, fp(expectedValue[i]), error));
+      actuals.forEach((actual, i) => expectEqualWithError(actual, fp(expectedValue[i]), error));
     } else {
       expectEqualWithError(this._obj, fp(expectedValue), error);
     }
@@ -109,13 +109,14 @@ chai.use(function (chai, utils) {
           'Transaction reverted.',
           'Transaction NOT reverted.'
         );
-      } catch (revert) {
+      } catch (revert: unknown) {
         try {
           // Run catch function
-          const catchResult = await assertion.catch(revert);
+          const catchResult = await assertion.catch(revert as Error);
           // If the catch function didn't throw, then return it because it did match what we were expecting
           return catchResult;
-        } catch (error) {
+        } catch (caughtError: unknown) {
+          const error = caughtError as Error;
           // If the catch didn't throw because another reason was expected, re-throw the error
           if (!error.message.includes('but other exception was thrown')) throw error;
 

@@ -157,4 +157,9 @@ contract MockNewBasePool is NewBasePool {
         emit RecoveryModeExit(totalSupply, balances, bptAmountIn);
         return (bptAmountIn, balances);
     }
+
+    // Access the vault from RecoveryMode
+    function vault() external view returns (IVault) {
+        return _getVault();
+    }
 }

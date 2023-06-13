@@ -5,6 +5,7 @@ import { random } from 'lodash';
 import { BigNumberish, bn, fp, FP_100_PCT, FP_ONE, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { DAY } from '@balancer-labs/v2-helpers/src/time';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ExternalAUMFees', function () {
   let lib: Contract;

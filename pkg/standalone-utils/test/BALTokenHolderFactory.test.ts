@@ -7,6 +7,7 @@ import { Contract } from 'ethers';
 import { expect } from 'chai';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BALTokenHolderFactory', function () {
   let tokens: TokenList;

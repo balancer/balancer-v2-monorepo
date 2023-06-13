@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-interfaces",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "V2 Interfaces",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/interfaces#readme",
@@ -21,7 +21,7 @@
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
-    "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
+    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.1",

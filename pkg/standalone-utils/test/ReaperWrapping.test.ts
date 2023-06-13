@@ -14,6 +14,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ReaperWrapping', function () {
   let dai: Token, rfDAI: Contract;
@@ -32,7 +33,7 @@ describe('ReaperWrapping', function () {
 
   sharedBeforeEach('Deploy tokens and reaper vaults', async () => {
     dai = await Token.create({ name: 'DAI', symbol: 'DAI', decimals: 18 });
-    rfDAI = await deploy('v2-pool-linear/MockReaperVault', {
+    rfDAI = await deploy('MockReaperVault', {
       args: ['yvDAI', 'yvDAI', 18, dai.address, yvDaiRate],
     });
   });
@@ -47,7 +48,9 @@ describe('ReaperWrapping', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS],
+    });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
@@ -56,9 +59,13 @@ describe('ReaperWrapping', function () {
         actionId(vault.instance, action)
       )
     );
+
     const authorizer = vault.authorizer;
-    const wheres = relayerActionIds.map(() => ANY_ADDRESS);
-    await authorizer.connect(admin).grantPermissions(relayerActionIds, relayer.address, wheres);
+    await Promise.all(
+      relayerActionIds.map((action) => {
+        authorizer.connect(admin).grantPermission(action, relayer.address, ANY_ADDRESS);
+      })
+    );
 
     // Approve relayer by sender
     await vault.instance.connect(user).setRelayerApproval(user.address, relayer.address, true);

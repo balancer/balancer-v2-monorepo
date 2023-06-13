@@ -8,6 +8,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('EOASignaturesValidator', () => {
   let validator: Contract;

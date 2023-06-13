@@ -8,7 +8,9 @@ This package contains the source code for Balancer V2 Weighted Pools, that is, P
 
 The pool currently in existence is [`WeightedPool`](./contracts/WeightedPool.sol) (basic twenty token version).
 
-The [`smart`](./contracts/smart) directory contains a number of 'smart' variants, which automatically update some of their attributes to support more complex use cases. Examples are [`LiquidityBootstrappingPool`](./contracts/smart/LiquidityBootstrappingPool.sol) for auction-like mechanisms, and [`ManagedPool`](./contracts/smart/ManagedPool.sol) for managed portfolios.
+There are subdirectories for common variants, which automatically updates some of their attributes to support more complex use cases. Examples are [`LiquidityBootstrappingPool`](./contracts/lbp/LiquidityBootstrappingPool.sol) for auction-like mechanisms, and [`ManagedPool`](./contracts/managed/ManagedPool.sol) for managed portfolios.
+
+The `lib` directory contains internal and external common libraries, such as [`CircuitBreakerLib`](./contracts/lib/CircuitBreakerLib.sol).
 
 | :warning: | Managed Pools are still undergoing development and may contain bugs and/or change significantly. |
 | --------- | :-------------------------------------------------------------------------------------------------- |
@@ -27,7 +29,7 @@ $ npm install @balancer-labs/v2-pool-weighted
 
 This package can be used in multiple ways, including interacting with already deployed Pools, performing local testing, or even creating new Pool types that also use the Constant Weighted Product invariant.
 
-To get the address of deployed contracts in both mainnet and various test networks, see [`v2-deployments`](../deployments).
+To get the address of deployed contracts in both mainnet and various test networks, see [`balancer-deployments` repository](https://github.com/balancer/balancer-deployments).
 
 Sample Weighted Pool that computes weights dynamically on every swap, join and exit:
 

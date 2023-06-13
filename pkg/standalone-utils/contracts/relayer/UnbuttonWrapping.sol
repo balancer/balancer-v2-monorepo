@@ -15,11 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IUnbuttonToken.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IUnbuttonToken.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -34,9 +30,6 @@ import "./IBaseRelayerLibrary.sol";
  *      Learn more: https://github.com/buttonwood-protocol/button-wrappers/blob/main/contracts/UnbuttonToken.sol
  */
 abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
-    using Address for address payable;
-    using SafeERC20 for IERC20;
-
     /// @param wrapperToken The address of the wrapper.
     /// @param sender The address of sender.
     /// @param sender The address of recepient.
@@ -49,25 +42,13 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
         uint256 uAmount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(uAmount)) {
-            uAmount = _getChainedReferenceValue(uAmount);
-        }
-
         IERC20 underlyingToken = IERC20(wrapperToken.underlying());
 
-        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, underlyingToken, uAmount);
-        }
+        uAmount = _resolveAmountPullTokenAndApproveSpender(underlyingToken, address(wrapperToken), uAmount, sender);
 
-        underlyingToken.safeApprove(address(wrapperToken), uAmount);
         uint256 mintAmount = wrapperToken.depositFor(recipient, uAmount);
 
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, mintAmount);
-        }
+        _setChainedReference(outputReference, mintAmount);
     }
 
     /// @param wrapperToken The address of the wrapper.
@@ -82,21 +63,10 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
         uint256 amount,
         uint256 outputReference
     ) external payable {
-        if (_isChainedReference(amount)) {
-            amount = _getChainedReferenceValue(amount);
-        }
-
-        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first them pull them here.
-        if (sender != address(this)) {
-            require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, wrapperToken, amount);
-        }
+        amount = _resolveAmountAndPullToken(wrapperToken, amount, sender);
 
         uint256 withdrawnUAmount = wrapperToken.burnTo(recipient, amount);
 
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, withdrawnUAmount);
-        }
+        _setChainedReference(outputReference, withdrawnUAmount);
     }
 }

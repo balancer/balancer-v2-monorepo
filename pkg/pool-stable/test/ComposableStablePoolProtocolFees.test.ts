@@ -60,14 +60,17 @@ describe('ComposableStablePoolProtocolFees', () => {
   sharedBeforeEach('grant permissions to admin', async () => {
     await vault.authorizer
       .connect(admin)
-      .grantPermissions([actionId(feesProvider, 'setFeeTypePercentage')], admin.address, [feesProvider.address]);
+      .grantPermission(actionId(feesProvider, 'setFeeTypePercentage'), admin.address, feesProvider.address);
 
     await vault.authorizer
       .connect(admin)
-      .grantPermissions(
-        [actionId(feesCollector, 'setSwapFeePercentage'), actionId(feesCollector, 'setFlashLoanFeePercentage')],
+      .grantPermission(actionId(feesCollector, 'setSwapFeePercentage'), feesProvider.address, feesCollector.address);
+    await vault.authorizer
+      .connect(admin)
+      .grantPermission(
+        actionId(feesCollector, 'setFlashLoanFeePercentage'),
         feesProvider.address,
-        [feesCollector.address, feesCollector.address]
+        feesCollector.address
       );
   });
 

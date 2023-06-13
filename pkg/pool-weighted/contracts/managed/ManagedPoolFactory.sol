@@ -16,13 +16,14 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryModeHelper.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
 import "./ManagedPool.sol";
-import "../ExternalWeightedMath.sol";
 
 /**
  * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
@@ -38,11 +39,14 @@ import "../ExternalWeightedMath.sol";
  */
 contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory {
     IExternalWeightedMath private immutable _weightedMath;
+    IRecoveryModeHelper private immutable _recoveryModeHelper;
     string private _poolVersion;
 
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
+        IExternalWeightedMath externalWeightedMath,
+        IRecoveryModeHelper recoveryModeHelper,
         string memory factoryVersion,
         string memory poolVersion,
         uint256 initialPauseWindowDuration,
@@ -57,7 +61,8 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
         )
         Version(factoryVersion)
     {
-        _weightedMath = new ExternalWeightedMath();
+        _weightedMath = externalWeightedMath;
+        _recoveryModeHelper = recoveryModeHelper;
         _poolVersion = poolVersion;
     }
 
@@ -69,13 +74,18 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
         return _weightedMath;
     }
 
+    function getRecoveryModeHelper() external view returns (IRecoveryModeHelper) {
+        return _recoveryModeHelper;
+    }
+
     /**
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
     function create(
         ManagedPool.ManagedPoolParams memory params,
         ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams,
-        address owner
+        address owner,
+        bytes32 salt
     ) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -83,11 +93,12 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
             vault: getVault(),
             protocolFeeProvider: getProtocolFeePercentagesProvider(),
             weightedMath: _weightedMath,
+            recoveryModeHelper: _recoveryModeHelper,
             pauseWindowDuration: pauseWindowDuration,
             bufferPeriodDuration: bufferPeriodDuration,
             version: getPoolVersion()
         });
 
-        return _create(abi.encode(params, configParams, settingsParams, owner));
+        return _create(abi.encode(params, configParams, settingsParams, owner), salt);
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/balancer-js",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "JavaScript utilities for interacting with the Balancer Protocol V2",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/balancer-js#readme",
@@ -23,13 +23,12 @@
     "build": "rollup --config rollup.config.ts --configPlugin typescript",
     "dev": "rollup --config rollup.config.ts --configPlugin typescript -w",
     "test": "mocha --extension test.ts -r ts-node/register --recursive",
-    "lint": "eslint ./src --ext .ts --max-warnings 0"
+    "lint": "NODE_NO_WARNINGS=1 eslint ./src --ext .ts --max-warnings 0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^23.0.2",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-typescript": "^9.0.2",
-    "@typechain/ethers-v5": "^7.0.1",
     "@types/chai": "^4.3.3",
     "@types/mocha": "^10.0.0",
     "@types/node": "^14.14.31",
@@ -44,11 +43,9 @@
     "rollup-plugin-dts": "^5.0.0",
     "tiny-invariant": "^1.3.1",
     "ts-node": "^10.9.1",
-    "typechain": "^5.1.1",
     "typescript": "^4.0.2"
   },
   "dependencies": {
-    "@balancer-labs/typechain": "workspace:*",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/abstract-signer": "^5.7.0",
     "@ethersproject/address": "^5.7.0",

@@ -8,6 +8,7 @@ import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTr
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ERC20', () => {
   let token: Contract;

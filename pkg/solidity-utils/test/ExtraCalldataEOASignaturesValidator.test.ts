@@ -9,6 +9,7 @@ import { MAX_GAS_LIMIT } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { RelayerAuthorization, RelayerAction } from '@balancer-labs/balancer-js';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ExtraCalldataEOASignaturesValidator', () => {
   let validator: Contract;

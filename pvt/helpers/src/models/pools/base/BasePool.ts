@@ -11,8 +11,13 @@ import TokenList from '../../tokens/TokenList';
 import { actionId } from '../../misc/actions';
 import Token from '../../tokens/Token';
 import Vault from '../../vault/Vault';
-
 import { RecoveryModeExitParams, ExitResult, JoinExitBasePool, FailureMode } from './types';
+import { DAY } from '../../../time';
+
+export const NAME = 'Balancer Pool Token';
+export const SYMBOL = 'BPT';
+export const PAUSE_WINDOW_DURATION = DAY * 90;
+export const BUFFER_PERIOD_DURATION = DAY * 30;
 
 export default class BasePool {
   instance: Contract;
@@ -20,7 +25,7 @@ export default class BasePool {
   tokens: TokenList;
   swapFeePercentage: BigNumberish;
   vault: Vault;
-  owner?: SignerWithAddress;
+  owner?: Account;
 
   constructor(
     instance: Contract,
@@ -28,7 +33,7 @@ export default class BasePool {
     vault: Vault,
     tokens: TokenList,
     swapFeePercentage: BigNumberish,
-    owner?: SignerWithAddress
+    owner?: Account
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -202,13 +207,15 @@ export default class BasePool {
   private async grantPausePermissions(): Promise<void> {
     const pauseAction = await actionId(this.instance, 'pause');
     const unpauseAction = await actionId(this.instance, 'unpause');
-    await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
+    await this.vault.grantPermissionGloballyIfNeeded(pauseAction);
+    await this.vault.grantPermissionGloballyIfNeeded(unpauseAction);
   }
 
   private async grantRecoveryPermissions(grantee: SignerWithAddress): Promise<void> {
     const enableRecoveryAction = await actionId(this.instance, 'enableRecoveryMode');
     const disableRecoveryAction = await actionId(this.instance, 'disableRecoveryMode');
-    await this.vault.grantPermissionsGlobally([enableRecoveryAction, disableRecoveryAction], grantee);
+    await this.vault.grantPermissionGloballyIfNeeded(enableRecoveryAction, grantee);
+    await this.vault.grantPermissionGloballyIfNeeded(disableRecoveryAction, grantee);
   }
 
   private async getSigner(from?: SignerWithAddress): Promise<SignerWithAddress> {
