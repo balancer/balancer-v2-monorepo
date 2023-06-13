@@ -44,6 +44,7 @@ const defaultPoolDataQueryConfig = {
   loadTotalSupply: false,
   loadSwapFees: false,
   loadLinearWrappedTokenRates: false,
+  loadLinearTargets: false,
   loadNormalizedWeights: false,
   loadScalingFactors: false,
   loadAmps: false,
@@ -317,6 +318,20 @@ describeForkTest('BalancerPoolDataQueries', 'mainnet', 16474000, function () {
 
       expect(response.linearWrappedTokenRates[0]).to.equal(fp('1.102128584906008204'));
       expect(response.linearWrappedTokenRates[1]).to.equal(fp('1.081498386280161947'));
+    });
+
+    it('loads linear targets at specified idxs', async () => {
+      const response = await balancerPoolDataQueries.getPoolData([BBAUSDT_POOL_ID, BAL_ETH_POOL_ID, BBAUSDC_POOL_ID], {
+        ...defaultPoolDataQueryConfig,
+        loadLinearTargets: true,
+        linearPoolIdxs: [0, 2],
+      });
+
+      expect(response.linearTargets[0][0]).to.equal('6000000000000000000000000');
+      expect(response.linearTargets[0][1]).to.equal('20000000000000000000000000');
+
+      expect(response.linearTargets[1][0]).to.equal('6000000000000000000000000');
+      expect(response.linearTargets[1][1]).to.equal('20000000000000000000000000');
     });
 
     it('loads weights at specified idxs', async () => {

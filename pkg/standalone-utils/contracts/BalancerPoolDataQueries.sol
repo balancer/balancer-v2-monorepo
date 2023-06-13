@@ -27,6 +27,8 @@ enum SwapFeeType { SWAP_FEE_PERCENTAGE, PERCENT_FEE }
 // The base ILinearPool does not include getWrappedTokenRate, so we redefine it here.
 interface ILinearPool {
     function getWrappedTokenRate() external view returns (uint256);
+
+    function getTargets() external view returns (uint256 lowerTarget, uint256 upperTarget);
 }
 
 interface IWeightedPool {
@@ -69,6 +71,7 @@ struct PoolDataQueryConfig {
     bool loadTotalSupply;
     bool loadSwapFees;
     bool loadLinearWrappedTokenRates;
+    bool loadLinearTargets;
     bool loadNormalizedWeights;
     bool loadScalingFactors;
     bool loadAmps;
@@ -118,6 +121,7 @@ contract BalancerPoolDataQueries {
             uint256[] memory totalSupplies,
             uint256[] memory swapFees,
             uint256[] memory linearWrappedTokenRates,
+            uint256[][] memory linearTargets,
             uint256[][] memory weights,
             uint256[][] memory scalingFactors,
             uint256[] memory amps,
@@ -194,6 +198,16 @@ contract BalancerPoolDataQueries {
             rates = getRateForPools(ratePools);
         }
 
+        if (config.loadLinearTargets) {
+            address[] memory linearTargetPools = new address[](config.linearPoolIdxs.length);
+
+            for (i = 0; i < config.linearPoolIdxs.length; i++) {
+                linearTargetPools[i] = pools[config.linearPoolIdxs[i]];
+            }
+
+            linearTargets = getLinearTargetsForPools(linearTargetPools);
+        }
+
         ignoreIdxs = _getErrorIdxsFromResults(
             poolIds,
             config,
@@ -210,10 +224,7 @@ contract BalancerPoolDataQueries {
     function getPoolStatus(bytes32[] memory poolIds, PoolStatusQueryConfig memory config)
         external
         view
-        returns (
-            bool[] memory isPaused,
-            bool[] memory inRecoveryMode
-        )
+        returns (bool[] memory isPaused, bool[] memory inRecoveryMode)
     {
         uint256 i;
         address[] memory pools = new address[](poolIds.length);
@@ -349,6 +360,16 @@ contract BalancerPoolDataQueries {
         return allScalingFactors;
     }
 
+    function getLinearTargetsForPools(address[] memory poolAddresses) public view returns (uint256[][] memory) {
+        uint256[][] memory linearTargets = new uint256[][](poolAddresses.length);
+
+        for (uint256 i = 0; i < poolAddresses.length; i++) {
+            linearTargets[i] = _getPoolLinearTargets(poolAddresses[i]);
+        }
+
+        return linearTargets;
+    }
+
     function getInRecoveryModeForPools(address[] memory poolAddresses) public view returns (bool[] memory) {
         bool[] memory inRecoveryModes = new bool[](poolAddresses.length);
 
@@ -382,6 +403,14 @@ contract BalancerPoolDataQueries {
         } catch {
             return 0;
         }
+    }
+
+    function _getPoolLinearTargets(address poolAddress) internal view returns (uint256[] memory) {
+        uint256[] memory targets = new uint256[](2);
+
+        (targets[0], targets[1]) = ILinearPool(poolAddress).getTargets();
+
+        return targets;
     }
 
     function _getPoolVirtualSupply(address poolAddress) internal view returns (uint256) {
@@ -435,7 +464,6 @@ contract BalancerPoolDataQueries {
             return empty;
         }
     }
-
 
     function _getPoolAmp(address poolAddress) internal view returns (uint256) {
         try IPoolWithAmp(poolAddress).getAmplificationParameter() returns (uint256 value, bool, uint256) {
