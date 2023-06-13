@@ -30,23 +30,23 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
     using SafeERC20 for IERC20;
 
     IBalancerMinter private immutable _balancerMinter;
-    bool private immutable _isL2Relayer;
+    bool private immutable _canCallUserCheckpoint;
 
     /**
      * @dev The zero address may be passed as balancerMinter to safely disable features
      *      which only exist on mainnet
      */
-    constructor(IBalancerMinter balancerMinter, bool isL2Relayer) {
+    constructor(IBalancerMinter balancerMinter, bool canCallUserCheckpoint) {
         _balancerMinter = balancerMinter;
-        _isL2Relayer = isL2Relayer;
+        _canCallUserCheckpoint = canCallUserCheckpoint;
     }
 
     /**
-     * @notice Returns true if the relayer is configured to checkpoint L2 gauges.
+     * @notice Returns true if the relayer is configured to checkpoint gauges directly via `user_checkpoint`.
      * @dev This method is not expected to be called inside `multicall` so it is not marked as `payable`.
      */
-    function isL2Relayer() external view returns (bool) {
-        return _isL2Relayer;
+    function canCallUserCheckpoint() external view returns (bool) {
+        return _canCallUserCheckpoint;
     }
 
     function gaugeDeposit(
@@ -112,14 +112,14 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
      * @dev Both mainnet and child chain gauges are supported.
      */
     function gaugeCheckpoint(address user, IStakingLiquidityGauge[] calldata gauges) external payable {
-        if (_isL2Relayer) {
-            _checkpointL2Gauges(user, gauges);
+        if (_canCallUserCheckpoint) {
+            _checkpointGaugesViaUserCheckpoint(user, gauges);
         } else {
-            _checkpointL1Gauges(user, gauges);
+            _checkpointGaugesViaUserBalance(user, gauges);
         }
     }
 
-    function _checkpointL2Gauges(address user, IStakingLiquidityGauge[] calldata gauges) internal {
+    function _checkpointGaugesViaUserCheckpoint(address user, IStakingLiquidityGauge[] calldata gauges) internal {
         uint256 numGauges = gauges.length;
         // In L2s (child chain gauges), `user_checkpoint` is not permissioned, so we can just call it directly.
         for (uint256 i = 0; i < numGauges; ++i) {
@@ -127,7 +127,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         }
     }
 
-    function _checkpointL1Gauges(address user, IStakingLiquidityGauge[] calldata gauges) internal {
+    function _checkpointGaugesViaUserBalance(address user, IStakingLiquidityGauge[] calldata gauges) internal {
         uint256 numGauges = gauges.length;
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](numGauges);
 

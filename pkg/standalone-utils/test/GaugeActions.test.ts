@@ -266,6 +266,10 @@ describe('GaugeActions', function () {
         await Promise.all(gauges.map((gauge) => gauge.connect(userSender)['deposit(uint256)'](stakePerGauge)));
       });
 
+      it('can call user checkpoint: false', async () => {
+        expect(await relayerLibrary.canCallUserCheckpoint()).to.be.false;
+      });
+
       function itCheckpointsGauges(value: BigNumber) {
         it('checkpoints the gauges when the user has a stake', async () => {
           const receipt = await (
@@ -328,12 +332,12 @@ describe('GaugeActions', function () {
 
     describe('gaugeCheckpoint - L2', () => {
       let gauges: Contract[];
-      let relayer: Contract, childChainGaugeFactory: Contract;
+      let relayer: Contract, relayerLibrary: Contract, childChainGaugeFactory: Contract;
       let user: string;
 
       sharedBeforeEach('create relayer configured for L2', async () => {
         const isL2Relayer = true;
-        ({ relayer } = await deployRelayer(isL2Relayer));
+        ({ relayerLibrary, relayer } = await deployRelayer(isL2Relayer));
         user = userSender.address;
       });
 
@@ -361,6 +365,10 @@ describe('GaugeActions', function () {
           expectEvent.inReceipt(await tx.wait(), 'GaugeCreated').args.gauge
         );
         gauges = [gauge0, gauge1];
+      });
+
+      it('can call user checkpoint: true', async () => {
+        expect(await relayerLibrary.canCallUserCheckpoint()).to.be.true;
       });
 
       function itCheckpointsGauges(value: BigNumber) {
