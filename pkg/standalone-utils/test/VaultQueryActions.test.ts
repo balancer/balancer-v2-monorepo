@@ -113,7 +113,7 @@ describe('VaultQueryActions', function () {
           );
 
           await (
-            await relayer.connect(user).multicall([
+            await relayer.connect(user).queryMulticall([
               encodeSwap(relayerLibrary, {
                 poolId: poolIdA,
                 tokenIn: tokens.DAI,
