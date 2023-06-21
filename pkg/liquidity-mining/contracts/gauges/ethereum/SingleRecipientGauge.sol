@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IFeeDistributor.sol";
-import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Version.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../StakelessGauge.sol";

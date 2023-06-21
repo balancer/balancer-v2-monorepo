@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IPoolVersion.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";

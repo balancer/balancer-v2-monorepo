@@ -14,7 +14,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../pool-utils/IVersion.sol";
+import "../solidity-utils/helpers/IVersion.sol";
 import "./ILiquidityGaugeFactory.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case

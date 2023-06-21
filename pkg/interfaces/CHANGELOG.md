@@ -21,6 +21,7 @@
 - Refactored `IL2GaugeCheckpointer`.
   - Removed `isSupportedGaugeType` from interface.
 - Bumped minimum compiler version from `0.7.0` to `0.7.1` in `BalancerErrors`.
+- `IVersion` moved from `pool-utils` to `solidity-utils`.
 
 ## 0.4.0 (2023-03-15)
 
