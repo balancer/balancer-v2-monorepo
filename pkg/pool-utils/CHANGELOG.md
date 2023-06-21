@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- Removed `Version` contract.
+
 ## 4.1.1 (2023-06-05)
 
 ### Bugfix
