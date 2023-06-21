@@ -22,6 +22,11 @@ describe('BaseRelayerLibrary', function () {
   let otherRelayer: SignerWithAddress;
 
   let admin: SignerWithAddress, signer: SignerWithAddress;
+  const version = JSON.stringify({
+    name: 'BatchRelayer',
+    version: '1',
+    deployment: 'test-deployment',
+  });
 
   before('get signers', async () => {
     [, admin, signer, otherRelayer] = await ethers.getSigners();
@@ -33,7 +38,7 @@ describe('BaseRelayerLibrary', function () {
     vault = vaultHelper.instance;
 
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBaseRelayerLibrary', { args: [vault.address] });
+    relayerLibrary = await deploy('MockBaseRelayerLibrary', { args: [vault.address, version] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
     token = await deploy('TestWETH'); // Any ERC-20 will do.
   });
@@ -45,6 +50,10 @@ describe('BaseRelayerLibrary', function () {
 
     it('returns the vault address', async () => {
       expect(await relayer.getVault()).to.equal(vault.address);
+    });
+
+    it('returns the relayer version', async () => {
+      expect(await relayer.version()).to.equal(version);
     });
   });
 

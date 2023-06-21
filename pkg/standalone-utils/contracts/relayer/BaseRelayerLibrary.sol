@@ -48,9 +48,9 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
 
-    constructor(IVault vault) IBaseRelayerLibrary(vault.WETH()) {
+    constructor(IVault vault, string memory version) IBaseRelayerLibrary(vault.WETH()) {
         _vault = vault;
-        _entrypoint = new BalancerRelayer(vault, address(this));
+        _entrypoint = new BalancerRelayer(vault, address(this), version);
     }
 
     function getVault() public view override returns (IVault) {

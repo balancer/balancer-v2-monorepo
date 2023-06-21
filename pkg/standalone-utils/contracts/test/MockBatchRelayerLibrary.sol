@@ -27,7 +27,7 @@ contract MockBatchRelayerLibrary is BatchRelayerLibrary {
         IERC20 wstETH,
         IBalancerMinter minter,
         bool isL2Relayer
-    ) BatchRelayerLibrary(vault, wstETH, minter, isL2Relayer) {}
+    ) BatchRelayerLibrary(vault, wstETH, minter, isL2Relayer, "") {}
 
     function setChainedReferenceValue(uint256 ref, uint256 value) public {
         _setChainedReferenceValue(ref, value);
