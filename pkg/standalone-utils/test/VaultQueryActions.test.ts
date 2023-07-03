@@ -3,14 +3,20 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { SwapKind } from '@balancer-labs/balancer-js';
-import { randomAddress } from '@balancer-labs/v2-helpers/src/constants';
-import { Contract } from 'ethers';
+import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { MAX_UINT112, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
+import { Contract, BigNumber } from 'ethers';
 import { expect } from 'chai';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
-import { setupRelayerEnvironment, encodeSwap, encodeBatchSwap } from './VaultActionsRelayer.setup';
+import {
+  setupRelayerEnvironment,
+  encodeSwap,
+  encodeBatchSwap,
+  encodeJoinPool,
+  PoolKind,
+} from './VaultActionsRelayer.setup';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
@@ -206,6 +212,81 @@ describe('VaultQueryActions', function () {
           ).wait();
 
           await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountOut);
+        });
+      }
+    });
+  });
+
+  describe('join', () => {
+    let expectedBptOut: BigNumber, amountsIn: BigNumber[], data: string;
+    const maxAmountsIn: BigNumber[] = [MAX_UINT112, MAX_UINT112];
+
+    sharedBeforeEach('estimate expected bpt out', async () => {
+      amountsIn = [fp(1), fp(0)];
+      data = WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsIn, 0);
+    });
+
+    context('when caller is not authorized', () => {
+      it('reverts', async () => {
+        expect(
+          relayer.connect(other).vaultActionsQueryMulticall([
+            encodeJoinPool(vault, relayerLibrary, {
+              poolId: poolIdA,
+              userData: data,
+              sender: user.address,
+              recipient,
+              poolKind: PoolKind.WEIGHTED,
+            }),
+          ])
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
+
+    context('when caller is authorized', () => {
+      let sender: Account;
+
+      context('sender = user', () => {
+        beforeEach(() => {
+          sender = user;
+        });
+
+        itTestsJoin();
+      });
+
+      context('sender = relayer', () => {
+        beforeEach(() => {
+          sender = relayer;
+        });
+
+        itTestsJoin();
+      });
+
+      function itTestsJoin() {
+        it('stores join as chained reference', async () => {
+          const result = await queries.queryJoin(poolIdA, TypesConverter.toAddress(sender), recipient, {
+            assets: tokensA.addresses,
+            maxAmountsIn,
+            fromInternalBalance: false,
+            userData: data,
+          });
+
+          expect(result.amountsIn).to.deep.equal(amountsIn);
+          expectedBptOut = result.bptOut;
+
+          await (
+            await relayer.connect(user).vaultActionsQueryMulticall([
+              encodeJoinPool(vault, relayerLibrary, {
+                poolId: poolIdA,
+                userData: data,
+                outputReference: toChainedReference(0),
+                sender,
+                recipient,
+                poolKind: PoolKind.WEIGHTED,
+              }),
+            ])
+          ).wait();
+
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedBptOut);
         });
       }
     });
