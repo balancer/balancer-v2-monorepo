@@ -15,17 +15,21 @@ import {
   encodeSwap,
   encodeBatchSwap,
   encodeJoinPool,
+  encodeExitPool,
   PoolKind,
 } from './VaultActionsRelayer.setup';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 describe('VaultQueryActions', function () {
+  const INITIAL_BALANCE = fp(1000);
+
   let queries: Contract;
   let vault: Vault;
   let tokens: TokenList;
   let relayer: Contract, relayerLibrary: Contract;
   let user: SignerWithAddress, other: SignerWithAddress;
+  let poolA: WeightedPool;
 
   let poolIdA: string;
   let tokensA: TokenList;
@@ -49,11 +53,11 @@ describe('VaultQueryActions', function () {
 
     // Pool A: DAI-MKR
     tokensA = new TokenList([tokens.DAI, tokens.MKR]).sort();
-    const poolA = await WeightedPool.create({
+    poolA = await WeightedPool.create({
       tokens: tokensA,
       vault,
     });
-    await poolA.init({ initialBalances: fp(1000), from: user });
+    await poolA.init({ initialBalances: INITIAL_BALANCE, from: user });
 
     poolIdA = await poolA.getPoolId();
   });
@@ -262,7 +266,7 @@ describe('VaultQueryActions', function () {
       });
 
       function itTestsJoin() {
-        it('stores join as chained reference', async () => {
+        it('stores join result as chained reference', async () => {
           const result = await queries.queryJoin(poolIdA, TypesConverter.toAddress(sender), recipient, {
             assets: tokensA.addresses,
             maxAmountsIn,
@@ -287,6 +291,90 @@ describe('VaultQueryActions', function () {
           ).wait();
 
           await expectChainedReferenceContents(relayer, toChainedReference(0), expectedBptOut);
+        });
+      }
+    });
+  });
+
+  describe('exit', () => {
+    let bptIn: BigNumber, calculatedAmountsOut: BigNumber[], data: string;
+    const minAmountsOut: BigNumber[] = [];
+
+    sharedBeforeEach('estimate expected amounts out', async () => {
+      bptIn = (await poolA.totalSupply()).div(2);
+      calculatedAmountsOut = tokensA.map(() => INITIAL_BALANCE.div(2));
+      data = WeightedPoolEncoder.exitExactBPTInForTokensOut(bptIn);
+    });
+
+    context('when caller is not authorized', () => {
+      it('reverts', async () => {
+        expect(
+          relayer.connect(other).vaultActionsQueryMulticall([
+            encodeExitPool(vault, relayerLibrary, tokensA, {
+              poolId: poolIdA,
+              userData: data,
+              toInternalBalance: false,
+              sender: user.address,
+              recipient,
+              poolKind: PoolKind.WEIGHTED,
+            }),
+          ])
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
+
+    context('when caller is authorized', () => {
+      let sender: Account;
+
+      context('sender = user', () => {
+        beforeEach(() => {
+          sender = user;
+        });
+
+        itTestsExit();
+      });
+
+      context('sender = relayer', () => {
+        beforeEach(() => {
+          sender = relayer;
+        });
+
+        itTestsExit();
+      });
+
+      function itTestsExit() {
+        it('stores exit result as chained reference', async () => {
+          const result = await queries.queryExit(poolIdA, TypesConverter.toAddress(sender), recipient, {
+            assets: tokensA.addresses,
+            minAmountsOut,
+            toInternalBalance: false,
+            userData: data,
+          });
+
+          expect(result.bptIn).to.equal(bptIn);
+          const expectedAmountsOut = result.amountsOut;
+          // sanity check
+          expect(expectedAmountsOut).to.deep.equal(calculatedAmountsOut);
+
+          await (
+            await relayer.connect(user).vaultActionsQueryMulticall([
+              encodeExitPool(vault, relayerLibrary, tokensA, {
+                poolId: poolIdA,
+                userData: data,
+                outputReferences: {
+                  DAI: toChainedReference(0),
+                  MKR: toChainedReference(1),
+                },
+                sender,
+                recipient,
+                toInternalBalance: false,
+                poolKind: PoolKind.WEIGHTED,
+              }),
+            ])
+          ).wait();
+
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountsOut[0]);
+          await expectChainedReferenceContents(relayer, toChainedReference(1), expectedAmountsOut[1]);
         });
       }
     });
