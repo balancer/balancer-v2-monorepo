@@ -159,8 +159,8 @@ export function encodeSwap(
 }
 
 export function encodeBatchSwap(params: {
-  relayerLibrary: Contract,
-  tokens: TokenList,
+  relayerLibrary: Contract;
+  tokens: TokenList;
   swaps: Array<{
     poolId: string;
     tokenIn: Token;

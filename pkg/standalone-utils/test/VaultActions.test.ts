@@ -3,15 +3,14 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { getPoolAddress, SwapKind, UserBalanceOpKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { MAX_INT256, MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { getPoolAddress, UserBalanceOpKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { Contract } from 'ethers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import { Dictionary } from 'lodash';
 import { Zero } from '@ethersproject/constants';
 import {
   expectChainedReferenceContents,
@@ -289,7 +288,9 @@ describe('VaultActions', function () {
     context('when caller is not authorized', () => {
       it('reverts', async () => {
         await expect(
-          relayer.connect(other).multicall([encodeBatchSwap({ relayerLibrary, tokens, swaps: [], sender: user.address, recipient })])
+          relayer
+            .connect(other)
+            .multicall([encodeBatchSwap({ relayerLibrary, tokens, swaps: [], sender: user.address, recipient })])
         ).to.be.revertedWith('Incorrect sender');
       });
     });

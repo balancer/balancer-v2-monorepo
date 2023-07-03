@@ -10,7 +10,12 @@ import { expect } from 'chai';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
-import { setupRelayerEnvironment, encodeSwap, approveVaultForRelayer } from './VaultActionsRelayer.setup';
+import {
+  setupRelayerEnvironment,
+  encodeSwap,
+  encodeBatchSwap,
+  approveVaultForRelayer,
+} from './VaultActionsRelayer.setup';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
@@ -122,6 +127,89 @@ describe('VaultQueryActions', function () {
                 outputReference: toChainedReference(0),
                 sender,
                 recipient,
+              }),
+            ])
+          ).wait();
+
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountOut);
+        });
+      }
+    });
+  });
+
+  describe('batch swap', () => {
+    const amountIn = fp(5);
+
+    context('when caller is not authorized', () => {
+      it('reverts', async () => {
+        expect(
+          relayer.connect(other).vaultActionsQueryMulticall([
+            encodeBatchSwap({
+              relayerLibrary,
+              tokens,
+              swaps: [
+                { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountIn },
+                { poolId: poolIdA, tokenIn: tokens.MKR, tokenOut: tokens.DAI, amount: 0 },
+              ],
+              sender: other,
+              recipient,
+            }),
+          ])
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
+
+    context('when caller is authorized', () => {
+      let sender: Account;
+
+      context('sender = user', () => {
+        beforeEach(() => {
+          sender = user;
+        });
+
+        itTestsBatchSwap();
+      });
+
+      context('sender = relayer', () => {
+        sharedBeforeEach('fund relayer with tokens and approve vault', async () => {
+          sender = relayer;
+          await tokens.DAI.transfer(relayer, amountIn, { from: user });
+          await approveVaultForRelayer(relayerLibrary, user, tokens);
+        });
+
+        itTestsBatchSwap();
+      });
+
+      function itTestsBatchSwap() {
+        it('stores batch swap output as chained reference', async () => {
+          const amount = fp(1);
+          const indexIn = tokens.indexOf(tokens.DAI);
+          const indexOut = tokens.indexOf(tokens.MKR);
+
+          const result = await queries.queryBatchSwap(
+            SwapKind.GivenIn,
+            [{ poolId: poolIdA, assetInIndex: indexIn, assetOutIndex: indexOut, amount, userData: '0x' }],
+            tokens.addresses,
+            {
+              sender: TypesConverter.toAddress(sender),
+              recipient,
+              fromInternalBalance: false,
+              toInternalBalance: false,
+            }
+          );
+
+          expect(result[indexIn]).to.deep.equal(amount);
+          const expectedAmountOut = result[indexOut].mul(-1);
+
+          await (
+            await relayer.connect(user).vaultActionsQueryMulticall([
+              encodeBatchSwap({
+                relayerLibrary,
+                tokens,
+                swaps: [{ poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount }],
+                sender,
+                recipient,
+                outputReferences: { MKR: toChainedReference(0) },
               }),
             ])
           ).wait();
