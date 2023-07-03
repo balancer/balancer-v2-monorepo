@@ -24,7 +24,7 @@ import "../relayer/BaseRelayerLibrary.sol";
 contract MockBaseRelayerLibrary is BaseRelayerLibrary {
     event ChainedReferenceValueRead(uint256 value);
 
-    constructor(IVault vault) BaseRelayerLibrary(vault) {}
+    constructor(IVault vault, string memory version) BaseRelayerLibrary(vault, version) {}
 
     function isChainedReference(uint256 amount) public pure returns (bool) {
         return _isChainedReference(amount);

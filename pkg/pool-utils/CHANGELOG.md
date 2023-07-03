@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- Removed `Version` contract. It is now part of `v2-solidity-utils` since it will be used more generally.
+
 ## 4.1.1 (2023-06-05)
 
 ### Bugfix

@@ -49,12 +49,12 @@ contract BaseRelayerLibrary is BaseRelayerLibraryCommon {
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
 
-    constructor(IVault vault) BaseRelayerLibraryCommon(vault) {
+    constructor(IVault vault, string memory version) BaseRelayerLibraryCommon(vault) {
         _vault = vault;
 
         IBaseRelayerLibrary queryLibrary = new BatchRelayerQueryLibrary(vault);
 
-        _entrypoint = new BalancerRelayer(vault, address(this), address(queryLibrary));
+        _entrypoint = new BalancerRelayer(vault, address(this), address(queryLibrary), version);
     }
 
     function getEntrypoint() external view returns (IBalancerRelayer) {

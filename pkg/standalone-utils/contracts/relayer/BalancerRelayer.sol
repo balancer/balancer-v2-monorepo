@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerRelayer.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Version.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
@@ -42,7 +43,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
  * Vault will reject calls from outside the context of the entrypoint: e.g., if a user mistakenly called directly
  * into the library contract.
  */
-contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
+contract BalancerRelayer is IBalancerRelayer, Version, ReentrancyGuard {
     using Address for address payable;
     using Address for address;
 
@@ -57,8 +58,9 @@ contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
     constructor(
         IVault vault,
         address libraryAddress,
-        address queryLibrary
-    ) {
+        address queryLibrary,
+        string memory version
+    ) Version(version) {
         _vault = vault;
         _library = libraryAddress;
         _queryLibrary = queryLibrary;
