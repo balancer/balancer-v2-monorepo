@@ -31,7 +31,7 @@ abstract contract VaultQueryActions is VaultActions {
         IVault.SingleSwap memory singleSwap,
         IVault.FundManagement calldata funds,
         uint256 limit,
-        uint256, // deadline (could remove, or leave in if we need to preserve the interface)
+        uint256, // deadline
         uint256, // value
         uint256 outputReference
     ) external payable override {
@@ -96,7 +96,7 @@ abstract contract VaultQueryActions is VaultActions {
         IAsset[] calldata assets,
         IVault.FundManagement calldata funds,
         int256[] calldata limits,
-        uint256, // deadline (could remove, or leave in if we need to preserve the interface)
+        uint256, // deadline
         uint256, // value
         OutputReference[] calldata outputReferences
     ) external payable override {
@@ -131,7 +131,7 @@ abstract contract VaultQueryActions is VaultActions {
         address sender,
         address recipient,
         IVault.JoinPoolRequest memory request,
-        uint256, // value (could remove, or leave in if we need to preserve the interface)
+        uint256, // value
         uint256 outputReference
     ) external payable override {
         require(sender == msg.sender || sender == address(this), "Incorrect sender");
