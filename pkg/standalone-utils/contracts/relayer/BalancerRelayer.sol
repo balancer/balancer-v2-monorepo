@@ -91,7 +91,12 @@ contract BalancerRelayer is IBalancerRelayer, Version, ReentrancyGuard {
         _refundETH();
     }
 
-    function queryMulticall(bytes[] calldata data) external override nonReentrant returns (bytes[] memory results) {
+    function vaultActionsQueryMulticall(bytes[] calldata data)
+        external
+        override
+        nonReentrant
+        returns (bytes[] memory results)
+    {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
             results[i] = _queryLibrary.functionDelegateCall(data[i]);

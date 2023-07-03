@@ -28,5 +28,5 @@ interface IBalancerRelayer {
 
     function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
 
-    function queryMulticall(bytes[] calldata data) external returns (bytes[] memory results);
+    function vaultActionsQueryMulticall(bytes[] calldata data) external returns (bytes[] memory results);
 }

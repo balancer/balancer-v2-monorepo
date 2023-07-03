@@ -58,7 +58,7 @@ describe('VaultQueryActions', function () {
     context('when caller is not authorized', () => {
       it('reverts', async () => {
         expect(
-          relayer.connect(other).queryMulticall([
+          relayer.connect(other).vaultActionsQueryMulticall([
             encodeSwap(relayerLibrary, {
               poolId: poolIdA,
               tokenIn: tokens.DAI,
@@ -113,7 +113,7 @@ describe('VaultQueryActions', function () {
           );
 
           await (
-            await relayer.connect(user).queryMulticall([
+            await relayer.connect(user).vaultActionsQueryMulticall([
               encodeSwap(relayerLibrary, {
                 poolId: poolIdA,
                 tokenIn: tokens.DAI,
