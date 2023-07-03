@@ -10,12 +10,7 @@ import { expect } from 'chai';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
-import {
-  setupRelayerEnvironment,
-  encodeSwap,
-  encodeBatchSwap,
-  approveVaultForRelayer,
-} from './VaultActionsRelayer.setup';
+import { setupRelayerEnvironment, encodeSwap, encodeBatchSwap } from './VaultActionsRelayer.setup';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
@@ -89,10 +84,8 @@ describe('VaultQueryActions', function () {
       });
 
       context('sender = relayer', () => {
-        sharedBeforeEach('fund relayer with tokens and approve vault', async () => {
+        beforeEach(() => {
           sender = relayer;
-          await tokens.DAI.transfer(relayer, amountIn, { from: user });
-          await approveVaultForRelayer(relayerLibrary, user, tokens);
         });
 
         itTestsSimpleSwap();
@@ -171,10 +164,8 @@ describe('VaultQueryActions', function () {
       });
 
       context('sender = relayer', () => {
-        sharedBeforeEach('fund relayer with tokens and approve vault', async () => {
+        beforeEach(() => {
           sender = relayer;
-          await tokens.DAI.transfer(relayer, amountIn, { from: user });
-          await approveVaultForRelayer(relayerLibrary, user, tokens);
         });
 
         itTestsBatchSwap();
