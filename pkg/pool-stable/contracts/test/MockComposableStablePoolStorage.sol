@@ -24,13 +24,13 @@ contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
         IVault vault,
         IERC20[] memory tokens,
         IRateProvider[] memory tokenRateProviders,
-        bool[] memory exemptFromYieldProtocolFeeFlags
+        bool exemptFromYieldProtocolFeeFlag
     )
         ComposableStablePoolStorage(
             StorageParams({
                 registeredTokens: _insertSorted(tokens, IERC20(this)),
                 tokenRateProviders: tokenRateProviders,
-                exemptFromYieldProtocolFeeFlags: exemptFromYieldProtocolFeeFlags
+                exemptFromYieldProtocolFeeFlag: exemptFromYieldProtocolFeeFlag
             })
         )
         BasePool(
@@ -119,19 +119,6 @@ contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
 
     function getRateProvider(uint256 index) external view returns (IRateProvider) {
         return _getRateProvider(index);
-    }
-
-    // This assumes the tokenIndex is valid. If it's not, it will just return false.
-    function isTokenExemptFromYieldProtocolFeeByIndex(uint256 tokenIndex) external view returns (bool) {
-        return _isTokenExemptFromYieldProtocolFee(tokenIndex);
-    }
-
-    function areAllTokensExempt() external view returns (bool) {
-        return _areAllTokensExempt();
-    }
-
-    function areNoTokensExempt() external view returns (bool) {
-        return _areNoTokensExempt();
     }
 
     // Stubbed functions

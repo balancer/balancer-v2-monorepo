@@ -17,7 +17,7 @@
     "!contracts/test/*"
   ],
   "scripts": {
-    "build": "yarn compile",
+    "build": "",
     "compile": "hardhat compile && rm -rf artifacts/build-info",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",

@@ -29,7 +29,7 @@ abstract contract ComposableStablePoolStorage is BasePool {
     struct StorageParams {
         IERC20[] registeredTokens;
         IRateProvider[] tokenRateProviders;
-        bool[] exemptFromYieldProtocolFeeFlags;
+        bool exemptFromYieldProtocolFeeFlag;
     }
 
     // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
@@ -82,10 +82,8 @@ abstract contract ComposableStablePoolStorage is BasePool {
     // [ 244 bits |        6 bits       |     6 bits      ]
     bytes32 private immutable _rateProviderInfoBitmap;
 
-    // We also keep two dedicated flags that indicate the special cases where none or all tokens are exempt, which allow
-    // for some gas optimizations in these special scenarios.
-    bool private immutable _noTokensExempt;
-    bool private immutable _allTokensExempt;
+    // Indicates whether all the tokens from the pool are exempt from yield protocol fee or not.
+    bool private immutable _exemptFromYieldProtocolFee;
 
     uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 6;
 
@@ -95,11 +93,7 @@ abstract contract ComposableStablePoolStorage is BasePool {
         // tokens for this contract is actually three, including the BPT).
         uint256 totalTokens = params.registeredTokens.length;
         _require(totalTokens > _MIN_NON_BPT_TOKENS, Errors.MIN_TOKENS);
-        InputHelpers.ensureInputLengthMatch(
-            totalTokens - 1,
-            params.tokenRateProviders.length,
-            params.exemptFromYieldProtocolFeeFlags.length
-        );
+        InputHelpers.ensureInputLengthMatch(totalTokens - 1, params.tokenRateProviders.length);
 
         _totalTokens = totalTokens;
 
@@ -140,49 +134,30 @@ abstract contract ComposableStablePoolStorage is BasePool {
 
         bytes32 rateProviderInfoBitmap;
 
-        bool anyExempt = false;
-        bool anyNonExempt = false;
-
         // The exemptFromYieldFlag should never be set on a token without a rate provider.
         // This would cause division by zero errors downstream.
         for (uint256 i = 0; i < params.registeredTokens.length; ++i) {
             if (i < bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i];
-                // Store whether token has rate provider
-                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
-                    rateProviders[i] != IRateProvider(0),
-                    _RATE_PROVIDER_FLAGS_OFFSET + i
-                );
-                // Store whether token is exempt from yield fees.
-                if (params.exemptFromYieldProtocolFeeFlags[i]) {
-                    _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
-
-                    anyExempt = true;
-                } else {
-                    anyNonExempt = true;
-                }
             } else if (i != bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i - 1];
-                // Store whether token has rate provider
-                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
-                    rateProviders[i] != IRateProvider(0),
-                    _RATE_PROVIDER_FLAGS_OFFSET + i
-                );
-                // Store whether token is exempt from yield fees.
-                if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
-                    _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
-
-                    anyExempt = true;
-                } else {
-                    anyNonExempt = true;
-                }
+            } else {
+                // do nothing for i == bptIndex
+                continue;
+            }
+            // Store whether token has rate provider
+            rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                rateProviders[i] != IRateProvider(0),
+                _RATE_PROVIDER_FLAGS_OFFSET + i
+            );
+            // Store whether token is exempt from yield fees (only with rate providers).
+            if (params.exemptFromYieldProtocolFeeFlag && rateProviders[i] != IRateProvider(0)) {
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
             }
         }
 
-        _noTokensExempt = !anyExempt;
-        _allTokensExempt = !anyNonExempt;
+        // Either all tokens are exempt, or none of them are. This is defined by the input parameter.
+        _exemptFromYieldProtocolFee = params.exemptFromYieldProtocolFeeFlag;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _rateProvider0 = rateProviders[0];
@@ -344,18 +319,9 @@ abstract contract ComposableStablePoolStorage is BasePool {
     /**
      * @notice Return true if all tokens are exempt from yield fees.
      */
-    function _areAllTokensExempt() internal view returns (bool) {
-        return _allTokensExempt;
+    function isExemptFromYieldProtocolFee() public view returns (bool) {
+        return _exemptFromYieldProtocolFee;
     }
-
-    /**
-     * @notice Return true if no tokens are exempt from yield fees.
-     */
-    function _areNoTokensExempt() internal view returns (bool) {
-        return _noTokensExempt;
-    }
-
-    // Exempt flags
 
     /**
      * @dev Returns whether the token is exempt from protocol fees on the yield.
@@ -363,12 +329,7 @@ abstract contract ComposableStablePoolStorage is BasePool {
      * since it is a valid pool token), the corresponding flag will be false.
      */
     function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
-        return _isTokenExemptFromYieldProtocolFee(_getTokenIndex(token));
-    }
-
-    // This assumes the tokenIndex is valid. If it's not, it will just return false.
-    function _isTokenExemptFromYieldProtocolFee(uint256 registeredTokenIndex) internal view returns (bool) {
-        return _rateProviderInfoBitmap.decodeBool(registeredTokenIndex);
+        return _exemptFromYieldProtocolFee && _hasRateProvider(_getTokenIndex(token));
     }
 
     // Virtual Supply

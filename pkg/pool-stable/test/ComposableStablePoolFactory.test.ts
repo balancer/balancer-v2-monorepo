@@ -24,10 +24,8 @@ describe('ComposableStablePoolFactory', function () {
   const PRICE_RATE_CACHE_DURATION = MONTH;
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
   const BASE_BUFFER_PERIOD_DURATION = MONTH;
-  const PROTOCOL_FEE_EXEMPT_TOKEN_IDX = 2; // not including BPT
 
   let createTime: BigNumber;
-  let protocolFeeExemptFlags: boolean[];
   let factoryVersion: string, poolVersion: string;
 
   before('setup signers', async () => {
@@ -53,14 +51,12 @@ describe('ComposableStablePoolFactory', function () {
 
     tokens = await TokenList.create(['baDAI', 'baUSDC', 'baUSDT'], { sorted: true });
     rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
-    protocolFeeExemptFlags = Array(tokens.length).fill(false);
     rateProviders[0] = (await deploy('v2-pool-utils/MockRateProvider')).address;
     rateProviders[1] = (await deploy('v2-pool-utils/MockRateProvider')).address;
     rateProviders[2] = (await deploy('v2-pool-utils/MockRateProvider')).address;
-    protocolFeeExemptFlags[PROTOCOL_FEE_EXEMPT_TOKEN_IDX] = true;
   });
 
-  async function createPool(): Promise<Contract> {
+  async function createPool(protocolFeeExemptFlag = false): Promise<Contract> {
     const receipt = await factory.create(
       NAME,
       SYMBOL,
@@ -68,7 +64,7 @@ describe('ComposableStablePoolFactory', function () {
       AMP,
       rateProviders,
       Array(tokens.length).fill(PRICE_RATE_CACHE_DURATION),
-      protocolFeeExemptFlags,
+      protocolFeeExemptFlag,
       POOL_SWAP_FEE_PERCENTAGE,
       owner.address,
       randomBytes(32)
@@ -167,11 +163,18 @@ describe('ComposableStablePoolFactory', function () {
       expect(firstTokenCache.duration).to.equal(PRICE_RATE_CACHE_DURATION);
     });
 
-    it('sets the protocol fee flags', async () => {
-      await tokens.asyncEach(async (token, i) => {
-        expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(
-          i == PROTOCOL_FEE_EXEMPT_TOKEN_IDX
-        );
+    context('non exempt tokens', () => {
+      it('sets the protocol fee flags', async () => {
+        expect(await pool.isExemptFromYieldProtocolFee()).to.equal(false);
+      });
+    });
+
+    context('exempt tokens', () => {
+      let pool: Contract;
+
+      it('sets the protocol fee flags', async () => {
+        pool = await createPool(true);
+        expect(await pool.isExemptFromYieldProtocolFee()).to.equal(true);
       });
     });
   });

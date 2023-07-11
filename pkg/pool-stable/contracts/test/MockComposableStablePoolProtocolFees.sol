@@ -26,13 +26,13 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         IERC20[] memory tokens,
         IRateProvider[] memory tokenRateProviders,
         uint256[] memory tokenRateCacheDurations,
-        bool[] memory exemptFromYieldProtocolFeeFlags
+        bool exemptFromYieldProtocolFeeFlag
     )
         ComposableStablePoolStorage(
             StorageParams({
                 registeredTokens: _insertSorted(tokens, IERC20(this)),
                 tokenRateProviders: tokenRateProviders,
-                exemptFromYieldProtocolFeeFlags: exemptFromYieldProtocolFeeFlags
+                exemptFromYieldProtocolFeeFlag: exemptFromYieldProtocolFeeFlag
             })
         )
         ComposableStablePoolRates(
@@ -105,7 +105,8 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
             uint256 totalGrowthInvariant
         )
     {
-        return _getGrowthInvariants(balances, lastPostJoinExitAmp);
+        (, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
+        return _getGrowthInvariants(balances, lastPostJoinExitAmp, lastPostJoinExitInvariant);
     }
 
     function getProtocolPoolOwnershipPercentage(

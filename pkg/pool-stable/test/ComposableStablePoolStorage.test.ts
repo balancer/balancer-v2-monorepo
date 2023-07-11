@@ -11,7 +11,7 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { every, range } from 'lodash';
+import { range } from 'lodash';
 
 describe('ComposableStablePoolStorage', () => {
   let admin: SignerWithAddress;
@@ -72,7 +72,7 @@ describe('ComposableStablePoolStorage', () => {
     });
 
     let rateProviders: string[] = [];
-    let exemptFromYieldProtocolFeeFlags: boolean[] = [];
+    let exemptFromYieldProtocolFeeFlag: boolean;
 
     async function deployPool(
       tokens: TokenList,
@@ -91,12 +91,12 @@ describe('ComposableStablePoolStorage', () => {
         newExemptFromYieldProtocolFeeFlags[i] = newRateProviders[i] !== ZERO_ADDRESS && isExempt;
       }
 
+      exemptFromYieldProtocolFeeFlag = newExemptFromYieldProtocolFeeFlags.every((flag) => flag);
       pool = await deploy('MockComposableStablePoolStorage', {
-        args: [vault.address, tokens.addresses, newRateProviders, newExemptFromYieldProtocolFeeFlags],
+        args: [vault.address, tokens.addresses, newRateProviders, exemptFromYieldProtocolFeeFlag],
       });
       bptIndex = (await pool.getBptIndex()).toNumber();
       rateProviders = newRateProviders;
-      exemptFromYieldProtocolFeeFlags = newExemptFromYieldProtocolFeeFlags;
     }
 
     sharedBeforeEach('deploy pool', async () => {
@@ -124,22 +124,16 @@ describe('ComposableStablePoolStorage', () => {
           await expect(deployPool(tokens, tokens.length + 1)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
-        it('reverts if the protocol fee flags do not match the tokens length', async () => {
-          await expect(deployPool(tokens, tokens.length, tokens.length + 1)).to.be.revertedWith(
-            'INPUT_LENGTH_MISMATCH'
-          );
-        });
-
-        it('reverts when setting an exempt flag with no rate provider', async () => {
+        it('does not revert when setting an exempt flag with no rate provider', async () => {
           const tokenAddresses = tokens.addresses.slice(0, 2);
           const rateProviderAddresses = [ZERO_ADDRESS, ZERO_ADDRESS];
-          const exemptionFlags = [true, true];
+          const exemptionFlags = true;
 
           await expect(
             deploy('MockComposableStablePoolStorage', {
               args: [vault.address, tokenAddresses, rateProviderAddresses, exemptionFlags],
             })
-          ).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+          ).to.not.be.reverted;
         });
       });
     });
@@ -298,69 +292,53 @@ describe('ComposableStablePoolStorage', () => {
     });
 
     describe('yield protocol fee exemption', () => {
-      describe('isTokenExemptFromYieldProtocolFee(uint256)', () => {
-        it('returns whether the token at a particular index is exempt', async () => {
-          const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
-          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
+      // These tests use a different Pool from the rest since they deploy it with non-random and controlled arguments.
+      let exemptionPool: Contract;
+      let exemptionFlag: boolean;
 
-          for (let i = 0; i < expectedExemptFromYieldProtocolFeeFlags.length; i++) {
-            const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];
-            expect(await pool.isTokenExemptFromYieldProtocolFeeByIndex(i)).to.equal(expectedFlag);
+      enum Exemption {
+        NONE,
+        SOME,
+        ALL,
+      }
+
+      function deployExemptionPool(exemption: Exemption) {
+        sharedBeforeEach(async () => {
+          const rateProviders = await Promise.all(
+            range(numberOfTokens).map(async () =>
+              Math.random() > 0.5 ? (await deploy('v2-pool-utils/MockRateProvider')).address : ZERO_ADDRESS
+            )
+          );
+
+          if (exemption == Exemption.NONE) {
+            exemptionFlag = false;
+          } else if (exemption == Exemption.ALL) {
+            exemptionFlag = true;
+          } else {
+            throw new Error('Unsupported: use ALL or NONE');
           }
+
+          exemptionPool = await deploy('MockComposableStablePoolStorage', {
+            args: [vault.address, tokens.addresses, rateProviders, exemptionFlag],
+          });
         });
-      });
+      }
 
-      describe('isTokenExemptFromYieldProtocolFee(address)', () => {
-        it('returns whether the token is exempt', async () => {
-          const bpt = await Token.deployedAt(pool);
-          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
+      describe('exemption flags', () => {
+        function itTestsIsTokenExemptFromYieldProtocolFee() {
+          describe('isTokenExemptFromYieldProtocolFee(address)', () => {
+            it('returns whether the token is exempt', async () => {
+              const bpt = await Token.deployedAt(exemptionPool);
+              const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
 
-          const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
-          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
+              for (let i = 0; i < allTokens.length; i++) {
+                const token = allTokens.get(i);
 
-          for (let i = 0; i < allTokens.length; i++) {
-            // Initialized to true for even tokens
-            const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];
-            const token = allTokens.get(i);
-
-            expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
-          }
-        });
-      });
-
-      describe('global exemption flags', () => {
-        // These tests use a different Pool from the rest since they deploy it with non-random and controlled arguments.
-        let exemptionPool: Contract;
-
-        enum Exemption {
-          NONE,
-          SOME,
-          ALL,
-        }
-
-        function deployExemptionPool(exemption: Exemption) {
-          sharedBeforeEach(async () => {
-            const rateProviders = await Promise.all(
-              range(numberOfTokens).map(async () => (await deploy('v2-pool-utils/MockRateProvider')).address)
-            );
-
-            let exemptionFlags;
-            if (exemption == Exemption.NONE) {
-              exemptionFlags = Array(numberOfTokens).fill(false);
-            } else if (exemption == Exemption.ALL) {
-              exemptionFlags = Array(numberOfTokens).fill(true);
-            } else {
-              exemptionFlags = range(numberOfTokens).map(() => Math.random() < 0.5);
-
-              if (every(exemptionFlags, (flag) => flag == false)) {
-                exemptionFlags[0] = true;
-              } else if (every(exemptionFlags, (flag) => flag == true)) {
-                exemptionFlags[0] = false;
+                const hasRateProvider = (await exemptionPool.getRateProvider(i)) !== ZERO_ADDRESS;
+                expect(await exemptionPool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(
+                  hasRateProvider && exemptionFlag
+                );
               }
-            }
-
-            exemptionPool = await deploy('MockComposableStablePoolStorage', {
-              args: [vault.address, tokens.addresses, rateProviders, exemptionFlags],
             });
           });
         }
@@ -368,37 +346,21 @@ describe('ComposableStablePoolStorage', () => {
         context('when no token is exempt', () => {
           deployExemptionPool(Exemption.NONE);
 
-          it('areAllTokensExempt returns false', async () => {
-            expect(await exemptionPool.areAllTokensExempt()).to.equal(false);
+          it('isExemptFromYieldProtocolFee returns false', async () => {
+            expect(await exemptionPool.isExemptFromYieldProtocolFee()).to.equal(false);
           });
 
-          it('areNoTokensExempt returns true', async () => {
-            expect(await exemptionPool.areNoTokensExempt()).to.equal(true);
-          });
+          itTestsIsTokenExemptFromYieldProtocolFee();
         });
 
         context('when all tokens are exempt', () => {
           deployExemptionPool(Exemption.ALL);
 
-          it('areAllTokensExempt returns true', async () => {
-            expect(await exemptionPool.areAllTokensExempt()).to.equal(true);
+          it('isExemptFromYieldProtocolFee returns true', async () => {
+            expect(await exemptionPool.isExemptFromYieldProtocolFee()).to.equal(true);
           });
 
-          it('areNoTokensExempt returns false', async () => {
-            expect(await exemptionPool.areNoTokensExempt()).to.equal(false);
-          });
-        });
-
-        context('when some (but not all) tokens are exempt', () => {
-          deployExemptionPool(Exemption.SOME);
-
-          it('areAllTokensExempt returns false', async () => {
-            expect(await exemptionPool.areAllTokensExempt()).to.equal(false);
-          });
-
-          it('areNoTokensExempt returns false', async () => {
-            expect(await exemptionPool.areNoTokensExempt()).to.equal(false);
-          });
+          itTestsIsTokenExemptFromYieldProtocolFee();
         });
       });
     });

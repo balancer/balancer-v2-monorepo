@@ -25,12 +25,12 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
         IERC20[] memory tokens,
         IRateProvider[] memory tokenRateProviders,
         uint256[] memory tokenRateCacheDurations,
-        bool[] memory exemptFromYieldProtocolFeeFlags,
+        bool exemptFromYieldProtocolFeeFlag,
         address owner
     )
         ComposableStablePoolRates(RatesParams(tokens, tokenRateProviders, tokenRateCacheDurations))
         ComposableStablePoolStorage(
-            StorageParams(_insertSorted(tokens, IERC20(this)), tokenRateProviders, exemptFromYieldProtocolFeeFlags)
+            StorageParams(_insertSorted(tokens, IERC20(this)), tokenRateProviders, exemptFromYieldProtocolFeeFlag)
         )
         BasePool(
             vault,
@@ -60,12 +60,12 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
         _updateOldRates();
     }
 
-    function getAdjustedBalances(uint256[] memory balances, bool ignoreExemptFlags)
+    function getAdjustedBalances(uint256[] memory balances)
         external
         view
         returns (uint256[] memory)
     {
-        return _getAdjustedBalances(balances, ignoreExemptFlags);
+        return _getAdjustedBalances(balances);
     }
 
     function _onInitializePool(
