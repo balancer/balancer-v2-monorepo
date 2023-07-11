@@ -77,7 +77,7 @@ contract ComposableStablePool is
         IERC20[] tokens;
         IRateProvider[] rateProviders;
         uint256[] tokenRateCacheDurations;
-        bool[] exemptFromYieldProtocolFeeFlags;
+        bool exemptFromYieldProtocolFeeFlag;
         uint256 amplificationParameter;
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
@@ -131,7 +131,7 @@ contract ComposableStablePool is
             ComposableStablePoolStorage.StorageParams({
                 registeredTokens: _insertSorted(params.tokens, IERC20(this)),
                 tokenRateProviders: params.rateProviders,
-                exemptFromYieldProtocolFeeFlags: params.exemptFromYieldProtocolFeeFlags
+                exemptFromYieldProtocolFeeFlag: params.exemptFromYieldProtocolFeeFlag
             });
     }
 

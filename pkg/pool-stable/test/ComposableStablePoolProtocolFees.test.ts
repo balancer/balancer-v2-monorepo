@@ -88,14 +88,13 @@ describe('ComposableStablePoolProtocolFees', () => {
   function itBehavesAsStablePoolProtocolFees(numberOfTokens: number): void {
     describe('growth invariants', () => {
       let pool: Contract, tokens: TokenList;
-      let rateProviders: Contract[];
-      let exemptFromYieldProtocolFeeFlags: boolean[] = [];
+      let rateProviders: (Contract | string)[];
+      let exemptFromYieldProtocolFeeFlag: boolean;
 
       let balances: BigNumber[];
 
       enum Exemption {
         NONE,
-        SOME,
         ALL,
       }
 
@@ -106,21 +105,13 @@ describe('ComposableStablePoolProtocolFees', () => {
 
           rateProviders = [];
           for (let i = 0; i < numberOfTokens; i++) {
-            rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
+            rateProviders[i] = Math.random() > 0.5 ? await deploy('v2-pool-utils/MockRateProvider') : ZERO_ADDRESS;
           }
 
           if (exemption == Exemption.NONE) {
-            exemptFromYieldProtocolFeeFlags = Array(numberOfTokens).fill(false);
+            exemptFromYieldProtocolFeeFlag = false;
           } else if (exemption == Exemption.ALL) {
-            exemptFromYieldProtocolFeeFlags = Array(numberOfTokens).fill(true);
-          } else {
-            exemptFromYieldProtocolFeeFlags = range(numberOfTokens).map(() => Math.random() < 0.5);
-
-            if (every(exemptFromYieldProtocolFeeFlags, (flag) => flag == false)) {
-              exemptFromYieldProtocolFeeFlags[0] = true;
-            } else if (every(exemptFromYieldProtocolFeeFlags, (flag) => flag == true)) {
-              exemptFromYieldProtocolFeeFlags[0] = false;
-            }
+            exemptFromYieldProtocolFeeFlag = true;
           }
 
           // The rate durations are actually irrelevant since we're forcing cache updates
@@ -131,9 +122,15 @@ describe('ComposableStablePoolProtocolFees', () => {
               vault.address,
               feesProvider.address,
               tokens.addresses,
-              rateProviders.map((x) => x.address),
+              rateProviders.map((x) => {
+                if (typeof x === 'string') {
+                  return x;
+                } else {
+                  return x.address;
+                }
+              }),
               rateCacheDurations,
-              exemptFromYieldProtocolFeeFlags,
+              exemptFromYieldProtocolFeeFlag,
             ],
           });
         });
@@ -141,12 +138,24 @@ describe('ComposableStablePoolProtocolFees', () => {
         sharedBeforeEach('update rate cache', async () => {
           // We set new rates for all providers, and then force a cache update for all of them, updating the current
           // rates. They will now be different from the old rates.
-          await Promise.all(rateProviders.map((provider) => provider.mockRate(fp(random(1.1, 1.5)))));
-          await tokens.asyncEach((token) => pool.updateTokenRateCache(token.address));
+          await Promise.all(
+            rateProviders.map((provider) => {
+              if (typeof provider !== 'string') {
+                provider.mockRate(fp(random(1.1, 1.5)));
+              }
+            })
+          );
+          await tokens.asyncEach(async (token, i) => {
+            if (typeof rateProviders[i] !== 'string') {
+              await pool.updateTokenRateCache(token.address);
+            }
+          });
 
-          await tokens.asyncEach(async (token) => {
-            const { rate, oldRate } = await pool.getTokenRateCache(token.address);
-            expect(rate).to.not.equal(oldRate);
+          await tokens.asyncEach(async (token, i) => {
+            if (typeof rateProviders[i] !== 'string') {
+              const { rate, oldRate } = await pool.getTokenRateCache(token.address);
+              expect(rate).to.not.equal(oldRate);
+            }
           });
         });
       }
@@ -156,8 +165,12 @@ describe('ComposableStablePoolProtocolFees', () => {
           // The swap fee growth invariant is computed by using old rates for all tokens
           const oldRateBalances = await Promise.all(
             balances.map(async (balance, i) => {
-              const { rate, oldRate } = await pool.getTokenRateCache(tokens.get(i).address);
-              return balance.mul(oldRate).div(rate);
+              if (typeof rateProviders[i] !== 'string') {
+                const { rate, oldRate } = await pool.getTokenRateCache(tokens.get(i).address);
+                return balance.mul(oldRate).div(rate);
+              } else {
+                return balance;
+              }
             })
           );
 
@@ -174,8 +187,12 @@ describe('ComposableStablePoolProtocolFees', () => {
           // The total non exempt growth invariant is computed by using old rates for exempt tokens
           const yieldNonExemptBalances = await Promise.all(
             balances.map(async (balance, i) => {
-              const { rate, oldRate } = await pool.getTokenRateCache(tokens.get(i).address);
-              return exemptFromYieldProtocolFeeFlags[i] ? balance.mul(oldRate).div(rate) : balance;
+              if (typeof rateProviders[i] !== 'string') {
+                const { rate, oldRate } = await pool.getTokenRateCache(tokens.get(i).address);
+                return exemptFromYieldProtocolFeeFlag ? balance.mul(oldRate).div(rate) : balance;
+              } else {
+                return balance;
+              }
             })
           );
 
@@ -215,12 +232,12 @@ describe('ComposableStablePoolProtocolFees', () => {
           expect(totalNonExemptGrowthInvariant).to.equal(totalGrowthInvariant);
         });
 
-        it('the total non exempt growth is larger than the swap fee growth', async () => {
+        it('the total non exempt growth is larger than or equal to the swap fee growth', async () => {
           const { swapFeeGrowthInvariant, totalNonExemptGrowthInvariant } = await pool.getGrowthInvariants(
             balances,
             AMPLIFICATION_FACTOR
           );
-          expect(totalNonExemptGrowthInvariant).to.gt(swapFeeGrowthInvariant);
+          expect(totalNonExemptGrowthInvariant).to.gte(swapFeeGrowthInvariant);
         });
       });
 
@@ -237,34 +254,12 @@ describe('ComposableStablePoolProtocolFees', () => {
           expect(totalNonExemptGrowthInvariant).to.equal(swapFeeGrowthInvariant);
         });
 
-        it('the total growth invariant is larger than the total non exempt growth', async () => {
+        it('the total growth invariant is larger than or equal to the total non exempt growth', async () => {
           const { totalNonExemptGrowthInvariant, totalGrowthInvariant } = await pool.getGrowthInvariants(
             balances,
             AMPLIFICATION_FACTOR
           );
-          expect(totalGrowthInvariant).to.gt(totalNonExemptGrowthInvariant);
-        });
-      });
-
-      context('with some (but not all) tokens exempt from yield fees', () => {
-        deployPool(Exemption.SOME);
-
-        itComputesTheInvariantsCorrectly();
-
-        it('the total non exempt growth is larger than the swap fee growth', async () => {
-          const { swapFeeGrowthInvariant, totalNonExemptGrowthInvariant } = await pool.getGrowthInvariants(
-            balances,
-            AMPLIFICATION_FACTOR
-          );
-          expect(totalNonExemptGrowthInvariant).to.gt(swapFeeGrowthInvariant);
-        });
-
-        it('the total growth invariant is larger than the total non exempt growth', async () => {
-          const { totalNonExemptGrowthInvariant, totalGrowthInvariant } = await pool.getGrowthInvariants(
-            balances,
-            AMPLIFICATION_FACTOR
-          );
-          expect(totalGrowthInvariant).to.gt(totalNonExemptGrowthInvariant);
+          expect(totalGrowthInvariant).to.gte(totalNonExemptGrowthInvariant);
         });
       });
     });
@@ -296,56 +291,55 @@ describe('ComposableStablePoolProtocolFees', () => {
       let pool: Contract, tokens: TokenList;
       let bptIndex: number;
 
-      let rateProviders: Contract[];
-      let exemptFromYieldProtocolFeeFlags: boolean[];
+      let rateProviders: (Contract | string)[];
+      let exemptFromYieldProtocolFeeFlag: boolean;
 
       sharedBeforeEach('deploy tokens', async () => {
         tokens = await TokenList.create(numberOfTokens, { sorted: true });
       });
 
-      sharedBeforeEach('deploy pool', async () => {
-        rateProviders = await Promise.all(range(numberOfTokens).map(() => deploy('v2-pool-utils/MockRateProvider')));
-
-        exemptFromYieldProtocolFeeFlags = range(numberOfTokens).map(() => Math.random() < 0.5);
-        // We need for at least one token to not be exempt, that is, for their flag to be false. If all are true, we
-        // forcefully make one false. This makes it so that if all current rates are larger than 1.0, there will be some
-        // yield fees.
-        if (every(exemptFromYieldProtocolFeeFlags, (flag) => flag == true))
-          exemptFromYieldProtocolFeeFlags[Math.floor(random(numberOfTokens - 1))] = false;
+      async function deployPool(withYieldBearingTokens: boolean): Promise<Contract> {
+        // With yield bearing tokens, we use a mix; otherwise we just don't use rate providers.
+        rateProviders = await Promise.all(
+          range(numberOfTokens).map(async () =>
+            withYieldBearingTokens && Math.random() > 0.5
+              ? await deploy('v2-pool-utils/MockRateProvider')
+              : ZERO_ADDRESS
+          )
+        );
+        // With yield bearing tokens, at least one of them should have a rate provider.
+        if (withYieldBearingTokens && every(rateProviders, (rp) => typeof rp === 'string')) {
+          rateProviders[0] = await deploy('v2-pool-utils/MockRateProvider');
+        }
 
         // The rate durations are actually irrelevant as we forcefully update the cache ourselves.
         const rateCacheDurations = Array(numberOfTokens).fill(DAY);
 
-        pool = await deploy('MockComposableStablePoolProtocolFees', {
+        const pool = await deploy('MockComposableStablePoolProtocolFees', {
           args: [
             vault.address,
             feesProvider.address,
             tokens.addresses,
-            rateProviders.map((x) => x.address),
+            rateProviders.map((x) => {
+              if (typeof x === 'string') {
+                return x;
+              } else {
+                return x.address;
+              }
+            }),
             rateCacheDurations,
-            exemptFromYieldProtocolFeeFlags,
+            exemptFromYieldProtocolFeeFlag,
           ],
         });
 
         await pool.setTotalSupply(PREMINTED_BPT);
 
         bptIndex = (await pool.getBptIndex()).toNumber();
-      });
 
-      let preBalances: BigNumber[];
-      let preInvariant: BigNumber;
-      let preVirtualSupply: BigNumber;
-
-      function setProtocolFees(swapFee: BigNumberish, yieldFee: BigNumberish) {
-        sharedBeforeEach('set protocol fees', async () => {
-          await feesProvider.connect(admin).setFeeTypePercentage(ProtocolFee.SWAP, swapFee);
-          await feesProvider.connect(admin).setFeeTypePercentage(ProtocolFee.YIELD, yieldFee);
-
-          await pool.updateProtocolFeePercentageCache();
-        });
+        return pool;
       }
 
-      sharedBeforeEach('setup previous pool state', async () => {
+      async function setupPool(pool: Contract) {
         // Since we're passing the balances directly to the contract, we don't need to worry about scaling factors, and
         // can work with 18 decimal balances directly.
         preBalances = tokens.map(() => fp(random(MIN_POOL_TOKEN_BALANCE, MAX_POOL_TOKEN_BALANCE)));
@@ -361,499 +355,605 @@ describe('ComposableStablePoolProtocolFees', () => {
         // We don't use the stored amplification factor and invariant as the lastJoinExit values in tests as we pass
         // them in. However this function also sets the old token rates which we *do* use.
         await pool.updatePostJoinExit(AMPLIFICATION_FACTOR, preInvariant);
-      });
+      }
 
-      describe('payProtocolFeesBeforeJoinExit', () => {
-        context('when both the protocol swap and yield fee percentages are zero', () => {
-          itPaysProtocolFeesGivenGlobalPercentages(bn(0), bn(0));
+      let preBalances: BigNumber[];
+      let preInvariant: BigNumber;
+      let preVirtualSupply: BigNumber;
+
+      function setProtocolFees(swapFee: BigNumberish, yieldFee: BigNumberish) {
+        sharedBeforeEach('set protocol fees', async () => {
+          await feesProvider.connect(admin).setFeeTypePercentage(ProtocolFee.SWAP, swapFee);
+          await feesProvider.connect(admin).setFeeTypePercentage(ProtocolFee.YIELD, yieldFee);
+
+          await pool.updateProtocolFeePercentageCache();
         });
+      }
 
-        context('when the protocol swap fee percentage is non-zero', () => {
-          itPaysProtocolFeesGivenGlobalPercentages(SWAP_PROTOCOL_FEE_PERCENTAGE, bn(0));
-        });
-
-        context('when the protocol yield fee percentage is non-zero', () => {
-          itPaysProtocolFeesGivenGlobalPercentages(bn(0), YIELD_PROTOCOL_FEE_PERCENTAGE);
-        });
-
-        context('when both the protocol swap and yield fee percentages are non-zero', () => {
-          itPaysProtocolFeesGivenGlobalPercentages(SWAP_PROTOCOL_FEE_PERCENTAGE, YIELD_PROTOCOL_FEE_PERCENTAGE);
-        });
-
-        function itPaysProtocolFeesGivenGlobalPercentages(swapFee: BigNumber, yieldFee: BigNumber) {
-          setProtocolFees(swapFee, yieldFee);
-
-          let currentBalances: BigNumber[];
-          let expectedProtocolOwnershipPercentage: BigNumberish;
-
-          context('when neither swap nor yield fees are due', () => {
-            prepareNoSwapOrYieldFees();
-
-            itDoesNotPayAnyProtocolFees();
+      function itPaysProtocolFees(noYieldFeesExpected: boolean) {
+        describe('payProtocolFeesBeforeJoinExit', () => {
+          context('when both the protocol swap and yield fee percentages are zero', () => {
+            itPaysProtocolFeesGivenGlobalPercentages(bn(0), bn(0));
           });
 
-          context('when swap fees are due', () => {
-            prepareSwapFees();
+          context('when the protocol swap fee percentage is non-zero', () => {
+            itPaysProtocolFeesGivenGlobalPercentages(SWAP_PROTOCOL_FEE_PERCENTAGE, bn(0));
+          });
 
-            if (swapFee.eq(0)) {
+          context('when the protocol yield fee percentage is non-zero', () => {
+            itPaysProtocolFeesGivenGlobalPercentages(bn(0), YIELD_PROTOCOL_FEE_PERCENTAGE);
+          });
+
+          context('when both the protocol swap and yield fee percentages are non-zero', () => {
+            itPaysProtocolFeesGivenGlobalPercentages(SWAP_PROTOCOL_FEE_PERCENTAGE, YIELD_PROTOCOL_FEE_PERCENTAGE);
+          });
+
+          function itPaysProtocolFeesGivenGlobalPercentages(swapFee: BigNumber, yieldFee: BigNumber) {
+            setProtocolFees(swapFee, yieldFee);
+
+            let currentBalances: BigNumber[];
+            let expectedProtocolOwnershipPercentage: BigNumberish;
+
+            context('when neither swap nor yield fees are due', () => {
+              prepareNoSwapOrYieldFees();
+
               itDoesNotPayAnyProtocolFees();
-            } else {
-              itPaysTheExpectedProtocolFees();
-            }
-          });
-
-          context('when yield fees are due', () => {
-            prepareYieldFees();
-
-            if (yieldFee.eq(0)) {
-              itDoesNotPayAnyProtocolFees();
-            } else {
-              itPaysTheExpectedProtocolFees();
-            }
-          });
-
-          context('when both swap and yield fees are due', () => {
-            prepareSwapAndYieldFees();
-
-            if (swapFee.eq(0) && yieldFee.eq(0)) {
-              itDoesNotPayAnyProtocolFees();
-            } else {
-              itPaysTheExpectedProtocolFees();
-            }
-          });
-
-          function prepareNoSwapOrYieldFees() {
-            sharedBeforeEach(async () => {
-              currentBalances = preBalances;
-              expectedProtocolOwnershipPercentage = 0;
-            });
-          }
-
-          function prepareSwapFees() {
-            sharedBeforeEach(async () => {
-              const deltas = range(numberOfTokens).map(() =>
-                fp(random(MIN_SWAP_BALANCE_DELTA, MAX_SWAP_BALANCE_DELTA))
-              );
-
-              currentBalances = arrayAdd(preBalances, deltas);
-
-              // We assume all tokens have similar value, and simply add all of the amounts together to represent how
-              // much value is being added to the Pool. This is equivalent to assuming the invariant is the sum of the
-              // tokens (which is a close approximation while the Pool is balanced).
-
-              const deltaSum = bnSum(deltas);
-              const currSum = bnSum(currentBalances);
-              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
-
-              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToDeltas, swapFee);
-            });
-          }
-
-          function prepareYieldFees() {
-            sharedBeforeEach(async () => {
-              const rates = range(numberOfTokens).map(() => fp(1 + random(MIN_SWAP_RATE_DELTA, MAX_SWAP_RATE_DELTA)));
-              await Promise.all(rateProviders.map((rateProvider, i) => rateProvider.mockRate(rates[i])));
-
-              // We need to get the Pool to update the rate cache of all of its tokens, so that the balance change is
-              // seen as a change in rates from old to current.
-              await tokens.asyncMap((token) => pool.updateTokenRateCache(token.address));
-
-              currentBalances = arrayFpMul(preBalances, rates);
-
-              // We assume all tokens have similar value, and simply add the non-exempt the amounts together to
-              // represent how much value is being added to the Pool. This is equivalent to assuming the invariant is
-              // the sum of the tokens (which is a close approximation while the Pool is balanced).
-
-              const deltaSum = bnSum(
-                preBalances.map((balance, i) =>
-                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(fp(1)))
-                )
-              );
-
-              const currSum = bnSum(currentBalances);
-              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
-
-              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToDeltas, yieldFee);
-            });
-          }
-
-          function prepareSwapAndYieldFees() {
-            sharedBeforeEach(async () => {
-              const swapFeeDeltas = range(numberOfTokens).map(() =>
-                fp(random(MIN_SWAP_BALANCE_DELTA, MAX_SWAP_BALANCE_DELTA))
-              );
-
-              const rates = range(numberOfTokens).map(() => fp(1 + random(MIN_SWAP_RATE_DELTA, MAX_SWAP_RATE_DELTA)));
-              await Promise.all(rateProviders.map((rateProvider, i) => rateProvider.mockRate(rates[i])));
-
-              // We need to get the Pool to update the rate cache of all of its tokens, so that there balance change is
-              // seen as a change in rates from old to current.
-              await tokens.asyncMap((token) => pool.updateTokenRateCache(token.address));
-
-              // We first apply the swap deltas, and then multiply by the rates, which is the model the Pool uses when
-              // splitting swap and yield fees.
-
-              currentBalances = arrayFpMul(arrayAdd(preBalances, swapFeeDeltas), rates);
-
-              // We assume all tokens have similar value, and simply add the swap deltas and non-exempt yield deltas
-              // together to represent how much value is being added to the Pool. This is equivalent to assuming the
-              // invariant is the sum of the tokens (which is a close approximation while the Pool is balanced).
-
-              const swapFeeDeltaSum = bnSum(swapFeeDeltas);
-              const yieldDeltaSum = bnSum(
-                preBalances.map((balance, i) =>
-                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(fp(1)))
-                )
-              );
-              const currSum = bnSum(currentBalances);
-
-              const poolPercentageDueToSwapFeeDeltas = fpDiv(swapFeeDeltaSum, currSum);
-              const poolPercentageDueToYieldDeltas = fpDiv(yieldDeltaSum, currSum);
-
-              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToSwapFeeDeltas, swapFee).add(
-                fpMul(poolPercentageDueToYieldDeltas, yieldFee)
-              );
-            });
-          }
-
-          function itDoesNotPayAnyProtocolFees() {
-            let currentBalancesWithBpt: BigNumber[];
-
-            sharedBeforeEach(async () => {
-              currentBalancesWithBpt = [...currentBalances];
-              currentBalancesWithBpt.splice(bptIndex, 0, PREMINTED_BPT.sub(preVirtualSupply));
             });
 
-            it('returns zero protocol ownership percentage', async () => {
-              expect(
-                await pool.getProtocolPoolOwnershipPercentage(currentBalances, AMPLIFICATION_FACTOR, preInvariant)
-              ).to.equal(0);
+            context('when swap fees are due', () => {
+              prepareSwapFees();
+
+              if (swapFee.eq(0)) {
+                itDoesNotPayAnyProtocolFees();
+              } else {
+                itPaysTheExpectedProtocolFees();
+              }
             });
 
-            it('mints no BPT', async () => {
-              const tx = await pool.payProtocolFeesBeforeJoinExit(
-                currentBalancesWithBpt,
-                AMPLIFICATION_FACTOR,
-                preInvariant
-              );
-              expectEvent.notEmitted(await tx.wait(), 'Transfer');
+            context('when yield fees are due', () => {
+              prepareYieldFees();
+
+              if (yieldFee.eq(0) || noYieldFeesExpected) {
+                itDoesNotPayAnyProtocolFees();
+              } else {
+                itPaysTheExpectedProtocolFees();
+              }
             });
 
-            it('returns the original virtual supply', async () => {
-              const { virtualSupply: updatedVirtualSupply } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
-                currentBalancesWithBpt,
-                AMPLIFICATION_FACTOR,
-                preInvariant
-              );
-              expect(updatedVirtualSupply).to.be.equal(preVirtualSupply);
+            context('when both swap and yield fees are due', () => {
+              prepareSwapAndYieldFees();
+
+              if (swapFee.eq(0) && (yieldFee.eq(0) || noYieldFeesExpected)) {
+                itDoesNotPayAnyProtocolFees();
+              } else {
+                itPaysTheExpectedProtocolFees();
+              }
             });
 
-            it('returns the balances sans BPT', async () => {
-              const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
-                currentBalancesWithBpt,
-                AMPLIFICATION_FACTOR,
-                preInvariant
-              );
-              expect(balances).to.deep.equal(currentBalances);
-            });
-          }
-
-          function itPaysTheExpectedProtocolFees() {
-            let currentBalancesWithBpt: BigNumber[];
-            let expectedBptAmount: BigNumber;
-
-            sharedBeforeEach(async () => {
-              currentBalancesWithBpt = [...currentBalances];
-              currentBalancesWithBpt.splice(bptIndex, 0, PREMINTED_BPT.sub(preVirtualSupply));
-
-              // protocol ownership = to mint / (supply + to mint)
-              // to mint = supply * protocol ownership / (1 - protocol ownership)
-              expectedBptAmount = preVirtualSupply
-                .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
-            });
-
-            it('returns a non-zero protocol ownership percentage', async () => {
-              const protocolPoolOwnershipPercentage = await pool.getProtocolPoolOwnershipPercentage(
-                currentBalances,
-                AMPLIFICATION_FACTOR,
-                preInvariant
-              );
-
-              expect(protocolPoolOwnershipPercentage).to.be.gt(0);
-              expect(protocolPoolOwnershipPercentage).to.be.almostEqual(
-                expectedProtocolOwnershipPercentage,
-                FEE_RELATIVE_ERROR
-              );
-            });
-
-            it('mints BPT to the protocol fee collector', async () => {
-              const tx = await pool.payProtocolFeesBeforeJoinExit(
-                currentBalancesWithBpt,
-                AMPLIFICATION_FACTOR,
-                preInvariant
-              );
-              const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
-                from: ZERO_ADDRESS,
-                to: feesCollector.address,
+            function prepareNoSwapOrYieldFees() {
+              sharedBeforeEach(async () => {
+                currentBalances = preBalances;
+                expectedProtocolOwnershipPercentage = 0;
               });
-              expect(event.args.value).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
-            });
+            }
 
-            it('returns the updated virtual supply', async () => {
-              const { virtualSupply: updatedVirtualSupply } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
-                currentBalancesWithBpt,
-                AMPLIFICATION_FACTOR,
-                preInvariant
-              );
-              expect(updatedVirtualSupply).to.be.almostEqual(
-                preVirtualSupply.add(expectedBptAmount),
-                FEE_RELATIVE_ERROR
-              );
-            });
+            function prepareSwapFees() {
+              sharedBeforeEach(async () => {
+                const deltas = range(numberOfTokens).map(() =>
+                  fp(random(MIN_SWAP_BALANCE_DELTA, MAX_SWAP_BALANCE_DELTA))
+                );
 
-            it('returns the balances sans BPT', async () => {
-              const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
-                currentBalancesWithBpt,
-                AMPLIFICATION_FACTOR,
-                preInvariant
-              );
-              expect(balances).to.deep.equal(currentBalances);
-            });
+                currentBalances = arrayAdd(preBalances, deltas);
+
+                // We assume all tokens have similar value, and simply add all of the amounts together to represent how
+                // much value is being added to the Pool. This is equivalent to assuming the invariant is the sum of the
+                // tokens (which is a close approximation while the Pool is balanced).
+
+                const deltaSum = bnSum(deltas);
+                const currSum = bnSum(currentBalances);
+                const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
+
+                expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToDeltas, swapFee);
+              });
+            }
+
+            function prepareYieldFees() {
+              sharedBeforeEach(async () => {
+                const rates = range(numberOfTokens).map((n) => {
+                  if (typeof rateProviders[n] !== 'string') {
+                    return fp(1 + random(MIN_SWAP_RATE_DELTA, MAX_SWAP_RATE_DELTA));
+                  } else {
+                    return fp(1);
+                  }
+                });
+
+                await Promise.all(
+                  rateProviders.map((rateProvider, i) => {
+                    if (typeof rateProvider !== 'string') {
+                      rateProvider.mockRate(rates[i]);
+                    }
+                  })
+                );
+
+                // We need to get the Pool to update the rate cache of all of its tokens, so that the balance change is
+                // seen as a change in rates from old to current.
+                await tokens.asyncMap(async (token, i) => {
+                  if (typeof rateProviders[i] !== 'string') {
+                    await pool.updateTokenRateCache(token.address);
+                  }
+                });
+
+                currentBalances = arrayFpMul(preBalances, rates);
+
+                // We assume all tokens have similar value, and simply add the non-exempt the amounts together to
+                // represent how much value is being added to the Pool. This is equivalent to assuming the invariant is
+                // the sum of the tokens (which is a close approximation while the Pool is balanced).
+
+                const deltaSum = bnSum(
+                  preBalances.map((balance, i) =>
+                    exemptFromYieldProtocolFeeFlag ? 0 : fpMul(balance, rates[i].sub(fp(1)))
+                  )
+                );
+
+                const currSum = bnSum(currentBalances);
+                const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
+
+                expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToDeltas, yieldFee);
+              });
+            }
+
+            function prepareSwapAndYieldFees() {
+              sharedBeforeEach(async () => {
+                const swapFeeDeltas = range(numberOfTokens).map(() =>
+                  fp(random(MIN_SWAP_BALANCE_DELTA, MAX_SWAP_BALANCE_DELTA))
+                );
+
+                const rates = range(numberOfTokens).map((n) => {
+                  if (typeof rateProviders[n] !== 'string') {
+                    return fp(1 + random(MIN_SWAP_RATE_DELTA, MAX_SWAP_RATE_DELTA));
+                  } else {
+                    return fp(1);
+                  }
+                });
+
+                await Promise.all(
+                  rateProviders.map((rateProvider, i) => {
+                    if (typeof rateProvider !== 'string') {
+                      rateProvider.mockRate(rates[i]);
+                    }
+                  })
+                );
+
+                // We need to get the Pool to update the rate cache of all of its tokens, so that there balance change is
+                // seen as a change in rates from old to current.
+                await tokens.asyncMap(async (token, i) => {
+                  if (typeof rateProviders[i] !== 'string') {
+                    await pool.updateTokenRateCache(token.address);
+                  }
+                });
+
+                // We first apply the swap deltas, and then multiply by the rates, which is the model the Pool uses when
+                // splitting swap and yield fees.
+
+                currentBalances = arrayFpMul(arrayAdd(preBalances, swapFeeDeltas), rates);
+
+                // We assume all tokens have similar value, and simply add the swap deltas and non-exempt yield deltas
+                // together to represent how much value is being added to the Pool. This is equivalent to assuming the
+                // invariant is the sum of the tokens (which is a close approximation while the Pool is balanced).
+
+                const swapFeeDeltaSum = bnSum(swapFeeDeltas);
+                const yieldDeltaSum = bnSum(
+                  preBalances.map((balance, i) =>
+                    exemptFromYieldProtocolFeeFlag ? 0 : fpMul(balance, rates[i].sub(fp(1)))
+                  )
+                );
+                const currSum = bnSum(currentBalances);
+
+                const poolPercentageDueToSwapFeeDeltas = fpDiv(swapFeeDeltaSum, currSum);
+                const poolPercentageDueToYieldDeltas = fpDiv(yieldDeltaSum, currSum);
+
+                expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToSwapFeeDeltas, swapFee).add(
+                  fpMul(poolPercentageDueToYieldDeltas, yieldFee)
+                );
+              });
+            }
+
+            function itDoesNotPayAnyProtocolFees() {
+              let currentBalancesWithBpt: BigNumber[];
+
+              sharedBeforeEach(async () => {
+                currentBalancesWithBpt = [...currentBalances];
+                currentBalancesWithBpt.splice(bptIndex, 0, PREMINTED_BPT.sub(preVirtualSupply));
+              });
+
+              it('returns zero protocol ownership percentage', async () => {
+                expect(
+                  await pool.getProtocolPoolOwnershipPercentage(currentBalances, AMPLIFICATION_FACTOR, preInvariant)
+                ).to.equal(0);
+              });
+
+              it('mints no BPT', async () => {
+                const tx = await pool.payProtocolFeesBeforeJoinExit(
+                  currentBalancesWithBpt,
+                  AMPLIFICATION_FACTOR,
+                  preInvariant
+                );
+                expectEvent.notEmitted(await tx.wait(), 'Transfer');
+              });
+
+              it('returns the original virtual supply', async () => {
+                const { virtualSupply: updatedVirtualSupply } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
+                  currentBalancesWithBpt,
+                  AMPLIFICATION_FACTOR,
+                  preInvariant
+                );
+                expect(updatedVirtualSupply).to.be.equal(preVirtualSupply);
+              });
+
+              it('returns the balances sans BPT', async () => {
+                const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
+                  currentBalancesWithBpt,
+                  AMPLIFICATION_FACTOR,
+                  preInvariant
+                );
+                expect(balances).to.deep.equal(currentBalances);
+              });
+            }
+
+            function itPaysTheExpectedProtocolFees() {
+              let currentBalancesWithBpt: BigNumber[];
+              let expectedBptAmount: BigNumber;
+
+              sharedBeforeEach(async () => {
+                currentBalancesWithBpt = [...currentBalances];
+                currentBalancesWithBpt.splice(bptIndex, 0, PREMINTED_BPT.sub(preVirtualSupply));
+
+                // protocol ownership = to mint / (supply + to mint)
+                // to mint = supply * protocol ownership / (1 - protocol ownership)
+                expectedBptAmount = preVirtualSupply
+                  .mul(expectedProtocolOwnershipPercentage)
+                  .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+              });
+
+              it('returns a non-zero protocol ownership percentage if not exempt', async () => {
+                const protocolPoolOwnershipPercentage = await pool.getProtocolPoolOwnershipPercentage(
+                  currentBalances,
+                  AMPLIFICATION_FACTOR,
+                  preInvariant
+                );
+
+                expect(protocolPoolOwnershipPercentage).to.be.gt(0);
+                expect(protocolPoolOwnershipPercentage).to.be.almostEqual(
+                  expectedProtocolOwnershipPercentage,
+                  FEE_RELATIVE_ERROR
+                );
+              });
+
+              it('mints BPT to the protocol fee collector', async () => {
+                const tx = await pool.payProtocolFeesBeforeJoinExit(
+                  currentBalancesWithBpt,
+                  AMPLIFICATION_FACTOR,
+                  preInvariant
+                );
+                const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
+                  from: ZERO_ADDRESS,
+                  to: feesCollector.address,
+                });
+                expect(event.args.value).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
+              });
+
+              it('returns the updated virtual supply', async () => {
+                const { virtualSupply: updatedVirtualSupply } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
+                  currentBalancesWithBpt,
+                  AMPLIFICATION_FACTOR,
+                  preInvariant
+                );
+                expect(updatedVirtualSupply).to.be.almostEqual(
+                  preVirtualSupply.add(expectedBptAmount),
+                  FEE_RELATIVE_ERROR
+                );
+              });
+
+              it('returns the balances sans BPT', async () => {
+                const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
+                  currentBalancesWithBpt,
+                  AMPLIFICATION_FACTOR,
+                  preInvariant
+                );
+                expect(balances).to.deep.equal(currentBalances);
+              });
+            }
           }
-        }
+        });
+      }
+
+      context('when tokens are exempt, with yield bearing tokens', () => {
+        const exemptFlag = true;
+        const withYieldBearingTokens = true;
+
+        itTestsProtocolFeesAndInvariantUpdate(exemptFlag, withYieldBearingTokens);
       });
 
-      describe('updateInvariantAfterJoinExit', () => {
-        sharedBeforeEach(async () => {
-          // We update the rate of all rate providers, making the current rates become different from the old rates, so
-          // that we can later test if they are made equal.
-          const rates = range(numberOfTokens).map(() => fp(1 + random(0.1, 0.5)));
-          await Promise.all(rateProviders.map((rateProvider, i) => rateProvider.mockRate(rates[i])));
-          await tokens.asyncMap((token) => pool.updateTokenRateCache(token.address));
+      context('when tokens are exempt, with no yield bearing tokens', () => {
+        const exemptFlag = true;
+        const withYieldBearingTokens = false;
+
+        itTestsProtocolFeesAndInvariantUpdate(exemptFlag, withYieldBearingTokens);
+      });
+
+      context('when tokens are not exempt, with yield bearing tokens', () => {
+        const exemptFlag = false;
+        const withYieldBearingTokens = true;
+
+        itTestsProtocolFeesAndInvariantUpdate(exemptFlag, withYieldBearingTokens);
+      });
+
+      context('when tokens are not exempt, with no yield bearing tokens', () => {
+        const exemptFlag = false;
+        const withYieldBearingTokens = false;
+
+        itTestsProtocolFeesAndInvariantUpdate(exemptFlag, withYieldBearingTokens);
+      });
+
+      function itTestsProtocolFeesAndInvariantUpdate(exemptFlag: boolean, withYieldBearingTokens: boolean) {
+        sharedBeforeEach('deploy and setup pool', async () => {
+          exemptFromYieldProtocolFeeFlag = exemptFlag;
+          pool = await deployPool(withYieldBearingTokens);
+          await setupPool(pool);
         });
 
-        context('when the protocol swap fee percentage is zero', () => {
-          itPaysProtocolFeesOnJoinExitSwaps(bn(0));
-        });
+        itPaysProtocolFees(exemptFlag || !withYieldBearingTokens);
 
-        context('when the protocol swap fee percentage is non-zero', () => {
-          itPaysProtocolFeesOnJoinExitSwaps(SWAP_PROTOCOL_FEE_PERCENTAGE);
-        });
+        itUpdatesInvariantAfterJoinExit();
+      }
 
-        function itPaysProtocolFeesOnJoinExitSwaps(swapFee: BigNumber) {
-          let currentBalances: BigNumber[];
-          let currentVirtualSupply: BigNumber;
-          let expectedProtocolOwnershipPercentage: BigNumber;
+      function itUpdatesInvariantAfterJoinExit() {
+        describe('updateInvariantAfterJoinExit', () => {
+          sharedBeforeEach(async () => {
+            // We update the rate of all rate providers, making the current rates become different from the old rates, so
+            // that we can later test if they are made equal.
+            const rates = range(numberOfTokens).map(() => fp(1 + random(0.1, 0.5)));
+            await Promise.all(
+              rateProviders.map((rateProvider, i) => {
+                if (typeof rateProvider !== 'string') {
+                  rateProvider.mockRate(rates[i]);
+                }
+              })
+            );
 
-          enum Operation {
-            JOIN,
-            EXIT,
-          }
-
-          setProtocolFees(swapFee, 0);
-
-          context('on proportional join', () => {
-            prepareProportionalJoinOrExit(Operation.JOIN);
-
-            itDoesNotPayAnyProtocolFees();
-
-            itUpdatesThePostJoinExitState();
-          });
-
-          context('on proportional exit', () => {
-            prepareProportionalJoinOrExit(Operation.EXIT);
-
-            itDoesNotPayAnyProtocolFees();
-
-            itUpdatesThePostJoinExitState();
-          });
-
-          context('on multi-token non-proportional join', () => {
-            prepareMultiTokenNonProportionalJoinOrExit(Operation.JOIN);
-
-            if (swapFee.eq(0)) {
-              itDoesNotPayAnyProtocolFees();
-            } else {
-              itPaysTheExpectedProtocolFees();
-            }
-
-            itUpdatesThePostJoinExitState();
-          });
-
-          context('on multi-token non-proportional exit', () => {
-            prepareMultiTokenNonProportionalJoinOrExit(Operation.EXIT);
-
-            if (swapFee.eq(0)) {
-              itDoesNotPayAnyProtocolFees();
-            } else {
-              itPaysTheExpectedProtocolFees();
-            }
-
-            itUpdatesThePostJoinExitState();
-          });
-
-          function prepareProportionalJoinOrExit(op: Operation) {
-            sharedBeforeEach(async () => {
-              const ratio = fp(random(0.1, 0.9));
-
-              // Generate amounts for a proportional join/exit
-              const amounts = preBalances.map((balance) => fpMul(balance, ratio));
-
-              // Compute the balances, and increase/decrease the virtual supply proportionally
-              if (op == Operation.JOIN) {
-                currentBalances = arrayAdd(preBalances, amounts);
-                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
-              } else {
-                currentBalances = arraySub(preBalances, amounts);
-                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
+            await tokens.asyncMap(async (token, i) => {
+              if (typeof rateProviders[i] !== 'string') {
+                await pool.updateTokenRateCache(token.address);
               }
             });
-          }
+          });
 
-          function prepareMultiTokenNonProportionalJoinOrExit(op: Operation) {
-            sharedBeforeEach(async () => {
-              const ratio = fp(random(0.1, 0.9));
+          context('when the protocol swap fee percentage is zero', () => {
+            itPaysProtocolFeesOnJoinExitSwaps(bn(0));
+          });
 
-              // Generate amounts for a proportional join/exit
-              const proportionalAmounts = preBalances.map((balance) => fpMul(balance, ratio));
+          context('when the protocol swap fee percentage is non-zero', () => {
+            itPaysProtocolFeesOnJoinExitSwaps(SWAP_PROTOCOL_FEE_PERCENTAGE);
+          });
 
-              // Compute deltas that are going to modify the proportional amounts. These will be swap fees.
-              const deltas = proportionalAmounts.map((amount) => fpMul(amount, fp(random(0.05, 0.1))));
+          function itPaysProtocolFeesOnJoinExitSwaps(swapFee: BigNumber) {
+            let currentBalances: BigNumber[];
+            let currentVirtualSupply: BigNumber;
+            let expectedProtocolOwnershipPercentage: BigNumber;
 
-              // Compute the balances with the added deltas, and the virtual supply without taking them into account
-              // (because they are fees).
-              if (op == Operation.JOIN) {
-                const proportionalBalances = arrayAdd(preBalances, proportionalAmounts);
-                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
+            enum Operation {
+              JOIN,
+              EXIT,
+            }
 
-                currentBalances = arrayAdd(proportionalBalances, deltas);
+            setProtocolFees(swapFee, 0);
+
+            context('on proportional join', () => {
+              prepareProportionalJoinOrExit(Operation.JOIN);
+
+              itDoesNotPayAnyProtocolFees();
+
+              itUpdatesThePostJoinExitState();
+            });
+
+            context('on proportional exit', () => {
+              prepareProportionalJoinOrExit(Operation.EXIT);
+
+              itDoesNotPayAnyProtocolFees();
+
+              itUpdatesThePostJoinExitState();
+            });
+
+            context('on multi-token non-proportional join', () => {
+              prepareMultiTokenNonProportionalJoinOrExit(Operation.JOIN);
+
+              if (swapFee.eq(0)) {
+                itDoesNotPayAnyProtocolFees();
               } else {
-                const proportionalBalances = arraySub(preBalances, proportionalAmounts);
-                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
-
-                currentBalances = arrayAdd(proportionalBalances, deltas);
+                itPaysTheExpectedProtocolFees();
               }
 
-              // The deltas are pure swap fees: the protocol ownership percentage is their percentage of the entire
-              // Pool, multiplied by the protocol fee percentage. This indirectly assumes that all tokens are worth
-              // roughly the same, which should hold since we're not unbalancing the Pool greatly.
-              const deltaSum = bnSum(deltas);
-              const currSum = bnSum(currentBalances);
-
-              const poolFeePercentage = fpDiv(deltaSum, currSum);
-              expectedProtocolOwnershipPercentage = fpMul(poolFeePercentage, swapFee);
+              itUpdatesThePostJoinExitState();
             });
-          }
 
-          function itDoesNotPayAnyProtocolFees() {
-            it('mints no (or negligible) BPT', async () => {
-              const tx = await pool.updateInvariantAfterJoinExit(
-                AMPLIFICATION_FACTOR,
-                currentBalances,
-                preInvariant,
-                preVirtualSupply,
-                currentVirtualSupply
-              );
+            context('on multi-token non-proportional exit', () => {
+              prepareMultiTokenNonProportionalJoinOrExit(Operation.EXIT);
 
-              // If the protocol swap fee percentage is non-zero, we can't quite guarantee that there'll be zero
-              // protocol fees since there's some rounding error in the computation of the currentInvariant the Pool
-              // will make, which might result in negligible fees.
-
-              // If no tokens were minted, there'll be no transfer event. If some were minted, we check that the
-              // transfer event is for a negligible amount.
-              const receipt = await tx.wait();
-              const minted = receipt.events.length > 0;
-
-              if (!minted) {
-                expectEvent.notEmitted(receipt, 'Transfer');
+              if (swapFee.eq(0)) {
+                itDoesNotPayAnyProtocolFees();
               } else {
+                itPaysTheExpectedProtocolFees();
+              }
+
+              itUpdatesThePostJoinExitState();
+            });
+
+            function prepareProportionalJoinOrExit(op: Operation) {
+              sharedBeforeEach(async () => {
+                const ratio = fp(random(0.1, 0.9));
+
+                // Generate amounts for a proportional join/exit
+                const amounts = preBalances.map((balance) => fpMul(balance, ratio));
+
+                // Compute the balances, and increase/decrease the virtual supply proportionally
+                if (op == Operation.JOIN) {
+                  currentBalances = arrayAdd(preBalances, amounts);
+                  currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
+                } else {
+                  currentBalances = arraySub(preBalances, amounts);
+                  currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
+                }
+              });
+            }
+
+            function prepareMultiTokenNonProportionalJoinOrExit(op: Operation) {
+              sharedBeforeEach(async () => {
+                const ratio = fp(random(0.1, 0.9));
+
+                // Generate amounts for a proportional join/exit
+                const proportionalAmounts = preBalances.map((balance) => fpMul(balance, ratio));
+
+                // Compute deltas that are going to modify the proportional amounts. These will be swap fees.
+                const deltas = proportionalAmounts.map((amount) => fpMul(amount, fp(random(0.05, 0.1))));
+
+                // Compute the balances with the added deltas, and the virtual supply without taking them into account
+                // (because they are fees).
+                if (op == Operation.JOIN) {
+                  const proportionalBalances = arrayAdd(preBalances, proportionalAmounts);
+                  currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
+
+                  currentBalances = arrayAdd(proportionalBalances, deltas);
+                } else {
+                  const proportionalBalances = arraySub(preBalances, proportionalAmounts);
+                  currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
+
+                  currentBalances = arrayAdd(proportionalBalances, deltas);
+                }
+
+                // The deltas are pure swap fees: the protocol ownership percentage is their percentage of the entire
+                // Pool, multiplied by the protocol fee percentage. This indirectly assumes that all tokens are worth
+                // roughly the same, which should hold since we're not unbalancing the Pool greatly.
+                const deltaSum = bnSum(deltas);
+                const currSum = bnSum(currentBalances);
+
+                const poolFeePercentage = fpDiv(deltaSum, currSum);
+                expectedProtocolOwnershipPercentage = fpMul(poolFeePercentage, swapFee);
+              });
+            }
+
+            function itDoesNotPayAnyProtocolFees() {
+              it('mints no (or negligible) BPT', async () => {
+                const tx = await pool.updateInvariantAfterJoinExit(
+                  AMPLIFICATION_FACTOR,
+                  currentBalances,
+                  preInvariant,
+                  preVirtualSupply,
+                  currentVirtualSupply
+                );
+
+                // If the protocol swap fee percentage is non-zero, we can't quite guarantee that there'll be zero
+                // protocol fees since there's some rounding error in the computation of the currentInvariant the Pool
+                // will make, which might result in negligible fees.
+
+                // If no tokens were minted, there'll be no transfer event. If some were minted, we check that the
+                // transfer event is for a negligible amount.
+                const receipt = await tx.wait();
+                const minted = receipt.events.length > 0;
+
+                if (!minted) {
+                  expectEvent.notEmitted(receipt, 'Transfer');
+                } else {
+                  const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
+                    from: ZERO_ADDRESS,
+                    to: feesCollector.address,
+                  });
+
+                  const bptAmount = event.args.value;
+
+                  // The BPT amount to mint is computed as a percentage of the current supply. This is done with precision
+                  // of up to 18 decimal places, so any error below that is always considered negligible. We test for
+                  // precision of up to 17 decimal places to give some leeway and account for e.g. different rounding
+                  // directions, etc.
+                  expect(bptAmount).to.be.lte(currentVirtualSupply.div(bn(1e17)));
+                }
+              });
+            }
+
+            function itPaysTheExpectedProtocolFees() {
+              let expectedBptAmount: BigNumber;
+
+              sharedBeforeEach(async () => {
+                // protocol ownership = to mint / (supply + to mint)
+                // to mint = supply * protocol ownership / (1 - protocol ownership)
+                expectedBptAmount = currentVirtualSupply
+                  .mul(expectedProtocolOwnershipPercentage)
+                  .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+              });
+
+              it('mints BPT to the protocol fee collector', async () => {
+                const tx = await pool.updateInvariantAfterJoinExit(
+                  AMPLIFICATION_FACTOR,
+                  currentBalances,
+                  preInvariant,
+                  preVirtualSupply,
+                  currentVirtualSupply
+                );
+
                 const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
                   from: ZERO_ADDRESS,
                   to: feesCollector.address,
                 });
 
-                const bptAmount = event.args.value;
+                expect(event.args.value).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
+              });
+            }
 
-                // The BPT amount to mint is computed as a percentage of the current supply. This is done with precision
-                // of up to 18 decimal places, so any error below that is always considered negligible. We test for
-                // precision of up to 17 decimal places to give some leeway and account for e.g. different rounding
-                // directions, etc.
-                expect(bptAmount).to.be.lte(currentVirtualSupply.div(bn(1e17)));
-              }
-            });
-          }
+            function itUpdatesThePostJoinExitState() {
+              it('stores the current invariant and amplification factor', async () => {
+                await pool.updateInvariantAfterJoinExit(
+                  AMPLIFICATION_FACTOR,
+                  currentBalances,
+                  preInvariant,
+                  preVirtualSupply,
+                  currentVirtualSupply
+                );
 
-          function itPaysTheExpectedProtocolFees() {
-            let expectedBptAmount: BigNumber;
+                const { lastJoinExitAmplification, lastPostJoinExitInvariant } = await pool.getLastJoinExitData();
 
-            sharedBeforeEach(async () => {
-              // protocol ownership = to mint / (supply + to mint)
-              // to mint = supply * protocol ownership / (1 - protocol ownership)
-              expectedBptAmount = currentVirtualSupply
-                .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
-            });
-
-            it('mints BPT to the protocol fee collector', async () => {
-              const tx = await pool.updateInvariantAfterJoinExit(
-                AMPLIFICATION_FACTOR,
-                currentBalances,
-                preInvariant,
-                preVirtualSupply,
-                currentVirtualSupply
-              );
-
-              const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
-                from: ZERO_ADDRESS,
-                to: feesCollector.address,
+                expect(lastJoinExitAmplification).to.equal(AMPLIFICATION_FACTOR);
+                expect(lastPostJoinExitInvariant).to.almostEqual(
+                  await math.invariant(AMPLIFICATION_FACTOR, currentBalances),
+                  0.000001
+                );
               });
 
-              expect(event.args.value).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
-            });
-          }
+              it('updates the old rates', async () => {
+                await tokens.asyncEach(async (token, i) => {
+                  if (typeof rateProviders[i] !== 'string') {
+                    const { rate, oldRate } = await pool.getTokenRateCache(token.address);
+                    expect(oldRate).to.not.equal(rate);
+                  }
+                });
 
-          function itUpdatesThePostJoinExitState() {
-            it('stores the current invariant and amplification factor', async () => {
-              await pool.updateInvariantAfterJoinExit(
-                AMPLIFICATION_FACTOR,
-                currentBalances,
-                preInvariant,
-                preVirtualSupply,
-                currentVirtualSupply
-              );
+                await pool.updateInvariantAfterJoinExit(
+                  AMPLIFICATION_FACTOR,
+                  currentBalances,
+                  preInvariant,
+                  preVirtualSupply,
+                  currentVirtualSupply
+                );
 
-              const { lastJoinExitAmplification, lastPostJoinExitInvariant } = await pool.getLastJoinExitData();
-
-              expect(lastJoinExitAmplification).to.equal(AMPLIFICATION_FACTOR);
-              expect(lastPostJoinExitInvariant).to.almostEqual(
-                await math.invariant(AMPLIFICATION_FACTOR, currentBalances),
-                0.000001
-              );
-            });
-
-            it('updates the old rates', async () => {
-              await tokens.asyncEach(async (token) => {
-                const { rate, oldRate } = await pool.getTokenRateCache(token.address);
-                expect(oldRate).to.not.equal(rate);
+                await tokens.asyncEach(async (token, i) => {
+                  if (typeof rateProviders[i] !== 'string') {
+                    const { rate, oldRate } = await pool.getTokenRateCache(token.address);
+                    expect(oldRate).to.equal(rate);
+                  }
+                });
               });
-
-              await pool.updateInvariantAfterJoinExit(
-                AMPLIFICATION_FACTOR,
-                currentBalances,
-                preInvariant,
-                preVirtualSupply,
-                currentVirtualSupply
-              );
-
-              await tokens.asyncEach(async (token) => {
-                const { rate, oldRate } = await pool.getTokenRateCache(token.address);
-                expect(oldRate).to.equal(rate);
-              });
-            });
+            }
           }
-        }
-      });
+        });
+      }
     });
   }
 });

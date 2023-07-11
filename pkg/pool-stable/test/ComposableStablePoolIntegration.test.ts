@@ -40,7 +40,7 @@ describe('ComposableStablePoolIntegration', () => {
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
-    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
+    const exemptFromYieldProtocolFeeFlag = false;
     const swapFeePercentage = fp(0.1); // 10 %
     const protocolFeePercentage = fp(0.5); // 50 %
 
@@ -56,14 +56,13 @@ describe('ComposableStablePoolIntegration', () => {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
         await rateProviders[i].mockRate(rates[i] || fp(1));
         tokenRateCacheDurations[i] = MONTH + i;
-        exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
       pool = await StablePool.create({
         tokens,
         rateProviders,
         tokenRateCacheDurations: durations.length > 0 ? durations : tokenRateCacheDurations,
-        exemptFromYieldProtocolFeeFlags,
+        exemptFromYieldProtocolFeeFlag,
         owner,
         admin,
         ...params,
@@ -97,7 +96,7 @@ describe('ComposableStablePoolIntegration', () => {
           tokens: tokensNested,
           rateProviders: tokensNested.map((token) => (token.address === pool.bpt.address ? pool : rateProvider)),
           tokenRateCacheDurations: [0, 0],
-          exemptFromYieldProtocolFeeFlags: [false, false],
+          exemptFromYieldProtocolFeeFlag: false,
           owner,
           admin,
           swapFeePercentage: fp(0.00001),

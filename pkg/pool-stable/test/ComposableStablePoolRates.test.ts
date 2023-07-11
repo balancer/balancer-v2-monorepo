@@ -117,13 +117,12 @@ describe('ComposableStablePoolRates', () => {
     });
 
     let rateProviders: string[] = [];
-    let exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     async function deployPool(
       tokenList: TokenList,
       newRateProviders: string[],
       newTokenRateCacheDurations: BigNumber[],
-      newExemptFromYieldProtocolFeeFlags: boolean[],
+      newExemptFromYieldProtocolFeeFlag: boolean,
       poolOwner: Account
     ): Promise<void> {
       pool = await deploy('MockComposableStablePoolRates', {
@@ -132,13 +131,12 @@ describe('ComposableStablePoolRates', () => {
           tokenList.addresses,
           newRateProviders,
           newTokenRateCacheDurations,
-          newExemptFromYieldProtocolFeeFlags,
+          newExemptFromYieldProtocolFeeFlag,
           TypesConverter.toAddress(poolOwner),
         ],
       });
       bptIndex = (await pool.getBptIndex()).toNumber();
       rateProviders = newRateProviders;
-      exemptFromYieldProtocolFeeFlags = newExemptFromYieldProtocolFeeFlags;
     }
 
     async function deployPoolSimple(
@@ -166,7 +164,7 @@ describe('ComposableStablePoolRates', () => {
         tokenList,
         newRateProviders,
         newTokenRateCacheDurations,
-        newExemptFromYieldProtocolFeeFlags,
+        newExemptFromYieldProtocolFeeFlags.every((flag) => flag),
         poolOwner
       );
     }
@@ -809,20 +807,7 @@ describe('ComposableStablePoolRates', () => {
             const inputArray = tokens.map(() => fp(Math.random()));
             const expectedOutputArray = inputArray.map((input, i) => fpDiv(input, rates[i]));
 
-            expect(await pool.getAdjustedBalances(inputArray, true)).to.be.deep.eq(expectedOutputArray);
-          }
-        });
-      });
-
-      context('when not ignoring exempt flags', () => {
-        it('returns the array with elements scaled by the ratio of current and old cached token rates if exempt', async () => {
-          for (let i = 0; i < 5; i++) {
-            const inputArray = tokens.map(() => fp(Math.random()));
-            const expectedOutputArray = inputArray.map((input, i) =>
-              exemptFromYieldProtocolFeeFlags[i] ? fpDiv(input, rates[i]) : input
-            );
-
-            expect(await pool.getAdjustedBalances(inputArray, false)).to.be.deep.eq(expectedOutputArray);
+            expect(await pool.getAdjustedBalances(inputArray)).to.be.deep.eq(expectedOutputArray);
           }
         });
       });

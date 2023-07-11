@@ -81,14 +81,14 @@ describe('ComposableStablePool', () => {
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
-    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
 
     async function deployPool(
       params: RawStablePoolDeployment = {},
       rates: BigNumberish[] = [],
-      durations: number[] = []
+      durations: number[] = [],
+      exemptFromYieldProtocolFeeFlag = false
     ): Promise<void> {
       tokens = params.tokens || (await TokenList.create(numberOfTokens, { sorted: true }));
 
@@ -96,14 +96,13 @@ describe('ComposableStablePool', () => {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
         await rateProviders[i].mockRate(rates[i] || fp(1));
         tokenRateCacheDurations[i] = MONTH + i;
-        exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
       pool = await StablePool.create({
         tokens,
         rateProviders,
         tokenRateCacheDurations: durations.length > 0 ? durations : tokenRateCacheDurations,
-        exemptFromYieldProtocolFeeFlags,
+        exemptFromYieldProtocolFeeFlag,
         owner,
         admin,
         ...params,

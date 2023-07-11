@@ -132,7 +132,7 @@ export default {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
-      exemptFromYieldProtocolFeeFlags,
+      exemptFromYieldProtocolFeeFlag,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
@@ -147,14 +147,14 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!exemptFromYieldProtocolFeeFlags) exemptFromYieldProtocolFeeFlags = Array(tokens.length).fill(false);
+    if (!exemptFromYieldProtocolFeeFlag) exemptFromYieldProtocolFeeFlag = false;
     if (!version) version = 'test';
 
     return {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
-      exemptFromYieldProtocolFeeFlags,
+      exemptFromYieldProtocolFeeFlag,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,

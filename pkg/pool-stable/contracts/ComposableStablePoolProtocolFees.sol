@@ -127,7 +127,7 @@ abstract contract ComposableStablePoolProtocolFees is
             uint256 swapFeeGrowthInvariant,
             uint256 totalNonExemptGrowthInvariant,
             uint256 totalGrowthInvariant
-        ) = _getGrowthInvariants(balances, lastJoinExitAmp);
+        ) = _getGrowthInvariants(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
 
         // By comparing the invariant increase attributable to each source of growth to the total growth invariant,
         // we can calculate how much of the current Pool value originates from that source, and then apply the
@@ -160,16 +160,27 @@ abstract contract ComposableStablePoolProtocolFees is
         // invariant, and the total growth invariant might be *smaller* than the non-exempt growth invariant. Depending
         // on the order in which swaps, joins/exits and rate changes happen, as well as their relative magnitudes, it is
         // possible for the Pool to either pay more or less protocol fees than it should.
-        // Due to the complexity that handling all of these cases would introduce, this behavior is considered out of
-        // scope, and is expected to be handled on a case-by-case basis if the token rates were to ever decrease (which
-        // would also mean that the Pool value has dropped).
 
-        uint256 swapFeeGrowthInvariantDelta = (swapFeeGrowthInvariant > lastPostJoinExitInvariant)
-            ? swapFeeGrowthInvariant - lastPostJoinExitInvariant
-            : 0;
-        uint256 nonExemptYieldGrowthInvariantDelta = (totalNonExemptGrowthInvariant > swapFeeGrowthInvariant)
-            ? totalNonExemptGrowthInvariant - swapFeeGrowthInvariant
-            : 0;
+        // This patched version handles these edge cases gracefully, as it 1) forcibly bounds the swap fee growth
+        // invariant between the total growth and last post join-exit invariant; 2) enforces "all or nothing" exempt
+        // flags, which constrains the non-exempt growth invariant to be equal to either the total growth or swap
+        // fee growth invariant.
+        //
+        // Furthermore, the protocol ownership percentage is hard-coded to zero (so protocol fees will be zero),
+        // if the total growth invariant has gone *down* since the last join or exit, which is possible if rates
+        // declined. Together, these measures ensure protocol fee amounts will be bound by the non-manipulable
+        // swap fee growth, or zero in any pathological situations.
+
+        // If the total invariant decreased or stayed the same, there is no growth to split between swap and yield fees.
+        if (totalGrowthInvariant <= lastPostJoinExitInvariant) {
+            return (0, totalGrowthInvariant);
+        }
+
+        // By now, the following inequality applies:
+        // totalGrowthInvariant >= totalNonExemptGrowthInvariant >= swapFeeGrowthInvariant >= lastPostJoinExitInvariant
+        // So these differences are safe to execute; their lower bound is 0 and they will not overflow.
+        uint256 swapFeeGrowthInvariantDelta = swapFeeGrowthInvariant - lastPostJoinExitInvariant;
+        uint256 nonExemptYieldGrowthInvariantDelta = totalNonExemptGrowthInvariant - swapFeeGrowthInvariant;
 
         // We can now derive what percentage of the Pool's total value each invariant delta represents by dividing by
         // the total growth invariant. These values, multiplied by the protocol fee percentage for each growth type,
@@ -188,7 +199,24 @@ abstract contract ComposableStablePoolProtocolFees is
         return (protocolSwapFeePercentage + protocolYieldPercentage, totalGrowthInvariant);
     }
 
-    function _getGrowthInvariants(uint256[] memory balances, uint256 lastJoinExitAmp)
+    /**
+     * @dev Returns total growth invariant and swap / yield invariant approximations.
+     * The calculated invariants are bounded such that:
+     *
+     * - if totalGrowthInvariant <= lastPostJoinExitInvariant, the total value has decreased, so we can skip all
+     * other invariant calculations and just return `totalGrowthInvariant` for all. Protocol fees should be zero
+     * in this case, so callers using this to compute fees must also check for this, and return zero for the
+     * protocol ownership percentage.
+     *
+     * - Otherwise, totalGrowthInvariant >= totalNonExemptGrowthInvariant >=
+     *     swapFeeGrowthInvariant >= lastPostJoinExitInvariant
+     * This was previously an assumption, but is now ensured by the logic in this function.
+     */
+    function _getGrowthInvariants(
+        uint256[] memory balances,
+        uint256 lastJoinExitAmp,
+        uint256 lastPostJoinExitInvariant
+    )
         internal
         view
         returns (
@@ -197,40 +225,43 @@ abstract contract ComposableStablePoolProtocolFees is
             uint256 totalGrowthInvariant
         )
     {
-        // We always calculate the swap fee growth invariant, since we cannot easily know whether swap fees have
-        // accumulated or not.
+        // Total growth invariant is always calculated with the current (scaled / unadjusted) balances.
+        totalGrowthInvariant = StableMath._calculateInvariant(lastJoinExitAmp, balances);
 
+        // If total invariant decreased, calculating the other approximations is unnecessary.
+        if (totalGrowthInvariant <= lastPostJoinExitInvariant) {
+            return (totalGrowthInvariant, totalGrowthInvariant, totalGrowthInvariant);
+        }
+
+        // Swap fee invariant is calculated with adjusted balances, to discount the yield.
         swapFeeGrowthInvariant = StableMath._calculateInvariant(
             lastJoinExitAmp,
-            _getAdjustedBalances(balances, true) // Adjust all balances
+            _getAdjustedBalances(balances) // Adjust all token balances with rate providers.
         );
 
-        // For the other invariants, we can potentially skip some work. In the edge cases where none or all of the
-        // tokens are exempt from yield, there's one fewer invariant to compute.
+        // The `swapFeeGrowthInvariant` cannot ever be outside the bounds:
+        // totalGrowthInvariant >= swapFeeGrowthInvariant >= lastPostJoinExitInvariant
+        swapFeeGrowthInvariant = Math.min(totalGrowthInvariant, swapFeeGrowthInvariant); // Set upper bound.
+        swapFeeGrowthInvariant = Math.max(lastPostJoinExitInvariant, swapFeeGrowthInvariant); // Set lower bound.
 
-        if (_areNoTokensExempt()) {
-            // If there are no tokens with fee-exempt yield, then the total non-exempt growth will equal the total
-            // growth: all yield growth is non-exempt. There's also no point in adjusting balances, since we
-            // already know none are exempt.
-
-            totalNonExemptGrowthInvariant = StableMath._calculateInvariant(lastJoinExitAmp, balances);
-            totalGrowthInvariant = totalNonExemptGrowthInvariant;
-        } else if (_areAllTokensExempt()) {
+        // The only two accepted possibilities are either all tokens exempt, or none tokens exempt.
+        // totalNonExemptGrowthInvariant will either be totalGrowthInvariant or swapFeeGrowthInvariant.
+        // At this point,
+        // - totalGrowthInvariant > lastPostJoinExitInvariant
+        // - totalGrowthInvariant >= swapFeeGrowthInvariant >= lastPostJoinExitInvariant
+        // So the complete inequality will apply by the end of this function:
+        // totalGrowthInvariant >= totalNonExemptGrowthInvariant >= swapFeeGrowthInvariant >= lastPostJoinExitInvariant
+        if (isExemptFromYieldProtocolFee()) {
             // If no tokens are charged fees on yield, then the non-exempt growth is equal to the swap fee growth - no
             // yield fees will be collected.
 
             totalNonExemptGrowthInvariant = swapFeeGrowthInvariant;
-            totalGrowthInvariant = StableMath._calculateInvariant(lastJoinExitAmp, balances);
         } else {
-            // In the general case, we need to calculate two invariants: one with some adjusted balances, and one with
-            // the current balances.
+            // If there are no tokens with fee-exempt yield, then the total non-exempt growth will equal the total
+            // growth: all yield growth is non-exempt. There's also no point in adjusting balances, since we
+            // already know none are exempt.
 
-            totalNonExemptGrowthInvariant = StableMath._calculateInvariant(
-                lastJoinExitAmp,
-                _getAdjustedBalances(balances, false) // Only adjust non-exempt balances
-            );
-
-            totalGrowthInvariant = StableMath._calculateInvariant(lastJoinExitAmp, balances);
+            totalNonExemptGrowthInvariant = totalGrowthInvariant;
         }
     }
 
