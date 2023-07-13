@@ -270,6 +270,14 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
 
         for (uint256 i = 0; i < totalTypeGauges; ++i) {
             address gauge = typeGauges.unchecked_at(i);
+
+            // The gauge might need to be checkpointed in the controller to update its relative weight.
+            // Otherwise it might be filtered out mistakenly.
+            // if (_gaugeController.time_weight(gauge) < currentPeriod) {
+            //     _gaugeController.checkpoint_gauge(gauge);
+            // }
+            _gaugeController.checkpoint_gauge(gauge);
+
             // Skip gauges that are below the threshold.
             if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
                 continue;
