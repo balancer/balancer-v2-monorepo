@@ -101,6 +101,11 @@ interface IL2GaugeCheckpointer {
     function getGaugeAtIndex(string memory gaugeType, uint256 index) external view returns (IStakelessGauge);
 
     /**
+     * @notice Returns the timestamp corresponding to the start of the previous week of the current block.
+     */
+    function getRoundedDownBlockTimestamp() external view returns (uint256);
+
+    /**
      * @notice Performs a checkpoint for all added gauges above the given relative weight threshold.
      * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
      * @param minRelativeWeight Threshold to filter out gauges below it.

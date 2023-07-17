@@ -135,9 +135,13 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
     }
 
     /// @inheritdoc IL2GaugeCheckpointer
+    function getRoundedDownBlockTimestamp() external view override returns (uint256) {
+        return _roundDownBlockTimestamp();
+    }
+
+    /// @inheritdoc IL2GaugeCheckpointer
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override nonReentrant {
-        // solhint-disable-next-line not-rely-on-time
-        uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
+        uint256 currentPeriod = _roundDownBlockTimestamp();
 
         string[] memory gaugeTypes = _gaugeAdder.getGaugeTypes();
         for (uint256 i = 0; i < gaugeTypes.length; ++i) {
@@ -156,8 +160,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         nonReentrant
         withValidGaugeType(gaugeType)
     {
-        // solhint-disable-next-line not-rely-on-time
-        uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
+        uint256 currentPeriod = _roundDownBlockTimestamp();
 
         _checkpointGauges(gaugeType, minRelativeWeight, currentPeriod);
 
@@ -189,8 +192,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
 
     /// @inheritdoc IL2GaugeCheckpointer
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
-        // solhint-disable-next-line not-rely-on-time
-        uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
+        uint256 currentPeriod = _roundDownBlockTimestamp();
         uint256 totalArbitrumGauges = _gauges["Arbitrum"].length();
         EnumerableSet.AddressSet storage arbitrumGauges = _gauges["Arbitrum"];
         uint256 totalCost;
@@ -246,7 +248,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
      * @dev Performs checkpoints for all gauges of the given type whose relative weight is at least the specified one.
      * @param gaugeType Type of the gauges to checkpoint.
      * @param minRelativeWeight Threshold to filter out gauges below it.
-     * @param currentPeriod Current block time rounded down to the start of the week.
+     * @param currentPeriod Current block time rounded down to the start of the previous week.
      * This method doesn't check whether the caller transferred enough ETH to cover the whole operation.
      */
     function _checkpointGauges(
@@ -273,10 +275,9 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
 
             // The gauge might need to be checkpointed in the controller to update its relative weight.
             // Otherwise it might be filtered out mistakenly.
-            // if (_gaugeController.time_weight(gauge) < currentPeriod) {
-            //     _gaugeController.checkpoint_gauge(gauge);
-            // }
-            _gaugeController.checkpoint_gauge(gauge);
+            if (_gaugeController.time_weight(gauge) < currentPeriod) {
+                _gaugeController.checkpoint_gauge(gauge);
+            }
 
             // Skip gauges that are below the threshold.
             if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
@@ -304,8 +305,10 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         _authorizerAdaptorEntrypoint.performAction(gauge, abi.encodeWithSelector(IStakelessGauge.checkpoint.selector));
     }
 
+    /**
+     * @dev Send back any leftover ETH to the caller if there is an existing balance in the contract.
+     */
     function _returnLeftoverEthIfAny() private {
-        // Send back any leftover ETH to the caller.
         // Most gauge types don't need to send value, and this step can be skipped in those cases.
         uint256 remainingBalance = address(this).balance;
         if (remainingBalance > 0) {
@@ -314,10 +317,12 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
     }
 
     /**
-     * @dev Rounds the provided timestamp down to the beginning of the current week (Thurs 00:00 UTC).
+     * @dev Rounds the provided timestamp down to the beginning of the previous week (Thurs 00:00 UTC) with respect
+     * to the current block timestamp.
      */
-    function _roundDownTimestamp(uint256 timestamp) private pure returns (uint256) {
+    function _roundDownBlockTimestamp() private view returns (uint256) {
         // Division by zero or overflows are impossible here.
-        return (timestamp / 1 weeks) * 1 weeks;
+        // solhint-disable-next-line not-rely-on-time
+        return (block.timestamp / 1 weeks - 1) * 1 weeks;
     }
 }
