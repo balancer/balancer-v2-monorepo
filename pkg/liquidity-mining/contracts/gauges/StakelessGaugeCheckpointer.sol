@@ -169,12 +169,26 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
 
     /// @inheritdoc IStakelessGaugeCheckpointer
     function checkpointSingleGauge(string memory gaugeType, address gauge) external payable override nonReentrant {
-        uint256 checkpointCost = getSingleBridgeCost(gaugeType, gauge);
+        _checkpointSingleGauge(gaugeType, gauge);
 
-        _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
-            gauge,
-            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
-        );
+        _returnLeftoverEthIfAny();
+    }
+
+    /// @inheritdoc IStakelessGaugeCheckpointer
+    function checkpointMultipleGauges(string[] memory gaugeTypes, address[] memory gauges)
+        external
+        payable
+        override
+        nonReentrant
+    {
+        bool singleType = (gaugeTypes.length == 1);
+        require(gaugeTypes.length == gauges.length || singleType, "Mismatch between gauge types and addresses");
+        require(gauges.length > 0, "No gauges to checkpoint");
+
+        uint256 length = gauges.length;
+        for (uint256 i = 0; i < length; ++i) {
+            _checkpointSingleGauge(singleType ? gaugeTypes[0] : gaugeTypes[i], gauges[i]);
+        }
 
         _returnLeftoverEthIfAny();
     }
@@ -303,6 +317,15 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
      */
     function _checkpointCostlessBridgeGauge(address gauge) private {
         _authorizerAdaptorEntrypoint.performAction(gauge, abi.encodeWithSelector(IStakelessGauge.checkpoint.selector));
+    }
+
+    function _checkpointSingleGauge(string memory gaugeType, address gauge) internal {
+        uint256 checkpointCost = getSingleBridgeCost(gaugeType, gauge);
+
+        _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
+            gauge,
+            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
+        );
     }
 
     /**
