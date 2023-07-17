@@ -18,8 +18,9 @@
   - Added event `GaugeTypeAdded`, and changed `GaugeFactoryAdded` for `GaugeFactorySet`.
   - Added `getGaugeTypes` method.
 - Moved `GaugeType` from `IGaugeAdder` to `IL2GaugeCheckpointer`, and adjusted types to accept new networks.
-- Refactored `IL2GaugeCheckpointer`.
+- Refactored `IL2GaugeCheckpointer` to `StakelessGaugeCheckpointer`.
   - Removed `isSupportedGaugeType` from interface.
+  - Added `getRoundedDownBlockTimestamp` to interface.
 - Bumped minimum compiler version from `0.7.0` to `0.7.1` in `BalancerErrors`.
 
 ## 0.4.0 (2023-03-15)
