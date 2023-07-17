@@ -19,13 +19,13 @@ import "./IGaugeAdder.sol";
 import "./IStakelessGauge.sol";
 
 /**
- * @title L2 Gauge Checkpointer interface
+ * @title Stakeless Gauge Checkpointer interface
  * @notice Manages checkpoints for L2 and mainnet stakeless root gauges, allowing to perform mutiple checkpoints in a
  * single call.
  * @dev Supports gauge types registered in `GaugeAdder`.
  * Gauges to be checkpointed need to be added to the controller beforehand.
  */
-interface IL2GaugeCheckpointer {
+interface IStakelessGaugeCheckpointer {
     // String values are hashed when indexed, so we also emit the raw string as a data field for ease of use.
     /**
      * @notice Emitted when a gauge is added to the checkpointer.

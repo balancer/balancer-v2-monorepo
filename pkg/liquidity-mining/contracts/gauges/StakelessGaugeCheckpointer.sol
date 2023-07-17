@@ -18,8 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IL2GaugeCheckpointer.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGaugeCheckpointer.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
@@ -29,10 +29,10 @@ import "../admin/GaugeAdder.sol";
 import "./arbitrum/ArbitrumRootGauge.sol";
 
 /**
- * @title L2 Gauge Checkpointer
- * @notice Implements IL2GaugeCheckpointer; refer to it for API documentation.
+ * @title Stakeless Gauge Checkpointer
+ * @notice Implements IStakelessGaugeCheckpointer; refer to it for API documentation.
  */
-contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, SingletonAuthentication {
+contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGuard, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     bytes32 private immutable _arbitrum = keccak256(abi.encodePacked("Arbitrum"));
@@ -55,12 +55,12 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         _;
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function getGaugeAdder() external view override returns (IGaugeAdder) {
         return _gaugeAdder;
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function addGaugesWithVerifiedType(string memory gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
@@ -72,7 +72,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         _addGauges(gaugeType, gauges, true);
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function addGauges(string memory gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
@@ -82,7 +82,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         _addGauges(gaugeType, gauges, false);
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function removeGauges(string memory gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
@@ -97,11 +97,11 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
             require(gauge.is_killed(), "Gauge was not killed");
             require(gaugesForType.remove(address(gauge)), "Gauge was not added to the checkpointer");
 
-            emit IL2GaugeCheckpointer.GaugeRemoved(gauge, gaugeType, gaugeType);
+            emit IStakelessGaugeCheckpointer.GaugeRemoved(gauge, gaugeType, gaugeType);
         }
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function hasGauge(string memory gaugeType, IStakelessGauge gauge)
         external
         view
@@ -112,7 +112,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         return _gauges[gaugeType].contains(address(gauge));
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function getTotalGauges(string memory gaugeType)
         external
         view
@@ -123,7 +123,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         return _gauges[gaugeType].length();
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function getGaugeAtIndex(string memory gaugeType, uint256 index)
         external
         view
@@ -134,12 +134,12 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         return IStakelessGauge(_gauges[gaugeType].at(index));
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function getRoundedDownBlockTimestamp() external view override returns (uint256) {
         return _roundDownBlockTimestamp();
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override nonReentrant {
         uint256 currentPeriod = _roundDownBlockTimestamp();
 
@@ -152,7 +152,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         Address.sendValue(msg.sender, address(this).balance);
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function checkpointGaugesOfTypeAboveRelativeWeight(string memory gaugeType, uint256 minRelativeWeight)
         external
         payable
@@ -167,7 +167,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         _returnLeftoverEthIfAny();
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function checkpointSingleGauge(string memory gaugeType, address gauge) external payable override nonReentrant {
         uint256 checkpointCost = getSingleBridgeCost(gaugeType, gauge);
 
@@ -179,7 +179,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         _returnLeftoverEthIfAny();
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function getSingleBridgeCost(string memory gaugeType, address gauge) public view override returns (uint256) {
         require(_gauges[gaugeType].contains(gauge), "Gauge was not added to the checkpointer");
 
@@ -190,7 +190,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         }
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
         uint256 currentPeriod = _roundDownBlockTimestamp();
         uint256 totalArbitrumGauges = _gauges["Arbitrum"].length();
@@ -211,7 +211,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
         return totalCost;
     }
 
-    /// @inheritdoc IL2GaugeCheckpointer
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function isValidGaugeType(string memory gaugeType) external view override returns (bool) {
         return _gaugeAdder.isValidGaugeType(gaugeType);
     }
@@ -240,7 +240,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard, Singleton
                 "Gauge does not correspond to the selected type"
             );
 
-            emit IL2GaugeCheckpointer.GaugeAdded(gauge, gaugeType, gaugeType);
+            emit IStakelessGaugeCheckpointer.GaugeAdded(gauge, gaugeType, gaugeType);
         }
     }
 
