@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -14,6 +15,7 @@ import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
 import { WEEK, currentWeekTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { Interface } from 'ethers/lib/utils';
 
 describe('StakelessGaugeCheckpointer', () => {
   let vault: Vault;
@@ -21,15 +23,14 @@ describe('StakelessGaugeCheckpointer', () => {
   let gaugeController: Contract;
   let gaugeAdder: Contract;
   let stakelessGaugeCheckpointer: Contract;
+  let gaugeImplementation: Contract;
 
   const gauges = new Map<string, string[]>();
   let admin: SignerWithAddress, other: SignerWithAddress;
 
-  let testGaugeType: string, otherGaugeType: string;
-  let testGauges: string[], otherTypeGauges: string[];
-
   const GAUGES_PER_TYPE = 3;
   const FIRST_VALID_GAUGE = GaugeType.Ethereum;
+  const ARBITRUM_BRIDGE_COST = fp(0.02);
 
   // Allowed gauges: Ethereum, Polygon, Arbitrum, Optimism, Gnosis, ZKSync.
   const GAUGE_TYPES = Object.values(GaugeType)
@@ -52,7 +53,7 @@ describe('StakelessGaugeCheckpointer', () => {
     // Allow all gauge types in the controller.
     await Promise.all(GAUGE_TYPES.concat(UNSUPPORTED_GAUGE_TYPES).map(() => gaugeController.add_type('0x', 0)));
 
-    const gaugeImplementation = await deploy('MockLiquidityGauge');
+    gaugeImplementation = await deploy('MockStakelessGauge', { args: [adaptor.address] });
     // Gauge factories creation: one per gauge type.
     const gaugeFactories = await Promise.all(
       GAUGE_TYPES.map(async (gaugeType) => {
@@ -86,6 +87,13 @@ describe('StakelessGaugeCheckpointer', () => {
         gauges.set(factory.type, await createGauges(factory.contract, GAUGES_PER_TYPE))
       )
     );
+
+    // Set bridge cost for arbitrum gauges
+    const arbitrumGauges = gauges.get(GaugeType[GaugeType.Arbitrum])!;
+    for (const gaugeAddress of arbitrumGauges) {
+      const gauge = await deployedAt('MockStakelessGauge', gaugeAddress);
+      await gauge.setTotalBridgeCost(ARBITRUM_BRIDGE_COST);
+    }
   });
 
   sharedBeforeEach(async () => {
@@ -108,6 +116,8 @@ describe('StakelessGaugeCheckpointer', () => {
 
   GAUGE_TYPES.forEach((gaugeType) => {
     itAddsAndRemovesGaugesForType(gaugeType);
+
+    itTestsSpecificGaugesCheckpoint(gaugeType);
   });
 
   UNSUPPORTED_GAUGE_TYPES.forEach((gaugeType) => {
@@ -145,14 +155,15 @@ describe('StakelessGaugeCheckpointer', () => {
   }
 
   function itAddsAndRemovesGaugesForType(gaugeType: string) {
+    let testGaugeType: string, otherGaugeType: string;
+    let testGauges: string[], otherTypeGauges: string[];
+
     let addGauges: (gaugeType: string, gauges: string[]) => Promise<Contract>;
 
     sharedBeforeEach(`setup test gauges for ${gaugeType}`, async () => {
       testGaugeType = gaugeType;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       testGauges = gauges.get(testGaugeType)!;
       otherGaugeType = getNextTestGaugeType(testGaugeType);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       otherTypeGauges = gauges.get(otherGaugeType)!;
     });
 
@@ -345,6 +356,87 @@ describe('StakelessGaugeCheckpointer', () => {
             'Gauge was not added to the checkpointer'
           );
         });
+      });
+    });
+  }
+
+  function itTestsSpecificGaugesCheckpoint(gaugeType: string) {
+    let testGaugeType: string;
+    let testGauges: string[];
+    const checkpointInterface = new Interface(['event Checkpoint()']);
+
+    describe(`single gauge checkpoint: ${gaugeType}`, () => {
+      sharedBeforeEach(`setup test gauges for ${gaugeType}`, async () => {
+        testGaugeType = gaugeType;
+        testGauges = gauges.get(testGaugeType)!;
+        const otherGaugeType = getNextTestGaugeType(testGaugeType);
+        const otherTypeGauges = gauges.get(otherGaugeType)!;
+
+        await addGaugesToController(gaugeController, testGauges);
+        await stakelessGaugeCheckpointer.addGauges(gaugeType, testGauges);
+        await addGaugesToController(gaugeController, otherTypeGauges);
+        await stakelessGaugeCheckpointer.addGauges(otherGaugeType, otherTypeGauges);
+
+        await vault.grantPermissionGlobally(
+          await adaptorEntrypoint.getActionId(gaugeImplementation.interface.getSighash('checkpoint')),
+          stakelessGaugeCheckpointer.address
+        );
+      });
+
+      it('checkpoints single gauges one by one', async () => {
+        for (const gauge of testGauges) {
+          const value = testGaugeType == GaugeType[GaugeType.Arbitrum] ? ARBITRUM_BRIDGE_COST : 0;
+          const tx = await stakelessGaugeCheckpointer.checkpointSingleGauge(testGaugeType, gauge, { value });
+          expectEvent.inIndirectReceipt(await tx.wait(), checkpointInterface, 'Checkpoint', {}, gauge);
+        }
+      });
+
+      it('checkpoints many gauges at once specifying the type only once', async () => {
+        const value = testGaugeType == GaugeType[GaugeType.Arbitrum] ? ARBITRUM_BRIDGE_COST.mul(testGauges.length) : 0;
+        const receipt = await (
+          await stakelessGaugeCheckpointer.checkpointMultipleGauges([testGaugeType], testGauges, { value })
+        ).wait();
+
+        for (const gauge of testGauges) {
+          expectEvent.inIndirectReceipt(receipt, checkpointInterface, 'Checkpoint', {}, gauge);
+        }
+      });
+
+      it('checkpoints many gauges at once specifying the type explicitly for each gauge', async () => {
+        const value = testGaugeType == GaugeType[GaugeType.Arbitrum] ? ARBITRUM_BRIDGE_COST.mul(testGauges.length) : 0;
+        const receipt = await (
+          await stakelessGaugeCheckpointer.checkpointMultipleGauges(
+            Array(testGauges.length).fill(testGaugeType),
+            testGauges,
+            { value }
+          )
+        ).wait();
+
+        for (const gauge of testGauges) {
+          expectEvent.inIndirectReceipt(receipt, checkpointInterface, 'Checkpoint', {}, gauge);
+        }
+      });
+
+      it('checkpoints many gauges at once, mixing types', async () => {
+        const otherGaugeType = getNextTestGaugeType(testGaugeType);
+        const otherTypeGauge = gauges.get(otherGaugeType)![0];
+
+        const value =
+          testGaugeType == GaugeType[GaugeType.Arbitrum] || otherGaugeType == GaugeType[GaugeType.Arbitrum]
+            ? ARBITRUM_BRIDGE_COST
+            : 0;
+        const currentTestGauges = [testGauges[0], otherTypeGauge];
+        const receipt = await (
+          await stakelessGaugeCheckpointer.checkpointMultipleGauges(
+            [testGaugeType, otherGaugeType],
+            currentTestGauges,
+            { value }
+          )
+        ).wait();
+
+        for (const gauge of currentTestGauges) {
+          expectEvent.inIndirectReceipt(receipt, checkpointInterface, 'Checkpoint', {}, gauge);
+        }
       });
     });
   }
