@@ -13,6 +13,7 @@ import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
+import { WEEK, currentWeekTimestamp } from '@balancer-labs/v2-helpers/src/time';
 
 describe('StakelessGaugeCheckpointer', () => {
   let vault: Vault;
@@ -96,6 +97,12 @@ describe('StakelessGaugeCheckpointer', () => {
   describe('getters', () => {
     it('returns gauge adder', async () => {
       expect(await stakelessGaugeCheckpointer.getGaugeAdder()).to.be.eq(gaugeAdder.address);
+    });
+
+    it('returns rounded down block timestamp', async () => {
+      expect(await stakelessGaugeCheckpointer.getRoundedDownBlockTimestamp()).to.be.eq(
+        (await currentWeekTimestamp()).sub(WEEK)
+      );
     });
   });
 
