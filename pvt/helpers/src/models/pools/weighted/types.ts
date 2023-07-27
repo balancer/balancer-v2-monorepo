@@ -288,7 +288,7 @@ export type AMLiquidityBootstrappingPoolParams = {
 };
 
 export type BasePoolRights = {
-    canTransferOwnership: boolean;
-    canChangeSwapFee: boolean;
-    canUpdateMetadata: boolean;
-}
+  canTransferOwnership: boolean;
+  canChangeSwapFee: boolean;
+  canUpdateMetadata: boolean;
+};

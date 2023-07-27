@@ -4,7 +4,12 @@ import Vault from '../../vault/Vault';
 import VaultDeployer from '../../vault/VaultDeployer';
 import { BUFFER_PERIOD_DURATION, NAME, PAUSE_WINDOW_DURATION, SYMBOL } from '../base/BasePool';
 import { deploy, deployedAt } from '../../../contract';
-import { RawLiquidityBootstrappingPoolDeployment, LiquidityBootstrappingPoolDeployment, AMLiquidityBootstrappingPoolParams, BasePoolRights } from './types';
+import {
+  RawLiquidityBootstrappingPoolDeployment,
+  LiquidityBootstrappingPoolDeployment,
+  AMLiquidityBootstrappingPoolParams,
+  BasePoolRights,
+} from './types';
 import TokenList from '../../tokens/TokenList';
 import { BigNumberish } from '../../../numbers';
 import { Account } from '../../types/types';
@@ -62,7 +67,6 @@ export default class UnseededLiquidityBootstrappingPool extends LiquidityBootstr
       swapFeePercentage: params.swapFeePercentage,
       swapEnabledOnStart: params.swapEnabledOnStart,
     };
-    
 
     return deploy('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', {
       args: [
@@ -95,13 +99,13 @@ export default class UnseededLiquidityBootstrappingPool extends LiquidityBootstr
       swapFeePercentage: swapFeePercentage,
       swapEnabledOnStart: swapEnabledOnStart,
     };
-    
+
     const basePoolRights: BasePoolRights = {
       canTransferOwnership: true,
       canChangeSwapFee: true,
       canUpdateMetadata: true,
     };
-    
+
     const tx = await factory.create(newPoolParams, basePoolRights, from?.address, randomBytes(32));
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');

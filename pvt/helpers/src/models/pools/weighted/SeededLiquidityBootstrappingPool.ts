@@ -4,7 +4,11 @@ import Vault from '../../vault/Vault';
 import VaultDeployer from '../../vault/VaultDeployer';
 import { BUFFER_PERIOD_DURATION, NAME, PAUSE_WINDOW_DURATION, SYMBOL } from '../base/BasePool';
 import { deploy, deployedAt } from '../../../contract';
-import { RawLiquidityBootstrappingPoolDeployment, LiquidityBootstrappingPoolDeployment, AMLiquidityBootstrappingPoolParams } from './types';
+import {
+  RawLiquidityBootstrappingPoolDeployment,
+  LiquidityBootstrappingPoolDeployment,
+  AMLiquidityBootstrappingPoolParams,
+} from './types';
 import TokenList from '../../tokens/TokenList';
 import { BigNumberish } from '../../../numbers';
 import { Account } from '../../types/types';
@@ -62,7 +66,6 @@ export default class SeededLiquidityBootstrappingPool extends LiquidityBootstrap
       swapFeePercentage: params.swapFeePercentage,
       swapEnabledOnStart: params.swapEnabledOnStart,
     };
-    
 
     return deploy('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', {
       args: [
@@ -78,7 +81,7 @@ export default class SeededLiquidityBootstrappingPool extends LiquidityBootstrap
   }
 
   static async _deployFromFactory(params: LiquidityBootstrappingPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFeePercentage, swapEnabledOnStart, owner, from } = params;
+    const { tokens, weights, swapFeePercentage, swapEnabledOnStart, from } = params;
 
     const factory = await deploy('v2-pool-weighted/SeededLiquidityBootstrappingPoolFactory', {
       args: [vault.address, vault.getFeesProvider().address, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
@@ -95,7 +98,7 @@ export default class SeededLiquidityBootstrappingPool extends LiquidityBootstrap
       swapFeePercentage: swapFeePercentage,
       swapEnabledOnStart: swapEnabledOnStart,
     };
-    
+
     const tx = await factory.create(newPoolParams, randomBytes(32));
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
