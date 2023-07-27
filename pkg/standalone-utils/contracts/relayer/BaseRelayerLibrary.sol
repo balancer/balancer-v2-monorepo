@@ -36,6 +36,10 @@ import "./BalancerRelayer.sol";
  *
  * This contract should neither be allowlisted as a relayer, nor called directly by the user.
  * No guarantees can be made about fund safety when calling this contract in an improper manner.
+ *
+ * All functions that are meant to be called from the entrypoint via `multicall` must be payable so that they
+ * do not revert in a call involving ETH. This also applies to functions that do not alter the state and would be
+ * usually labeled as `view`.
  */
 contract BaseRelayerLibrary is IBaseRelayerLibrary {
     using Address for address;
@@ -44,16 +48,16 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
 
-    constructor(IVault vault) IBaseRelayerLibrary(vault.WETH()) {
+    constructor(IVault vault, string memory version) IBaseRelayerLibrary(vault.WETH()) {
         _vault = vault;
-        _entrypoint = new BalancerRelayer(vault, address(this));
+        _entrypoint = new BalancerRelayer(vault, address(this), version);
     }
 
     function getVault() public view override returns (IVault) {
         return _vault;
     }
 
-    function getEntrypoint() public view returns (IBalancerRelayer) {
+    function getEntrypoint() external view returns (IBalancerRelayer) {
         return _entrypoint;
     }
 
@@ -78,7 +82,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @notice Approves the Vault to use tokens held in the relayer
      * @dev This is needed to avoid having to send intermediate tokens back to the user
      */
-    function approveVault(IERC20 token, uint256 amount) public payable override {
+    function approveVault(IERC20 token, uint256 amount) external payable override {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
         }
@@ -89,8 +93,13 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     /**
      * @notice Returns the amount referenced by chained reference `ref`.
      * @dev It does not alter the reference (even if it's marked as temporary).
+     *
+     * This function does not alter the state in any way. It is not marked as view because it has to be `payable`
+     * in order to be used in a batch transaction.
+     *
+     * Use a static call to read the state off-chain.
      */
-    function peekChainedReferenceValue(uint256 ref) public view override returns (uint256 value) {
+    function peekChainedReferenceValue(uint256 ref) external payable override returns (uint256 value) {
         (, value) = _peekChainedReferenceValue(ref);
     }
 

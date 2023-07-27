@@ -5,9 +5,9 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { Contract } from 'ethers';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import UnseededLiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/UnseededLiquidityBootstrappingPool';
 
 describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
   const MAX_TOKENS = 2;
@@ -25,7 +25,7 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
     await tokens.mint({ to: [other], amount: fp(200) });
   });
 
-  let pool: WeightedPool;
+  let pool: UnseededLiquidityBootstrappingPool;
   let poolController: Contract;
   const weights = [fp(0.9), fp(0.1)];
   const initialBalances = [fp(1000), fp(1.8)];
@@ -37,12 +37,11 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
       const params = {
         tokens,
         weights,
-        poolType: WeightedPoolType.UNSEEDED_AM_LIQUIDITY_BOOTSTRAPPING_POOL,
         vault,
         fromFactory: true,
         from: manager,
       };
-      pool = await WeightedPool.create(params);
+      pool = await UnseededLiquidityBootstrappingPool.create(params);
       poolController = await deployedAt('AssetManagedLBPController', await pool.getOwner());
     });
 

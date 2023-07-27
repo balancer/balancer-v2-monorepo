@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -20,6 +20,11 @@ export enum PoolKind {
   COMPOSABLE_STABLE_V2,
 }
 
+export type OutputReference = {
+  index: number;
+  key: BigNumber;
+};
+
 export async function setupRelayerEnvironment(): Promise<{
   user: SignerWithAddress;
   other: SignerWithAddress;
@@ -33,7 +38,9 @@ export async function setupRelayerEnvironment(): Promise<{
   const vault = await Vault.create({ admin });
 
   // Deploy Relayer
-  const relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
+  const relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+    args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS, false],
+  });
   const relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
   // Authorize Relayer for all actions

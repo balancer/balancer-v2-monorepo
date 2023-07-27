@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- Removed `Version` contract. It is now part of `v2-solidity-utils` since it will be used more generally.
+
+## 4.1.1 (2023-06-05)
+
+### Bugfix
+
+- Reduce gas limit to 10000 inside the static call in `ensureNotInVaultContext` from `VaultReentrancyLib`.
+
+## 4.1.0 (2023-06-05)
+
+### New Features
+
+- `ensureNotInVaultContext` changed to `view` in `VaultReentrancyLib`.
+
 ## 4.0.0 (2023-03-23)
 
 ### New Features

@@ -5,10 +5,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import SeededLiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/SeededLiquidityBootstrappingPool';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('AssetManagedLiquidityBootstrappingPool', function () {
   const MAX_TOKENS = 2;
@@ -26,7 +25,7 @@ describe('AssetManagedLiquidityBootstrappingPool', function () {
   });
 
   let sender: SignerWithAddress;
-  let pool: WeightedPool;
+  let pool: SeededLiquidityBootstrappingPool;
   const weights = [fp(0.9), fp(0.1)];
   const initialBalances = [fp(1000), fp(1.8)];
 
@@ -35,9 +34,8 @@ describe('AssetManagedLiquidityBootstrappingPool', function () {
       const params = {
         tokens,
         weights,
-        poolType: WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL,
       };
-      pool = await WeightedPool.create(params);
+      pool = await SeededLiquidityBootstrappingPool.create(params);
     });
 
     it('sets token weights', async () => {
@@ -61,10 +59,9 @@ describe('AssetManagedLiquidityBootstrappingPool', function () {
       const params = {
         tokens,
         weights,
-        poolType: WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL,
         fromFactory: true,
       };
-      pool = await WeightedPool.create(params);
+      pool = await SeededLiquidityBootstrappingPool.create(params);
     });
 
     it('has no asset managers', async () => {
@@ -81,10 +78,9 @@ describe('AssetManagedLiquidityBootstrappingPool', function () {
         const params = {
           tokens,
           weights,
-          poolType: WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL,
           swapEnabledOnStart: false,
         };
-        pool = await WeightedPool.create(params);
+        pool = await SeededLiquidityBootstrappingPool.create(params);
       });
 
       it('swaps show disabled on start', async () => {
@@ -102,10 +98,9 @@ describe('AssetManagedLiquidityBootstrappingPool', function () {
           tokens,
           weights,
           owner: owner.address,
-          poolType: WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL,
           swapEnabledOnStart: true,
         };
-        pool = await WeightedPool.create(params);
+        pool = await SeededLiquidityBootstrappingPool.create(params);
       });
 
       it('swaps show enabled on start', async () => {

@@ -26,7 +26,7 @@ import {
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('CompoundV2Wrapping', function () {
-  let DAI: Token, cDAI: Token;
+  let DAI: Contract, cDAI: Contract;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
@@ -56,7 +56,9 @@ describe('CompoundV2Wrapping', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+      args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS, false],
+    });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
@@ -425,8 +427,8 @@ describe('CompoundV2Wrapping', function () {
       function encodeSwap(params: {
         poolId: string;
         kind: SwapKind;
-        tokenIn: Token;
-        tokenOut: Token;
+        tokenIn: Token | Contract;
+        tokenOut: Token | Contract;
         amount: BigNumberish;
         sender: Account;
         recipient: Account;
@@ -727,7 +729,7 @@ describe('CompoundV2Wrapping', function () {
 
         receipt = await (
           await relayer.connect(senderUser).multicall([
-            encodeApprove(pool, MAX_UINT256),
+            encodeApprove(pool.instance, MAX_UINT256),
             encodeExit({
               poolId,
               assets: allTokens,
@@ -770,7 +772,7 @@ describe('CompoundV2Wrapping', function () {
     });
   });
 
-  function encodeApprove(token: Token, amount: BigNumberish): string {
+  function encodeApprove(token: Token | Contract, amount: BigNumberish): string {
     return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
   }
 

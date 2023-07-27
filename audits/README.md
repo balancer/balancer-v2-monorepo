@@ -19,3 +19,4 @@ This directory the reports of audits performed on Balancer smart contracts by di
 | Composable Stable Pool            | Certora       | [`2022-09-23`](./certora/2022-09-23.pdf)       |
 | Composable Stable Pool            | Trail Of Bits | [`2022-09-02`](./trail-of-bits/2022-09-02.pdf) |
 | Managed Pool                      | Trail Of Bits | [`2022-10-25`](./trail-of-bits/2022-10-25.pdf) |
+| Timelock Authorizer               | Certora       | [`2023-05-08`](./certora/2023-05-08.pdf)       |

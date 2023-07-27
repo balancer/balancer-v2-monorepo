@@ -82,4 +82,8 @@ contract MockGaugeController is IGaugeController {
         require(_validGauge[gauge], "Gauge does not exist on controller");
         _weights[gauge] = weight;
     }
+
+    function time_weight(address) external pure override returns (uint256) {
+        return 0;
+    }
 }

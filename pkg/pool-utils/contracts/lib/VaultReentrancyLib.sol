@@ -14,6 +14,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 library VaultReentrancyLib {
@@ -33,8 +34,51 @@ library VaultReentrancyLib {
      * here (https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345), those functions are unsafe,
      * and subject to manipulation that may result in loss of funds.
      */
-    function ensureNotInVaultContext(IVault vault) internal {
-        IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
-        vault.manageUserBalance(noop);
+    function ensureNotInVaultContext(IVault vault) internal view {
+        // Perform the following operation to trigger the Vault's reentrancy guard:
+        //
+        // IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
+        // _vault.manageUserBalance(noop);
+        //
+        // However, use a static call so that it can be a view function (even though the function is non-view).
+        // This allows the library to be used more widely, as some functions that need to be protected might be
+        // view.
+        //
+        // This staticcall always reverts, but we need to make sure it doesn't fail due to a re-entrancy attack.
+        // Staticcalls consume all gas forwarded to them on a revert caused by storage modification.
+        // By default, almost the entire available gas is forwarded to the staticcall,
+        // causing the entire call to revert with an 'out of gas' error.
+        //
+        // We set the gas limit to 10k for the staticcall to
+        // avoid wasting gas when it reverts due to storage modification.
+        // `manageUserBalance` is a non-reentrant function in the Vault, so calling it invokes `_enterNonReentrant`
+        // in the `ReentrancyGuard` contract, reproduced here:
+        //
+        //    function _enterNonReentrant() private {
+        //        // If the Vault is actually being reentered, it will revert in the first line, at the `_require` that
+        //        // checks the reentrancy flag, with "BAL#400" (corresponding to Errors.REENTRANCY) in the revertData.
+        //        // The full revertData will be: `abi.encodeWithSignature("Error(string)", "BAL#400")`.
+        //        _require(_status != _ENTERED, Errors.REENTRANCY);
+        //
+        //        // If the Vault is not being reentered, the check above will pass: but it will *still* revert,
+        //        // because the next line attempts to modify storage during a staticcall. However, this type of
+        //        // failure results in empty revertData.
+        //        _status = _ENTERED;
+        //    }
+        //
+        // So based on this analysis, there are only two possible revertData values: empty, or abi.encoded BAL#400.
+        //
+        // It is of course much more bytecode and gas efficient to check for zero-length revertData than to compare it
+        // to the encoded REENTRANCY revertData.
+        //
+        // While it should be impossible for the call to fail in any other way (especially since it reverts before
+        // `manageUserBalance` even gets called), any other error would generate non-zero revertData, so checking for
+        // empty data guards against this case too.
+
+        (, bytes memory revertData) = address(vault).staticcall{ gas: 10_000 }(
+            abi.encodeWithSelector(vault.manageUserBalance.selector, 0)
+        );
+
+        _require(revertData.length == 0, Errors.REENTRANCY);
     }
 }

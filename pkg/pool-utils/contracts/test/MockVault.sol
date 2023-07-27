@@ -25,7 +25,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-vault/contracts/ProtocolFeesCollector.sol";
 
-contract MockVault is IPoolSwapStructs {
+contract MockVault is IPoolSwapStructs, ReentrancyGuard {
     struct Pool {
         IERC20[] tokens;
         mapping(IERC20 => uint256) cash;
@@ -225,8 +225,22 @@ contract MockVault is IPoolSwapStructs {
     }
 
     // This supports calls from the VaultReentrancyLib in unit tests, so that they don't revert.
-    // Note that it isn't itself protected by the Vault context, like the real Vault would be.
-    function manageUserBalance(IVault.UserBalanceOp[] memory ops) external payable {
+    function manageUserBalance(IVault.UserBalanceOp[] memory) external payable nonReentrant {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    // The real Vault doesn't have any hooks that are view functions, so add one to this Vault
+    // specifically to test read-only reentrancy protection on view functions.
+    function functionWithHook(address pool) external nonReentrant {
+        (bool success, bytes memory returnData) = pool.call(abi.encodeWithSignature("viewHook()"));
+        
+        if (!success && returnData.length > 0) {
+            // The easiest way to bubble the revert reason is using memory via assembly
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                let returndata_size := mload(returnData)
+                revert(add(32, returnData), returndata_size)
+            }
+        }
     }
 }
