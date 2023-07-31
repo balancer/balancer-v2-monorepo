@@ -132,6 +132,16 @@ interface IStakelessGaugeCheckpointer {
     function checkpointSingleGauge(string memory gaugeType, address gauge) external payable;
 
     /**
+     * @notice Performs a checkpoint for a multiple added gauges of the given types.
+     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * Reverts if the gauges were not added to the checkpointer beforehand.
+     * @param gaugeTypes Types of the gauges to be checkpointed. If a single type is provided, it is applied to all of
+     * the gauges, otherwise the gauge types array should be equal in length to the gauges.
+     * @param gauges Addresses of the gauges to checkpoint.
+     */
+    function checkpointMultipleGauges(string[] memory gaugeTypes, address[] memory gauges) external payable;
+
+    /**
      * @notice Returns the ETH cost to checkpoint a single given gauge.
      * @dev Reverts if the gauge was not added to the checkpointer beforehand.
      * @param gaugeType Type of the gauge.
