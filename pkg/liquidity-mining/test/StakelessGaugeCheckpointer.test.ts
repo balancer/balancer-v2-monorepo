@@ -404,6 +404,23 @@ describe('StakelessGaugeCheckpointer', () => {
         });
       });
 
+      context('invalid inputs', () => {
+        it('reverts with no gauges to checkpoint', async () => {
+          await expect(stakelessGaugeCheckpointer.checkpointMultipleGauges([testGaugeType], [])).to.be.revertedWith(
+            'No gauges to checkpoint'
+          );
+        });
+
+        it('reverts with mismatching input lengths', async () => {
+          await expect(
+            stakelessGaugeCheckpointer.checkpointMultipleGauges(
+              Array(testGauges.length + 1).fill(testGaugeType),
+              testGauges
+            )
+          ).to.be.revertedWith('Mismatch between gauge types and addresses');
+        });
+      });
+
       function itCheckpointsGauges() {
         it('checkpoints single gauges one by one', async () => {
           for (const gauge of testGauges) {
