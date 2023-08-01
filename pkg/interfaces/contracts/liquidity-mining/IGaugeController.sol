@@ -45,4 +45,6 @@ interface IGaugeController {
     function admin() external view returns (IAuthorizerAdaptor);
 
     function gauge_exists(address gauge) external view returns (bool);
+
+    function time_weight(address gauge) external view returns (uint256);
 }
