@@ -112,6 +112,11 @@ describe('StakelessGaugeCheckpointer', () => {
         (await currentWeekTimestamp()).sub(WEEK)
       );
     });
+
+    it('returns gauge types', async () => {
+      const gaugeTypesInAdder = await gaugeAdder.getGaugeTypes();
+      expect(await stakelessGaugeCheckpointer.getGaugeTypes()).to.be.deep.eq(gaugeTypesInAdder);
+    });
   });
 
   GAUGE_TYPES.forEach((gaugeType) => {
