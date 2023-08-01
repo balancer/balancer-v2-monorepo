@@ -319,7 +319,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         returns (bytes memory)
     {
         // Must check for the recovery mode ExitKind first, which is common to all pool types.
-        // If it is just a regular exit, pass it to the appropriate PoolKind handler for interpretation.  
+        // If it is just a regular exit, pass it to the appropriate PoolKind handler for interpretation.
         if (BasePoolUserData.isRecoveryModeExitKind(userData)) {
             return _doRecoveryExitReplacements(userData);
         } else if (kind == PoolKind.WEIGHTED) {
