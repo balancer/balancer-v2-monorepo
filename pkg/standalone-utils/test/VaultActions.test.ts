@@ -1212,7 +1212,9 @@ describe('VaultActions', function () {
         await expect(
           relayer.connect(other).multicall([
             await encodeExitPool(vault, relayerLibrary, tokens, {
-              poolKind: PoolKind.WEIGHTED,
+              // We need to give it a pool kind, but it doesn't matter which one. The logic checks for the special
+              // exit kind first, and only checks the pool kind when it is NOT a recovery exit.
+              poolKind: PoolKind.LEGACY_STABLE,
               poolId: poolIdA,
               userData: BasePoolEncoder.recoveryModeExit(amountInBPT),
               toInternalBalance: true,
