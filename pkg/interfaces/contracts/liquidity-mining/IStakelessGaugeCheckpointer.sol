@@ -43,6 +43,11 @@ interface IStakelessGaugeCheckpointer {
     function getGaugeAdder() external view returns (IGaugeAdder);
 
     /**
+     * @notice Returns gauge types available in the checkpointer.
+     */
+    function getGaugeTypes() external view returns (string[] memory);
+
+    /**
      * @notice Adds an array of gauges from the given type. This is a permissioned function.
      * @dev Gauges added will be considered when performing checkpoints.
      * The gauges to add should meet the following preconditions:

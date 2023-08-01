@@ -61,6 +61,11 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
+    function getGaugeTypes() external view override returns (string[] memory) {
+        return _gaugeAdder.getGaugeTypes();
+    }
+
+    /// @inheritdoc IStakelessGaugeCheckpointer
     function addGaugesWithVerifiedType(string memory gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
