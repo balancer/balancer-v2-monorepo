@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/VaultHelpers.sol";
@@ -317,7 +318,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         private
         returns (bytes memory)
     {
-        if (kind == PoolKind.WEIGHTED) {
+        // Must check for the recovery mode ExitKind first, which is common to all pool types.
+        // If it is just a regular exit, pass it to the appropriate PoolKind handler for interpretation.
+        if (BasePoolUserData.isRecoveryModeExitKind(userData)) {
+            return _doRecoveryExitReplacements(userData);
+        } else if (kind == PoolKind.WEIGHTED) {
             return _doWeightedExitChainedReferenceReplacements(userData);
         } else {
             if (kind == PoolKind.LEGACY_STABLE) {
@@ -364,6 +369,18 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
             return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+        } else {
+            // Save gas by only re-encoding the data if we actually performed a replacement
+            return userData;
+        }
+    }
+
+    function _doRecoveryExitReplacements(bytes memory userData) private returns (bytes memory) {
+        uint256 bptAmountIn = BasePoolUserData.recoveryModeExit(userData);
+
+        if (_isChainedReference(bptAmountIn)) {
+            bptAmountIn = _getChainedReferenceValue(bptAmountIn);
+            return abi.encode(BasePoolUserData.RECOVERY_MODE_EXIT_KIND, bptAmountIn);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
             return userData;
