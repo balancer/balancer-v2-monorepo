@@ -26,4 +26,10 @@ interface IStakelessGauge is ILiquidityGauge {
      * @dev Returns the address that will receive the rewards (either the L2 gauge, or a mainnet address).
      */
     function getRecipient() external view returns (address);
+
+    /**
+     * @dev Returns total ETH bridge cost in wei.
+     * Each `checkpoint` should receive this exact amount to work.
+     */
+    function getTotalBridgeCost() external view returns (uint256);
 }

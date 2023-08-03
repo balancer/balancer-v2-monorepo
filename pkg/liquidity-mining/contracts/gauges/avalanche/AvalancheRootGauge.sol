@@ -128,7 +128,8 @@ contract AvalancheRootGauge is StakelessGauge {
         return address(_lzBALProxy);
     }
 
-    function getTotalBridgeCost() public view returns (uint256) {
+    /// @inheritdoc IStakelessGauge
+    function getTotalBridgeCost() public view override returns (uint256) {
         // Estimate fee does not depend on the amount to bridge.
         // We just set it to 0 so that we can have the same external interface across other gauges that require ETH.
         (uint256 nativeFee, ) = _lzBALProxy.estimateSendFee(
