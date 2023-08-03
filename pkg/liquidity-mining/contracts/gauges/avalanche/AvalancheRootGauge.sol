@@ -13,8 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAvalancheBridgeLimitsProvider.sol";
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -22,46 +21,78 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "../StakelessGauge.sol";
 
 /**
- * @dev Initiate an outgoing bridge transaction.
+ * @dev Partial interface for LayerZero BAL proxy.
  */
-interface IMultichainV4Router {
-    function anySwapOutUnderlying(
-        address token,
-        address to,
-        uint256 amount,
-        uint256 toChainID
-    ) external;
-}
+interface ILayerZeroBALProxy {
+    struct LzCallParams {
+        address payable refundAddress;
+        address zroPaymentAddress;
+        bytes adapterParams;
+    }
 
-/**
- * @dev Tokens to be bridged have AnySwap wrappers. This is necessary because some functions required by the bridge
- * (e.g., `burn`) might not be exposed by the native token contracts.
- */
-interface IAnyswapV6ERC20 is IERC20 {
-    function underlying() external returns (address);
+    /**
+     * @dev Returns the address of the underlying ERC20 token.
+     */
+    function token() external view returns (address);
+
+    /**
+     * @dev Estimate send token `_tokenId` to (`_dstChainId`, `_toAddress`).
+     * @param _dstChainId L0 defined chain id to send tokens to.
+     * @param _toAddress dynamic bytes array which contains the address to whom you are sending tokens to on the
+     *  dstChain.
+     * @param _amount amount of the tokens to transfer.
+     * @param _useZro indicates to use zro to pay L0 fees.
+     * @param _adapterParams flexible bytes array to indicate messaging adapter services in L0.
+     */
+    function estimateSendFee(
+        uint16 _dstChainId,
+        bytes32 _toAddress,
+        uint256 _amount,
+        bool _useZro,
+        bytes calldata _adapterParams
+    ) external view returns (uint256 nativeFee, uint256 zroFee);
+
+    /**
+     * @dev Send `_amount` amount of token to (`_dstChainId`, `_toAddress`) from `_from`.
+     * @param _from the owner of token.
+     * @param _dstChainId the destination chain identifier.
+     * @param _toAddress can be any size depending on the `dstChainId`.
+     * @param _amount the quantity of tokens in wei.
+     * @param _minAmount the minimum amount of tokens to receive on dstChain.
+     * @param _callParams struct with custom options.
+     *  - refundAddress: the address LayerZero refunds if too much message fee is sent.
+     *  - zroPaymentAddress set to address(0x0) if not paying in ZRO (LayerZero Token).
+     *  - adapterParams is a flexible bytes array to indicate messaging adapter services.
+     */
+    function sendFrom(
+        address _from,
+        uint16 _dstChainId,
+        bytes32 _toAddress,
+        uint256 _amount,
+        uint256 _minAmount,
+        LzCallParams calldata _callParams
+    ) external payable;
+
+    /**
+     * @dev Returns maximum allowed precision (decimals) for the proxy transfers.
+     */
+    function sharedDecimals() external returns (uint8);
 }
 
 /**
  * @notice Root Gauge for the Avalanche network.
- * @dev Uses the multichain bridge. This stores a reference to the factory, which implements
- * `IAvalancheBridgeLimitsProvider`, so the deployer must be the factory (or at least implement this interface).
- *
- * See general bridge docs here: https://docs.multichain.org/getting-started/how-it-works/cross-chain-router
+ * @dev Uses LayerZero OFTv2 (Omni Fungible Token V2) proxy contracts to bridge BAL.
+ * See https://layerzero.gitbook.io/docs/evm-guides/layerzero-omnichain-contracts/oft/oftv2 for reference.
  */
 contract AvalancheRootGauge is StakelessGauge {
     using SafeERC20 for IERC20;
-    using FixedPoint for uint256;
 
-    uint256 private constant _AVALANCHE_CHAIN_ID = 43114;
+    // LayerZero uses proprietary chain IDs.
+    // https://layerzero.gitbook.io/docs/technical-reference/mainnet/supported-chain-ids#avalanche
+    uint16 private constant _AVALANCHE_LZ_CHAIN_ID = 106;
 
-    IAnyswapV6ERC20 private constant _ANYSWAP_BAL_WRAPPER = IAnyswapV6ERC20(0xcb9d0b8CfD8371143ba5A794c7218D4766c493e2);
-
-    IMainnetBalancerMinter private immutable _minter;
-    IMultichainV4Router private immutable _multichainRouter;
-
-    // The bridge limits are set in the factory on deployment, and can be changed through a
-    // permissioned function defined there.
-    IAvalancheBridgeLimitsProvider private immutable _bridgeLimitsProvider;
+    ILayerZeroBALProxy private immutable _lzBALProxy;
+    uint256 private immutable _dustModulo;
 
     // This value is kept in storage and not made immutable to allow for this contract to be proxyable
     address private _recipient;
@@ -70,15 +101,14 @@ contract AvalancheRootGauge is StakelessGauge {
      * @dev Must be deployed by the AvalancheRootGaugeFactory, or other contract that implements
      * `IAvalancheBridgeLimitsProvider`.
      */
-    constructor(IMainnetBalancerMinter minter, IMultichainV4Router multichainRouter) StakelessGauge(minter) {
-        _minter = minter;
-        _multichainRouter = multichainRouter;
-        _bridgeLimitsProvider = IAvalancheBridgeLimitsProvider(msg.sender);
+    constructor(IMainnetBalancerMinter minter, ILayerZeroBALProxy lzBALProxy) StakelessGauge(minter) {
+        _lzBALProxy = lzBALProxy;
+        _dustModulo = 10**lzBALProxy.sharedDecimals();
     }
 
     function initialize(address recipient, uint256 relativeWeightCap) external {
         // Sanity check that the underlying token of the minter is the same we've wrapped for Avalanche.
-        require(_ANYSWAP_BAL_WRAPPER.underlying() == address(_minter.getBalancerToken()), "Invalid Wrapper Token");
+        require(_lzBALProxy.token() == address(_balToken), "Invalid Wrapper Token");
 
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
@@ -86,50 +116,68 @@ contract AvalancheRootGauge is StakelessGauge {
         _recipient = recipient;
     }
 
-    /**
-     * @dev The address of the L2 recipient gauge.
-     */
+    /// @inheritdoc IStakelessGauge
     function getRecipient() external view override returns (address) {
         return _recipient;
     }
 
     /**
-     * @dev Return the Multichain Router contract used to bridge.
+     * @dev Return the Layer Zero proxy contract for the underlying BAL token.
      */
-    function getMultichainRouter() external view returns (IMultichainV4Router) {
-        return _multichainRouter;
+    function getBALProxy() external view returns (address) {
+        return address(_lzBALProxy);
     }
 
-    /**
-     * @dev Return the AnySwap wrapper for the underlying BAL token.
-     */
-    function getAnyBAL() external pure returns (IERC20) {
-        return IERC20(_ANYSWAP_BAL_WRAPPER);
+    function getTotalBridgeCost() public view returns (uint256) {
+        // Estimate fee does not depend on the amount to bridge.
+        // We just set it to 0 so that we can have the same external interface across other gauges that require ETH.
+        (uint256 nativeFee, ) = _lzBALProxy.estimateSendFee(
+            _AVALANCHE_LZ_CHAIN_ID,
+            _bytes32Recipient(),
+            0,
+            false,
+            "0x"
+        );
+        return nativeFee;
     }
 
     function _postMintAction(uint256 mintAmount) internal override {
-        (uint256 minBridgeAmount, uint256 maxBridgeAmount) = _bridgeLimitsProvider.getAvalancheBridgeLimits();
-
-        // This bridge extracts a fee in the token being transferred.
-        // It is 0.1%, but subject to a minimum and a maximum, so it can be quite significant for small amounts
-        // (e.g., around 50% if you transfer the current minimum of ~1.5 BAL).
-        //
-        // The bridge operation will fail in a silent and deadly manner if the amount bounds are exceeded -
-        // the transaction will succeed, but the tokens will be locked forever in the AnySwap wrapper - so validate
-        // the amounts first before attempting to bridge.
-        require(mintAmount >= minBridgeAmount, "Below Bridge Limit");
-        require(mintAmount <= maxBridgeAmount, "Above Bridge Limit");
+        uint256 totalBridgeCost = getTotalBridgeCost();
+        require(msg.value == totalBridgeCost, "Incorrect msg.value passed");
 
         // The underlying token will be transferred, and must be approved.
-        _balToken.safeApprove(address(_multichainRouter), mintAmount);
+        _balToken.safeApprove(address(_lzBALProxy), mintAmount);
 
-        // Progress and results can be monitored using the multichain scanner:
-        // https://scan.multichain.org/#/tx?params=<mainnet txid>
-        _multichainRouter.anySwapOutUnderlying(
-            address(_ANYSWAP_BAL_WRAPPER),
-            _recipient,
+        // Progress and results can be monitored using the Layer Zero scanner: https://layerzeroscan.com/
+        // The BAL proxy uses less than 18 decimals, so any amount with greater precision than the supported one will
+        // be truncated.
+        // This is why we remove "dust" the same way the proxy does to provide an appropriate minimum amount and
+        // ensure the transfer does not revert.
+        // This assumes that there is no fee for the token, neither in the proxy (which can be set by governance, but
+        // it is not expected to happen ever), nor for the token transfer itself (the BAL token does not take a cut
+        // in `transferFrom`, so it is OK).
+        _lzBALProxy.sendFrom{ value: totalBridgeCost }(
+            address(this),
+            _AVALANCHE_LZ_CHAIN_ID,
+            _bytes32Recipient(),
             mintAmount,
-            _AVALANCHE_CHAIN_ID
+            _removeDust(mintAmount),
+            ILayerZeroBALProxy.LzCallParams(payable(msg.sender), address(0), "0x")
         );
+    }
+
+    /**
+     * @dev Truncates a given amount to the precision allowed by the shared decimals in the BAL proxy.
+     */
+    function _removeDust(uint256 amount) internal view returns (uint256) {
+        uint256 dust = amount % _dustModulo;
+        return amount - dust;
+    }
+
+    /**
+     * @dev Returns recipient address as bytes32.
+     */
+    function _bytes32Recipient() internal view returns (bytes32) {
+        return bytes32(uint256(uint160(_recipient)));
     }
 }

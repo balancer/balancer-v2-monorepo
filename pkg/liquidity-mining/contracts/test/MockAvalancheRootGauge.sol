@@ -13,13 +13,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "../gauges/avalanche/AvalancheRootGauge.sol";
 
 contract MockAvalancheRootGauge is AvalancheRootGauge {
-    constructor(IMainnetBalancerMinter minter, IMultichainV4Router multichainRouter)
-        AvalancheRootGauge(minter, multichainRouter)
-    {
+    constructor(IMainnetBalancerMinter minter, ILayerZeroBALProxy lzBALProxy) AvalancheRootGauge(minter, lzBALProxy) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

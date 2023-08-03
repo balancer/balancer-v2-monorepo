@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAvalancheBridgeLimitsProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
@@ -23,31 +22,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
 import "../BaseGaugeFactory.sol";
 import "./AvalancheRootGauge.sol";
 
-contract AvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider, BaseGaugeFactory, SingletonAuthentication {
-    uint256 private _minBridgeAmount;
-    uint256 private _maxBridgeAmount;
-
-    event AvalancheBridgeLimitsModified(uint256 minBridgeAmount, uint256 maxBridgeAmount);
-
+contract AvalancheRootGaugeFactory is BaseGaugeFactory, SingletonAuthentication {
     constructor(
         IVault vault,
         IMainnetBalancerMinter minter,
-        IMultichainV4Router multichainRouter,
-        uint256 minBridgeAmount,
-        uint256 maxBridgeAmount
-    ) BaseGaugeFactory(address(new AvalancheRootGauge(minter, multichainRouter))) SingletonAuthentication(vault) {
-        _minBridgeAmount = minBridgeAmount;
-        _maxBridgeAmount = maxBridgeAmount;
-    }
-
-    /// @inheritdoc IAvalancheBridgeLimitsProvider
-    function getAvalancheBridgeLimits()
-        external
-        view
-        override
-        returns (uint256 minBridgeAmount, uint256 maxBridgeAmount)
-    {
-        return (_minBridgeAmount, _maxBridgeAmount);
+        ILayerZeroBALProxy lzBALProxy
+    ) BaseGaugeFactory(address(new AvalancheRootGauge(minter, lzBALProxy))) SingletonAuthentication(vault) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -62,15 +43,5 @@ contract AvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider, BaseGaugeF
         address gauge = _create();
         AvalancheRootGauge(gauge).initialize(recipient, relativeWeightCap);
         return gauge;
-    }
-
-    /// @inheritdoc IAvalancheBridgeLimitsProvider
-    function setAvalancheBridgeLimits(uint256 minBridgeAmount, uint256 maxBridgeAmount) external override authenticate {
-        require(maxBridgeAmount > minBridgeAmount, "Invalid Bridge Limits");
-
-        _minBridgeAmount = minBridgeAmount;
-        _maxBridgeAmount = maxBridgeAmount;
-
-        emit AvalancheBridgeLimitsModified(minBridgeAmount, maxBridgeAmount);
     }
 }

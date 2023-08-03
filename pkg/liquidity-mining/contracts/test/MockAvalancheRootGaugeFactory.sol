@@ -15,42 +15,16 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAvalancheBridgeLimitsProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 import "./MockAvalancheRootGauge.sol";
 
-contract MockAvalancheRootGaugeFactory is IAvalancheBridgeLimitsProvider {
+contract MockAvalancheRootGaugeFactory {
     address private immutable _implementation;
 
-    uint256 private _minBridgeAmount;
-    uint256 private _maxBridgeAmount;
-
-    constructor(
-        IMainnetBalancerMinter minter,
-        IMultichainV4Router router,
-        uint256 minBridgeAmount,
-        uint256 maxBridgeAmount
-    ) {
-        _minBridgeAmount = minBridgeAmount;
-        _maxBridgeAmount = maxBridgeAmount;
-
-        _implementation = address(new MockAvalancheRootGauge(minter, router));
-    }
-
-    function getAvalancheBridgeLimits()
-        external
-        view
-        override
-        returns (uint256 minBridgeAmount, uint256 maxBridgeAmount)
-    {
-        return (_minBridgeAmount, _maxBridgeAmount);
-    }
-
-    function setAvalancheBridgeLimits(uint256, uint256) external pure override {
-        _revert(Errors.UNIMPLEMENTED);
+    constructor(IMainnetBalancerMinter minter, ILayerZeroBALProxy lzBALProxy) {
+        _implementation = address(new MockAvalancheRootGauge(minter, lzBALProxy));
     }
 
     function getImplementation() external view returns (address) {
