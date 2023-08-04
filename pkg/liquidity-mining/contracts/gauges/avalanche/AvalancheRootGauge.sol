@@ -15,9 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
+import "./AvalancheRootGaugeLib.sol";
 import "../StakelessGauge.sol";
 
 /**
@@ -103,7 +105,8 @@ contract AvalancheRootGauge is StakelessGauge {
      */
     constructor(IMainnetBalancerMinter minter, ILayerZeroBALProxy lzBALProxy) StakelessGauge(minter) {
         _lzBALProxy = lzBALProxy;
-        _dustModulo = 10**lzBALProxy.sharedDecimals();
+        uint8 decimalDifference = ERC20(address(minter.getBalancerToken())).decimals() - lzBALProxy.sharedDecimals();
+        _dustModulo = 10**decimalDifference;
     }
 
     function initialize(address recipient, uint256 relativeWeightCap) external {
@@ -117,7 +120,7 @@ contract AvalancheRootGauge is StakelessGauge {
     }
 
     /// @inheritdoc IStakelessGauge
-    function getRecipient() external view override returns (address) {
+    function getRecipient() public view override returns (address) {
         return _recipient;
     }
 
@@ -134,7 +137,7 @@ contract AvalancheRootGauge is StakelessGauge {
         // We just set it to 0 so that we can have the same external interface across other gauges that require ETH.
         (uint256 nativeFee, ) = _lzBALProxy.estimateSendFee(
             _AVALANCHE_LZ_CHAIN_ID,
-            _bytes32Recipient(),
+            AvalancheRootGaugeLib.bytes32Recipient(getRecipient()),
             0,
             false,
             "0x"
@@ -160,25 +163,10 @@ contract AvalancheRootGauge is StakelessGauge {
         _lzBALProxy.sendFrom{ value: totalBridgeCost }(
             address(this),
             _AVALANCHE_LZ_CHAIN_ID,
-            _bytes32Recipient(),
+            AvalancheRootGaugeLib.bytes32Recipient(getRecipient()),
             mintAmount,
-            _removeDust(mintAmount),
+            AvalancheRootGaugeLib.getMinimumAmount(mintAmount, _dustModulo),
             ILayerZeroBALProxy.LzCallParams(payable(msg.sender), address(0), "0x")
         );
-    }
-
-    /**
-     * @dev Truncates a given amount to the precision allowed by the shared decimals in the BAL proxy.
-     */
-    function _removeDust(uint256 amount) internal view returns (uint256) {
-        uint256 dust = amount % _dustModulo;
-        return amount - dust;
-    }
-
-    /**
-     * @dev Returns recipient address as bytes32.
-     */
-    function _bytes32Recipient() internal view returns (bytes32) {
-        return bytes32(uint256(uint160(_recipient)));
     }
 }
