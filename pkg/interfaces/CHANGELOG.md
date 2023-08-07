@@ -20,7 +20,7 @@
 - Moved `GaugeType` from `IGaugeAdder` to `IL2GaugeCheckpointer`, and adjusted types to accept new networks.
 - Refactored `IL2GaugeCheckpointer` to `StakelessGaugeCheckpointer`.
   - Removed `isSupportedGaugeType` from interface.
-  - Added `getRoundedDownBlockTimestamp` to interface.
+  - Added `getRoundedDownBlockTimestamp` and `getGaugeTypes` to interface.
 - Bumped minimum compiler version from `0.7.0` to `0.7.1` in `BalancerErrors`.
 - `IVersion` moved from `pool-utils` to `solidity-utils`.
 

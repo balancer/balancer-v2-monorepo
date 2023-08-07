@@ -43,6 +43,11 @@ interface IStakelessGaugeCheckpointer {
     function getGaugeAdder() external view returns (IGaugeAdder);
 
     /**
+     * @notice Returns gauge types available in the checkpointer.
+     */
+    function getGaugeTypes() external view returns (string[] memory);
+
+    /**
      * @notice Adds an array of gauges from the given type. This is a permissioned function.
      * @dev Gauges added will be considered when performing checkpoints.
      * The gauges to add should meet the following preconditions:
@@ -130,6 +135,16 @@ interface IStakelessGaugeCheckpointer {
      * @param gauge Address of the gauge to checkpoint.
      */
     function checkpointSingleGauge(string memory gaugeType, address gauge) external payable;
+
+    /**
+     * @notice Performs a checkpoint for a multiple added gauges of the given types.
+     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * Reverts if the gauges were not added to the checkpointer beforehand.
+     * @param gaugeTypes Types of the gauges to be checkpointed. If a single type is provided, it is applied to all of
+     * the gauges, otherwise the gauge types array should be equal in length to the gauges.
+     * @param gauges Addresses of the gauges to checkpoint.
+     */
+    function checkpointMultipleGauges(string[] memory gaugeTypes, address[] memory gauges) external payable;
 
     /**
      * @notice Returns the ETH cost to checkpoint a single given gauge.
