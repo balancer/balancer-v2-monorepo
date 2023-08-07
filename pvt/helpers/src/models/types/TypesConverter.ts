@@ -18,6 +18,7 @@ import {
   RawManagedPoolDeployment,
   ManagedPoolDeployment,
   ManagedPoolType,
+  BasePoolRights,
 } from '../pools/weighted/types';
 import {
   RawTokenApproval,
@@ -173,6 +174,22 @@ export default {
       bufferPeriodDuration,
       aumFeeId,
     };
+  },
+
+  toEncodedBasePoolRights(basePoolRights: BasePoolRights): string {
+    let value = 0;
+
+    if (basePoolRights.canTransferOwnership) {
+      value += 1;
+    }
+    if (basePoolRights.canChangeSwapFee) {
+      value += 2;
+    }
+    if (basePoolRights.canUpdateMetadata) {
+      value += 4;
+    }
+
+    return this.toBytes32(value);
   },
 
   toLinearPoolDeployment(params: RawLinearPoolDeployment): LinearPoolDeployment {

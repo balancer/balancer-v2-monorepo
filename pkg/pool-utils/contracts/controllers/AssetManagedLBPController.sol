@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledLiquidityBootstrappingPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
@@ -38,12 +39,8 @@ import "./BasePoolController.sol";
 contract AssetManagedLBPController is BasePoolController {
     using FixedPoint for uint256;
 
-    // WeightedPoolUserData type - duplicating here to avoid a circular dependency
-    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT }
-
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT }
-
     IVault private immutable _vault;
+
     // LBPs are always two tokens: project and reserve
     IERC20 private immutable _projectToken;
 
@@ -99,7 +96,7 @@ contract AssetManagedLBPController is BasePoolController {
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
             assets: _asIAsset(tokens),
             maxAmountsIn: initialBalances,
-            userData: abi.encode(JoinKind.INIT, initialBalances),
+            userData: abi.encode(WeightedPoolUserData.JoinKind.INIT, initialBalances),
             fromInternalBalance: false
         });
 
@@ -139,7 +136,7 @@ contract AssetManagedLBPController is BasePoolController {
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
             assets: _asIAsset(tokens),
             maxAmountsIn: amountsIn,
-            userData: abi.encode(JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBptOut),
+            userData: abi.encode(WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBptOut),
             fromInternalBalance: false
         });
 
@@ -163,7 +160,7 @@ contract AssetManagedLBPController is BasePoolController {
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
             assets: _asIAsset(tokens),
             minAmountsOut: minAmountsOut,
-            userData: abi.encode(ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn),
+            userData: abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn),
             toInternalBalance: false
         });
 
