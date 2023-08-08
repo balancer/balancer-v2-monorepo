@@ -29,7 +29,7 @@ export default class UnseededLiquidityBootstrappingPool extends LiquidityBootstr
     swapEnabledOnStart: boolean,
     owner?: Account
   ) {
-    super(instance, poolId, vault, tokens, weights, swapFeePercentage, owner);
+    super(instance, poolId, vault, tokens, weights, swapFeePercentage, swapEnabledOnStart, owner);
 
     this.swapEnabledOnStart = swapEnabledOnStart;
   }
@@ -106,7 +106,7 @@ export default class UnseededLiquidityBootstrappingPool extends LiquidityBootstr
       canUpdateMetadata: true,
     };
 
-    const tx = await factory.create(newPoolParams, basePoolRights, from?.address, randomBytes(32));
+    const tx = await factory.create(newPoolParams, basePoolRights, (from?.address || ZERO_ADDRESS), randomBytes(32));
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return deployedAt('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', event.args.pool);

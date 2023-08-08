@@ -11,6 +11,7 @@ import Vault from '../../vault/Vault';
 export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
   LIQUIDITY_BOOTSTRAPPING_POOL,
+  AM_LIQUIDITY_BOOTSTRAPPING_POOL,
 }
 
 // These names are used in the helpers to fetch the artifacts

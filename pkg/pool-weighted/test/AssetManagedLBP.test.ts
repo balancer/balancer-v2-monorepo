@@ -8,6 +8,8 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import SeededLiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/SeededLiquidityBootstrappingPool';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 
 describe('AssetManagedLiquidityBootstrappingPool', function () {
   const MAX_TOKENS = 2;
@@ -28,6 +30,10 @@ describe('AssetManagedLiquidityBootstrappingPool', function () {
   let pool: SeededLiquidityBootstrappingPool;
   const weights = [fp(0.9), fp(0.1)];
   const initialBalances = [fp(1000), fp(1.8)];
+
+  context('for a 2 token pool', () => {
+    itBehavesAsWeightedPool(2, WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL);
+  });
 
   describe('weights and scaling factors', () => {
     sharedBeforeEach('deploy pool', async () => {

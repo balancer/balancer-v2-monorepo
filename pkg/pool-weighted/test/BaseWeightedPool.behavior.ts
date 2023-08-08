@@ -14,6 +14,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import LiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/LiquidityBootstrappingPool';
 import BaseWeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/BaseWeightedPool';
+import UnseededLiquidityBootstrappingPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/UnseededLiquidityBootstrappingPool';
 
 export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: WeightedPoolType): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -41,6 +42,15 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
       });
     } else if (poolType == WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL) {
       pool = await LiquidityBootstrappingPool.create({
+        vault,
+        tokens,
+        weights,
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        owner: lp.address, // needed for LBP tests (only owner can join)
+        ...params,
+      });
+    } else if (poolType == WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL) {
+      pool = await UnseededLiquidityBootstrappingPool.create({
         vault,
         tokens,
         weights,
@@ -98,11 +108,19 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
         expect(await pool.totalSupply()).to.be.equal(0);
       });
 
-      it('sets the asset managers to zero', async () => {
-        await tokens.asyncEach(async (token) => {
-          const info = await pool.getTokenInfo(token);
-          expect(info.assetManager).to.equal(ZERO_ADDRESS);
-        });
+      it('sets the asset managers', async () => {
+        if (poolType == WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL) {
+          const projectToken = await pool.getTokenInfo(tokens.get(0));
+          const reserveToken = await pool.getTokenInfo(tokens.get(1));
+
+          expect(projectToken.assetManager).to.equal(ZERO_ADDRESS);
+          expect(reserveToken.assetManager).to.equal(await pool.getOwner());
+        } else {
+          await tokens.asyncEach(async (token) => {
+            const info = await pool.getTokenInfo(token);
+            expect(info.assetManager).to.equal(ZERO_ADDRESS);
+          });
+        }
       });
 
       it('sets swap fee', async () => {
@@ -124,9 +142,12 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
 
     context('when the creation fails', () => {
       it('reverts if the number of tokens and weights do not match', async () => {
-        const badWeights = weights.slice(1);
+        // AssetManagedLBPs don't take a token array, so this test isn't possible
+        if (poolType != WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL) {
+          const badWeights = weights.slice(1);
 
-        await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        }
       });
 
       it('reverts if there are repeated tokens', async () => {
