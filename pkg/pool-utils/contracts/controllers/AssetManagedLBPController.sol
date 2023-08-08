@@ -253,6 +253,13 @@ contract AssetManagedLBPController is BasePoolController {
         endWeights = new uint256[](2);
         endWeights[_getReserveTokenIndex()] = FixedPoint.ONE.divDown(FixedPoint.ONE.add(k));
         endWeights[_getProjectTokenIndex()] = endWeights[_getReserveTokenIndex()].complement();
+
+        // Sanity check the weights
+        uint256 minWeight = IControlledLiquidityBootstrappingPool(pool).getMinimumWeight();
+        uint256 maxWeight = FixedPoint.ONE.sub(minWeight);
+
+        _require(endWeights[0] >= minWeight && endWeights[1] >= minWeight, Errors.MIN_WEIGHT);
+        _require(endWeights[0] <= maxWeight && endWeights[1] <= maxWeight, Errors.MAX_WEIGHT);
     }
 
     /**

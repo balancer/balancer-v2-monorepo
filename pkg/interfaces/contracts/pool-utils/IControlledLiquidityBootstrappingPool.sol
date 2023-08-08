@@ -28,4 +28,6 @@ interface IControlledLiquidityBootstrappingPool is IControlledPool {
     function getNormalizedWeights() external returns (uint256[] memory);
 
     function getScalingFactors() external returns (uint256[] memory);
+
+    function getMinimumWeight() external returns (uint256);
 }

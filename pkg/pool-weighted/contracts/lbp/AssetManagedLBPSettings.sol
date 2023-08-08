@@ -259,6 +259,10 @@ abstract contract AssetManagedLBPSettings is IMinimalSwapInfoPool, NewBasePool {
 
     // Gradual weight change
 
+    function getMinimumWeight() public pure returns (uint256) {
+        return WeightedMath._MIN_WEIGHT;
+    }
+
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary.
@@ -272,7 +276,7 @@ abstract contract AssetManagedLBPSettings is IMinimalSwapInfoPool, NewBasePool {
         uint256 normalizedSum = 0;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
-            _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+            _require(endWeight >= getMinimumWeight(), Errors.MIN_WEIGHT);
 
             normalizedSum = normalizedSum.add(endWeight);
         }

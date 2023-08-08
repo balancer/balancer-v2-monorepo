@@ -21,14 +21,14 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
 
   sharedBeforeEach('deploy tokens', async () => {
     // Because they are sorted, 0 is always the projectToken, and 1 is the reserveToken
-    tokens = await TokenList.create(MAX_TOKENS, { sorted: true, varyDecimals: true });
+    tokens = await TokenList.create(MAX_TOKENS, { sorted: true });
     await tokens.mint({ to: [other], amount: fp(200) });
   });
 
   let pool: UnseededLiquidityBootstrappingPool;
   let poolController: Contract;
   const weights = [fp(0.9), fp(0.1)];
-  const initialBalances = [fp(1000), fp(1.8)];
+  const initialBalances = [fp(1000), fp(20)];
 
   context('when deployed from factory', () => {
     sharedBeforeEach('deploy pool', async () => {
