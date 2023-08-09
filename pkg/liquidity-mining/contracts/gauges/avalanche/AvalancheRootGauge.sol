@@ -21,9 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "./AvalancheRootGaugeLib.sol";
 import "../StakelessGauge.sol";
 
-/**
- * @dev Partial interface for LayerZero BAL proxy.
- */
+/// @dev Partial interface for LayerZero BAL proxy.
 interface ILayerZeroBALProxy {
     struct LzCallParams {
         address payable refundAddress;
@@ -31,17 +29,17 @@ interface ILayerZeroBALProxy {
         bytes adapterParams;
     }
 
-     /// @dev Returns minimum gas limit required for the target `chainId` and `packetType`.
+    /// @dev Returns packet type to be used in adapter params. It is a constant set to 0.
+    // solhint-disable-next-line func-name-mixedcase
+    function PT_SEND() external pure returns (uint8);
+
+    /// @dev Returns minimum gas limit required for the target `chainId` and `packetType`.
     function minDstGasLookup(uint16 chainId, uint16 packetType) external view returns (uint256);
 
-    /**
-     * @dev Returns true if custom adapter parameters are activated in the proxy.
-     */
+    /// @dev Returns true if custom adapter parameters are activated in the proxy.
     function useCustomAdapterParams() external view returns (bool);
 
-    /**
-     * @dev Returns the address of the underlying ERC20 token.
-     */
+    /// @dev Returns the address of the underlying ERC20 token.
     function token() external view returns (address);
 
     /**
@@ -81,7 +79,7 @@ interface ILayerZeroBALProxy {
         LzCallParams calldata _callParams
     ) external payable;
 
-     /// @dev Returns the maximum allowed precision (decimals) for proxy transfers.
+    /// @dev Returns the maximum allowed precision (decimals) for proxy transfers.
     function sharedDecimals() external returns (uint8);
 }
 
@@ -142,9 +140,7 @@ contract AvalancheRootGauge is StakelessGauge {
         return _recipient;
     }
 
-    /**
-     * @dev Return the Layer Zero proxy contract for the underlying BAL token.
-     */
+    /// @dev Return the Layer Zero proxy contract for the underlying BAL token.
     function getBALProxy() external view returns (address) {
         return address(_lzBALProxy);
     }

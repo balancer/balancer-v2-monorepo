@@ -15,11 +15,13 @@
 pragma solidity ^0.7.0;
 
 library AvalancheRootGaugeLib {
+    /// @dev Truncates given amount to the maximum allowed precision.
     function removeDust(uint256 amount, uint256 dustModulo) internal pure returns (uint256) {
         uint256 dust = amount % dustModulo;
         return amount - dust;
     }
 
+    /// @dev Returns given address as bytes32, padded with zeroes to the left.
     function bytes32Recipient(address recipient) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(recipient)));
     }
