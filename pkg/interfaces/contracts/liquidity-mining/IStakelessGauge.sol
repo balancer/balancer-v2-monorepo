@@ -17,14 +17,10 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./ILiquidityGauge.sol";
 
 interface IStakelessGauge is ILiquidityGauge {
-    /**
-     * @dev Performs a checkpoint, computing how much rewards should be minted for the gauge.
-     */
+     /// @dev Performs a checkpoint, computing how much should be minted for the gauge.
     function checkpoint() external payable returns (bool);
 
-    /**
-     * @dev Returns the address that will receive the rewards (either the L2 gauge, or a mainnet address).
-     */
+     /// @dev Returns the address that will receive the incentives (either the L2 gauge, or a mainnet address).
     function getRecipient() external view returns (address);
 
     /**

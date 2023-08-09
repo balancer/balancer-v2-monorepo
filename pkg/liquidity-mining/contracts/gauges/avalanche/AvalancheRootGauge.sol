@@ -31,9 +31,7 @@ interface ILayerZeroBALProxy {
         bytes adapterParams;
     }
 
-    /**
-     * @dev Returns minimum gas limit required for target chain ID and packet type.
-     */
+     /// @dev Returns minimum gas limit required for the target `chainId` and `packetType`.
     function minDstGasLookup(uint16 chainId, uint16 packetType) external view returns (uint256);
 
     /**
@@ -47,10 +45,9 @@ interface ILayerZeroBALProxy {
     function token() external view returns (address);
 
     /**
-     * @dev Estimate send token `_tokenId` to (`_dstChainId`, `_toAddress`).
+     * @dev Estimate fee for sending token `_tokenId` to (`_dstChainId`, `_toAddress`).
      * @param _dstChainId L0 defined chain id to send tokens to.
-     * @param _toAddress dynamic bytes array which contains the address to whom you are sending tokens to on the
-     *  dstChain.
+     * @param _toAddress dynamic bytes array with the address you are sending tokens to on dstChain.
      * @param _amount amount of the tokens to transfer.
      * @param _useZro indicates to use zro to pay L0 fees.
      * @param _adapterParams flexible bytes array to indicate messaging adapter services in L0.
@@ -65,7 +62,7 @@ interface ILayerZeroBALProxy {
 
     /**
      * @dev Send `_amount` amount of token to (`_dstChainId`, `_toAddress`) from `_from`.
-     * @param _from the owner of token.
+     * @param _from the token owner.
      * @param _dstChainId the destination chain identifier.
      * @param _toAddress can be any size depending on the `dstChainId`.
      * @param _amount the quantity of tokens in wei.
@@ -73,7 +70,7 @@ interface ILayerZeroBALProxy {
      * @param _callParams struct with custom options.
      *  - refundAddress: the address LayerZero refunds if too much message fee is sent.
      *  - zroPaymentAddress set to address(0x0) if not paying in ZRO (LayerZero Token).
-     *  - adapterParams is a flexible bytes array to indicate messaging adapter services.
+     *  - adapterParams is a flexible bytes array used to configure messaging adapter services.
      */
     function sendFrom(
         address _from,
@@ -84,9 +81,7 @@ interface ILayerZeroBALProxy {
         LzCallParams calldata _callParams
     ) external payable;
 
-    /**
-     * @dev Returns maximum allowed precision (decimals) for the proxy transfers.
-     */
+     /// @dev Returns the maximum allowed precision (decimals) for proxy transfers.
     function sharedDecimals() external returns (uint8);
 }
 
@@ -155,7 +150,7 @@ contract AvalancheRootGauge is StakelessGauge {
     }
 
     /**
-     * @dev Returns minimum unit of tokens that can be bridged.
+     * @dev Returns the minimum amount of tokens that can be bridged.
      * Values lower than this one will not even be transferred to the proxy.
      */
     function getMinimumBridgeAmount() public view returns (uint256) {
@@ -177,6 +172,7 @@ contract AvalancheRootGauge is StakelessGauge {
             false,
             adapterParams
         );
+
         return nativeFee;
     }
 
