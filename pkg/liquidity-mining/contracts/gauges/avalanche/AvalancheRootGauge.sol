@@ -214,6 +214,16 @@ contract AvalancheRootGauge is StakelessGauge {
     }
 
     function _getAdapterParams() internal view returns (bytes memory) {
+        // Adapter params should either encode the minimum destination gas if custom parameters are used, or be
+        // an empty bytes array otherwise.
+        // See https://layerzero.gitbook.io/docs/evm-guides/advanced/relayer-adapter-parameters
+        // These lines were reverse-engineered from the BAL proxy and its dependencies (LZ endpoint and relayer).
+
+        // solhint-disable max-line-length
+        // See https://github.com/LayerZero-Labs/LayerZero/blob/48c21c3921931798184367fc02d3a8132b041942/contracts/RelayerV2.sol#L104-L112
+        // https://github.com/LayerZero-Labs/solidity-examples/blob/8e00603ae03995622d643722d6d194f830774208/contracts/token/oft/v2/OFTCoreV2.sol#L178-L179
+        // https://github.com/LayerZero-Labs/solidity-examples/blob/8e00603ae03995622d643722d6d194f830774208/contracts/lzApp/LzApp.sol#L57-L58
+        // solhint-enable max-line-length
         if (_lzBALProxy.useCustomAdapterParams()) {
             uint256 minDstGas = _lzBALProxy.minDstGasLookup(_AVALANCHE_LZ_CHAIN_ID, _SEND_PACKET_TYPE);
             return abi.encodePacked(_ADAPTER_PARAMS_VERSION, minDstGas);
