@@ -28,8 +28,9 @@ interface IStakelessGauge is ILiquidityGauge {
     function getRecipient() external view returns (address);
 
     /**
-     * @dev Returns total ETH bridge cost in wei.
-     * Each `checkpoint` should receive this exact amount to work.
+     * @dev Returns total ETH bridge cost (post mint action) in wei.
+     * Each `checkpoint` should receive this exact amount to work. Some stakeless gauges don't actually need ETH
+     * to work; in those cases the cost will be 0.
      */
     function getTotalBridgeCost() external view returns (uint256);
 }
