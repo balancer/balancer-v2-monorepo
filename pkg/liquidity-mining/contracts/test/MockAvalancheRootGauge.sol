@@ -25,6 +25,7 @@ contract MockAvalancheRootGauge is AvalancheRootGauge {
     /**
      * @dev It would be very difficult to contrive a fork test that set the mintAmount to a precise value,
      * so the bridge limits are best tested with a mock and unit tests.
+     * It must be payable to send ETH to pay for gas in the child chain.
      * @param mintAmount Amount to be bridged
      */
     function bridge(uint256 mintAmount) external payable {
