@@ -32,6 +32,16 @@ interface ILayerZeroBALProxy {
     }
 
     /**
+     * @dev Returns minimum gas limit required for target chain ID and packet type.
+     */
+    function minDstGasLookup(uint16 chainId, uint16 packetType) external view returns (uint256);
+
+    /**
+     * @dev Returns true if custom adapter parameters are activated in the proxy.
+     */
+    function useCustomAdapterParams() external view returns (bool);
+
+    /**
      * @dev Returns the address of the underlying ERC20 token.
      */
     function token() external view returns (address);
@@ -92,8 +102,22 @@ contract AvalancheRootGauge is StakelessGauge {
     // https://layerzero.gitbook.io/docs/technical-reference/mainnet/supported-chain-ids#avalanche
     uint16 private constant _AVALANCHE_LZ_CHAIN_ID = 106;
 
+    // PT_SEND constant in proxy; replicated here for simplicity.
+    // See https://layerzero.gitbook.io/docs/evm-guides/layerzero-tooling/wire-up-configuration.
+    // and https://github.com/LayerZero-Labs/solidity-examples/blob/9134640fe5b618a047f365555e760c8736ebc162/contracts/token/oft/v2/OFTCoreV2.sol#L17.
+    // solhint-disable-previous-line max-line-length
+    uint16 private constant _SEND_PACKET_TYPE = 0;
+
+    // https://layerzero.gitbook.io/docs/evm-guides/advanced/relayer-adapter-parameters
+    uint16 private constant _ADAPTER_PARAMS_VERSION = 1;
+
     ILayerZeroBALProxy private immutable _lzBALProxy;
-    uint256 private immutable _dustModulo;
+
+    // The proxy will truncate the amounts to send using this value, as it does not support 18 decimals.
+    // Any amount to send is truncated to this number, which depends on the shared decimals in the proxy.
+    // See https://layerzero.gitbook.io/docs/evm-guides/layerzero-omnichain-contracts/oft/oft-v1-vs-oftv2-which-should-i-use#what-are-the-differences-between-the-two-versions
+    // solhint-disable-previous-line max-line-length
+    uint256 private immutable _minimumBridgeAmount;
 
     // This value is kept in storage and not made immutable to allow for this contract to be proxyable
     address private _recipient;
@@ -105,7 +129,7 @@ contract AvalancheRootGauge is StakelessGauge {
     constructor(IMainnetBalancerMinter minter, ILayerZeroBALProxy lzBALProxy) StakelessGauge(minter) {
         _lzBALProxy = lzBALProxy;
         uint8 decimalDifference = ERC20(address(minter.getBalancerToken())).decimals() - lzBALProxy.sharedDecimals();
-        _dustModulo = 10**decimalDifference;
+        _minimumBridgeAmount = 10**decimalDifference;
     }
 
     function initialize(address recipient, uint256 relativeWeightCap) external {
@@ -130,8 +154,20 @@ contract AvalancheRootGauge is StakelessGauge {
         return address(_lzBALProxy);
     }
 
+    /**
+     * @dev Returns minimum unit of tokens that can be bridged.
+     * Values lower than this one will not even be transferred to the proxy.
+     */
+    function getMinimumBridgeAmount() public view returns (uint256) {
+        return _minimumBridgeAmount;
+    }
+
     /// @inheritdoc IStakelessGauge
     function getTotalBridgeCost() public view override returns (uint256) {
+        return _getTotalBridgeCost(_getAdapterParams());
+    }
+
+    function _getTotalBridgeCost(bytes memory adapterParams) internal view returns (uint256) {
         // Estimate fee does not depend on the amount to bridge.
         // We just set it to 0 so that we can have the same external interface across other gauges that require ETH.
         (uint256 nativeFee, ) = _lzBALProxy.estimateSendFee(
@@ -139,13 +175,21 @@ contract AvalancheRootGauge is StakelessGauge {
             AvalancheRootGaugeLib.bytes32Recipient(getRecipient()),
             0,
             false,
-            "0x"
+            adapterParams
         );
         return nativeFee;
     }
 
     function _postMintAction(uint256 mintAmount) internal override {
-        uint256 totalBridgeCost = getTotalBridgeCost();
+        uint256 amountWithoutDust = AvalancheRootGaugeLib.removeDust(mintAmount, _minimumBridgeAmount);
+        // If there is nothing to bridge, we return early.
+        if (amountWithoutDust == 0) {
+            return;
+        }
+
+        bytes memory adapterParams = _getAdapterParams();
+        uint256 totalBridgeCost = _getTotalBridgeCost(adapterParams);
+
         require(msg.value == totalBridgeCost, "Incorrect msg.value passed");
 
         // The underlying token will be transferred, and must be approved.
@@ -164,8 +208,17 @@ contract AvalancheRootGauge is StakelessGauge {
             _AVALANCHE_LZ_CHAIN_ID,
             AvalancheRootGaugeLib.bytes32Recipient(getRecipient()),
             mintAmount,
-            AvalancheRootGaugeLib.getMinimumAmount(mintAmount, _dustModulo),
-            ILayerZeroBALProxy.LzCallParams(payable(msg.sender), address(0), "0x")
+            amountWithoutDust,
+            ILayerZeroBALProxy.LzCallParams(payable(msg.sender), address(0), adapterParams)
         );
+    }
+
+    function _getAdapterParams() internal view returns (bytes memory) {
+        if (_lzBALProxy.useCustomAdapterParams()) {
+            uint256 minDstGas = _lzBALProxy.minDstGasLookup(_AVALANCHE_LZ_CHAIN_ID, _SEND_PACKET_TYPE);
+            return abi.encodePacked(_ADAPTER_PARAMS_VERSION, minDstGas);
+        } else {
+            return bytes("");
+        }
     }
 }

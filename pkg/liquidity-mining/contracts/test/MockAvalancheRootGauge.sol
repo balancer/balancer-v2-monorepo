@@ -27,7 +27,7 @@ contract MockAvalancheRootGauge is AvalancheRootGauge {
      * so the bridge limits are best tested with a mock and unit tests.
      * @param mintAmount Amount to be bridged
      */
-    function bridge(uint256 mintAmount) external {
+    function bridge(uint256 mintAmount) external payable {
         _postMintAction(mintAmount);
     }
 }

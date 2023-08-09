@@ -11,18 +11,18 @@ import "../../contracts/test/TestBalancerToken.sol";
 
 
 contract AvalancheRootGaugeLibTest is Test {
-    uint256 private dustModulo;
+    uint256 private minimumBridgeAmount;
 
     function setUp() external {
         TestBalancerToken bal = new TestBalancerToken(address(0), "", "");
         ILayerZeroBALProxy proxyMock = ILayerZeroBALProxy(address(new MockLzBALProxy()));
         uint256 decimalDifference = bal.decimals() - proxyMock.sharedDecimals();
-        dustModulo = 10**decimalDifference;
+        minimumBridgeAmount = 10**decimalDifference;
     }
 
     function testGetMinimumAmount(uint256 amount) external {
-        uint256 minimumAmount = AvalancheRootGaugeLib.getMinimumAmount(amount, dustModulo);
-        assertApproxEqAbs(amount, minimumAmount, dustModulo);
+        uint256 minimumAmount = AvalancheRootGaugeLib.removeDust(amount, minimumBridgeAmount);
+        assertApproxEqAbs(amount, minimumAmount, minimumBridgeAmount);
     }
 
     function testBytes32Recipient() external {

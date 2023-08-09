@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 library AvalancheRootGaugeLib {
-    function getMinimumAmount(uint256 amount, uint256 dustModulo) internal pure returns (uint256) {
+    function removeDust(uint256 amount, uint256 dustModulo) internal pure returns (uint256) {
         uint256 dust = amount % dustModulo;
         return amount - dust;
     }
