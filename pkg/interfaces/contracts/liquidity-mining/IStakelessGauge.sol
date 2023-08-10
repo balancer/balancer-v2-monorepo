@@ -17,7 +17,16 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./ILiquidityGauge.sol";
 
 interface IStakelessGauge is ILiquidityGauge {
+    /// @dev Performs a checkpoint, computing how much should be minted for the gauge.
     function checkpoint() external payable returns (bool);
 
+    /// @dev Returns the address that will receive the incentives (either the L2 gauge, or a mainnet address).
     function getRecipient() external view returns (address);
+
+    /**
+     * @dev Returns total ETH bridge cost (post mint action) in wei.
+     * Each `checkpoint` should receive this exact amount to work. Some stakeless gauges don't actually need ETH
+     * to work; in those cases the cost will be 0.
+     */
+    function getTotalBridgeCost() external view returns (uint256);
 }

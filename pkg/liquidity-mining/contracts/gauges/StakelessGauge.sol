@@ -142,6 +142,11 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         return true;
     }
 
+    /// @inheritdoc IStakelessGauge
+    function getTotalBridgeCost() external view virtual override returns (uint256) {
+        return 0;
+    }
+
     function _currentPeriod() internal view returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         return (block.timestamp / 1 weeks) - 1;
