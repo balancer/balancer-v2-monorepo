@@ -3,12 +3,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import {
-  BasePoolEncoder,
-  getPoolAddress,
-  UserBalanceOpKind,
-  WeightedPoolEncoder,
-} from '@balancer-labs/balancer-js';
+import { BasePoolEncoder, getPoolAddress, UserBalanceOpKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
