@@ -27,6 +27,7 @@ export type OutputReference = {
 
 export async function setupRelayerEnvironment(): Promise<{
   user: SignerWithAddress;
+  admin: SignerWithAddress;
   other: SignerWithAddress;
   vault: Vault;
   relayer: Contract;
@@ -55,7 +56,7 @@ export async function setupRelayerEnvironment(): Promise<{
   // Approve relayer by sender
   await vault.setRelayerApproval(user, relayer, true);
 
-  return { user, other, vault, relayer, relayerLibrary };
+  return { user, admin, other, vault, relayer, relayerLibrary };
 }
 
 export async function encodeJoinPool(

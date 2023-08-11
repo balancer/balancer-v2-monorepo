@@ -19,13 +19,13 @@ import "./IGaugeAdder.sol";
 import "./IStakelessGauge.sol";
 
 /**
- * @title L2 Gauge Checkpointer interface
+ * @title Stakeless Gauge Checkpointer interface
  * @notice Manages checkpoints for L2 and mainnet stakeless root gauges, allowing to perform mutiple checkpoints in a
  * single call.
  * @dev Supports gauge types registered in `GaugeAdder`.
  * Gauges to be checkpointed need to be added to the controller beforehand.
  */
-interface IL2GaugeCheckpointer {
+interface IStakelessGaugeCheckpointer {
     // String values are hashed when indexed, so we also emit the raw string as a data field for ease of use.
     /**
      * @notice Emitted when a gauge is added to the checkpointer.
@@ -41,6 +41,11 @@ interface IL2GaugeCheckpointer {
      * @notice Returns `GaugeAdder` contract.
      */
     function getGaugeAdder() external view returns (IGaugeAdder);
+
+    /**
+     * @notice Returns gauge types available in the checkpointer.
+     */
+    function getGaugeTypes() external view returns (string[] memory);
 
     /**
      * @notice Adds an array of gauges from the given type. This is a permissioned function.
@@ -101,6 +106,11 @@ interface IL2GaugeCheckpointer {
     function getGaugeAtIndex(string memory gaugeType, uint256 index) external view returns (IStakelessGauge);
 
     /**
+     * @notice Returns the timestamp corresponding to the start of the previous week of the current block.
+     */
+    function getRoundedDownBlockTimestamp() external view returns (uint256);
+
+    /**
      * @notice Performs a checkpoint for all added gauges above the given relative weight threshold.
      * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
      * @param minRelativeWeight Threshold to filter out gauges below it.
@@ -125,6 +135,16 @@ interface IL2GaugeCheckpointer {
      * @param gauge Address of the gauge to checkpoint.
      */
     function checkpointSingleGauge(string memory gaugeType, address gauge) external payable;
+
+    /**
+     * @notice Performs a checkpoint for a multiple added gauges of the given types.
+     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * Reverts if the gauges were not added to the checkpointer beforehand.
+     * @param gaugeTypes Types of the gauges to be checkpointed. If a single type is provided, it is applied to all of
+     * the gauges, otherwise the gauge types array should be equal in length to the gauges.
+     * @param gauges Addresses of the gauges to checkpoint.
+     */
+    function checkpointMultipleGauges(string[] memory gaugeTypes, address[] memory gauges) external payable;
 
     /**
      * @notice Returns the ETH cost to checkpoint a single given gauge.

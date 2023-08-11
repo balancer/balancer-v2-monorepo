@@ -72,7 +72,7 @@ contract ArbitrumRootGauge is StakelessGauge {
         );
     }
 
-    function getTotalBridgeCost() external view returns (uint256) {
+    function getTotalBridgeCost() external view override returns (uint256) {
         (uint256 gasLimit, uint256 gasPrice, uint256 maxSubmissionCost) = _factory.getArbitrumFees();
         return _getTotalBridgeCost(gasLimit, gasPrice, maxSubmissionCost);
     }

@@ -15,20 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../gauges/avalanche/AvalancheRootGauge.sol";
-
-contract MockAvalancheRootGauge is AvalancheRootGauge {
-    constructor(IMainnetBalancerMinter minter, ILayerZeroBALProxy lzBALProxy) AvalancheRootGauge(minter, lzBALProxy) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    /**
-     * @dev It would be very difficult to contrive a fork test that set the mintAmount to a precise value,
-     * so the bridge limits are best tested with a mock and unit tests.
-     * It must be payable to send ETH to pay for gas in the child chain.
-     * @param mintAmount Amount to be bridged
-     */
-    function bridge(uint256 mintAmount) external payable {
-        _postMintAction(mintAmount);
+contract MockLzBALProxy {
+    function sharedDecimals() external pure returns (uint8) {
+        return 6;
     }
 }
