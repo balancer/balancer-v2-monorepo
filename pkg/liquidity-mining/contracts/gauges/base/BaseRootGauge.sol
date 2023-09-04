@@ -47,6 +47,8 @@ contract BaseRootGauge is StakelessGauge {
     uint32 private constant _MIN_GAS_LIMIT = 0;
 
     IL1StandardBridge private immutable _baseL1StandardBridge;
+
+    // The BAL token was deployed here: https://github.com/balancer/balancer-deployments/pull/77#issue-1848405451
     address private immutable _baseBal;
 
     // This value is kept in storage and not made immutable to allow for this contract to be proxyable
@@ -72,7 +74,7 @@ contract BaseRootGauge is StakelessGauge {
         return _recipient;
     }
 
-    function getBaseBridge() external view returns (IL1StandardBridge) {
+    function getBaseL1StandardBridge() external view returns (IL1StandardBridge) {
         return _baseL1StandardBridge;
     }
 
@@ -84,13 +86,6 @@ contract BaseRootGauge is StakelessGauge {
         _balToken.safeApprove(address(_baseL1StandardBridge), mintAmount);
 
         // This will transfer BAL to `_recipient` on the Base chain
-        _baseL1StandardBridge.depositERC20To(
-            address(_balToken),
-            _baseBal,
-            _recipient,
-            mintAmount,
-            _MIN_GAS_LIMIT,
-            "0x"
-        );
+        _baseL1StandardBridge.depositERC20To(address(_balToken), _baseBal, _recipient, mintAmount, _MIN_GAS_LIMIT, "");
     }
 }
