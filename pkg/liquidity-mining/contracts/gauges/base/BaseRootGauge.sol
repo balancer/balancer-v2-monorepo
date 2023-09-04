@@ -14,20 +14,11 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IL1StandardBridge.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../StakelessGauge.sol";
-
-interface IL1StandardBridge {
-    function depositERC20To(
-        address _l1Token,
-        address _l2Token,
-        address _to,
-        uint256 _amount,
-        uint32 _l2Gas,
-        bytes calldata _data
-    ) external;
-}
 
 contract BaseRootGauge is StakelessGauge {
     using SafeERC20 for IERC20;
@@ -48,7 +39,8 @@ contract BaseRootGauge is StakelessGauge {
 
     IL1StandardBridge private immutable _baseL1StandardBridge;
 
-    // The BAL token was deployed here: https://github.com/balancer/balancer-deployments/pull/77#issue-1848405451
+    // solhint-disable-next-line max-line-length
+    // The original BAL token was redeployed; explanation here: https://github.com/balancer/balancer-deployments/pull/77#issue-1848405451
     address private immutable _baseBal;
 
     // This value is kept in storage and not made immutable to allow for this contract to be proxyable
