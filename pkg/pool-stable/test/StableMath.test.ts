@@ -34,7 +34,7 @@ describe('StableMath', function () {
     async function checkInvariant(balances: BigNumber[], amp: number): Promise<void> {
       const ampParameter = bn(amp).mul(AMP_PRECISION);
 
-      const actualInvariant = await mock.invariant(ampParameter, balances);
+      const actualInvariant = await mock.calculateInvariant(ampParameter, balances);
       const expectedInvariant = calculateInvariant(balances, amp);
 
       expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
@@ -57,7 +57,7 @@ describe('StableMath', function () {
         const amp = bn(100);
         const balances = [fp(10), fp(12)];
 
-        const result = await mock.invariant(amp.mul(AMP_PRECISION), balances);
+        const result = await mock.calculateInvariant(amp.mul(AMP_PRECISION), balances);
         const expectedInvariant = calculateAnalyticalInvariantForTwoTokens(balances, amp);
 
         expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
@@ -68,7 +68,7 @@ describe('StableMath', function () {
       const amp = bn(1);
       const balances = [fp(0.00000001), fp(1200000000), fp(300)];
 
-      const result = await mock.invariant(amp.mul(AMP_PRECISION), balances);
+      const result = await mock.calculateInvariant(amp.mul(AMP_PRECISION), balances);
       const expectedInvariant = calculateInvariant(balances, amp);
 
       expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
