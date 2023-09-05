@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "../gauges/base/BaseRootGauge.sol";
 
 /**
- * @dev This is used by the Base Root Gauge deployment task in the deployments-repo, and is referenced there.
+ * @dev This is used by the Base Root Gauge deployment task in the deployments repo, and is referenced there.
  * Do not delete.
  */
 contract MockBaseRootGauge is BaseRootGauge {

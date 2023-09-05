@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "../gauges/avalanche/AvalancheRootGauge.sol";
 
 /**
- * @dev This is used by the Avalanche Root Gauge deployment task in the deployments-repo, and is referenced there.
+ * @dev This is used by the Avalanche Root Gauge deployment task in the deployments repo, and is referenced there.
  * Do not delete.
  */
 contract MockAvalancheRootGauge is AvalancheRootGauge {
