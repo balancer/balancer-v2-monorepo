@@ -23,3 +23,5 @@ max_test_rejects = 60000
 verbosity = 3
 runs = 100000
 max_test_rejects = 600000
+
+no_match_test = "invariant"

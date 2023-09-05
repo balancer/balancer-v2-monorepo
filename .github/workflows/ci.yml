@@ -155,6 +155,8 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz
 
   test-pool-linear:
     runs-on: ubuntu-latest
