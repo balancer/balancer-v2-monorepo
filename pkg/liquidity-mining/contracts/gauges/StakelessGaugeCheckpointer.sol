@@ -218,7 +218,7 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         withValidGauge(gaugeType, gauge)
         returns (uint256)
     {
-        _getSingleBridgeCost(gauge);
+        return _getSingleBridgeCost(gauge);
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
@@ -229,13 +229,13 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         withValidGaugeTypes(gaugeTypes)
         returns (uint256)
     {
-        _getGaugeTypesTotalBridgeCost(gaugeTypes, minRelativeWeight);
+        return _getGaugeTypesTotalBridgeCost(gaugeTypes, minRelativeWeight);
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
         string[] memory gaugeTypes = getGaugeTypes();
-        _getGaugeTypesTotalBridgeCost(gaugeTypes, minRelativeWeight);
+        return _getGaugeTypesTotalBridgeCost(gaugeTypes, minRelativeWeight);
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
@@ -320,8 +320,6 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
             string memory gaugeType = gaugeTypes[i];
             totalCost += _getGaugeTypeTotalBridgeCost(gaugeType, minRelativeWeight);
         }
-
-        return totalCost;
     }
 
     function _checkpointGaugesAboveRelativeWeight(string[] memory gaugeTypes, uint256 minRelativeWeight) internal {
