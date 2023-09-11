@@ -50,6 +50,9 @@ describe('StakelessGaugeCheckpointer', () => {
     adaptorEntrypoint = vault.authorizerAdaptorEntrypoint;
 
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
+    // We make the default weight 1 wei so that it's easier to call checkpoint and get costs on everything.
+    await gaugeController.setGaugeWeightBias(1);
+
     // Allow all gauge types in the controller.
     await Promise.all(GAUGE_TYPES.concat(UNSUPPORTED_GAUGE_TYPES).map(() => gaugeController.add_type('0x', 0)));
 
@@ -155,6 +158,41 @@ describe('StakelessGaugeCheckpointer', () => {
 
       it('reverts getting gauge at index', async () => {
         await expect(stakelessGaugeCheckpointer.getGaugeAtIndex(gaugeType, 0)).to.be.revertedWith('Invalid gauge type');
+      });
+
+      it('reverts checkpointing gauges of types', async () => {
+        await expect(
+          stakelessGaugeCheckpointer.checkpointGaugesOfTypesAboveRelativeWeight([GAUGE_TYPES, gaugeType].flat(), 0)
+        ).to.be.revertedWith('Invalid gauge type');
+      });
+
+      it('reverts checkpointing single gauge', async () => {
+        await expect(stakelessGaugeCheckpointer.checkpointSingleGauge(gaugeType, ANY_ADDRESS)).to.be.revertedWith(
+          'Invalid gauge type'
+        );
+      });
+
+      it('reverts checkpointing multiple gauges', async () => {
+        const gaugeTypesMix = [gaugeType, GAUGE_TYPES].flat();
+        await expect(
+          stakelessGaugeCheckpointer.checkpointMultipleGauges(
+            gaugeTypesMix,
+            Array(gaugeTypesMix.length).fill(ANY_ADDRESS)
+          )
+        ).to.be.revertedWith('Invalid gauge type');
+      });
+
+      it('reverts getting single bridge cost', async () => {
+        await expect(stakelessGaugeCheckpointer.getSingleBridgeCost(gaugeType, ANY_ADDRESS)).to.be.revertedWith(
+          'Invalid gauge type'
+        );
+      });
+
+      it('reverts getting gauge types bridge cost', async () => {
+        const gaugeTypesMix = [GAUGE_TYPES, gaugeType].flat();
+        await expect(stakelessGaugeCheckpointer.getGaugeTypesBridgeCost(gaugeTypesMix, ANY_ADDRESS)).to.be.revertedWith(
+          'Invalid gauge type'
+        );
       });
     });
   }
@@ -371,7 +409,7 @@ describe('StakelessGaugeCheckpointer', () => {
     let extraEth: BigNumber;
     const checkpointInterface = new Interface(['event Checkpoint()']);
 
-    describe(`single gauge checkpoint: ${gaugeType}`, () => {
+    describe(`specific gauge checkpoint and cost: ${gaugeType}`, () => {
       sharedBeforeEach(`setup test gauges for ${gaugeType}`, async () => {
         testGaugeType = gaugeType;
         testGauges = gauges.get(testGaugeType)!;
@@ -395,6 +433,10 @@ describe('StakelessGaugeCheckpointer', () => {
         });
 
         itCheckpointsGauges();
+
+        afterEach(async () => {
+          expect(await ethers.provider.getBalance(stakelessGaugeCheckpointer.address)).to.be.eq(0);
+        });
       });
 
       context('with leftover ETH', () => {
@@ -410,13 +452,13 @@ describe('StakelessGaugeCheckpointer', () => {
       });
 
       context('invalid inputs', () => {
-        it('reverts with no gauges to checkpoint', async () => {
+        it('multi gauge checkpoint reverts with no gauges to checkpoint', async () => {
           await expect(stakelessGaugeCheckpointer.checkpointMultipleGauges([testGaugeType], [])).to.be.revertedWith(
             'No gauges to checkpoint'
           );
         });
 
-        it('reverts with mismatching input lengths', async () => {
+        it('multi gauge checkpoint reverts with mismatching input lengths', async () => {
           await expect(
             stakelessGaugeCheckpointer.checkpointMultipleGauges(
               Array(testGauges.length + 1).fill(testGaugeType),
@@ -424,21 +466,31 @@ describe('StakelessGaugeCheckpointer', () => {
             )
           ).to.be.revertedWith('Mismatch between gauge types and addresses');
         });
+
+        it('checkpoint reverts with invalid gauge', async () => {
+          await expect(stakelessGaugeCheckpointer.checkpointSingleGauge(testGaugeType, ANY_ADDRESS)).to.be.revertedWith(
+            'Gauge not added'
+          );
+        });
+
+        it('single gauge cost reverts with invalid gauge', async () => {
+          await expect(stakelessGaugeCheckpointer.getSingleBridgeCost(testGaugeType, ANY_ADDRESS)).to.be.revertedWith(
+            'Gauge not added'
+          );
+        });
       });
 
       function itCheckpointsGauges() {
         it('checkpoints single gauges one by one', async () => {
           for (const gauge of testGauges) {
-            const value = (testGaugeType == GaugeType[GaugeType.Arbitrum] ? ARBITRUM_BRIDGE_COST : bn(0)).add(extraEth);
+            const value = (await stakelessGaugeCheckpointer.getSingleBridgeCost(testGaugeType, gauge)).add(extraEth);
             const tx = await stakelessGaugeCheckpointer.checkpointSingleGauge(testGaugeType, gauge, { value });
             expectEvent.inIndirectReceipt(await tx.wait(), checkpointInterface, 'Checkpoint', {}, gauge);
           }
         });
 
         it('checkpoints many gauges at once specifying the type only once', async () => {
-          const value = (
-            testGaugeType == GaugeType[GaugeType.Arbitrum] ? ARBITRUM_BRIDGE_COST.mul(testGauges.length) : bn(0)
-          ).add(extraEth);
+          const value = (await stakelessGaugeCheckpointer.getGaugeTypesBridgeCost([testGaugeType], 0)).add(extraEth);
           const receipt = await (
             await stakelessGaugeCheckpointer.checkpointMultipleGauges([testGaugeType], testGauges, { value })
           ).wait();
@@ -449,9 +501,7 @@ describe('StakelessGaugeCheckpointer', () => {
         });
 
         it('checkpoints many gauges at once specifying the type explicitly for each gauge', async () => {
-          const value = (
-            testGaugeType == GaugeType[GaugeType.Arbitrum] ? ARBITRUM_BRIDGE_COST.mul(testGauges.length) : bn(0)
-          ).add(extraEth);
+          const value = (await stakelessGaugeCheckpointer.getGaugeTypesBridgeCost([testGaugeType], 0)).add(extraEth);
           const receipt = await (
             await stakelessGaugeCheckpointer.checkpointMultipleGauges(
               Array(testGauges.length).fill(testGaugeType),
@@ -467,16 +517,15 @@ describe('StakelessGaugeCheckpointer', () => {
 
         it('checkpoints many gauges at once, mixing types', async () => {
           const otherGaugeType = getNextTestGaugeType(testGaugeType);
-          const otherTypeGauge = gauges.get(otherGaugeType)![0];
+          const otherTypeGauges = gauges.get(otherGaugeType)!;
 
-          const value =
-            testGaugeType == GaugeType[GaugeType.Arbitrum] || otherGaugeType == GaugeType[GaugeType.Arbitrum]
-              ? ARBITRUM_BRIDGE_COST
-              : bn(0);
-          const currentTestGauges = [testGauges[0], otherTypeGauge];
+          const value = (
+            await stakelessGaugeCheckpointer.getGaugeTypesBridgeCost([testGaugeType, otherGaugeType], 0)
+          ).add(extraEth);
+          const currentTestGauges = [testGauges, otherTypeGauges].flat();
           const receipt = await (
             await stakelessGaugeCheckpointer.checkpointMultipleGauges(
-              [testGaugeType, otherGaugeType],
+              [Array(testGauges.length).fill(testGaugeType), Array(otherTypeGauges.length).fill(otherGaugeType)].flat(),
               currentTestGauges,
               { value }
             )
