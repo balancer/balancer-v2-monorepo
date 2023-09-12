@@ -352,7 +352,7 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
             return;
         }
 
-        // Most bridges are costless, and we can know about it by querying the cost of a single gauge.
+        // Most bridges are costless, and we can determine this by querying the cost of a single gauge.
         // If the cost of the first gauge in the list is 0, then it's 0 for the rest of them.
         // In that case, there's no need to query the bridge cost for every other gauge.
         // At this point we know there is at least one gauge in the set.
@@ -383,7 +383,7 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
     }
 
     /**
-     * @dev Performs checkpoint for paid gauge, forwarding ETH to cover bridge costs.
+     * @dev Calls `checkpoint` on a paid gauge, forwarding ETH to cover bridge costs.
      */
     function _checkpointPaidBridgeGauge(IStakelessGauge gauge) private {
         uint256 checkpointCost = gauge.getTotalBridgeCost();
@@ -395,7 +395,7 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
     }
 
     /**
-     * @dev Performs checkpoint for costless gauge; does not forward any ETH.
+     * @dev Calls `checkpoint` on a costless gauge; does not forward any ETH.
      */
     function _checkpointCostlessBridgeGauge(IStakelessGauge gauge) private {
         _authorizerAdaptorEntrypoint.performAction(

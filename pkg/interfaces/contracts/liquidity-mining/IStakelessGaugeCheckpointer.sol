@@ -162,7 +162,7 @@ interface IStakelessGaugeCheckpointer {
      * @notice Returns the ETH cost to checkpoint all gauges from the given types.
      * @dev A lower minimum relative weight might return higher costs, since more gauges could potentially be included
      * in the checkpoint. Reverts for invalid gauge types.
-     * @param gaugeTypes Type of the gauges.
+     * @param gaugeTypes Types of the gauges.
      * @param minRelativeWeight Minimum relative weight filter: gauges below this value do not add to the bridge cost.
      */
     function getGaugeTypesBridgeCost(string[] memory gaugeTypes, uint256 minRelativeWeight)
