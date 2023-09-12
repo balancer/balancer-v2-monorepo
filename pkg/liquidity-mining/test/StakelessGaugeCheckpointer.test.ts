@@ -452,10 +452,9 @@ describe('StakelessGaugeCheckpointer', () => {
       });
 
       context('invalid inputs', () => {
-        it('multi gauge checkpoint reverts with no gauges to checkpoint', async () => {
-          await expect(stakelessGaugeCheckpointer.checkpointMultipleGauges([testGaugeType], [])).to.be.revertedWith(
-            'No gauges to checkpoint'
-          );
+        it('multi gauge checkpoint with no gauges to checkpoint does nothing', async () => {
+          const tx = await stakelessGaugeCheckpointer.checkpointMultipleGauges([], []);
+          expectEvent.notEmitted(await tx.wait(), 'Checkpoint');
         });
 
         it('multi gauge checkpoint reverts with mismatching input lengths', async () => {
@@ -492,7 +491,9 @@ describe('StakelessGaugeCheckpointer', () => {
         it('checkpoints many gauges at once specifying the type only once', async () => {
           const value = (await stakelessGaugeCheckpointer.getGaugeTypesBridgeCost([testGaugeType], 0)).add(extraEth);
           const receipt = await (
-            await stakelessGaugeCheckpointer.checkpointMultipleGauges([testGaugeType], testGauges, { value })
+            await stakelessGaugeCheckpointer.checkpointMultipleGaugesOfMatchingType(testGaugeType, testGauges, {
+              value,
+            })
           ).wait();
 
           for (const gauge of testGauges) {

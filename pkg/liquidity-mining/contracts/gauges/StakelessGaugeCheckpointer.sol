@@ -35,8 +35,6 @@ import "./arbitrum/ArbitrumRootGauge.sol";
 contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGuard, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    bytes32 private immutable _arbitrum = keccak256(abi.encodePacked("Arbitrum"));
-
     mapping(string => EnumerableSet.AddressSet) private _gauges;
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IGaugeAdder private immutable _gaugeAdder;
@@ -65,6 +63,11 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
     modifier withValidGauge(string memory gaugeType, IStakelessGauge gauge) {
         require(hasGauge(gaugeType, gauge), "Gauge not added");
         _;
+    }
+
+    modifier refundsEth() {
+        _;
+        _returnLeftoverEthIfAny();
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
@@ -157,7 +160,13 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
-    function checkpointAllGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override nonReentrant {
+    function checkpointAllGaugesAboveRelativeWeight(uint256 minRelativeWeight)
+        external
+        payable
+        override
+        nonReentrant
+        refundsEth
+    {
         string[] memory gaugeTypes = _gaugeAdder.getGaugeTypes();
         _checkpointGaugesAboveRelativeWeight(gaugeTypes, minRelativeWeight);
     }
@@ -169,6 +178,7 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         override
         nonReentrant
         withValidGaugeTypes(gaugeTypes)
+        refundsEth
     {
         _checkpointGaugesAboveRelativeWeight(gaugeTypes, minRelativeWeight);
     }
@@ -180,10 +190,26 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         override
         nonReentrant
         withValidGauge(gaugeType, gauge)
+        refundsEth
     {
         _checkpointSingleGauge(gauge);
+    }
 
-        _returnLeftoverEthIfAny();
+    /// @inheritdoc IStakelessGaugeCheckpointer
+    function checkpointMultipleGaugesOfMatchingType(string memory gaugeType, IStakelessGauge[] memory gauges)
+        external
+        payable
+        override
+        nonReentrant
+        refundsEth
+    {
+        uint256 length = gauges.length;
+        for (uint256 i = 0; i < length; ++i) {
+            // The gauge type is also validated here.
+            require(hasGauge(gaugeType, gauges[i]), "Gauge not added");
+
+            _checkpointSingleGauge(gauges[i]);
+        }
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
@@ -192,22 +218,17 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         payable
         override
         nonReentrant
+        refundsEth
     {
-        bool singleType = (gaugeTypes.length == 1);
-        require(gaugeTypes.length == gauges.length || singleType, "Mismatch between gauge types and addresses");
-        require(gauges.length > 0, "No gauges to checkpoint");
+        require(gaugeTypes.length == gauges.length, "Mismatch between gauge types and addresses");
 
         uint256 length = gauges.length;
         for (uint256 i = 0; i < length; ++i) {
-            string memory gaugeType = singleType ? gaugeTypes[0] : gaugeTypes[i];
-            IStakelessGauge gauge = gauges[i];
-
-            require(hasGauge(gaugeType, gauge), "Gauge not added");
+            // The gauge type is also validated here.
+            require(hasGauge(gaugeTypes[i], gauges[i]), "Gauge not added");
 
             _checkpointSingleGauge(gauges[i]);
         }
-
-        _returnLeftoverEthIfAny();
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
@@ -271,11 +292,13 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         }
     }
 
+    /**
+     * @dev Malicious contracts are ruled out at this stage: gauges shall be validated in external functions before
+     * reaching this point.
+     */
     function _getSingleBridgeCost(IStakelessGauge gauge) internal view returns (uint256) {
         // Some versions of the stakeless gauges did not implement this interface, so we need to try / catch the call.
         // In case the interface is not present, the cost is 0.
-        // Malicious contracts are ruled out at this stage: gauges shall be validated in external functions before
-        // reaching this point.
         try gauge.getTotalBridgeCost() returns (uint256 cost) {
             return cost;
         } catch {
@@ -289,10 +312,10 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         returns (uint256 totalCost)
     {
         uint256 currentPeriod = _roundDownBlockTimestamp();
-        uint256 gaugesAmount = _gauges[gaugeType].length();
+        uint256 gaugeCount = _gauges[gaugeType].length();
         EnumerableSet.AddressSet storage gauges = _gauges[gaugeType];
 
-        for (uint256 i = 0; i < gaugesAmount; ++i) {
+        for (uint256 i = 0; i < gaugeCount; ++i) {
             IStakelessGauge gauge = IStakelessGauge(gauges.unchecked_at(i));
 
             if (_gaugeController.gauge_relative_weight(address(gauge), currentPeriod) < minRelativeWeight) {
@@ -328,8 +351,6 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         for (uint256 i = 0; i < gaugeTypes.length; ++i) {
             _checkpointGauges(gaugeTypes[i], minRelativeWeight, currentPeriod);
         }
-
-        _returnLeftoverEthIfAny();
     }
 
     /**

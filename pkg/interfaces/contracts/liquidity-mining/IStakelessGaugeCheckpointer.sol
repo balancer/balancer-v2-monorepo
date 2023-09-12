@@ -142,10 +142,21 @@ interface IStakelessGaugeCheckpointer {
 
     /**
      * @notice Performs a checkpoint for a multiple added gauges of the given types.
-     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * Reverts if the gauges were not added to the checkpointer beforehand, or if an invalid gauge type is given.
+     * @param gaugeType Type of the gauges to be checkpointed.
+     * @param gauges Addresses of the gauges to checkpoint.
+     */
+    function checkpointMultipleGaugesOfMatchingType(string memory gaugeType, IStakelessGauge[] memory gauges)
+        external
+        payable;
+
+    /**
+     * @notice Performs a checkpoint for a multiple added gauges of the given types.
+     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
      * Reverts if the gauges were not added to the checkpointer beforehand, or if invalid gauge types are given.
-     * @param gaugeTypes Types of the gauges to be checkpointed. If a single type is provided, it is applied to all of
-     * the gauges, otherwise the gauge types array should be equal in length to the gauges.
+     * Reverts if the types array does not have the same length as the gauges array.
+     * @param gaugeTypes Types of the gauges to be checkpointed, in the same order as the gauges to be checkpointed.
      * @param gauges Addresses of the gauges to checkpoint.
      */
     function checkpointMultipleGauges(string[] memory gaugeTypes, IStakelessGauge[] memory gauges) external payable;
