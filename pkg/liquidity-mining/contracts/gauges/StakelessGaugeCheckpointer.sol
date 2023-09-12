@@ -316,13 +316,20 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         EnumerableSet.AddressSet storage gauges = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gaugeCount; ++i) {
-            IStakelessGauge gauge = IStakelessGauge(gauges.unchecked_at(i));
+            address gauge = gauges.unchecked_at(i);
 
-            if (_gaugeController.gauge_relative_weight(address(gauge), currentPeriod) < minRelativeWeight) {
+            // The relative weight reported by the gauge controller is only valid if the gauge is updated (i.e. it
+            // does not need a checkpoint in the controller).
+            // It might be the case that after the checkpoint the gauge is below the weight threshold, but given
+            // that we cannot perform the checkpoint in this view function we consider it within the threshold in that
+            // case. It is better to overestimate the gas required for the call given that it is returned at the end
+            // anyways.
+            bool isGaugeUpdated = _gaugeController.time_weight(gauge) >= currentPeriod;
+            if (isGaugeUpdated && _gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
                 continue;
             }
 
-            uint256 gaugeBridgeCost = _getSingleBridgeCost(gauge);
+            uint256 gaugeBridgeCost = _getSingleBridgeCost(IStakelessGauge(gauge));
             // If one gauge is costless, the same should apply for all the gauges of the same type.
             if (gaugeBridgeCost == 0) {
                 break;
