@@ -382,8 +382,8 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         // Arbitrum gauges need to send ETH when performing the checkpoint to pay for bridge costs. Furthermore,
         // if gauges come from different factories, the cost per gauge might not be the same for all gauges.
         function(IStakelessGauge) internal performCheckpoint = isGaugeTypeCostless
-            ? _checkpointPaidBridgeGauge
-            : _checkpointCostlessBridgeGauge;
+            ? _checkpointCostlessBridgeGauge
+            : _checkpointPaidBridgeGauge;
 
         for (uint256 i = 0; i < totalTypeGauges; ++i) {
             address gauge = typeGauges.unchecked_at(i);
