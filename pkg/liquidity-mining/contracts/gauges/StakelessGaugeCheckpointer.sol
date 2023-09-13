@@ -323,7 +323,7 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
             // It might be the case that after the checkpoint the gauge is below the weight threshold, but given
             // that we cannot perform the checkpoint in this view function we consider it within the threshold in that
             // case. It is better to overestimate the gas required for the call given that it is returned at the end
-            // anyways.
+            // anyway.
             bool isGaugeUpdated = _gaugeController.time_weight(gauge) >= currentPeriod;
             if (isGaugeUpdated && _gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
                 continue;
