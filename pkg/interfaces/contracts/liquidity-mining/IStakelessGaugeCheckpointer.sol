@@ -112,54 +112,82 @@ interface IStakelessGaugeCheckpointer {
 
     /**
      * @notice Performs a checkpoint for all added gauges above the given relative weight threshold.
-     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs. Use `getTotalBridgeCost` to
+     * determine the required amount of ETH for the execution to succeed.
      * @param minRelativeWeight Threshold to filter out gauges below it.
      */
-    function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable;
+    function checkpointAllGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable;
 
     /**
-     * @notice Performs a checkpoint for all added gauges of a given type above the given relative weight threshold.
-     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
-     * @param gaugeType Type of the gauge.
+     * @notice Performs a checkpoint for all added gauges above the given relative weight threshold for the given types.
+     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs. Use `getGaugeTypesBridgeCost` to
+     * determine the required amount of ETH for the execution to succeed.
+     * Reverts if invalid gauge types are given.
+     * @param gaugeTypes Types of the gauges to checkpoint.
      * @param minRelativeWeight Threshold to filter out gauges below it.
      */
-    function checkpointGaugesOfTypeAboveRelativeWeight(string memory gaugeType, uint256 minRelativeWeight)
+    function checkpointGaugesOfTypesAboveRelativeWeight(string[] memory gaugeTypes, uint256 minRelativeWeight)
         external
         payable;
 
     /**
      * @notice Performs a checkpoint for a single added gauge of a given type.
-     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs. Use `getSingleBridgeCost` to
+     * determine the required amount of ETH for the execution to succeed.
      * Reverts if the gauge was not added to the checkpointer beforehand.
      * @param gaugeType Type of the gauge.
      * @param gauge Address of the gauge to checkpoint.
      */
-    function checkpointSingleGauge(string memory gaugeType, address gauge) external payable;
+    function checkpointSingleGauge(string memory gaugeType, IStakelessGauge gauge) external payable;
 
     /**
      * @notice Performs a checkpoint for a multiple added gauges of the given types.
-     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
-     * Reverts if the gauges were not added to the checkpointer beforehand.
-     * @param gaugeTypes Types of the gauges to be checkpointed. If a single type is provided, it is applied to all of
-     * the gauges, otherwise the gauge types array should be equal in length to the gauges.
+     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * Reverts if the gauges were not added to the checkpointer beforehand, or if an invalid gauge type is given.
+     * @param gaugeType Type of the gauges to be checkpointed.
      * @param gauges Addresses of the gauges to checkpoint.
      */
-    function checkpointMultipleGauges(string[] memory gaugeTypes, address[] memory gauges) external payable;
+    function checkpointMultipleGaugesOfMatchingType(string memory gaugeType, IStakelessGauge[] memory gauges)
+        external
+        payable;
 
     /**
-     * @notice Returns the ETH cost to checkpoint a single given gauge.
-     * @dev Reverts if the gauge was not added to the checkpointer beforehand.
-     * @param gaugeType Type of the gauge.
-     * @param gauge Address of the gauge to check the bridge costs.
+     * @notice Performs a checkpoint for a multiple added gauges of the given types.
+     * @dev Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * Reverts if the gauges were not added to the checkpointer beforehand, or if invalid gauge types are given.
+     * Reverts if the types array does not have the same length as the gauges array.
+     * @param gaugeTypes Types of the gauges to be checkpointed, in the same order as the gauges to be checkpointed.
+     * @param gauges Addresses of the gauges to checkpoint.
      */
-    function getSingleBridgeCost(string memory gaugeType, address gauge) external view returns (uint256);
+    function checkpointMultipleGauges(string[] memory gaugeTypes, IStakelessGauge[] memory gauges) external payable;
 
     /**
      * @notice Returns the ETH cost to checkpoint all gauges for a given minimum relative weight.
      * @dev A lower minimum relative weight might return higher costs, since more gauges could potentially be included
      * in the checkpoint.
+     * @param minRelativeWeight Minimum relative weight filter: gauges below this value do not add to the bridge cost.
      */
     function getTotalBridgeCost(uint256 minRelativeWeight) external view returns (uint256);
+
+    /**
+     * @notice Returns the ETH cost to checkpoint all gauges from the given types.
+     * @dev A lower minimum relative weight might return higher costs, since more gauges could potentially be included
+     * in the checkpoint. Reverts for invalid gauge types.
+     * @param gaugeTypes Types of the gauges.
+     * @param minRelativeWeight Minimum relative weight filter: gauges below this value do not add to the bridge cost.
+     */
+    function getGaugeTypesBridgeCost(string[] memory gaugeTypes, uint256 minRelativeWeight)
+        external
+        view
+        returns (uint256 totalCost);
+
+    /**
+     * @notice Returns the ETH cost to checkpoint a single given gauge.
+     * @dev Reverts if the gauge was not added to the checkpointer beforehand, or if the gauge type is invalid.
+     * @param gaugeType Type of the gauge.
+     * @param gauge Address of the gauge to check the bridge costs.
+     */
+    function getSingleBridgeCost(string memory gaugeType, IStakelessGauge gauge) external view returns (uint256);
 
     /**
      * @notice Returns true if gauge type is valid; false otherwise.

@@ -35,8 +35,6 @@ import "./arbitrum/ArbitrumRootGauge.sol";
 contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGuard, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    bytes32 private immutable _arbitrum = keccak256(abi.encodePacked("Arbitrum"));
-
     mapping(string => EnumerableSet.AddressSet) private _gauges;
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IGaugeAdder private immutable _gaugeAdder;
@@ -55,13 +53,30 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
         _;
     }
 
+    modifier withValidGaugeTypes(string[] memory gaugeTypes) {
+        for (uint256 i = 0; i < gaugeTypes.length; ++i) {
+            require(_gaugeAdder.isValidGaugeType(gaugeTypes[i]), "Invalid gauge type");
+        }
+        _;
+    }
+
+    modifier withValidGauge(string memory gaugeType, IStakelessGauge gauge) {
+        require(hasGauge(gaugeType, gauge), "Gauge not added");
+        _;
+    }
+
+    modifier refundsEth() {
+        _;
+        _returnLeftoverEthIfAny();
+    }
+
     /// @inheritdoc IStakelessGaugeCheckpointer
     function getGaugeAdder() external view override returns (IGaugeAdder) {
         return _gaugeAdder;
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
-    function getGaugeTypes() external view override returns (string[] memory) {
+    function getGaugeTypes() public view override returns (string[] memory) {
         return _gaugeAdder.getGaugeTypes();
     }
 
@@ -108,7 +123,7 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
 
     /// @inheritdoc IStakelessGaugeCheckpointer
     function hasGauge(string memory gaugeType, IStakelessGauge gauge)
-        external
+        public
         view
         override
         withValidGaugeType(gaugeType)
@@ -145,89 +160,103 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
-    function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override nonReentrant {
-        uint256 currentPeriod = _roundDownBlockTimestamp();
-
+    function checkpointAllGaugesAboveRelativeWeight(uint256 minRelativeWeight)
+        external
+        payable
+        override
+        nonReentrant
+        refundsEth
+    {
         string[] memory gaugeTypes = _gaugeAdder.getGaugeTypes();
-        for (uint256 i = 0; i < gaugeTypes.length; ++i) {
-            _checkpointGauges(gaugeTypes[i], minRelativeWeight, currentPeriod);
+        _checkpointGaugesAboveRelativeWeight(gaugeTypes, minRelativeWeight);
+    }
+
+    /// @inheritdoc IStakelessGaugeCheckpointer
+    function checkpointGaugesOfTypesAboveRelativeWeight(string[] memory gaugeTypes, uint256 minRelativeWeight)
+        external
+        payable
+        override
+        nonReentrant
+        withValidGaugeTypes(gaugeTypes)
+        refundsEth
+    {
+        _checkpointGaugesAboveRelativeWeight(gaugeTypes, minRelativeWeight);
+    }
+
+    /// @inheritdoc IStakelessGaugeCheckpointer
+    function checkpointSingleGauge(string memory gaugeType, IStakelessGauge gauge)
+        external
+        payable
+        override
+        nonReentrant
+        withValidGauge(gaugeType, gauge)
+        refundsEth
+    {
+        _checkpointSingleGauge(gauge);
+    }
+
+    /// @inheritdoc IStakelessGaugeCheckpointer
+    function checkpointMultipleGaugesOfMatchingType(string memory gaugeType, IStakelessGauge[] memory gauges)
+        external
+        payable
+        override
+        nonReentrant
+        refundsEth
+    {
+        uint256 length = gauges.length;
+        for (uint256 i = 0; i < length; ++i) {
+            // The gauge type is also validated here.
+            require(hasGauge(gaugeType, gauges[i]), "Gauge not added");
+
+            _checkpointSingleGauge(gauges[i]);
         }
-
-        // Send back any leftover ETH to the caller.
-        Address.sendValue(msg.sender, address(this).balance);
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
-    function checkpointGaugesOfTypeAboveRelativeWeight(string memory gaugeType, uint256 minRelativeWeight)
+    function checkpointMultipleGauges(string[] memory gaugeTypes, IStakelessGauge[] memory gauges)
         external
         payable
         override
         nonReentrant
-        withValidGaugeType(gaugeType)
+        refundsEth
     {
-        uint256 currentPeriod = _roundDownBlockTimestamp();
-
-        _checkpointGauges(gaugeType, minRelativeWeight, currentPeriod);
-
-        _returnLeftoverEthIfAny();
-    }
-
-    /// @inheritdoc IStakelessGaugeCheckpointer
-    function checkpointSingleGauge(string memory gaugeType, address gauge) external payable override nonReentrant {
-        _checkpointSingleGauge(gaugeType, gauge);
-
-        _returnLeftoverEthIfAny();
-    }
-
-    /// @inheritdoc IStakelessGaugeCheckpointer
-    function checkpointMultipleGauges(string[] memory gaugeTypes, address[] memory gauges)
-        external
-        payable
-        override
-        nonReentrant
-    {
-        bool singleType = (gaugeTypes.length == 1);
-        require(gaugeTypes.length == gauges.length || singleType, "Mismatch between gauge types and addresses");
-        require(gauges.length > 0, "No gauges to checkpoint");
+        require(gaugeTypes.length == gauges.length, "Mismatch between gauge types and addresses");
 
         uint256 length = gauges.length;
         for (uint256 i = 0; i < length; ++i) {
-            _checkpointSingleGauge(singleType ? gaugeTypes[0] : gaugeTypes[i], gauges[i]);
-        }
+            // The gauge type is also validated here.
+            require(hasGauge(gaugeTypes[i], gauges[i]), "Gauge not added");
 
-        _returnLeftoverEthIfAny();
+            _checkpointSingleGauge(gauges[i]);
+        }
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
-    function getSingleBridgeCost(string memory gaugeType, address gauge) public view override returns (uint256) {
-        require(_gauges[gaugeType].contains(gauge), "Gauge was not added to the checkpointer");
+    function getSingleBridgeCost(string memory gaugeType, IStakelessGauge gauge)
+        external
+        view
+        override
+        withValidGauge(gaugeType, gauge)
+        returns (uint256)
+    {
+        return _getSingleBridgeCost(gauge);
+    }
 
-        if (keccak256(abi.encodePacked(gaugeType)) == _arbitrum) {
-            return ArbitrumRootGauge(gauge).getTotalBridgeCost();
-        } else {
-            return 0;
-        }
+    /// @inheritdoc IStakelessGaugeCheckpointer
+    function getGaugeTypesBridgeCost(string[] memory gaugeTypes, uint256 minRelativeWeight)
+        external
+        view
+        override
+        withValidGaugeTypes(gaugeTypes)
+        returns (uint256)
+    {
+        return _getGaugeTypesTotalBridgeCost(gaugeTypes, minRelativeWeight);
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
     function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
-        uint256 currentPeriod = _roundDownBlockTimestamp();
-        uint256 totalArbitrumGauges = _gauges["Arbitrum"].length();
-        EnumerableSet.AddressSet storage arbitrumGauges = _gauges["Arbitrum"];
-        uint256 totalCost;
-
-        for (uint256 i = 0; i < totalArbitrumGauges; ++i) {
-            address gauge = arbitrumGauges.unchecked_at(i);
-            // Skip gauges that are below the threshold.
-            if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
-                continue;
-            }
-
-            // Cost per gauge might not be the same if gauges come from different factories, so we add each
-            // gauge's bridge cost individually.
-            totalCost += ArbitrumRootGauge(gauge).getTotalBridgeCost();
-        }
-        return totalCost;
+        string[] memory gaugeTypes = getGaugeTypes();
+        return _getGaugeTypesTotalBridgeCost(gaugeTypes, minRelativeWeight);
     }
 
     /// @inheritdoc IStakelessGaugeCheckpointer
@@ -264,6 +293,74 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
     }
 
     /**
+     * @dev Malicious contracts are ruled out at this stage: gauges shall be validated in external functions before
+     * reaching this point.
+     */
+    function _getSingleBridgeCost(IStakelessGauge gauge) internal view returns (uint256) {
+        // Some versions of the stakeless gauges did not implement this interface, so we need to try / catch the call.
+        // In case the interface is not present, the cost is 0.
+        try gauge.getTotalBridgeCost() returns (uint256 cost) {
+            return cost;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _getGaugeTypeTotalBridgeCost(string memory gaugeType, uint256 minRelativeWeight)
+        internal
+        view
+        returns (uint256 totalCost)
+    {
+        uint256 currentPeriod = _roundDownBlockTimestamp();
+        uint256 gaugeCount = _gauges[gaugeType].length();
+        EnumerableSet.AddressSet storage gauges = _gauges[gaugeType];
+
+        for (uint256 i = 0; i < gaugeCount; ++i) {
+            address gauge = gauges.unchecked_at(i);
+
+            // The relative weight reported by the gauge controller is only valid if the gauge is updated (i.e. it
+            // does not need a checkpoint in the controller).
+            // It might be the case that after the checkpoint the gauge is below the weight threshold, but given
+            // that we cannot perform the checkpoint in this view function we consider it within the threshold in that
+            // case. It is better to overestimate the gas required for the call given that it is returned at the end
+            // anyway.
+            bool isGaugeUpdated = _gaugeController.time_weight(gauge) >= currentPeriod;
+            if (isGaugeUpdated && _gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
+                continue;
+            }
+
+            uint256 gaugeBridgeCost = _getSingleBridgeCost(IStakelessGauge(gauge));
+            // If one gauge is costless, the same should apply for all the gauges of the same type.
+            if (gaugeBridgeCost == 0) {
+                break;
+            }
+
+            // Cost per gauge might not be the same if gauges come from different factories, so we add each
+            // gauge's bridge cost individually.
+            totalCost += gaugeBridgeCost;
+        }
+    }
+
+    function _getGaugeTypesTotalBridgeCost(string[] memory gaugeTypes, uint256 minRelativeWeight)
+        internal
+        view
+        returns (uint256 totalCost)
+    {
+        for (uint256 i = 0; i < gaugeTypes.length; ++i) {
+            string memory gaugeType = gaugeTypes[i];
+            totalCost += _getGaugeTypeTotalBridgeCost(gaugeType, minRelativeWeight);
+        }
+    }
+
+    function _checkpointGaugesAboveRelativeWeight(string[] memory gaugeTypes, uint256 minRelativeWeight) internal {
+        uint256 currentPeriod = _roundDownBlockTimestamp();
+
+        for (uint256 i = 0; i < gaugeTypes.length; ++i) {
+            _checkpointGauges(gaugeTypes[i], minRelativeWeight, currentPeriod);
+        }
+    }
+
+    /**
      * @dev Performs checkpoints for all gauges of the given type whose relative weight is at least the specified one.
      * @param gaugeType Type of the gauges to checkpoint.
      * @param minRelativeWeight Threshold to filter out gauges below it.
@@ -283,11 +380,17 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
             return;
         }
 
+        // Most bridges are costless, and we can determine this by querying the cost of a single gauge.
+        // If the cost of the first gauge in the list is 0, then it's 0 for the rest of them.
+        // In that case, there's no need to query the bridge cost for every other gauge.
+        // At this point we know there is at least one gauge in the set.
+        bool isGaugeTypeCostless = (_getSingleBridgeCost(IStakelessGauge(typeGauges.unchecked_at(0))) == 0);
+
         // Arbitrum gauges need to send ETH when performing the checkpoint to pay for bridge costs. Furthermore,
         // if gauges come from different factories, the cost per gauge might not be the same for all gauges.
-        function(address) internal performCheckpoint = (keccak256(abi.encodePacked(gaugeType)) == _arbitrum)
-            ? _checkpointArbitrumGauge
-            : _checkpointCostlessBridgeGauge;
+        function(IStakelessGauge) internal performCheckpoint = isGaugeTypeCostless
+            ? _checkpointCostlessBridgeGauge
+            : _checkpointPaidBridgeGauge;
 
         for (uint256 i = 0; i < totalTypeGauges; ++i) {
             address gauge = typeGauges.unchecked_at(i);
@@ -302,33 +405,41 @@ contract StakelessGaugeCheckpointer is IStakelessGaugeCheckpointer, ReentrancyGu
             if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
                 continue;
             }
-            performCheckpoint(gauge);
+
+            performCheckpoint(IStakelessGauge(gauge));
         }
     }
 
     /**
-     * @dev Performs checkpoint for Arbitrum gauge, forwarding ETH to pay bridge costs.
+     * @dev Calls `checkpoint` on a paid gauge, forwarding ETH to cover bridge costs.
      */
-    function _checkpointArbitrumGauge(address gauge) private {
-        uint256 checkpointCost = ArbitrumRootGauge(gauge).getTotalBridgeCost();
+    function _checkpointPaidBridgeGauge(IStakelessGauge gauge) private {
+        uint256 checkpointCost = gauge.getTotalBridgeCost();
+
         _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
-            gauge,
+            address(gauge),
             abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
         );
     }
 
     /**
-     * @dev Performs checkpoint for non-Arbitrum gauge; does not forward any ETH.
+     * @dev Calls `checkpoint` on a costless gauge; does not forward any ETH.
      */
-    function _checkpointCostlessBridgeGauge(address gauge) private {
-        _authorizerAdaptorEntrypoint.performAction(gauge, abi.encodeWithSelector(IStakelessGauge.checkpoint.selector));
+    function _checkpointCostlessBridgeGauge(IStakelessGauge gauge) private {
+        _authorizerAdaptorEntrypoint.performAction(
+            address(gauge),
+            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
+        );
     }
 
-    function _checkpointSingleGauge(string memory gaugeType, address gauge) internal {
-        uint256 checkpointCost = getSingleBridgeCost(gaugeType, gauge);
+    /**
+     * @dev Performs checkpoint for any gauge, attempting to get the cost beforehand.
+     */
+    function _checkpointSingleGauge(IStakelessGauge gauge) internal {
+        uint256 checkpointCost = _getSingleBridgeCost(gauge);
 
         _authorizerAdaptorEntrypoint.performAction{ value: checkpointCost }(
-            gauge,
+            address(gauge),
             abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
         );
     }
