@@ -15,14 +15,18 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../gauges/avalanche/AvalancheRootGauge.sol";
+import "../gauges/base/BaseRootGauge.sol";
 
 /**
- * @dev This is used by the Avalanche Root Gauge deployment task in the deployments repo, and is referenced there.
+ * @dev This is used by the Base Root Gauge deployment task in the deployments repo, and is referenced there.
  * Do not delete.
  */
-contract MockAvalancheRootGauge is AvalancheRootGauge {
-    constructor(IMainnetBalancerMinter minter, ILayerZeroBALProxy lzBALProxy) AvalancheRootGauge(minter, lzBALProxy) {
+contract MockBaseRootGauge is BaseRootGauge {
+    constructor(
+        IMainnetBalancerMinter minter,
+        IL1StandardBridge baseBridge,
+        address baseBAL
+    ) BaseRootGauge(minter, baseBridge, baseBAL) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

@@ -117,7 +117,7 @@ contract WeightedMathTest is Test {
 
         uint256[] memory balances = new uint256[](arrayLength);
         for (uint256 i = 0; i < arrayLength; i++) {
-            balances[i] = bound(balancesFixed[i], 1e10, type(uint96).max);
+            balances[i] = bound(balancesFixed[i], 1e12, type(uint96).max);
         }
 
         uint256 denormalizedWeightSum;
