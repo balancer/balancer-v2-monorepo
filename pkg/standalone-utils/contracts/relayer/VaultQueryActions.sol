@@ -183,7 +183,7 @@ abstract contract VaultQueryActions is VaultActions {
 
         // Save as chained references
         for (uint256 i = 0; i < outputReferences.length; i++) {
-            _setChainedReferenceValue(outputReferences[i].key, amountsOut[i]);
+            _setChainedReferenceValue(outputReferences[i].key, amountsOut[outputReferences[i].index]);
         }
     }
 
