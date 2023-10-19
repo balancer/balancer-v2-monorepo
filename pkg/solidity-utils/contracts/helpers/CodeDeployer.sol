@@ -54,16 +54,63 @@ library CodeDeployer {
     //
     // The padding is just the 0xfe sequence (invalid opcode). It is important as it lets us work in-place, avoiding
     // memory allocation and copying.
+
     bytes32
         private constant _DEPLOYER_CREATION_CODE = 0x602038038060206000396000f3fefefefefefefefefefefefefefefefefefefe;
 
+    // Sometimes (e.g., when deploying the second or "B" half of the creation code in BaseSplitCodeFactory), we need to
+    // protect the bare contract from being accidentally (or maliciously) executed, in case the bytes at the boundary
+    // happen to be valid opcodes. It's especially dangerous if the bytes contained the selfdestruct opcode, which would
+    // destroy the contract (and, if it's a factory, effectively disable it and prevent further pool creation).
+    //
+    // To guard against this, if the "preventExecution" flag is set, we prepend an invalid opcode to the contract,
+    // to ensure that it cannot be executed, regardless of its content.
+    //
+    // This corresponds to the following contract:
+    //
+    // contract CodeDeployer {
+    //     constructor() payable {
+    //         uint256 size;
+    //         assembly {
+    //             mstore8(0, 0xfe) // store invalid opcode at position 0
+    //             size := sub(codesize(), 32) // size of appended data, as constructor is 32 bytes long
+    //             codecopy(1, 32, size) // copy all appended data to memory at position 1
+    //             return(0, add(size, 1)) // return appended data (plus the extra byte) for it to be stored as code
+    //         }
+    //     }
+    // }
+    //
+    // More specifically, it is composed of the following opcodes (plus padding, described above):
+    //
+    // [1] PUSH1 0xfe
+    // [3] PUSH1 0x00
+    // [4] MSTORE8
+    // [6] PUSH1 0x20
+    // [7] CODESIZE
+    // [8] SUB
+    // [9] DUP1
+    // [11] PUSH1 0x20
+    // [13] PUSH1 0x01
+    // [14] CODECOPY
+    // [16] PUSH1 0x01
+    // [17] ADD
+    // [19] PUSH1 0x00
+    // [20] RETURN
+
+    // solhint-disable max-line-length
+    bytes32
+        private constant _PROTECTED_DEPLOYER_CREATION_CODE = 0x60fe600053602038038060206001396001016000f3fefefefefefefefefefefe;
+
     /**
      * @dev Deploys a contract with `code` as its code, returning the destination address.
+     * If preventExecution is set, prepend an invalid opcode to ensure the "contract" cannot be executed.
+     * Rather than add a flag, we could simply always prepend the opcode, but there might be use cases where fidelity
+     * is required.
      *
      * Reverts if deployment fails.
      */
-    function deploy(bytes memory code) internal returns (address destination) {
-        bytes32 deployerCreationCode = _DEPLOYER_CREATION_CODE;
+    function deploy(bytes memory code, bool preventExecution) internal returns (address destination) {
+        bytes32 deployerCreationCode = preventExecution ? _PROTECTED_DEPLOYER_CREATION_CODE : _DEPLOYER_CREATION_CODE;
 
         // We need to concatenate the deployer creation code and `code` in memory, but want to avoid copying all of
         // `code` (which could be quite long) into a new memory location. Therefore, we operate in-place using
