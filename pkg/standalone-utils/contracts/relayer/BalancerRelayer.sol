@@ -99,8 +99,10 @@ contract BalancerRelayer is IBalancerRelayer, Version, ReentrancyGuard {
         nonReentrant
         returns (bytes[] memory results)
     {
-        results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
+        uint256 numData = data.length;
+
+        results = new bytes[](numData);
+        for (uint256 i = 0; i < numData; i++) {
             results[i] = _queryLibrary.functionDelegateCall(data[i]);
         }
     }
