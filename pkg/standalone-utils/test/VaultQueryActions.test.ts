@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { FP_ZERO, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
@@ -20,6 +20,7 @@ import {
 } from './VaultActionsRelayer.setup';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { expectArrayEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
 describe('VaultQueryActions', function () {
   const INITIAL_BALANCE = fp(1000);
@@ -301,9 +302,12 @@ describe('VaultQueryActions', function () {
     const minAmountsOut: BigNumber[] = [];
 
     sharedBeforeEach('estimate expected amounts out', async () => {
-      bptIn = (await poolA.totalSupply()).div(2);
-      calculatedAmountsOut = tokensA.map(() => INITIAL_BALANCE.div(2));
-      data = WeightedPoolEncoder.exitExactBPTInForTokensOut(bptIn);
+      bptIn = (await poolA.totalSupply()).div(5);
+      const tokenIn = await poolA.estimateTokenOut(0, bptIn);
+      calculatedAmountsOut = [BigNumber.from(tokenIn), FP_ZERO];
+      // Use a non-proportional exit so that the token amounts are different
+      // (so that we can see whether indexes are used)
+      data = WeightedPoolEncoder.exitExactBPTInForOneTokenOut(bptIn, 0);
     });
 
     context('when caller is not authorized', () => {
@@ -354,8 +358,9 @@ describe('VaultQueryActions', function () {
           expect(result.bptIn).to.equal(bptIn);
           const expectedAmountsOut = result.amountsOut;
           // sanity check
-          expect(expectedAmountsOut).to.deep.equal(calculatedAmountsOut);
+          expectArrayEqualWithError(expectedAmountsOut, calculatedAmountsOut);
 
+          // Pass an "out of order" reference, to ensure it it is using the index values
           await (
             await relayer.connect(user).vaultActionsQueryMulticall([
               encodeExitPool(vault, relayerLibrary, tokensA, {
@@ -363,7 +368,7 @@ describe('VaultQueryActions', function () {
                 userData: data,
                 outputReferences: {
                   DAI: toChainedReference(0),
-                  MKR: toChainedReference(1),
+                  MKR: toChainedReference(3),
                 },
                 sender,
                 recipient,
@@ -373,8 +378,8 @@ describe('VaultQueryActions', function () {
             ])
           ).wait();
 
-          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountsOut[0]);
-          await expectChainedReferenceContents(relayer, toChainedReference(1), expectedAmountsOut[1]);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountsOut[tokensA.indexOf(tokensA.DAI)]);
+          await expectChainedReferenceContents(relayer, toChainedReference(3), expectedAmountsOut[tokensA.indexOf(tokensA.MKR)]);
         });
       }
     });
