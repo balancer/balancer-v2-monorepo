@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "yarn compile",
-    "compile": "hardhat compile ",
+    "compile": "hardhat compile && rm -rf artifacts/build-info",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:typescript && yarn lint:solidity",
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
