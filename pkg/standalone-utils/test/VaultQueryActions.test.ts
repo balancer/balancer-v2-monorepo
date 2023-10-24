@@ -378,8 +378,16 @@ describe('VaultQueryActions', function () {
             ])
           ).wait();
 
-          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountsOut[tokensA.indexOf(tokensA.DAI)]);
-          await expectChainedReferenceContents(relayer, toChainedReference(3), expectedAmountsOut[tokensA.indexOf(tokensA.MKR)]);
+          await expectChainedReferenceContents(
+            relayer,
+            toChainedReference(0),
+            expectedAmountsOut[tokensA.indexOf(tokensA.DAI)]
+          );
+          await expectChainedReferenceContents(
+            relayer,
+            toChainedReference(3),
+            expectedAmountsOut[tokensA.indexOf(tokensA.MKR)]
+          );
         });
       }
     });
