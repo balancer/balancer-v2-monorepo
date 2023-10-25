@@ -32,7 +32,10 @@ import "./IBaseRelayerLibrary.sol";
  * @dev Since the relayer is not expected to hold user funds, we expect the user to be the recipient of any token
  * transfers from the Vault.
  *
- * All functions must be payable so they can be called from a multicall involving ETH
+ * All functions must be payable so they can be called from a multicall involving ETH.
+ *
+ * Note that this is a base contract for VaultQueryActions. Any functions that should not be called in a query context
+ * (e.g., `manageUserBalance`), should be virtual here, and overridden to revert in VaultQueryActions.
  */
 abstract contract VaultActions is IBaseRelayerLibrary {
     using Math for uint256;
@@ -114,7 +117,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         IVault.UserBalanceOp[] memory ops,
         uint256 value,
         OutputReference[] calldata outputReferences
-    ) external payable {
+    ) external payable virtual {
         for (uint256 i = 0; i < ops.length; i++) {
             require(ops[i].sender == msg.sender || ops[i].sender == address(this), "Incorrect sender");
 

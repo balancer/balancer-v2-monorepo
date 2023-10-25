@@ -25,6 +25,9 @@ import "./VaultActions.sol";
  * @title VaultQueryActions
  * @notice Allows users to simulate the core functions on the Balancer Vault (swaps/joins/exits), using queries instead
  * of the actual operations.
+ * @dev Inherits from VaultActions to maximize reuse - but also pulls in `manageUserBalance`. This might not hurt
+ * anything, but isn't intended behavior in a query context, so we override and disable it. Anything else added to the
+ * base contract that isn't query-friendly should likewise be disabled.
  */
 abstract contract VaultQueryActions is VaultActions {
     function swap(
@@ -223,5 +226,14 @@ abstract contract VaultQueryActions is VaultActions {
             IERC20 token = actualTokens[i];
             _require(token == expectedTokens[i], Errors.TOKENS_MISMATCH);
         }
+    }
+
+    /// @dev Prevent `vaultActionsQueryMulticall` from calling manageUserBalance.
+    function manageUserBalance(
+        IVault.UserBalanceOp[] memory,
+        uint256,
+        OutputReference[] calldata
+    ) external payable override {
+        _revert(Errors.UNIMPLEMENTED);
     }
 }

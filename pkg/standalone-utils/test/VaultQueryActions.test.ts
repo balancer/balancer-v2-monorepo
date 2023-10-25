@@ -1,9 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { FP_ZERO, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, FP_ZERO, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { SwapKind, UserBalanceOpKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT112, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
 import { Contract, BigNumber } from 'ethers';
 import { expect } from 'chai';
@@ -17,6 +17,7 @@ import {
   encodeJoinPool,
   encodeExitPool,
   PoolKind,
+  OutputReference,
 } from './VaultActionsRelayer.setup';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -390,6 +391,51 @@ describe('VaultQueryActions', function () {
           );
         });
       }
+    });
+  });
+
+  describe('user balance ops', () => {
+    const amountDAI = fp(2);
+    const amountSNX = fp(5);
+
+    function encodeManageUserBalance(params: {
+      ops: Array<{
+        kind: UserBalanceOpKind;
+        asset: string;
+        amount: BigNumberish;
+        sender: Account;
+        recipient?: Account;
+      }>;
+      outputReferences?: OutputReference[];
+    }): string {
+      return relayerLibrary.interface.encodeFunctionData('manageUserBalance', [
+        params.ops.map((op) => ({
+          kind: op.kind,
+          asset: op.asset,
+          amount: op.amount,
+          sender: TypesConverter.toAddress(op.sender),
+          recipient: op.recipient ?? TypesConverter.toAddress(recipient),
+        })),
+        0,
+        params.outputReferences ?? [],
+      ]);
+    }
+
+    it('does not allow calls to manageUserBalance', async () => {
+      await expect(
+        relayer.connect(user).vaultActionsQueryMulticall([
+          encodeManageUserBalance({
+            ops: [
+              { kind: UserBalanceOpKind.DepositInternal, asset: tokens.DAI.address, amount: amountDAI, sender: user },
+              { kind: UserBalanceOpKind.DepositInternal, asset: tokens.SNX.address, amount: amountSNX, sender: user },
+            ],
+            outputReferences: [
+              { index: 0, key: toChainedReference(0) },
+              { index: 1, key: toChainedReference(1) },
+            ],
+          }),
+        ])
+      ).to.be.revertedWith('UNIMPLEMENTED');
     });
   });
 });
