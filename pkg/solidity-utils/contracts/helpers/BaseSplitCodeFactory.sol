@@ -71,7 +71,12 @@ abstract contract BaseSplitCodeFactory {
         // Memory: [ A.length ] [ A.data ] [ B.data ]
         //         ^ creationCodeA
 
-        _creationCodeContractA = CodeDeployer.deploy(creationCodeA);
+        // The first half is the beginning of the real contract (as opposed to the second half, which could be
+        // anything), so we don't strictly need to protect the A contract. Fork tests should test both,
+        // for completeness.
+        bool preventExecution = false;
+
+        _creationCodeContractA = CodeDeployer.deploy(creationCodeA, preventExecution);
 
         // Creating B's array is a bit more involved: since we cannot move B's contents, we are going to create a 'new'
         // memory array starting at A's last 32 bytes, which will be replaced with B's length. We'll back-up this last
@@ -91,7 +96,11 @@ abstract contract BaseSplitCodeFactory {
         // Memory: [ A.length ] [ A.data[ : -1] ] [ B.length ][ B.data ]
         //         ^ creationCodeA                ^ creationCodeB
 
-        _creationCodeContractB = CodeDeployer.deploy(creationCodeB);
+        // The code for contract B starts at a random point, and could accidentally contain valid opcodes.
+        // The `preventExecution` flag prepends an invalid opcode to ensure the  "contract" cannot be accidentally
+        // (or maliciously) executed. We need to remove this extra byte when reassembling the creation code.
+        preventExecution = true;
+        _creationCodeContractB = CodeDeployer.deploy(creationCodeB, preventExecution);
 
         // We now restore the original contents of `creationCode` by writing back the original length and A's last byte.
         assembly {
@@ -149,7 +158,8 @@ abstract contract BaseSplitCodeFactory {
             // Next, we concatenate the creation code stored in A and B.
             let dataStart := add(code, 32)
             extcodecopy(creationCodeContractA, dataStart, 0, creationCodeSizeA)
-            extcodecopy(creationCodeContractB, add(dataStart, creationCodeSizeA), 0, creationCodeSizeB)
+            // Start at offset 1 in contract B, to skip the inserted invalid opcode.
+            extcodecopy(creationCodeContractB, add(dataStart, creationCodeSizeA), 1, creationCodeSizeB)
         }
 
         // Finally, we copy the constructorArgs to the end of the array. Unfortunately there is no way to avoid this

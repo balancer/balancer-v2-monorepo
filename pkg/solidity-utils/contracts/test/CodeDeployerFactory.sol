@@ -19,8 +19,8 @@ import "../helpers/CodeDeployer.sol";
 contract CodeDeployerFactory {
     event CodeDeployed(address destination);
 
-    function deploy(bytes memory data) external {
-        address destination = CodeDeployer.deploy(data);
+    function deploy(bytes memory data, bool preventExecution) external {
+        address destination = CodeDeployer.deploy(data, preventExecution);
         emit CodeDeployed(destination);
     }
 }
