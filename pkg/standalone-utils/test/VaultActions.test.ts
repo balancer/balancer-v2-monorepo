@@ -3,21 +3,14 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import {
-  BasePoolEncoder,
-  getPoolAddress,
-  SwapKind,
-  UserBalanceOpKind,
-  WeightedPoolEncoder,
-} from '@balancer-labs/balancer-js';
-import { MAX_INT256, MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { BasePoolEncoder, getPoolAddress, UserBalanceOpKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { MAX_UINT256, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { Contract } from 'ethers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import { Dictionary } from 'lodash';
 import { Zero } from '@ethersproject/constants';
 import {
   expectChainedReferenceContents,
@@ -31,6 +24,7 @@ import {
   encodeJoinPool,
   encodeExitPool,
   encodeSwap,
+  encodeBatchSwap,
   getJoinExitAmounts,
   approveVaultForRelayer,
   PoolKind,
@@ -95,50 +89,6 @@ describe('VaultActions', function () {
 
     poolIdC = await poolC.getPoolId();
   });
-
-  function encodeBatchSwap(params: {
-    swaps: Array<{
-      poolId: string;
-      tokenIn: Token;
-      tokenOut: Token;
-      amount: BigNumberish;
-    }>;
-    outputReferences?: Dictionary<BigNumberish>;
-    sender: Account;
-    recipient?: Account;
-    useInternalBalance?: boolean;
-  }): string {
-    const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
-      index: tokens.findIndexBySymbol(symbol),
-      key,
-    }));
-
-    if (params.useInternalBalance == undefined) {
-      params.useInternalBalance = false;
-    }
-
-    return relayerLibrary.interface.encodeFunctionData('batchSwap', [
-      SwapKind.GivenIn,
-      params.swaps.map((swap) => ({
-        poolId: swap.poolId,
-        assetInIndex: tokens.indexOf(swap.tokenIn),
-        assetOutIndex: tokens.indexOf(swap.tokenOut),
-        amount: swap.amount,
-        userData: '0x',
-      })),
-      tokens.addresses,
-      {
-        sender: TypesConverter.toAddress(params.sender),
-        recipient: params.recipient ?? TypesConverter.toAddress(recipient),
-        fromInternalBalance: params.useInternalBalance,
-        toInternalBalance: params.useInternalBalance,
-      },
-      new Array(tokens.length).fill(MAX_INT256),
-      MAX_UINT256,
-      0,
-      outputReferences,
-    ]);
-  }
 
   function encodeManageUserBalance(params: {
     ops: Array<{
@@ -340,7 +290,9 @@ describe('VaultActions', function () {
     context('when caller is not authorized', () => {
       it('reverts', async () => {
         await expect(
-          relayer.connect(other).multicall([encodeBatchSwap({ swaps: [], sender: user.address })])
+          relayer
+            .connect(other)
+            .multicall([encodeBatchSwap({ relayerLibrary, tokens, swaps: [], sender: user.address, recipient })])
         ).to.be.revertedWith('Incorrect sender');
       });
     });
@@ -373,11 +325,14 @@ describe('VaultActions', function () {
             () =>
               relayer.connect(user).multicall([
                 encodeBatchSwap({
+                  relayerLibrary,
+                  tokens,
                   swaps: [
                     { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
                     { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
                   ],
                   sender,
+                  recipient,
                 }),
               ]),
             tokens,
@@ -414,11 +369,14 @@ describe('VaultActions', function () {
           const receipt = await (
             await relayer.connect(user).multicall([
               encodeBatchSwap({
+                relayerLibrary,
+                tokens,
                 swaps: [
                   { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
                   { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
                 ],
                 sender,
+                recipient,
                 outputReferences: {
                   MKR: toChainedReference(0),
                   SNX: toChainedReference(1),
@@ -448,6 +406,8 @@ describe('VaultActions', function () {
           const receipt = await (
             await relayer.connect(user).multicall([
               encodeBatchSwap({
+                relayerLibrary,
+                tokens,
                 swaps: [
                   { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
                   {
@@ -458,6 +418,7 @@ describe('VaultActions', function () {
                   },
                 ],
                 sender,
+                recipient,
               }),
             ])
           ).wait();
@@ -474,6 +435,8 @@ describe('VaultActions', function () {
               () =>
                 relayer.connect(user).multicall([
                   encodeBatchSwap({
+                    relayerLibrary,
+                    tokens,
                     swaps: [
                       { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
                       { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
@@ -486,6 +449,8 @@ describe('VaultActions', function () {
                     recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next swap.
                   }),
                   encodeBatchSwap({
+                    relayerLibrary,
+                    tokens,
                     swaps: [
                       // Swap previously acquired MKR for SNX
                       {
@@ -503,6 +468,7 @@ describe('VaultActions', function () {
                       },
                     ],
                     sender,
+                    recipient,
                   }),
                 ]),
               tokens,
@@ -1711,6 +1677,8 @@ describe('VaultActions', function () {
                 recipient: relayer.address,
               }),
               encodeBatchSwap({
+                relayerLibrary,
+                tokens,
                 swaps: [{ poolId: poolIdB, tokenIn: tokens.MKR, tokenOut: tokens.SNX, amount: toChainedReference(1) }],
                 outputReferences: {
                   SNX: toChainedReference(1),

@@ -12,21 +12,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../vault/IVault.sol";
+import "./relayer/BaseRelayerLibraryCommon.sol";
+
+import "./relayer/VaultQueryActions.sol";
 
 /**
- * @title IBalancerRelayer
- * @notice Allows safe multicall execution of a relayer's functions
+ * @title Batch Relayer Library
+ * @notice This contract is not a relayer by itself and calls into it directly will fail.
+ * The associated relayer can be found by calling `getEntrypoint` on this contract.
  */
-interface IBalancerRelayer {
-    function getLibrary() external view returns (address);
-
-    function getVault() external view returns (IVault);
-
-    function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
-
-    function vaultActionsQueryMulticall(bytes[] calldata data) external returns (bytes[] memory results);
+contract BatchRelayerQueryLibrary is BaseRelayerLibraryCommon, VaultQueryActions {
+    constructor(IVault vault) BaseRelayerLibraryCommon(vault) {
+        //solhint-disable-previous-line no-empty-blocks
+    }
 }

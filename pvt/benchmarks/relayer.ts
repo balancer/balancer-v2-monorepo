@@ -15,7 +15,10 @@ const wordBytesSize = 32;
 async function main() {
   ({ vault } = await setupEnvironment());
   relayerLibrary = await deploy('v2-standalone-utils/MockBaseRelayerLibrary', { args: [vault.address, ''] });
-  relayer = await deploy('v2-standalone-utils/BalancerRelayer', { args: [vault.address, relayerLibrary.address, ''] });
+  const queryLibrary = await deploy('v2-standalone-utils/BatchRelayerQueryLibrary', { args: [vault.address] });
+  relayer = await deploy('v2-standalone-utils/BalancerRelayer', {
+    args: [vault.address, relayerLibrary.address, queryLibrary.address, ''],
+  });
   let totalGasUsed = bn(0);
 
   console.log('== Measuring multicall gas usage ==\n');

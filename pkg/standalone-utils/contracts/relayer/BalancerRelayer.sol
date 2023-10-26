@@ -49,6 +49,7 @@ contract BalancerRelayer is IBalancerRelayer, Version, ReentrancyGuard {
 
     IVault private immutable _vault;
     address private immutable _library;
+    address private immutable _queryLibrary;
 
     /**
      * @dev This contract is not meant to be deployed directly by an EOA, but rather during construction of a contract
@@ -57,10 +58,12 @@ contract BalancerRelayer is IBalancerRelayer, Version, ReentrancyGuard {
     constructor(
         IVault vault,
         address libraryAddress,
+        address queryLibrary,
         string memory version
     ) Version(version) {
         _vault = vault;
         _library = libraryAddress;
+        _queryLibrary = queryLibrary;
     }
 
     receive() external payable {
@@ -80,12 +83,28 @@ contract BalancerRelayer is IBalancerRelayer, Version, ReentrancyGuard {
     }
 
     function multicall(bytes[] calldata data) external payable override nonReentrant returns (bytes[] memory results) {
-        results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
+        uint256 numData = data.length;
+
+        results = new bytes[](numData);
+        for (uint256 i = 0; i < numData; i++) {
             results[i] = _library.functionDelegateCall(data[i]);
         }
 
         _refundETH();
+    }
+
+    function vaultActionsQueryMulticall(bytes[] calldata data)
+        external
+        override
+        nonReentrant
+        returns (bytes[] memory results)
+    {
+        uint256 numData = data.length;
+
+        results = new bytes[](numData);
+        for (uint256 i = 0; i < numData; i++) {
+            results[i] = _queryLibrary.functionDelegateCall(data[i]);
+        }
     }
 
     function _refundETH() private {

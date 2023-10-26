@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumber, Contract } from 'ethers';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
@@ -159,6 +159,51 @@ export function encodeSwap(
   ]);
 }
 
+export function encodeBatchSwap(params: {
+  relayerLibrary: Contract;
+  tokens: TokenList;
+  swaps: Array<{
+    poolId: string;
+    tokenIn: Token;
+    tokenOut: Token;
+    amount: BigNumberish;
+  }>;
+  outputReferences?: Dictionary<BigNumberish>;
+  sender: Account;
+  recipient?: Account;
+  useInternalBalance?: boolean;
+}): string {
+  const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
+    index: params.tokens.findIndexBySymbol(symbol),
+    key,
+  }));
+
+  if (params.useInternalBalance == undefined) {
+    params.useInternalBalance = false;
+  }
+
+  return params.relayerLibrary.interface.encodeFunctionData('batchSwap', [
+    SwapKind.GivenIn,
+    params.swaps.map((swap) => ({
+      poolId: swap.poolId,
+      assetInIndex: params.tokens.indexOf(swap.tokenIn),
+      assetOutIndex: params.tokens.indexOf(swap.tokenOut),
+      amount: swap.amount,
+      userData: '0x',
+    })),
+    params.tokens.addresses,
+    {
+      sender: TypesConverter.toAddress(params.sender),
+      recipient: params.recipient ?? TypesConverter.toAddress(recipient),
+      fromInternalBalance: params.useInternalBalance,
+      toInternalBalance: params.useInternalBalance,
+    },
+    new Array(params.tokens.length).fill(MAX_INT256),
+    MAX_UINT256,
+    0,
+    outputReferences,
+  ]);
+}
 export function getJoinExitAmounts(poolTokens: TokenList, tokenAmounts: Dictionary<BigNumberish>): Array<BigNumberish> {
   return poolTokens.map((token) => tokenAmounts[token.symbol] ?? 0);
 }
