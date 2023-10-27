@@ -9,7 +9,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-import { ANY_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { toChainedReference } from './helpers/chainedReferences';
@@ -46,6 +46,10 @@ describe('BaseRelayerLibrary', function () {
   describe('relayer getters', () => {
     it('returns the library address', async () => {
       expect(await relayer.getLibrary()).to.equal(relayerLibrary.address);
+    });
+
+    it('returns the query library address', async () => {
+      expect(await relayer.getQueryLibrary()).not.to.equal(ZERO_ADDRESS);
     });
 
     it('returns the vault address', async () => {

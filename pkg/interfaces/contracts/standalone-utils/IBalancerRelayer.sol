@@ -24,6 +24,8 @@ import "../vault/IVault.sol";
 interface IBalancerRelayer {
     function getLibrary() external view returns (address);
 
+    function getQueryLibrary() external view returns (address);
+
     function getVault() external view returns (IVault);
 
     function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
