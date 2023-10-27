@@ -82,6 +82,10 @@ contract BalancerRelayer is IBalancerRelayer, Version, ReentrancyGuard {
         return _library;
     }
 
+    function getQueryLibrary() external view override returns (address) {
+        return _queryLibrary;
+    }
+
     function multicall(bytes[] calldata data) external payable override nonReentrant returns (bytes[] memory results) {
         uint256 numData = data.length;
 
