@@ -37,14 +37,14 @@ abstract contract VaultQueryActions is VaultActions {
         uint256, // deadline
         uint256, // value
         uint256 outputReference
-    ) external payable override {
+    ) external payable override returns (uint256 result) {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         if (_isChainedReference(singleSwap.amount)) {
             singleSwap.amount = _getChainedReferenceValue(singleSwap.amount);
         }
 
-        uint256 result = _querySwap(singleSwap, funds);
+        result = _querySwap(singleSwap, funds);
 
         _require(singleSwap.kind == IVault.SwapKind.GIVEN_IN ? result >= limit : result <= limit, Errors.SWAP_LIMIT);
 
@@ -102,7 +102,7 @@ abstract contract VaultQueryActions is VaultActions {
         uint256, // deadline
         uint256, // value
         OutputReference[] calldata outputReferences
-    ) external payable override {
+    ) external payable override returns (int256[] memory results) {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         for (uint256 i = 0; i < swaps.length; ++i) {
@@ -112,7 +112,7 @@ abstract contract VaultQueryActions is VaultActions {
             }
         }
 
-        int256[] memory results = getVault().queryBatchSwap(kind, swaps, assets, funds);
+        results = getVault().queryBatchSwap(kind, swaps, assets, funds);
 
         for (uint256 i = 0; i < outputReferences.length; ++i) {
             require(_isChainedReference(outputReferences[i].key), "invalid chained reference");

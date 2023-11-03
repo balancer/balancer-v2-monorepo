@@ -66,14 +66,14 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 deadline,
         uint256 value,
         uint256 outputReference
-    ) external payable virtual {
+    ) external payable virtual returns (uint256 result) {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         if (_isChainedReference(singleSwap.amount)) {
             singleSwap.amount = _getChainedReferenceValue(singleSwap.amount);
         }
 
-        uint256 result = getVault().swap{ value: value }(singleSwap, funds, limit, deadline);
+        result = getVault().swap{ value: value }(singleSwap, funds, limit, deadline);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);
@@ -89,7 +89,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 deadline,
         uint256 value,
         OutputReference[] calldata outputReferences
-    ) external payable virtual {
+    ) external payable virtual returns (int256[] memory results) {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         for (uint256 i = 0; i < swaps.length; ++i) {
@@ -99,7 +99,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             }
         }
 
-        int256[] memory results = getVault().batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
+        results = getVault().batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
 
         for (uint256 i = 0; i < outputReferences.length; ++i) {
             require(_isChainedReference(outputReferences[i].key), "invalid chained reference");

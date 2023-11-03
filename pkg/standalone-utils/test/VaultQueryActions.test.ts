@@ -4,7 +4,7 @@ import { BigNumberish, FP_ZERO, fp } from '@balancer-labs/v2-helpers/src/numbers
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { SwapKind, UserBalanceOpKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { MAX_UINT112, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT112, MAX_UINT256, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
 import { Contract, BigNumber } from 'ethers';
 import { expect } from 'chai';
 import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
@@ -22,6 +22,7 @@ import {
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectArrayEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
+import { defaultAbiCoder } from 'ethers/lib/utils';
 
 describe('VaultQueryActions', function () {
   const INITIAL_BALANCE = fp(1000);
@@ -104,39 +105,60 @@ describe('VaultQueryActions', function () {
       });
 
       function itTestsSimpleSwap() {
-        it('stores swap output as chained reference', async () => {
-          const expectedAmountOut = await queries.querySwap(
-            {
-              poolId: poolIdA,
-              kind: SwapKind.GivenIn,
-              assetIn: tokens.DAI.address,
-              assetOut: tokens.MKR.address,
-              amount: amountIn,
-              userData: '0x',
-            },
-            {
-              sender: TypesConverter.toAddress(sender),
-              recipient: TypesConverter.toAddress(recipient),
-              fromInternalBalance: false,
-              toInternalBalance: false,
-            }
-          );
+        describe('simple swap', () => {
+          let expectedAmountOut: BigNumber;
 
-          await (
-            await relayer.connect(user).vaultActionsQueryMulticall([
+          sharedBeforeEach('get expected amount out', async () => {
+            expectedAmountOut = await queries.querySwap(
+              {
+                poolId: poolIdA,
+                kind: SwapKind.GivenIn,
+                assetIn: tokens.DAI.address,
+                assetOut: tokens.MKR.address,
+                amount: amountIn,
+                userData: '0x',
+              },
+              {
+                sender: TypesConverter.toAddress(sender),
+                recipient: TypesConverter.toAddress(recipient),
+                fromInternalBalance: false,
+                toInternalBalance: false,
+              }
+            );
+          });
+
+          it('stores swap output as chained reference', async () => {
+            await (
+              await relayer.connect(user).vaultActionsQueryMulticall([
+                encodeSwap(relayerLibrary, {
+                  poolId: poolIdA,
+                  tokenIn: tokens.DAI,
+                  tokenOut: tokens.MKR,
+                  amount: amountIn,
+                  outputReference: toChainedReference(0),
+                  sender,
+                  recipient,
+                }),
+              ])
+            ).wait();
+
+            await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountOut);
+          });
+
+          it('returns the swap output directly', async () => {
+            const [actualAmountOut] = await relayer.connect(user).callStatic.vaultActionsQueryMulticall([
               encodeSwap(relayerLibrary, {
                 poolId: poolIdA,
                 tokenIn: tokens.DAI,
                 tokenOut: tokens.MKR,
                 amount: amountIn,
-                outputReference: toChainedReference(0),
                 sender,
                 recipient,
               }),
-            ])
-          ).wait();
+            ]);
 
-          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountOut);
+            expect(actualAmountOut).to.equal(expectedAmountOut);
+          });
         });
       }
     });
@@ -184,40 +206,78 @@ describe('VaultQueryActions', function () {
       });
 
       function itTestsBatchSwap() {
-        it('stores batch swap output as chained reference', async () => {
+        describe('batch swap', () => {
           const amount = fp(1);
-          const indexIn = tokens.indexOf(tokens.DAI);
-          const indexOut = tokens.indexOf(tokens.MKR);
 
-          const result = await queries.queryBatchSwap(
-            SwapKind.GivenIn,
-            [{ poolId: poolIdA, assetInIndex: indexIn, assetOutIndex: indexOut, amount, userData: '0x' }],
-            tokens.addresses,
-            {
-              sender: TypesConverter.toAddress(sender),
-              recipient,
-              fromInternalBalance: false,
-              toInternalBalance: false,
-            }
-          );
+          it('stores batch swap output as chained reference', async () => {
+            const indexIn = tokens.indexOf(tokens.DAI);
+            const indexOut = tokens.indexOf(tokens.MKR);
 
-          expect(result[indexIn]).to.deep.equal(amount);
-          const expectedAmountOut = result[indexOut].mul(-1);
+            const result = await queries.queryBatchSwap(
+              SwapKind.GivenIn,
+              [{ poolId: poolIdA, assetInIndex: indexIn, assetOutIndex: indexOut, amount, userData: '0x' }],
+              tokens.addresses,
+              {
+                sender: TypesConverter.toAddress(sender),
+                recipient,
+                fromInternalBalance: false,
+                toInternalBalance: false,
+              }
+            );
 
-          await (
-            await relayer.connect(user).vaultActionsQueryMulticall([
+            expect(result[indexIn]).to.deep.equal(amount);
+            const expectedAmountOut = result[indexOut].mul(-1);
+
+            await (
+              await relayer.connect(user).vaultActionsQueryMulticall([
+                encodeBatchSwap({
+                  relayerLibrary,
+                  tokens,
+                  swaps: [{ poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount }],
+                  sender,
+                  recipient,
+                  outputReferences: { MKR: toChainedReference(0) },
+                }),
+              ])
+            ).wait();
+
+            await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountOut);
+          });
+
+          it('stores batch swap output directly', async () => {
+            const indexIn = tokens.indexOf(tokens.DAI);
+            const indexOut = tokens.indexOf(tokens.MKR);
+
+            const result = await queries.queryBatchSwap(
+              SwapKind.GivenIn,
+              [{ poolId: poolIdA, assetInIndex: indexIn, assetOutIndex: indexOut, amount, userData: '0x' }],
+              tokens.addresses,
+              {
+                sender: TypesConverter.toAddress(sender),
+                recipient,
+                fromInternalBalance: false,
+                toInternalBalance: false,
+              }
+            );
+
+            expect(result[indexIn]).to.deep.equal(amount);
+            const expectedAmountOut = result[indexOut].mul(-1);
+
+            const [encodedResult] = await relayer.connect(user).callStatic.vaultActionsQueryMulticall([
               encodeBatchSwap({
                 relayerLibrary,
                 tokens,
                 swaps: [{ poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount }],
                 sender,
                 recipient,
-                outputReferences: { MKR: toChainedReference(0) },
               }),
-            ])
-          ).wait();
+            ]);
 
-          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedAmountOut);
+            const [actualResult] = defaultAbiCoder.decode(['uint256[]'], encodedResult);
+            const actualAmountOut = MAX_UINT256.sub(actualResult[indexOut]);
+
+            expect(actualAmountOut).to.almostEqual(expectedAmountOut);
+          });
         });
       }
     });
