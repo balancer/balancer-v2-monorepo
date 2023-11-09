@@ -18,6 +18,7 @@ export enum PoolKind {
   LEGACY_STABLE,
   COMPOSABLE_STABLE,
   COMPOSABLE_STABLE_V2,
+  PHANTOM_STABLE,
 }
 
 export type OutputReference = {

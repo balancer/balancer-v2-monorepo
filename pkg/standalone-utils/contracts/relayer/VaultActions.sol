@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-stable/PhantomStablePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 
@@ -138,7 +139,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE, COMPOSABLE_STABLE_V2 }
+    enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE, COMPOSABLE_STABLE_V2, PHANTOM_STABLE }
 
     function joinPool(
         bytes32 poolId,
@@ -334,6 +335,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
                 return _doComposableStableExitChainedReferenceReplacements(userData);
             } else if (kind == PoolKind.COMPOSABLE_STABLE_V2) {
                 return _doComposableStableV2ExitChainedReferenceReplacements(userData);
+            } else if (kind == PoolKind.PHANTOM_STABLE) {
+                return _doStablePhantomExitChainedReferenceReplacements(userData);
             } else {
                 revert("UNHANDLED_POOL_KIND");
             }
@@ -393,18 +396,19 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     // Stable Pool version-dependent recoding dispatch functions
 
     /*
-     * While all Stable Pool versions fortuitously support the same join kinds (V2 and higher support one extra),
-     * they do NOT all support the same exit kinds. Also, though the encoding of the data associated with the exit
-     * is uniform across pool kinds for the same exit method, the ExitKind ID itself may have a different value.
+     * While all modern Stable Pool versions fortuitously support the same join kinds (V2 and higher support one
+     * extra), they do NOT all support the same exit kinds. Also, though the encoding of the data associated with
+     * the exit is uniform across pool kinds for the same exit method, the ExitKind ID itself may have a different
+     * value.
      *
      * For instance, BPT_IN_FOR_EXACT_TOKENS_OUT is 2 in legacy Stable Pools, but 1 in Composable Stable Pools.
-     * (See the reference comment and libraries below.)
+     * (See the reference comment and libraries below.) PhantomStable only has a "recovery" exit (it predates
+     * the standard recovery mode).
      *
-     * Accordingly, the three do[PoolKind]ExitChainedReferenceReplacements functions below (for LegacyStable,
-     * ComposableStable, and CopmosableStableV2) extract the exitKind and pass it through to the shared
-     * recoding functions.
+     * Accordingly, the four do[PoolKind]ExitChainedReferenceReplacements functions below (for LegacyStable,
+     * ComposableStable, ComposableStableV2, and PhantomStable) extract the exitKind and pass it through to the
+     * shared recoding functions.
      */
-
     function _doLegacyStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
         uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
 
@@ -446,6 +450,17 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         } else {
             // All other exit kinds are 'given out' (i.e the parameter is a token amount),
             // so we don't do replacements for those.
+            return userData;
+        }
+    }
+
+    // For PhantomStablePool
+    function _doStablePhantomExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
+
+        if (exitKind == uint8(PhantomStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT)) {
+            return _doStableExactBptInForTokensOutReplacements(userData, exitKind);
+        } else {
             return userData;
         }
     }
@@ -501,9 +516,6 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     StablePhantomPools can only be exited proportionally when the pool is paused: and the pause window has expired.
-    They have their own enum:
-
-    enum ExitKindPhantom { EXACT_BPT_IN_FOR_TOKENS_OUT }
 */
 
 // Applies to StablePool, MetaStablePool, StablePool V2
