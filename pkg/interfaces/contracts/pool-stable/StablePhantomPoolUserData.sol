@@ -14,7 +14,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-library PhantomStablePoolUserData {
+library StablePhantomPoolUserData {
     enum JoinKind { INIT, COLLECT_PROTOCOL_FEES }
     enum ExitKind { EXACT_BPT_IN_FOR_TOKENS_OUT }
 

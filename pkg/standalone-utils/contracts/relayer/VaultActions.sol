@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-stable/PhantomStablePoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePhantomPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 
@@ -139,7 +139,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE, COMPOSABLE_STABLE_V2, PHANTOM_STABLE }
+    enum PoolKind { WEIGHTED, LEGACY_STABLE, COMPOSABLE_STABLE, COMPOSABLE_STABLE_V2, STABLE_PHANTOM }
 
     function joinPool(
         bytes32 poolId,
@@ -335,7 +335,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
                 return _doComposableStableExitChainedReferenceReplacements(userData);
             } else if (kind == PoolKind.COMPOSABLE_STABLE_V2) {
                 return _doComposableStableV2ExitChainedReferenceReplacements(userData);
-            } else if (kind == PoolKind.PHANTOM_STABLE) {
+            } else if (kind == PoolKind.STABLE_PHANTOM) {
                 return _doStablePhantomExitChainedReferenceReplacements(userData);
             } else {
                 revert("UNHANDLED_POOL_KIND");
@@ -402,11 +402,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
      * value.
      *
      * For instance, BPT_IN_FOR_EXACT_TOKENS_OUT is 2 in legacy Stable Pools, but 1 in Composable Stable Pools.
-     * (See the reference comment and libraries below.) PhantomStable only has a "recovery" exit (it predates
+     * (See the reference comment and libraries below.) StablePhantom only has a "recovery" exit (it predates
      * the standard recovery mode).
      *
      * Accordingly, the four do[PoolKind]ExitChainedReferenceReplacements functions below (for LegacyStable,
-     * ComposableStable, ComposableStableV2, and PhantomStable) extract the exitKind and pass it through to the
+     * ComposableStable, ComposableStableV2, and StablePhantom) extract the exitKind and pass it through to the
      * shared recoding functions.
      */
     function _doLegacyStableExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
@@ -454,11 +454,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    // For PhantomStablePool
+    // For StablePhantomPool
     function _doStablePhantomExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
         uint8 exitKind = uint8(StablePoolUserData.exitKind(userData));
 
-        if (exitKind == uint8(PhantomStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT)) {
+        if (exitKind == uint8(StablePhantomPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT)) {
             return _doStableExactBptInForTokensOutReplacements(userData, exitKind);
         } else {
             return userData;

@@ -956,7 +956,7 @@ describe('Vault Actions - Stable Pools', () => {
     });
   });
   describe('unhandled pool types', () => {
-    const INVALID_POOL_KIND = PoolKind.PHANTOM_STABLE + 1;
+    const INVALID_POOL_KIND = PoolKind.STABLE_PHANTOM + 1;
     const sender = randomAddress();
 
     context('on joins', () => {
