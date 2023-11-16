@@ -44,7 +44,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            request.amount = _subtractSwapFeeAmount(request.amount);
+            request.amount = _subtractSwapFeeAmount(request.amount, request.userData);
 
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
@@ -63,7 +63,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            return _addSwapFeeAmount(amountIn);
+            return _addSwapFeeAmount(amountIn, request.userData);
         }
     }
 

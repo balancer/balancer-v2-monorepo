@@ -45,6 +45,9 @@ interface IBasePool is IPoolSwapStructs {
      * Contracts implementing this function should check that the caller is indeed the Vault before performing any
      * state-changing operations, such as minting pool shares.
      */
+     // enum for transaction type
+    enum OperationType { JOIN, EXIT, SWAP, NONE }
+
     function onJoinPool(
         bytes32 poolId,
         address sender,
@@ -96,7 +99,7 @@ interface IBasePool is IPoolSwapStructs {
      * @dev Returns the current swap fee percentage as a 18 decimal fixed point number, so e.g. 1e17 corresponds to a
      * 10% swap fee.
      */
-    function getSwapFeePercentage() external view returns (uint256);
+    function getSwapFeePercentage(bytes memory userData, OperationType _operation) external view returns (uint256);
 
     /**
      * @dev Returns the scaling factors of each of the Pool's tokens. This is an implementation detail that is typically

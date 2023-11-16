@@ -169,7 +169,14 @@ abstract contract BasePool is
      * @notice Return the current value of the swap fee percentage.
      * @dev This is stored in `_miscData`.
      */
-    function getSwapFeePercentage() public view virtual override returns (uint256) {
+    function getSwapFeePercentage(bytes memory userData,
+     OperationType _operation) public view virtual override returns (uint256) {
+        // this code is just to avoid un-used variable warning.
+        // this will have no impact on the execution
+        // will remove this code in future
+        if(_operation == OperationType.SWAP){
+            userData = hex"00";
+        }
         return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
 
@@ -592,17 +599,17 @@ abstract contract BasePool is
     /**
      * @dev Adds swap fee amount to `amount`, returning a higher value.
      */
-    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+    function _addSwapFeeAmount(uint256 amount, bytes memory userData) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(getSwapFeePercentage().complement());
+        return amount.divUp(getSwapFeePercentage(userData, OperationType.SWAP).complement());
     }
 
     /**
      * @dev Subtracts swap fee amount from `amount`, returning a lower value.
      */
-    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+    function _subtractSwapFeeAmount(uint256 amount, bytes memory userData) internal view returns (uint256) {
         // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
+        uint256 feeAmount = amount.mulUp(getSwapFeePercentage(userData, OperationType.SWAP));
         return amount.sub(feeAmount);
     }
 
