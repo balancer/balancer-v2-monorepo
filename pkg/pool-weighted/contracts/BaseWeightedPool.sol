@@ -280,7 +280,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             normalizedWeights,
             amountsIn,
             totalSupply,
-            getSwapFeePercentage()
+            getSwapFeePercentage(userData, OperationType.JOIN)
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -304,7 +304,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply,
-            getSwapFeePercentage()
+            getSwapFeePercentage(userData, OperationType.JOIN)
         );
 
         // We join in a single token, so we initialize amountsIn with zeros
@@ -407,7 +407,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             normalizedWeights[tokenIndex],
             bptAmountIn,
             totalSupply,
-            getSwapFeePercentage()
+            getSwapFeePercentage(userData, OperationType.EXIT)
         );
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
@@ -448,7 +448,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             normalizedWeights,
             amountsOut,
             totalSupply,
-            getSwapFeePercentage()
+            getSwapFeePercentage(userData, OperationType.EXIT)
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 

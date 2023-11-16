@@ -17,12 +17,14 @@ pragma experimental ABIEncoderV2;
 
 import "./BaseWeightedPool.sol";
 import "./WeightedPoolProtocolFees.sol";
+import "./CustomFeeAuthorizer.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
+contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees,CustomFeeAuthorizer {
     using FixedPoint for uint256;
+    using WeightedPoolUserData for bytes;
 
     uint256 private constant _MAX_TOKENS = 8;
 
@@ -401,4 +403,51 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     {
         return super._isOwnerOnlyAction(actionId);
     }
+
+    function getSwapFeePercentage(bytes memory userData,
+     OperationType _operation) public view virtual override returns (uint256 _fee) {
+        // using tx.origin insted of msg.sender as these functions are called 
+        // during join/exit/swap via vault
+        if(isCustomFeeEnabled && isCustomFeeAuthorised(tx.origin)){
+            if(_operation == OperationType.JOIN ){
+                WeightedPoolUserData.JoinKind kind = userData.joinKind();
+                if(kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT){
+                    _fee = userData.exactTokensInForBptOutCustomFee();
+                } else {
+                if(kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT){
+                    _fee =  userData.tokenInForExactBptOutCustomFee();
+                }
+                }
+            }else{
+                if(_operation == OperationType.EXIT){
+                    WeightedPoolUserData.ExitKind kind = userData.exitKind();
+                    if(kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT){
+                        _fee =  userData.exactBptInForTokenOutCustomFee();
+                    } else {
+                    if(kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT){
+                        _fee =  userData.bptInForExactTokensOutCustomFee();
+                    }
+                    }
+                } else{
+                    if(_operation == OperationType.SWAP){
+                        _fee = userData.swapCustomFee();
+                    }
+                }
+            }
+        }else{
+            // return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH); 
+            _fee = super.getSwapFeePercentage(hex"00", OperationType.NONE);
+        }
+    }
+
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual override whenNotPaused {
+        // here msg.sender is used as this function directlly be called by the admin
+        // not via any other contract
+        if(isCustomFeeEnabled && owner() == msg.sender){
+            _setSwapFeePercentage(swapFeePercentage);
+        }else {
+            super.setSwapFeePercentage(swapFeePercentage);
+        }
+    }
+    // used if else so that it should not break the existing flow
 }
