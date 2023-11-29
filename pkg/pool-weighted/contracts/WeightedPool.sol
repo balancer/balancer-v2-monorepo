@@ -408,7 +408,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees,CustomFeeAut
      OperationType _operation) public view virtual override returns (uint256 _fee) {
         // using tx.origin insted of msg.sender as these functions are called 
         // during join/exit/swap via vault
-        if(isCustomFeeEnabled && isCustomFeeAuthorised(tx.origin)){
+        if(isCustomFeeEnabled && canSetCustomFee(tx.origin)){
             if(_operation == OperationType.JOIN ){
                 WeightedPoolUserData.JoinKind kind = userData.joinKind();
                 if(kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT){
@@ -435,15 +435,14 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees,CustomFeeAut
                 }
             }
         }else{
-            // return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH); 
-            _fee = super.getSwapFeePercentage(hex"00", OperationType.NONE);
+            _fee = getSwapFeePercentage();
         }
     }
 
     function setSwapFeePercentage(uint256 swapFeePercentage) public virtual override whenNotPaused {
         // here msg.sender is used as this function directlly be called by the admin
         // not via any other contract
-        if(isCustomFeeEnabled && owner() == msg.sender){
+        if(isCustomFeeEnabled && solver == msg.sender){
             _setSwapFeePercentage(swapFeePercentage);
         }else {
             super.setSwapFeePercentage(swapFeePercentage);

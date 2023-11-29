@@ -1,39 +1,49 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 
-contract CustomFeeAuthorizer is Ownable {
-    event authorizorAdded(address indexed _authorizor);
-    event authorizorRemoved(address indexed _authorizor);
+contract CustomFeeAuthorizer {
+    event feeSetterAdded(address indexed feeSetter);
+    event feeSetterRemoved(address indexed feeSetter);
 
-    mapping(address => bool) private authorized;
-    bool public isCustomFeeEnabled = false;
+    mapping(address => bool) private isCustomFeeSetter;
+    bool public isCustomFeeEnabled = false ;
+    address public solver;
 
-    function isCustomFeeAuthorised(address _authAdd) public view returns(bool _isAuth){
+    function canSetCustomFee(address _setterAddress) public view returns(bool _isAuth){
         if(isCustomFeeEnabled){
-            _isAuth = (authorized[_authAdd] ||  owner() == _authAdd) ;
+            _isAuth = (isCustomFeeSetter[_setterAddress] ||  solver == _setterAddress) ;
         }else{
         _isAuth = false;
         }
     }
 
-    function addAuthorized(address _toAdd) onlyOwner public {
+    function addCustomFeeSetter(address _toAdd) onlySolver public {
         require(_toAdd != address(0));
         require(isCustomFeeEnabled,"Custom Fee Not Enabled");
-        authorized[_toAdd] = true;
-        emit authorizorAdded(_toAdd);
+        isCustomFeeSetter[_toAdd] = true;
+        emit feeSetterAdded(_toAdd);
     }
 
-    function removeAuthorized(address _toRemove) onlyOwner public {
+    function removeCustomFeeSetter(address _toRemove) onlySolver public {
         require(_toRemove != msg.sender);
-        authorized[_toRemove] = false;
-        emit authorizorRemoved(_toRemove);
+        isCustomFeeSetter[_toRemove] = false;
+        emit feeSetterRemoved(_toRemove);
     }
 
-    function enableCustomFee() onlyOwner() internal {
+    function enableCustomFee() onlySolver() internal {
         require(!isCustomFeeEnabled, "Already Enabled");
         isCustomFeeEnabled = true;
+    }
+
+    function _setSolverAddress(address _solver) internal {
+        require(_solver != address(0));
+        solver = _solver;
+    }
+
+    modifier onlySolver() {
+        require(solver == msg.sender,'CALLER_IS_NOT_SOLVER');
+        _;
     }
 
 
