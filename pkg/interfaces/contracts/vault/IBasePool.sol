@@ -46,7 +46,7 @@ interface IBasePool is IPoolSwapStructs {
      * state-changing operations, such as minting pool shares.
      */
      // enum for transaction type
-    enum OperationType { JOIN, EXIT, SWAP, NONE }
+    enum OperationType { JOIN, EXIT, SWAP }
 
     function onJoinPool(
         bytes32 poolId,
@@ -99,7 +99,7 @@ interface IBasePool is IPoolSwapStructs {
      * @dev Returns the current swap fee percentage as a 18 decimal fixed point number, so e.g. 1e17 corresponds to a
      * 10% swap fee.
      */
-    function getSwapFeePercentage(bytes memory userData, OperationType _operation) external view returns (uint256);
+    function getSwapFeePercentage() external view returns (uint256);
 
     /**
      * @dev Returns the scaling factors of each of the Pool's tokens. This is an implementation detail that is typically
