@@ -22,7 +22,7 @@ import "./CustomFeeAuthorizer.sol";
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees,CustomFeeAuthorizer {
+contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAuthorizer {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 
