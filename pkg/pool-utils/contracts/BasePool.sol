@@ -169,7 +169,7 @@ abstract contract BasePool is
      * @notice Return the current value of the swap fee percentage.
      * @dev This is stored in `_miscData`.
      */
-     function getSwapFeePercentage() public view virtual override returns (uint256) {
+    function getSwapFeePercentage() public view virtual override returns (uint256) {
         return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
 
