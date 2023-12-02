@@ -442,9 +442,10 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAu
     function setSwapFeePercentage(uint256 swapFeePercentage) public virtual override whenNotPaused {
         // here msg.sender is used as this function directlly be called by the admin
         // not via any other contract
-        if(isCustomFeeEnabled && solver == msg.sender){
-            _setSwapFeePercentage(swapFeePercentage);
-        }else {
+        if (isCustomFeeEnabled) {
+            require(solver == msg.sender,'CALLER_IS_NOT_SOLVER');
+             _setSwapFeePercentage(swapFeePercentage);
+        } else {
             super.setSwapFeePercentage(swapFeePercentage);
         }
     }
