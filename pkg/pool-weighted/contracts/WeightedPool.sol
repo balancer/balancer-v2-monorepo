@@ -404,38 +404,44 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAu
         return super._isOwnerOnlyAction(actionId);
     }
 
-    function getSwapFeePercentage(bytes memory userData,
-     OperationType _operation) public view virtual override returns (uint256 _fee) {
-        // using tx.origin insted of msg.sender as these functions are called 
+    function getSwapFeePercentage(bytes memory userData, OperationType operation)
+        public
+        view
+        virtual
+        override
+        returns (uint256 fee)
+    {
+        // using tx.origin insted of msg.sender as these functions are called
         // during join/exit/swap via vault
-        if(isCustomFeeEnabled && canSetCustomFee(tx.origin)){
-            if(_operation == OperationType.JOIN ){
+        // solhint-disable-next-line avoid-tx-origin
+        if (isCustomFeeEnabled && canSetCustomFee(tx.origin)) {
+            if (operation == OperationType.JOIN) {
                 WeightedPoolUserData.JoinKind kind = userData.joinKind();
-                if(kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT){
-                    _fee = userData.exactTokensInForBptOutCustomFee();
+                if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+                    fee = userData.exactTokensInForBptOutCustomFee();
                 } else {
-                if(kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT){
-                    _fee =  userData.tokenInForExactBptOutCustomFee();
+                    if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+                        fee = userData.tokenInForExactBptOutCustomFee();
+                    }
                 }
-                }
-            }else{
-                if(_operation == OperationType.EXIT){
+            } else {
+                if (operation == OperationType.EXIT) {
                     WeightedPoolUserData.ExitKind kind = userData.exitKind();
-                    if(kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT){
-                        _fee =  userData.exactBptInForTokenOutCustomFee();
+                    if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+                        fee = userData.exactBptInForTokenOutCustomFee();
                     } else {
-                    if(kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT){
-                        _fee =  userData.bptInForExactTokensOutCustomFee();
+                        if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+                            fee = userData.bptInForExactTokensOutCustomFee();
+                        }
                     }
-                    }
-                } else{
-                    if(_operation == OperationType.SWAP){
-                        _fee = userData.swapCustomFee();
+                } else {
+                    if (operation == OperationType.SWAP) {
+                        fee = userData.swapCustomFee();
                     }
                 }
             }
-        }else{
-            _fee = getSwapFeePercentage();
+        } else {
+            fee = getSwapFeePercentage();
         }
     }
 
@@ -443,8 +449,8 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAu
         // here msg.sender is used as this function directlly be called by the admin
         // not via any other contract
         if (isCustomFeeEnabled) {
-            require(solver == msg.sender,'CALLER_IS_NOT_SOLVER');
-             _setSwapFeePercentage(swapFeePercentage);
+            require(solver == msg.sender, "CALLER_IS_NOT_SOLVER");
+            _setSwapFeePercentage(swapFeePercentage);
         } else {
             super.setSwapFeePercentage(swapFeePercentage);
         }

@@ -1,50 +1,49 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 contract CustomFeeAuthorizer {
-    event feeSetterAdded(address indexed feeSetter);
-    event feeSetterRemoved(address indexed feeSetter);
+    event FeeSetterAdded(address indexed feeSetter);
+    event FeeSetterRemoved(address indexed feeSetter);
 
-    mapping(address => bool) private isCustomFeeSetter;
-    bool public isCustomFeeEnabled = false ;
+    mapping(address => bool) private _isCustomFeeSetter;
+    bool public isCustomFeeEnabled = false;
     address public solver;
 
-    function canSetCustomFee(address _setterAddress) public view returns(bool _isAuth){
-        if(isCustomFeeEnabled){
-            _isAuth = (isCustomFeeSetter[_setterAddress] ||  solver == _setterAddress) ;
-        }else{
-        _isAuth = false;
+    function canSetCustomFee(address setterAddress) public view returns (bool isAuthorized) {
+        if (isCustomFeeEnabled) {
+            isAuthorized = (_isCustomFeeSetter[setterAddress] || solver == setterAddress);
+        } else {
+            isAuthorized = false;
         }
     }
 
-    function addCustomFeeSetter(address _toAdd) onlySolver public {
-        require(_toAdd != address(0));
-        require(isCustomFeeEnabled,"Custom Fee Not Enabled");
-        isCustomFeeSetter[_toAdd] = true;
-        emit feeSetterAdded(_toAdd);
+    function addCustomFeeSetter(address newCustomFeeSetter) public onlySolver {
+        _require(newCustomFeeSetter != address(0), Errors.INVALID_INPUT_ADDRESS);
+        _require(isCustomFeeEnabled, Errors.FEATURE_DISABLED);
+        _isCustomFeeSetter[newCustomFeeSetter] = true;
+        emit FeeSetterAdded(newCustomFeeSetter);
     }
 
-    function removeCustomFeeSetter(address _toRemove) onlySolver public {
-        require(_toRemove != msg.sender);
-        isCustomFeeSetter[_toRemove] = false;
-        emit feeSetterRemoved(_toRemove);
+    function removeCustomFeeSetter(address customFeeSetter) public onlySolver {
+        _require(customFeeSetter != msg.sender, Errors.SENDER_NOT_ALLOWED);
+        _isCustomFeeSetter[customFeeSetter] = false;
+        emit FeeSetterRemoved(customFeeSetter);
     }
 
-    function enableCustomFee() onlySolver() internal {
+    function _enableCustomFee() internal onlySolver {
         require(!isCustomFeeEnabled, "Already Enabled");
         isCustomFeeEnabled = true;
     }
 
     function _setSolverAddress(address _solver) internal {
-        require(_solver != address(0));
+        _require(_solver != address(0), Errors.INVALID_INPUT_ADDRESS);
         solver = _solver;
     }
 
     modifier onlySolver() {
-        require(solver == msg.sender,'CALLER_IS_NOT_SOLVER');
+        _require(solver == msg.sender, Errors.SENDER_NOT_ALLOWED);
         _;
     }
-
-
 }

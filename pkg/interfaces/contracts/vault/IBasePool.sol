@@ -45,7 +45,7 @@ interface IBasePool is IPoolSwapStructs {
      * Contracts implementing this function should check that the caller is indeed the Vault before performing any
      * state-changing operations, such as minting pool shares.
      */
-     // enum for transaction type
+    // enum for transaction type
     enum OperationType { JOIN, EXIT, SWAP }
 
     function onJoinPool(

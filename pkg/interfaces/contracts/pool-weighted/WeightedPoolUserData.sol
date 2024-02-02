@@ -74,31 +74,19 @@ library WeightedPoolUserData {
         (, , , customFee) = abi.decode(self, (JoinKind, uint256, uint256, uint256));
     }
 
-     function exactTokensInForBptOutCustomFee(bytes memory self)
-        internal
-        pure
-        returns (uint256 customFee)
-    {
+    function exactTokensInForBptOutCustomFee(bytes memory self) internal pure returns (uint256 customFee) {
         (, , , customFee) = abi.decode(self, (JoinKind, uint256[], uint256, uint256));
     }
 
-     function exactBptInForTokenOutCustomFee(bytes memory self) internal pure returns (uint256 customFee) {
+    function exactBptInForTokenOutCustomFee(bytes memory self) internal pure returns (uint256 customFee) {
         (, , , customFee) = abi.decode(self, (ExitKind, uint256, uint256, uint256));
     }
 
-      function bptInForExactTokensOutCustomFee(bytes memory self)
-        internal
-        pure
-        returns (uint256 customFee)
-    {
+    function bptInForExactTokensOutCustomFee(bytes memory self) internal pure returns (uint256 customFee) {
         (, , , customFee) = abi.decode(self, (ExitKind, uint256[], uint256, uint256));
     }
 
-    function swapCustomFee(bytes memory self)
-        internal
-        pure
-        returns (uint256 customFee)
-    {
+    function swapCustomFee(bytes memory self) internal pure returns (uint256 customFee) {
         (customFee) = abi.decode(self, (uint256));
     }
 }
