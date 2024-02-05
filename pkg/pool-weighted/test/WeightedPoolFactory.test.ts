@@ -59,6 +59,7 @@ describe('WeightedPoolFactory', function () {
         rateProviders,
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address,
+        false,
         randomBytes(32)
       )
     ).wait();

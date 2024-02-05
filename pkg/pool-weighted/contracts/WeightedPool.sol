@@ -69,6 +69,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAu
         IRateProvider[] rateProviders;
         address[] assetManagers;
         uint256 swapFeePercentage;
+        bool isCustomFeeEnabled;
     }
 
     constructor(
@@ -96,6 +97,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAu
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )
         WeightedPoolProtocolFees(params.tokens.length, params.rateProviders)
+        CustomFeeAuthorizer(params.isCustomFeeEnabled)
     {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
@@ -414,7 +416,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAu
         // using tx.origin insted of msg.sender as these functions are called
         // during join/exit/swap via vault
         // solhint-disable-next-line avoid-tx-origin
-        if (isCustomFeeEnabled && canSetCustomFee(tx.origin)) {
+        if (isCustomFeeEnabled() && canSetCustomFee(tx.origin)) {
             if (operation == OperationType.JOIN) {
                 WeightedPoolUserData.JoinKind kind = userData.joinKind();
                 if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -448,7 +450,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAu
     function setSwapFeePercentage(uint256 swapFeePercentage) public virtual override whenNotPaused {
         // here msg.sender is used as this function directlly be called by the admin
         // not via any other contract
-        if (isCustomFeeEnabled) {
+        if (isCustomFeeEnabled()) {
             require(solver == msg.sender, "CALLER_IS_NOT_SOLVER");
             _setSwapFeePercentage(swapFeePercentage);
         } else {
