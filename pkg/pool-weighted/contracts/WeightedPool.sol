@@ -427,16 +427,16 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, CustomFeeAu
                     }
                 }
             } else if (operation == OperationType.EXIT) {
-                    WeightedPoolUserData.ExitKind kind = userData.exitKind();
-                    if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-                        fee = userData.exactBptInForTokenOutCustomFee();
-                    } else {
-                        if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-                            fee = userData.bptInForExactTokensOutCustomFee();
-                        }
+                WeightedPoolUserData.ExitKind kind = userData.exitKind();
+                if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+                    fee = userData.exactBptInForTokenOutCustomFee();
+                } else {
+                    if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+                        fee = userData.bptInForExactTokensOutCustomFee();
                     }
+                }
             } else if (operation == OperationType.SWAP) {
-                    fee = userData.swapCustomFee();
+                fee = userData.swapCustomFee();
             } else {
                 _revert(Errors.INVALID_OPERATION_TYPE);
             }
