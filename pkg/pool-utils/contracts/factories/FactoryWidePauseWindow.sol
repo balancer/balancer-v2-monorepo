@@ -25,8 +25,8 @@ contract FactoryWidePauseWindow {
     // This contract relies on timestamps in a similar way as `TemporarilyPausable` does - the same caveats apply.
     // solhint-disable not-rely-on-time
 
-    uint256 private constant _INITIAL_PAUSE_WINDOW_DURATION = 90 days;
-    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
+    uint256 private constant _INITIAL_PAUSE_WINDOW_DURATION = 4 * 365 days;
+    uint256 private constant _BUFFER_PERIOD_DURATION = 180 days;
 
     // Time when the pause window for all created Pools expires, and the pause window duration of new Pools becomes
     // zero.
