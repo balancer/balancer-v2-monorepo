@@ -6,6 +6,23 @@
 
 - Added `locked__end` to `IVotingEscrow`.
 - Added `IL2LayerZeroDelegation`.
+- Added `IVotingEscrowRemapper`.
+- Added `IOmniVotingEscrowAdaptor` and `IOmniVotingEscrowAdaptorSettings`.
+- Added `checkpointSingleGauge` and `getSingleBridgeCost` to `IL2GaugeCheckpointer`.
+
+### Breaking changes
+
+- Refactored `IGaugeAdder`
+  - Gauge types changed from enum to string across the interface.
+  - Removed specific `add<Network>Gauge` in favor of a single `addGauge` method with a type argument.
+  - Added event `GaugeTypeAdded`, and changed `GaugeFactoryAdded` for `GaugeFactorySet`.
+  - Added `getGaugeTypes` method.
+- Moved `GaugeType` from `IGaugeAdder` to `IL2GaugeCheckpointer`, and adjusted types to accept new networks.
+- Refactored `IL2GaugeCheckpointer` to `StakelessGaugeCheckpointer`.
+  - Removed `isSupportedGaugeType` from interface.
+  - Added `getRoundedDownBlockTimestamp` and `getGaugeTypes` to interface.
+- Bumped minimum compiler version from `0.7.0` to `0.7.1` in `BalancerErrors`.
+- `IVersion` moved from `pool-utils` to `solidity-utils`.
 
 ## 0.4.0 (2023-03-15)
 

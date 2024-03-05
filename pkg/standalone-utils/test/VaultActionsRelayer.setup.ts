@@ -1,8 +1,8 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { Contract } from 'ethers';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { BigNumber, Contract } from 'ethers';
+import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
@@ -20,8 +20,14 @@ export enum PoolKind {
   COMPOSABLE_STABLE_V2,
 }
 
+export type OutputReference = {
+  index: number;
+  key: BigNumber;
+};
+
 export async function setupRelayerEnvironment(): Promise<{
   user: SignerWithAddress;
+  admin: SignerWithAddress;
   other: SignerWithAddress;
   vault: Vault;
   relayer: Contract;
@@ -33,7 +39,9 @@ export async function setupRelayerEnvironment(): Promise<{
   const vault = await Vault.create({ admin });
 
   // Deploy Relayer
-  const relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
+  const relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+    args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS, false],
+  });
   const relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
   // Authorize Relayer for all actions
@@ -48,7 +56,7 @@ export async function setupRelayerEnvironment(): Promise<{
   // Approve relayer by sender
   await vault.setRelayerApproval(user, relayer, true);
 
-  return { user, other, vault, relayer, relayerLibrary };
+  return { user, admin, other, vault, relayer, relayerLibrary };
 }
 
 export async function encodeJoinPool(
@@ -151,6 +159,51 @@ export function encodeSwap(
   ]);
 }
 
+export function encodeBatchSwap(params: {
+  relayerLibrary: Contract;
+  tokens: TokenList;
+  swaps: Array<{
+    poolId: string;
+    tokenIn: Token;
+    tokenOut: Token;
+    amount: BigNumberish;
+  }>;
+  outputReferences?: Dictionary<BigNumberish>;
+  sender: Account;
+  recipient?: Account;
+  useInternalBalance?: boolean;
+}): string {
+  const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
+    index: params.tokens.findIndexBySymbol(symbol),
+    key,
+  }));
+
+  if (params.useInternalBalance == undefined) {
+    params.useInternalBalance = false;
+  }
+
+  return params.relayerLibrary.interface.encodeFunctionData('batchSwap', [
+    SwapKind.GivenIn,
+    params.swaps.map((swap) => ({
+      poolId: swap.poolId,
+      assetInIndex: params.tokens.indexOf(swap.tokenIn),
+      assetOutIndex: params.tokens.indexOf(swap.tokenOut),
+      amount: swap.amount,
+      userData: '0x',
+    })),
+    params.tokens.addresses,
+    {
+      sender: TypesConverter.toAddress(params.sender),
+      recipient: params.recipient ?? TypesConverter.toAddress(recipient),
+      fromInternalBalance: params.useInternalBalance,
+      toInternalBalance: params.useInternalBalance,
+    },
+    new Array(params.tokens.length).fill(MAX_INT256),
+    MAX_UINT256,
+    0,
+    outputReferences,
+  ]);
+}
 export function getJoinExitAmounts(poolTokens: TokenList, tokenAmounts: Dictionary<BigNumberish>): Array<BigNumberish> {
   return poolTokens.map((token) => tokenAmounts[token.symbol] ?? 0);
 }

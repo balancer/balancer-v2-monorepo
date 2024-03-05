@@ -111,46 +111,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-deployments@workspace:pkg/deployments":
-  version: 0.0.0-use.local
-  resolution: "@balancer-labs/v2-deployments@workspace:pkg/deployments"
-  dependencies:
-    "@balancer-labs/balancer-js": "workspace:*"
-    "@balancer-labs/v2-helpers": "workspace:*"
-    "@balancer-labs/v2-interfaces": "workspace:*"
-    "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.6"
-    "@nomiclabs/hardhat-ethers": "npm:^2.2.1"
-    "@nomiclabs/hardhat-etherscan": "npm:^3.1.2"
-    "@nomiclabs/hardhat-vyper": "npm:^3.0.3"
-    "@solidity-parser/parser": "npm:^0.14.5"
-    "@types/lodash": "npm:^4.14.186"
-    "@types/lodash.range": "npm:^3.2.7"
-    "@types/node": "npm:^14.14.31"
-    "@typescript-eslint/eslint-plugin": "npm:^5.41.0"
-    "@typescript-eslint/parser": "npm:^5.41.0"
-    chalk: "npm:^4.1.2"
-    eslint: "npm:^8.26.0"
-    eslint-plugin-prettier: "npm:^4.2.1"
-    ethers: "npm:^5.7.2"
-    graphql: "npm:^16.6.0"
-    graphql-request: "npm:^5.2.0"
-    hardhat: "npm:^2.12.5"
-    hardhat-ignore-warnings: "npm:^0.2.4"
-    hardhat-local-networks-config-plugin: "npm:^0.0.6"
-    lodash.range: "npm:^3.2.0"
-    node-fetch: "npm:^2.6.7"
-    prettier: "npm:^2.7.1"
-    prettier-plugin-solidity: "npm:v1.0.0-alpha.59"
-    solhint: "npm:^3.2.0"
-    solhint-plugin-prettier: "npm:^0.0.4"
-    ts-node: "npm:^10.9.1"
-    typescript: "npm:^4.0.2"
-  peerDependencies:
-    "@ethersproject/contracts": ^5.0.0
-    hardhat: ^2.8.3
-  languageName: unknown
-  linkType: soft
-
 "@balancer-labs/v2-governance-scripts@workspace:pkg/governance-scripts":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-governance-scripts@workspace:pkg/governance-scripts"
@@ -257,7 +217,7 @@ __metadata:
     "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@nomiclabs/hardhat-ethers": "npm:^2.2.1"
-    "@nomiclabs/hardhat-vyper": "npm:^3.0.3"
+    "@nomiclabs/hardhat-vyper": "npm:^3.0.5"
     "@nomiclabs/hardhat-waffle": "npm:^2.0.3"
     "@types/chai": "npm:^4.3.3"
     "@types/lodash": "npm:^4.14.186"
@@ -825,7 +785,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ethersproject/address@npm:5.7.0, @ethersproject/address@npm:>=5.0.0-beta.128, @ethersproject/address@npm:^5.0.2, @ethersproject/address@npm:^5.7.0":
+"@ethersproject/address@npm:5.7.0, @ethersproject/address@npm:>=5.0.0-beta.128, @ethersproject/address@npm:^5.7.0":
   version: 5.7.0
   resolution: "@ethersproject/address@npm:5.7.0"
   dependencies:
@@ -1186,15 +1146,6 @@ __metadata:
   version: 1.1.3
   resolution: "@gar/promisify@npm:1.1.3"
   checksum: 3fadc40481a783ddb90397f5759f92650b57465f7a4a778056bd24b47060595012e9181a55ae547d57a893d37d9776abe9e368f1f6918e37225eb6a83f9a75f8
-  languageName: node
-  linkType: hard
-
-"@graphql-typed-document-node/core@npm:^3.1.1":
-  version: 3.2.0
-  resolution: "@graphql-typed-document-node/core@npm:3.2.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-  checksum: 9775c4e54324d6ce6ad505940a0c351ee42899088f436702476b3b93eaa60f7f646c459657d08a9e8793a91067cd55c18e1091bf2045b346f2e55fb37a1e8baa
   languageName: node
   linkType: hard
 
@@ -1589,29 +1540,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomiclabs/hardhat-etherscan@npm:^3.1.2":
-  version: 3.1.7
-  resolution: "@nomiclabs/hardhat-etherscan@npm:3.1.7"
-  dependencies:
-    "@ethersproject/abi": "npm:^5.1.2"
-    "@ethersproject/address": "npm:^5.0.2"
-    cbor: "npm:^8.1.0"
-    chalk: "npm:^2.4.2"
-    debug: "npm:^4.1.1"
-    fs-extra: "npm:^7.0.1"
-    lodash: "npm:^4.17.11"
-    semver: "npm:^6.3.0"
-    table: "npm:^6.8.0"
-    undici: "npm:^5.14.0"
-  peerDependencies:
-    hardhat: ^2.0.4
-  checksum: d9bdaadd3b67dcf9f49c9b2a9d4aac03e25ea500c2312b9c280e320af437f5c0e7869c49126f573692d87ea4d52d4c7a6ded7798fbf3fdbd037f9ceae0850278
-  languageName: node
-  linkType: hard
-
-"@nomiclabs/hardhat-vyper@npm:^3.0.3":
-  version: 3.0.3
-  resolution: "@nomiclabs/hardhat-vyper@npm:3.0.3"
+"@nomiclabs/hardhat-vyper@npm:^3.0.5":
+  version: 3.0.5
+  resolution: "@nomiclabs/hardhat-vyper@npm:3.0.5"
   dependencies:
     debug: "npm:^4.1.1"
     fs-extra: "npm:^7.0.1"
@@ -1620,7 +1551,7 @@ __metadata:
     semver: "npm:^6.3.0"
   peerDependencies:
     hardhat: ^2.8.3
-  checksum: da2794403bd56d9e07f7ca1be95194fb9ba02f3292dab6f9f81f4b24f98711381721a75db87004dc976f2e631b3864266a46a8dc9d53f6c9919ec0980c864d66
+  checksum: 4aec2401282f7ba80f000788a3df8b5b0031505987aafb9749a72a38f6494fce6d843c9a3ac57b942f24bd54f887cf2668503fb6e7b6bb8982ca0422cff7dffe
   languageName: node
   linkType: hard
 
@@ -1898,15 +1829,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solidity-parser/parser@npm:^0.14.5":
-  version: 0.14.5
-  resolution: "@solidity-parser/parser@npm:0.14.5"
-  dependencies:
-    antlr4ts: "npm:^0.5.0-alpha.4"
-  checksum: b8086c3e87d75a50fdb7928d5a656bf3cb72aae2d83d8963e85c7cc1bc3553ca1b4d9e36df961e5408ff712b506f3f733453d53ba3e472edd3d1394a018299cb
-  languageName: node
-  linkType: hard
-
 "@solidity-parser/parser@npm:^0.16.0":
   version: 0.16.0
   resolution: "@solidity-parser/parser@npm:0.16.0"
@@ -2055,16 +1977,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/lodash.range@npm:^3.2.7":
-  version: 3.2.7
-  resolution: "@types/lodash.range@npm:3.2.7"
-  dependencies:
-    "@types/lodash": "npm:*"
-  checksum: bd52c6aee9d50fd1143a9a2ebd4bbcbe67a6687a1d3144472caaa5bd7181083786e9fa6b7ca7115681bffd26958bebb7f0f308b17ffc8c91107f35e89dd99a00
-  languageName: node
-  linkType: hard
-
-"@types/lodash@npm:*, @types/lodash@npm:^4.14.186":
+"@types/lodash@npm:^4.14.186":
   version: 4.14.194
   resolution: "@types/lodash@npm:4.14.194"
   checksum: 64473e6735e51c3f8be18ef907a086f5a9c967117270c573d2b8fdc012b067c4de016a7b030abd6170aa5370f5ecbada19e646c82d9feb7403a080d53cfc86f3
@@ -4060,15 +3973,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cbor@npm:^8.1.0":
-  version: 8.1.0
-  resolution: "cbor@npm:8.1.0"
-  dependencies:
-    nofilter: "npm:^3.1.0"
-  checksum: baa293e7929f3c7d5829089c3dbd6a6c755ad482d41c4b8f8ed8489b93f3d3af630d443599744647606a571ecf02ad3a28bd9f55306ace3e9587bf43645deae8
-  languageName: node
-  linkType: hard
-
 "chai@npm:^4.3.6":
   version: 4.3.7
   resolution: "chai@npm:4.3.7"
@@ -4595,15 +4499,6 @@ __metadata:
     node-fetch: "npm:^2.6.7"
     whatwg-fetch: "npm:^2.0.4"
   checksum: b2df5bd708847cc8fc32e9d2f9eb6f9eb66d289b55b26b02a375201653025e08dbf34fd90501303ac9fadaf7ee6c4d46369cfa9cf0a499790303905ae73afc5e
-  languageName: node
-  linkType: hard
-
-"cross-fetch@npm:^3.1.5":
-  version: 3.1.5
-  resolution: "cross-fetch@npm:3.1.5"
-  dependencies:
-    node-fetch: "npm:2.6.7"
-  checksum: 83fa7b13186c55abf289d6907b7d0be13e8c85066fb7d82a99b1b16ebcbf4cb49bcd9806020e386c94d69c7c09e15c4aade7de56ece40f86dba0147915d5c196
   languageName: node
   linkType: hard
 
@@ -6110,13 +6005,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"extract-files@npm:^9.0.0":
-  version: 9.0.0
-  resolution: "extract-files@npm:9.0.0"
-  checksum: 59b9d696fc2082af217c97cfc7509e73c097fe724a0ab4e25465c09df6e23d405b6b05bc49c65d4bb92e875f95820884abf3f83aae96a1a44debb45df3c6ec1f
-  languageName: node
-  linkType: hard
-
 "extsprintf@npm:1.3.0":
   version: 1.3.0
   resolution: "extsprintf@npm:1.3.0"
@@ -6855,27 +6743,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql-request@npm:^5.2.0":
-  version: 5.2.0
-  resolution: "graphql-request@npm:5.2.0"
-  dependencies:
-    "@graphql-typed-document-node/core": "npm:^3.1.1"
-    cross-fetch: "npm:^3.1.5"
-    extract-files: "npm:^9.0.0"
-    form-data: "npm:^3.0.0"
-  peerDependencies:
-    graphql: 14 - 16
-  checksum: 12d44536ea429632be0e421b497c9bf7992d21ec3a7b50d2bf5a647cad7312631ced1f4381318d6abb413d991c8e0cda6c13e66e0b7e5251da04e0a8dade1142
-  languageName: node
-  linkType: hard
-
-"graphql@npm:^16.6.0":
-  version: 16.6.0
-  resolution: "graphql@npm:16.6.0"
-  checksum: 686582916b9ca247f3562f086c34a6363155475da909e1f891f9a76a3b5273ed6c7034cd5a82e768670ac5a74d539a6f1be282253a92b49be3a489fc82e83a5b
-  languageName: node
-  linkType: hard
-
 "har-schema@npm:^2.0.0":
   version: 2.0.0
   resolution: "har-schema@npm:2.0.0"
@@ -6901,17 +6768,6 @@ __metadata:
     node-interval-tree: "npm:^2.0.1"
     solidity-comments: "npm:^0.0.2"
   checksum: 63fc079520bf8a440a4fdd6974e427b941c9732a339c1825c0ab67cd5511b5762f97ee8fcc044a41581ae897acea637363254c9e69ee1d95026911dd5a59c800
-  languageName: node
-  linkType: hard
-
-"hardhat-local-networks-config-plugin@npm:^0.0.6":
-  version: 0.0.6
-  resolution: "hardhat-local-networks-config-plugin@npm:0.0.6"
-  dependencies:
-    deepmerge: "npm:^4.2.2"
-  peerDependencies:
-    hardhat: ^2.0.8
-  checksum: 52e775380997298e17c379fdc0268cb201acec62eddd25cec15140f900a3a6cb778b41dc2e45c57c3befafd9adc449fa09df8c11ab0c6394e32a7cfa425b6304
   languageName: node
   linkType: hard
 
@@ -9355,20 +9211,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-fetch@npm:2.6.7":
-  version: 2.6.7
-  resolution: "node-fetch@npm:2.6.7"
-  dependencies:
-    whatwg-url: "npm:^5.0.0"
-  peerDependencies:
-    encoding: ^0.1.0
-  peerDependenciesMeta:
-    encoding:
-      optional: true
-  checksum: 05c03fe66f38b9e349e691caf121b693a91adb41ab59c3af17d2c5f9d2f8d927c30b428e7c8049b739c674db06171117ba9d10dc72d6a2cf35ba8901dfb4de83
-  languageName: node
-  linkType: hard
-
 "node-fetch@npm:^2.6.1, node-fetch@npm:^2.6.7":
   version: 2.6.9
   resolution: "node-fetch@npm:2.6.9"
@@ -9450,13 +9292,6 @@ __metadata:
   bin:
     nodemon: bin/nodemon.js
   checksum: e20edab84eb172fd7a0190c58961e7fb1f3e929a28c525dfafba73ba0ef611333b688abcab4a861cf5c5d4ef209937514d7e7ed131edf87adc60db8ae5cc5dd2
-  languageName: node
-  linkType: hard
-
-"nofilter@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "nofilter@npm:3.1.0"
-  checksum: 7c848870b7c60bc9439e2f721620fd0f54ad45c5af287757c29a698ad9939fd9ec98c24b4da2f59e3b43d6812bde198f2e215dc589930d552e4dcb69caaeb687
   languageName: node
   linkType: hard
 
@@ -11886,7 +11721,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"table@npm:^6.8.0, table@npm:^6.8.1":
+"table@npm:^6.8.1":
   version: 6.8.1
   resolution: "table@npm:6.8.1"
   dependencies:

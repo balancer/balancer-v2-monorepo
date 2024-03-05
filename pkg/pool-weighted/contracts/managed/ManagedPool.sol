@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryModeHelper.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";

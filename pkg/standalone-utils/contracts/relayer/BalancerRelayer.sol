@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerRelayer.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Version.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
@@ -42,20 +43,27 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
  * Vault will reject calls from outside the context of the entrypoint: e.g., if a user mistakenly called directly
  * into the library contract.
  */
-contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
+contract BalancerRelayer is IBalancerRelayer, Version, ReentrancyGuard {
     using Address for address payable;
     using Address for address;
 
     IVault private immutable _vault;
     address private immutable _library;
+    address private immutable _queryLibrary;
 
     /**
      * @dev This contract is not meant to be deployed directly by an EOA, but rather during construction of a contract
      * derived from `BaseRelayerLibrary`, which will provide its own address as the relayer's library.
      */
-    constructor(IVault vault, address libraryAddress) {
+    constructor(
+        IVault vault,
+        address libraryAddress,
+        address queryLibrary,
+        string memory version
+    ) Version(version) {
         _vault = vault;
         _library = libraryAddress;
+        _queryLibrary = queryLibrary;
     }
 
     receive() external payable {
@@ -74,13 +82,33 @@ contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
         return _library;
     }
 
+    function getQueryLibrary() external view override returns (address) {
+        return _queryLibrary;
+    }
+
     function multicall(bytes[] calldata data) external payable override nonReentrant returns (bytes[] memory results) {
-        results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
+        uint256 numData = data.length;
+
+        results = new bytes[](numData);
+        for (uint256 i = 0; i < numData; i++) {
             results[i] = _library.functionDelegateCall(data[i]);
         }
 
         _refundETH();
+    }
+
+    function vaultActionsQueryMulticall(bytes[] calldata data)
+        external
+        override
+        nonReentrant
+        returns (bytes[] memory results)
+    {
+        uint256 numData = data.length;
+
+        results = new bytes[](numData);
+        for (uint256 i = 0; i < numData; i++) {
+            results[i] = _queryLibrary.functionDelegateCall(data[i]);
+        }
     }
 
     function _refundETH() private {

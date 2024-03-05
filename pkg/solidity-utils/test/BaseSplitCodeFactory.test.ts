@@ -8,26 +8,40 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { takeSnapshot } from '@nomicfoundation/hardhat-network-helpers';
 import { randomBytes } from 'ethers/lib/utils';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 describe('BasePoolCodeFactory', function () {
   let factory: Contract;
+  let admin: SignerWithAddress;
 
   const INVALID_ID = '0x0000000000000000000000000000000000000000000000000000000000000000';
   const id = '0x0123456789012345678901234567890123456789012345678901234567890123';
+
+  before('setup signers', async () => {
+    [, admin] = await ethers.getSigners();
+  });
 
   sharedBeforeEach(async () => {
     factory = await deploy('MockSplitCodeFactory', { args: [] });
   });
 
-  it('returns the contract creation code storage addresses', async () => {
-    const { contractA, contractB } = await factory.getCreationCodeContracts();
+  function itReproducesTheCreationCode() {
+    it('returns the contract creation code storage addresses', async () => {
+      const { contractA, contractB } = await factory.getCreationCodeContracts();
 
-    const codeA = await ethers.provider.getCode(contractA);
-    const codeB = await ethers.provider.getCode(contractB);
+      const codeA = await ethers.provider.getCode(contractA);
+      const codeB = await ethers.provider.getCode(contractB);
 
-    const artifact = getArtifact('MockFactoryCreatedContract');
-    expect(codeA.concat(codeB.slice(2))).to.equal(artifact.bytecode); // Slice to remove the '0x' prefix
-  });
+      const artifact = getArtifact('MockFactoryCreatedContract');
+      // Slice to remove the '0x' prefix and inserted invalid opcode on code B.
+      expect(codeA.concat(codeB.slice(4))).to.equal(artifact.bytecode);
+
+      // Code B should have a pre-pending invalid opcode.
+      expect(codeB.slice(0, 4)).to.eq('0xfe');
+    });
+  }
+
+  itReproducesTheCreationCode();
 
   it('returns the contract creation code', async () => {
     const artifact = getArtifact('MockFactoryCreatedContract');
@@ -39,6 +53,28 @@ describe('BasePoolCodeFactory', function () {
   it('creates a contract', async () => {
     const receipt = await (await factory.create(id, ZERO_BYTES32)).wait();
     expectEvent.inReceipt(receipt, 'ContractCreated');
+  });
+
+  context('half contracts', () => {
+    it('cannot execute the contract halves', async () => {
+      const { contractA, contractB } = await factory.getCreationCodeContracts();
+
+      const txA = {
+        to: contractA,
+        value: ethers.utils.parseEther('0.001'),
+      };
+
+      const txB = {
+        to: contractB,
+        value: ethers.utils.parseEther('0.001'),
+      };
+
+      await expect(admin.sendTransaction(txA)).to.be.reverted;
+      await expect(admin.sendTransaction(txB)).to.be.reverted;
+    });
+
+    // And the code is still there after trying
+    itReproducesTheCreationCode();
   });
 
   context('when the creation reverts', () => {

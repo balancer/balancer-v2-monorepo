@@ -57,8 +57,10 @@ contract BatchRelayerLibrary is
     constructor(
         IVault vault,
         IERC20 wstETH,
-        IBalancerMinter minter
-    ) BaseRelayerLibrary(vault) LidoWrapping(wstETH) GaugeActions(minter) {
+        IBalancerMinter minter,
+        bool canCallUserCheckpoint,
+        string memory version
+    ) BaseRelayerLibrary(vault, version) LidoWrapping(wstETH) GaugeActions(minter, canCallUserCheckpoint) {
         // solhint-disable-previous-line no-empty-blocks
     }
 }

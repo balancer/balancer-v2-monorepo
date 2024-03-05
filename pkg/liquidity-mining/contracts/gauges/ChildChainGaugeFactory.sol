@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IChildChainGauge.sol";
-import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Version.sol";
 
 import "./BaseGaugeFactory.sol";
 

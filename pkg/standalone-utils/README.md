@@ -18,7 +18,7 @@ $ npm install @balancer-labs/v2-standalone-utils
 
 ### Usage
 
-The contracts in this package are meant to be deployed as-is, and in most cases canonical deployments already exist in both mainnet and various test networks. To get their addresses and ABIs, see [`v2-deployments`](../deployments).
+The contracts in this package are meant to be deployed as-is, and in most cases canonical deployments already exist in both mainnet and various test networks. To get their addresses and ABIs, see [`balancer-deployments` repository](https://github.com/balancer/balancer-deployments).
 
 ## Licensing
 

@@ -358,7 +358,7 @@ describe('ComposableStablePoolProtocolFees', () => {
         // The rate providers start with a value of 1, so we don't need to account for them here. We need to use the
         // actual Solidity math since even small errors will disrupt tests that check for perfect invariant equality
         // (which result in no fees being paid).
-        preInvariant = await math.invariant(AMPLIFICATION_FACTOR, preBalances);
+        preInvariant = await math.calculateInvariant(AMPLIFICATION_FACTOR, preBalances);
 
         // The virtual supply is some factor of the invariant
         preVirtualSupply = fpMul(preInvariant, fp(random(1.5, 10)));
@@ -832,7 +832,7 @@ describe('ComposableStablePoolProtocolFees', () => {
 
               expect(lastJoinExitAmplification).to.equal(AMPLIFICATION_FACTOR);
               expect(lastPostJoinExitInvariant).to.almostEqual(
-                await math.invariant(AMPLIFICATION_FACTOR, currentBalances),
+                await math.calculateInvariant(AMPLIFICATION_FACTOR, currentBalances),
                 0.000001
               );
             });

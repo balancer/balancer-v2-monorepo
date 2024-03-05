@@ -21,7 +21,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMa
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Version.sol";
 
 import "./ManagedPool.sol";
 

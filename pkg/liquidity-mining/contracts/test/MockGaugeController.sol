@@ -25,6 +25,7 @@ contract MockGaugeController is IGaugeController {
     mapping(address => bool) private _validGauge;
     mapping(address => int128) private _gaugeType;
     mapping(address => uint256) private _weights;
+    uint256 private _gaugeWeightBias;
 
     IAuthorizerAdaptor public override admin;
     // solhint-disable-next-line var-name-mixedcase
@@ -67,7 +68,7 @@ contract MockGaugeController is IGaugeController {
     }
 
     function gauge_relative_weight(address gauge, uint256) external view override returns (uint256) {
-        return _weights[gauge];
+        return _weights[gauge] + _gaugeWeightBias;
     }
 
     function change_type_weight(int128, uint256) external override {
@@ -81,5 +82,14 @@ contract MockGaugeController is IGaugeController {
     function setGaugeWeight(address gauge, uint256 weight) external {
         require(_validGauge[gauge], "Gauge does not exist on controller");
         _weights[gauge] = weight;
+    }
+
+    function setGaugeWeightBias(uint256 bias) external {
+        require(bias <= 1e18, "Bias too high");
+        _gaugeWeightBias = bias;
+    }
+
+    function time_weight(address) external pure override returns (uint256) {
+        return 0;
     }
 }

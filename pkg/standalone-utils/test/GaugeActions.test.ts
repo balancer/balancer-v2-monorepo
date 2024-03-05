@@ -27,7 +27,7 @@ describe('GaugeActions', function () {
   let relayer: Contract, relayerLibrary: Contract;
   let admin: SignerWithAddress, userSender: SignerWithAddress, other: SignerWithAddress;
 
-  let gaugeController: Contract, balMinter: Contract;
+  let gaugeController: Contract, balMinter: Contract, veBalDelegationProxy: Contract;
   let adaptorEntrypoint: Contract;
   let BAL: Contract, veBAL: Contract, rewardToken: Contract, lpToken: Contract;
 
@@ -81,26 +81,15 @@ describe('GaugeActions', function () {
     });
 
     // Deploy Relayer: vault and BAL minter are required; we can skip wstETH.
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
-      args: [vault.address, ZERO_ADDRESS, balMinter.address],
-    });
-    relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
-
-    // Authorize Relayer for all actions
-    const relayerActionIds = await Promise.all(
-      ['setRelayerApproval', 'manageUserBalance'].map((action) => actionId(vault.instance, action))
-    );
-    await Promise.all(relayerActionIds.map((action) => vault.grantPermissionGlobally(action, relayer)));
-
-    // Approve relayer by BPT holder
-    await vault.setRelayerApproval(userSender, relayer, true);
+    const isL2Relayer = false;
+    ({ relayerLibrary, relayer } = await deployRelayer(isL2Relayer));
   });
 
   sharedBeforeEach('set up liquidity gauge factory', async () => {
     const adaptor = vault.authorizerAdaptor;
     const veBalDelegation = await deploy('v2-liquidity-mining/MockVeDelegation');
 
-    const veBalDelegationProxy = await deploy('v2-liquidity-mining/VotingEscrowDelegationProxy', {
+    veBalDelegationProxy = await deploy('v2-liquidity-mining/VotingEscrowDelegationProxy', {
       args: [vault.address, veBAL.address, veBalDelegation.address],
     });
 
@@ -123,6 +112,24 @@ describe('GaugeActions', function () {
       args: [rewardsOnlyGaugeImplementation.address, streamer.address],
     });
   });
+
+  async function deployRelayer(isL2Relayer: boolean): Promise<{ relayerLibrary: Contract; relayer: Contract }> {
+    const relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+      args: [vault.address, ZERO_ADDRESS, balMinter.address, isL2Relayer],
+    });
+    const relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
+
+    // Authorize Relayer for all actions
+    const relayerActionIds = await Promise.all(
+      ['setRelayerApproval', 'manageUserBalance'].map((action) => actionId(vault.instance, action))
+    );
+    await Promise.all(relayerActionIds.map((action) => vault.grantPermissionGlobally(action, relayer)));
+
+    // Approve relayer by BPT holder
+    await vault.setRelayerApproval(userSender, relayer, true);
+
+    return { relayerLibrary, relayer };
+  }
 
   describe('Liquidity gauge', () => {
     sharedBeforeEach(async () => {
@@ -237,6 +244,182 @@ describe('GaugeActions', function () {
       it('transfers rewards to sender', async () => {
         const tx = await relayer.connect(userSender).multicall([encodeGaugeClaimRewards({ gauges: [gauge.address] })]);
         expectTransferEvent(await tx.wait(), { from: gauge.address, to: userSender.address }, rewardToken.address);
+      });
+    });
+
+    describe('gaugeCheckpoint - L1', () => {
+      let gauges: Contract[];
+
+      sharedBeforeEach('create more than one gauge', async () => {
+        const tx = await liquidityGaugeFactory.create(lpToken.address, fp(1)); // No weight cap.
+        const otherGauge = await deployedAt(
+          'v2-liquidity-mining/LiquidityGaugeV5',
+          expectEvent.inReceipt(await tx.wait(), 'GaugeCreated').args.gauge
+        );
+        gauges = [gauge, otherGauge];
+      });
+
+      sharedBeforeEach('stake BPT in gauges', async () => {
+        await lpToken.connect(userSender).approve(gauge.address, MAX_UINT256);
+        await Promise.all(gauges.map((gauge) => lpToken.connect(userSender).approve(gauge.address, MAX_UINT256)));
+        const stakePerGauge = (await lpToken.balanceOf(userSender.address)).div(gauges.length);
+        await Promise.all(gauges.map((gauge) => gauge.connect(userSender)['deposit(uint256)'](stakePerGauge)));
+      });
+
+      it('can call user checkpoint: false', async () => {
+        expect(await relayerLibrary.canCallUserCheckpoint()).to.be.false;
+      });
+
+      function itCheckpointsGauges(value: BigNumber) {
+        it('checkpoints the gauges when the user has a stake', async () => {
+          const receipt = await (
+            await relayer.multicall(
+              [encodeGaugeCheckpoint({ user: userSender, gauges: gauges.map((gauge) => gauge.address) })],
+              { value }
+            )
+          ).wait();
+
+          // We expect two update liquidity events per gauge, since in the L1 the checkpoint is accomplished
+          // by transferring 1 wei from the user to itself, and both the 'withdrawal' and the 'deposit' trigger a
+          // checkpoint. Then, since it's the same user who 'withdraws' and 'deposits' in the same transfer, we get
+          // two events.
+          expectEvent.inIndirectReceipt(
+            receipt,
+            gauge.interface,
+            'UpdateLiquidityLimit',
+            {
+              user: userSender.address,
+            },
+            gauges[0].address,
+            2
+          );
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            gauge.interface,
+            'UpdateLiquidityLimit',
+            {
+              user: userSender.address,
+            },
+            gauges[1].address,
+            2
+          );
+        });
+      }
+
+      context('when no value is forwarded in the multicall', () => {
+        itCheckpointsGauges(fp(0));
+      });
+
+      context('when value is forwarded in the multicall', () => {
+        itCheckpointsGauges(fp(1));
+      });
+
+      it('reverts when the user does not have a stake', async () => {
+        await gauge.connect(userSender)['withdraw(uint256)'](await gauge.balanceOf(userSender.address));
+        await expect(
+          relayer.multicall([encodeGaugeCheckpoint({ user: userSender, gauges: [gauge.address] })])
+        ).to.be.revertedWith('LOW_LEVEL_CALL_FAILED');
+      });
+
+      it('reverts when the user has not approved the relayer', async () => {
+        await gauge.connect(userSender)['withdraw(uint256)'](await gauge.balanceOf(userSender.address));
+        await expect(
+          relayer.multicall([encodeGaugeCheckpoint({ user: other.address, gauges: [gauge.address] })])
+        ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+      });
+    });
+
+    describe('gaugeCheckpoint - L2', () => {
+      let gauges: Contract[];
+      let relayer: Contract, relayerLibrary: Contract, childChainGaugeFactory: Contract;
+      let user: string;
+
+      sharedBeforeEach('create relayer configured for L2', async () => {
+        const isL2Relayer = true;
+        ({ relayerLibrary, relayer } = await deployRelayer(isL2Relayer));
+        user = userSender.address;
+      });
+
+      sharedBeforeEach('create child chain gauges', async () => {
+        const version = 'test';
+        const childChainGaugeImplementation = await deploy('v2-liquidity-mining/ChildChainGauge', {
+          args: [veBalDelegationProxy.address, balMinter.address, vault.authorizerAdaptor.address, version],
+        });
+
+        childChainGaugeFactory = await deploy('v2-liquidity-mining/ChildChainGaugeFactory', {
+          args: [childChainGaugeImplementation.address, version, version],
+        });
+      });
+
+      sharedBeforeEach('create more than one gauge', async () => {
+        let tx = await childChainGaugeFactory.create(lpToken.address);
+        const gauge0 = await deployedAt(
+          'v2-liquidity-mining/ChildChainGauge',
+          expectEvent.inReceipt(await tx.wait(), 'GaugeCreated').args.gauge
+        );
+
+        tx = await childChainGaugeFactory.create(lpToken.address);
+        const gauge1 = await deployedAt(
+          'v2-liquidity-mining/ChildChainGauge',
+          expectEvent.inReceipt(await tx.wait(), 'GaugeCreated').args.gauge
+        );
+        gauges = [gauge0, gauge1];
+      });
+
+      it('can call user checkpoint: true', async () => {
+        expect(await relayerLibrary.canCallUserCheckpoint()).to.be.true;
+      });
+
+      function itCheckpointsGauges(value: BigNumber) {
+        // `user_checkpoint` is permissionless for child chain gauges, so the relayer calls it directly.
+        // We expect only one liquidity limit update per gauge, and we don't need the user to have a stake in it.
+        // Also, since we are not managing user balances using the relayer we don't need user approval for it.
+        it('checkpoints the gauges when the user has a stake', async () => {
+          const receipt = await (
+            await relayer.multicall([encodeGaugeCheckpoint({ user, gauges: gauges.map((gauge) => gauge.address) })], {
+              value,
+            })
+          ).wait();
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            gauge.interface,
+            'UpdateLiquidityLimit',
+            {
+              user,
+            },
+            gauges[0].address,
+            1
+          );
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            gauge.interface,
+            'UpdateLiquidityLimit',
+            {
+              user,
+            },
+            gauges[1].address,
+            1
+          );
+        });
+      }
+
+      context('when no value is forwarded in the multicall', () => {
+        itCheckpointsGauges(fp(0));
+      });
+
+      context('when value is forwarded in the multicall', () => {
+        itCheckpointsGauges(fp(1));
+      });
+
+      context('when the user has not approved the relayer', () => {
+        sharedBeforeEach(async () => {
+          user = other.address;
+        });
+
+        itCheckpointsGauges(fp(0));
       });
     });
   });
@@ -769,5 +952,12 @@ describe('GaugeActions', function () {
 
   function encodeGaugeClaimRewards(params: { gauges: string[] }): string {
     return relayerLibrary.interface.encodeFunctionData('gaugeClaimRewards', [params.gauges]);
+  }
+
+  function encodeGaugeCheckpoint(params: { user: Account; gauges: string[] }): string {
+    return relayerLibrary.interface.encodeFunctionData('gaugeCheckpoint', [
+      TypesConverter.toAddress(params.user),
+      params.gauges,
+    ]);
   }
 });

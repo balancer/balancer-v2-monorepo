@@ -19,7 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.so
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -1031,7 +1031,14 @@ contract ComposableStablePool is
      * The total supply is initialized to equal the invariant, so this value starts at one. During Pool operation the
      * invariant always grows and shrinks either proportionally to the total supply (in scenarios with no price impact,
      * e.g. proportional joins), or grows faster and shrinks more slowly than it (whenever swap fees are collected or
-     * the token rates increase). Therefore, the rate is a monotonically increasing function.
+     * the token rates increase). Therefore, the rate is a monotonically increasing function *as long as the tokens
+     * in the pool do not lose value*.
+     *
+     * Since the invariant is ultimately a function of the token balances and their respective rates (for yield-bearing
+     * tokens with rate providers), the rate of the pool might go down under certain circumstances (e.g. if the rate
+     * of the tokens goes down). Therefore, it cannot be assumed this function is always monotonically increasing for
+     * any pool with rate providers. This should only be the case when all the tokens in the pool have monotonically
+     * increasing rates, which ultimately depends on the nature of the tokens and their rate providers.
      *
      * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
      * via reentrancy. However, this can only happen if one of the tokens in the Pool contains some form of callback
