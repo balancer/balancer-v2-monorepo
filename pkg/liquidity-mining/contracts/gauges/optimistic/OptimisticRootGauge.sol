@@ -24,6 +24,7 @@ import "../StakelessGauge.sol";
 contract OptimisticRootGauge is StakelessGauge {
     using SafeERC20 for IERC20;
 
+    // solhint-disable-next-line var-name-mixedcase
     string public NETWORK;
 
     IL1StandardBridge private immutable _optimismL1StandardBridge;
@@ -43,7 +44,11 @@ contract OptimisticRootGauge is StakelessGauge {
         _factory = IOptimismGasLimitProvider(msg.sender);
     }
 
-    function initialize(address recipient, uint256 relativeWeightCap, string memory targetNetwork) external {
+    function initialize(
+        address recipient,
+        uint256 relativeWeightCap,
+        string memory targetNetwork
+    ) external {
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
 

@@ -21,6 +21,7 @@ import "../BaseGaugeFactory.sol";
 import "./OptimisticRootGauge.sol";
 
 contract OptimisticRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory, SingletonAuthentication {
+    // solhint-disable-next-line var-name-mixedcase
     string public NETWORK;
 
     uint32 private _gasLimit;
