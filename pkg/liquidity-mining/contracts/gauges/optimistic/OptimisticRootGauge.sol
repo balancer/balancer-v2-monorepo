@@ -21,8 +21,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../StakelessGauge.sol";
 
-contract OptimismRootGauge is StakelessGauge {
+contract OptimisticRootGauge is StakelessGauge {
     using SafeERC20 for IERC20;
+
+    string public NETWORK;
 
     IL1StandardBridge private immutable _optimismL1StandardBridge;
     address private immutable _optimismBal;
@@ -41,11 +43,12 @@ contract OptimismRootGauge is StakelessGauge {
         _factory = IOptimismGasLimitProvider(msg.sender);
     }
 
-    function initialize(address recipient, uint256 relativeWeightCap) external {
+    function initialize(address recipient, uint256 relativeWeightCap, string memory targetNetwork) external {
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
 
         _recipient = recipient;
+        NETWORK = targetNetwork;
     }
 
     function getRecipient() external view override returns (address) {

@@ -18,9 +18,11 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 import "../BaseGaugeFactory.sol";
-import "./OptimismRootGauge.sol";
+import "./OptimisticRootGauge.sol";
 
-contract OptimismRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory, SingletonAuthentication {
+contract OptimisticRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory, SingletonAuthentication {
+    string public NETWORK;
+
     uint32 private _gasLimit;
 
     event OptimismGasLimitModified(uint256 gasLimit);
@@ -30,12 +32,14 @@ contract OptimismRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory
         IMainnetBalancerMinter minter,
         IL1StandardBridge optimismL1StandardBridge,
         address optimismBal,
-        uint32 gasLimit
+        uint32 gasLimit,
+        string memory targetNetwork
     )
-        BaseGaugeFactory(address(new OptimismRootGauge(minter, optimismL1StandardBridge, optimismBal)))
+        BaseGaugeFactory(address(new OptimisticRootGauge(minter, optimismL1StandardBridge, optimismBal)))
         SingletonAuthentication(vault)
     {
         _gasLimit = gasLimit;
+        NETWORK = targetNetwork;
     }
 
     /**
@@ -55,7 +59,7 @@ contract OptimismRootGaugeFactory is IOptimismGasLimitProvider, BaseGaugeFactory
      */
     function create(address recipient, uint256 relativeWeightCap) external returns (address) {
         address gauge = _create();
-        OptimismRootGauge(gauge).initialize(recipient, relativeWeightCap);
+        OptimisticRootGauge(gauge).initialize(recipient, relativeWeightCap, NETWORK);
         return gauge;
     }
 
