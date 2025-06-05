@@ -22,9 +22,6 @@ event Boost:
     _slope: uint256
     _start: uint256
 
-event Migrate:
-    _token_id: indexed(uint256)
-
 
 interface BoostV1:
     def ownerOf(_token_id: uint256) -> address: view
@@ -72,9 +69,6 @@ delegated_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 
 received: public(HashMap[address, Point])
 received_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
-
-migrated: public(HashMap[uint256, bool])
-
 
 @external
 def __init__(_boost_v1: address, _ve: address):
@@ -233,31 +227,6 @@ def boost(_to: address, _amount: uint256, _endtime: uint256, _from: address = ms
             log Approval(_from, msg.sender, allowance - _amount)
 
     self._boost(_from, _to, _amount, _endtime)
-
-@internal
-def _migrate(_token_id: uint256):
-    assert not self.migrated[_token_id]
-
-    self._boost(
-        convert(shift(_token_id, -96), address),  # from
-        BoostV1(BOOST_V1).ownerOf(_token_id),  # to
-        convert(BoostV1(BOOST_V1).token_boost(_token_id), uint256),  # amount
-        BoostV1(BOOST_V1).token_expiry(_token_id),  # expiry
-    )
-
-    self.migrated[_token_id] = True
-    log Migrate(_token_id)
-
-@external
-def migrate(_token_id: uint256):
-    self._migrate(_token_id)
-
-@external
-def migrate_many(_token_ids: uint256[16]):
-    for i in range(16):
-        if _token_ids[i] == 0:
-            break
-        self._migrate(_token_ids[i])
 
 @external
 def checkpoint_user(_user: address):
