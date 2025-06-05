@@ -33,7 +33,7 @@ describe('VeBoostV2', () => {
     });
 
     it('sets up the version properly', async () => {
-      expect(await boost.version()).to.be.equal('v2.0.0');
+      expect(await boost.version()).to.be.equal('v2.1.0');
     });
   });
 
