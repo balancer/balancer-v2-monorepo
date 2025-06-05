@@ -56,7 +56,6 @@ ERC1271_MAGIC_VAL: constant(bytes32) = 0x1626ba7e0000000000000000000000000000000
 WEEK: constant(uint256) = 86400 * 7
 
 
-BOOST_V1: immutable(address)
 DOMAIN_SEPARATOR: immutable(bytes32)
 VE: immutable(address)
 
@@ -71,8 +70,7 @@ received: public(HashMap[address, Point])
 received_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 
 @external
-def __init__(_boost_v1: address, _ve: address):
-    BOOST_V1 = _boost_v1
+def __init__(_ve: address):
     DOMAIN_SEPARATOR = keccak256(_abi_encode(EIP712_TYPEHASH, keccak256(NAME), keccak256(VERSION), chain.id, self))
     VE = _ve
 
@@ -343,11 +341,6 @@ def symbol() -> String[8]:
 def decimals() -> uint8:
     return 18
 
-
-@pure
-@external
-def BOOST_V1() -> address:
-    return BOOST_V1
 
 @pure
 @external

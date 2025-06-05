@@ -20,7 +20,7 @@ describe('VeBoostV2', () => {
   });
 
   sharedBeforeEach('deploy veBoostV2', async () => {
-    boost = await deploy('VeBoostV2', { args: [ZERO_ADDRESS, ZERO_ADDRESS] });
+    boost = await deploy('VeBoostV2', { args: [ZERO_ADDRESS] });
   });
 
   describe('info', () => {
