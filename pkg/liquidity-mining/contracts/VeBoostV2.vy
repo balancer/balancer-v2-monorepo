@@ -22,12 +22,6 @@ event Boost:
     _slope: uint256
     _start: uint256
 
-
-interface BoostV1:
-    def ownerOf(_token_id: uint256) -> address: view
-    def token_boost(_token_id: uint256) -> int256: view
-    def token_expiry(_token_id: uint256) -> uint256: view
-
 interface VotingEscrow:
     def balanceOf(_user: address) -> uint256: view
     def totalSupply() -> uint256: view
