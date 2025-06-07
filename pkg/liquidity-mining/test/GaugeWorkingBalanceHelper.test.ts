@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt, deployVyper } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -51,11 +51,28 @@ describe('GaugeWorkingBalanceHelper', () => {
     // Type weight is ignored in the mock controller.
     await gaugeController.add_type('Ethereum', 0);
 
-    const proxyV1 = await deploy('VotingEscrowDelegationProxy', {
-      args: [vault.address, votingEscrow.address, ZERO_ADDRESS],
-    });
+    const MAX_PRESEED = 10;
 
-    boost = await deploy('VeBoostV2', { args: [proxyV1.address, votingEscrow.address] });
+    const preseededBoostCalls = Array(MAX_PRESEED)
+      .fill(null)
+      .map(() => [
+        ZERO_ADDRESS, // _from
+        ZERO_ADDRESS, // to
+        0, // amount
+        0, // start_time
+        0, // end_time
+      ]);
+
+    const preseededApprovalCalls = Array(MAX_PRESEED)
+      .fill(null)
+      .map(() => [
+        ZERO_ADDRESS, // operator
+        ZERO_ADDRESS, // delegator
+      ]);
+
+    boost = await deployVyper('VeBoostV2', {
+      args: [votingEscrow.address, preseededBoostCalls, preseededApprovalCalls],
+    });
 
     veDelegationProxy = await deploy('VotingEscrowDelegationProxy', {
       args: [vault.address, votingEscrow.address, boost.address],

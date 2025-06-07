@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployVyper } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256 as MAX_DEADLINE, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { signPermit } from '@balancer-labs/balancer-js';
@@ -12,6 +12,8 @@ import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VeBoostV2', () => {
+  const MAX_PRESEED = 10;
+
   let boost: Contract;
   let holder: SignerWithAddress, spender: SignerWithAddress;
 
@@ -20,7 +22,24 @@ describe('VeBoostV2', () => {
   });
 
   sharedBeforeEach('deploy veBoostV2', async () => {
-    boost = await deploy('VeBoostV2', { args: [ZERO_ADDRESS] });
+    const preseededBoostCalls = Array(MAX_PRESEED)
+      .fill(null)
+      .map(() => [
+        ZERO_ADDRESS, // _from
+        ZERO_ADDRESS, // to
+        0, // amount
+        0, // start_time
+        0, // end_time
+      ]);
+
+    const preseededApprovalCalls = Array(MAX_PRESEED)
+      .fill(null)
+      .map(() => [
+        ZERO_ADDRESS, // operator
+        ZERO_ADDRESS, // delegator
+      ]);
+
+    boost = await deployVyper('VeBoostV2', { args: [ZERO_ADDRESS, preseededBoostCalls, preseededApprovalCalls] });
   });
 
   describe('info', () => {
