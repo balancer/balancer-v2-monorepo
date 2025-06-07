@@ -10,6 +10,10 @@ event Approval:
     _spender: indexed(address)
     _value: uint256
 
+event ApprovalForAll:
+    _owner: indexed(address)
+    _operator: indexed(address)
+
 event Transfer:
     _from: indexed(address)
     _to: indexed(address)
@@ -35,6 +39,16 @@ struct Point:
     slope: uint256
     ts: uint256
 
+struct CreateBoostCall:
+    _from: address
+    to: address
+    amount: uint256
+    start_time: uint256
+    end_time: uint256
+
+struct SetApprovalForAllCall:
+    operator: address
+    delegator: address # In the actual function call, this is msg.sender
 
 NAME: constant(String[32]) = "Vote-Escrowed Boost"
 SYMBOL: constant(String[8]) = "veBoost"
@@ -63,10 +77,23 @@ delegated_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 received: public(HashMap[address, Point])
 received_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 
+preseeded: public(bool)
+
+isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
+
+MAX_PRESEEDED_BOOSTS: constant(uint256) = 10
+preseeded_boost_calls: public(CreateBoostCall[MAX_PRESEEDED_BOOSTS])
+
+MAX_PRESEEDED_APPROVALS: constant(uint256) = 10
+preseeded_approval_calls: public(SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS])
+
 @external
-def __init__(_ve: address):
+def __init__(_ve: address, _preseeded_boost_calls: CreateBoostCall[MAX_PRESEEDED_BOOSTS], _preseeded_approval_calls: SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS]):
     DOMAIN_SEPARATOR = keccak256(_abi_encode(EIP712_TYPEHASH, keccak256(NAME), keccak256(VERSION), chain.id, self))
     VE = _ve
+
+    self.preseeded_boost_calls = _preseeded_boost_calls
+    self.preseeded_approval_calls = _preseeded_approval_calls
 
     log Transfer(ZERO_ADDRESS, msg.sender, 0)
 
@@ -169,20 +196,21 @@ def _balance_of(_user: address) -> uint256:
 
 
 @internal
-def _boost(_from: address, _to: address, _amount: uint256, _endtime: uint256):
+def _boost(_from: address, _to: address, _amount: uint256, _starttime: uint256, _endtime: uint256):
     assert _to not in [_from, ZERO_ADDRESS]
     assert _amount != 0
+    assert _endtime > _starttime
     assert _endtime > block.timestamp
     assert _endtime % WEEK == 0
     assert _endtime <= VotingEscrow(VE).locked__end(_from)
 
     # checkpoint delegated point
     point: Point = self._checkpoint_write(_from, True)
-    assert _amount <= VotingEscrow(VE).balanceOf(_from) - (point.bias - point.slope * (block.timestamp - point.ts))
+    assert _amount <= VotingEscrow(VE).balanceOf(_from) - (point.bias - point.slope * (_starttime - point.ts))
 
     # calculate slope and bias being added
-    slope: uint256 = _amount / (_endtime - block.timestamp)
-    bias: uint256 = slope * (_endtime - block.timestamp)
+    slope: uint256 = _amount / (_endtime - _starttime)
+    bias: uint256 = slope * (_endtime - _starttime)
 
     # update delegated point
     point.bias += bias
@@ -202,23 +230,22 @@ def _boost(_from: address, _to: address, _amount: uint256, _endtime: uint256):
     self.received_slope_changes[_to][_endtime] += slope
 
     log Transfer(_from, _to, _amount)
-    log Boost(_from, _to, bias, slope, block.timestamp)
+    log Boost(_from, _to, bias, slope, _starttime)
 
     # also checkpoint received and delegated
     self.received[_from] = self._checkpoint_write(_from, False)
     self.delegated[_to] = self._checkpoint_write(_to, True)
 
-
 @external
 def boost(_to: address, _amount: uint256, _endtime: uint256, _from: address = msg.sender):
-    # reduce approval if necessary
-    if _from != msg.sender:
+    if _from != msg.sender and self.isApprovedForAll[_from][msg.sender] == False:
         allowance: uint256 = self.allowance[_from][msg.sender]
+        # reduce approval if necessary
         if allowance != MAX_UINT256:
             self.allowance[_from][msg.sender] = allowance - _amount
             log Approval(_from, msg.sender, allowance - _amount)
 
-    self._boost(_from, _to, _amount, _endtime)
+    self._boost(_from, _to, _amount, block.timestamp, _endtime)
 
 @external
 def checkpoint_user(_user: address):
@@ -351,3 +378,34 @@ def DOMAIN_SEPARATOR() -> bytes32:
 @external
 def VE() -> address:
     return VE
+
+# Preseeding
+# Some initial boosts are created and blanket approvals granted. This action can only be performed once (ideally early
+# in the contract's lifetime)
+
+@internal
+def _setApprovalForAll(_delegator: address, _operator: address):
+    self.isApprovedForAll[_delegator][_operator] = True
+    log ApprovalForAll(_delegator, _operator)
+
+@external
+def preseed():
+    assert not self.preseeded # dev: already preseeded
+    self.preseeded = True
+
+    for i in range(MAX_PRESEEDED_BOOSTS):
+        boost_call: CreateBoostCall = self.preseeded_boost_calls[i]
+        if boost_call._from != ZERO_ADDRESS:
+            self._boost(
+                boost_call._from,
+                boost_call.to,
+                boost_call.amount,
+                boost_call.start_time,
+                boost_call.end_time
+            )
+
+    for i in range(MAX_PRESEEDED_APPROVALS):
+        approval_call: SetApprovalForAllCall = self.preseeded_approval_calls[i]
+        if approval_call.delegator != ZERO_ADDRESS:
+            self._setApprovalForAll(approval_call.delegator, approval_call.operator)
+
