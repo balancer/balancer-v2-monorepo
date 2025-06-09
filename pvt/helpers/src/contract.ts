@@ -36,10 +36,7 @@ export async function deploy(
   return instance.deployed();
 }
 
-export async function deployVyper(
-  contract: string,
-  { from, args }: ContractDeploymentParams = {}
-): Promise<Contract> {
+export async function deployVyper(contract: string, { from, args }: ContractDeploymentParams = {}): Promise<Contract> {
   if (!args) args = [];
   if (!from) from = (await ethers.getSigners())[0];
 
@@ -76,11 +73,11 @@ export function getArtifact(contract: string): Artifact {
 
 // Function to transform Vyper ABI to ethers.js v5 compatible format
 function transformVyperAbi(abi: any[]): any[] {
-  return abi.map(item => {
+  return abi.map((item) => {
     if (item.type === 'constructor' && item.inputs) {
       return {
         ...item,
-        inputs: item.inputs.map((input: any) => transformInput(input))
+        inputs: item.inputs.map((input: any) => transformInput(input)),
       };
     }
     return item;
@@ -94,14 +91,14 @@ function transformInput(input: any): any {
     if (match) {
       const tupleTypes = match[1].split(',');
       const arraySize = match[2] || '';
-      
+
       return {
         ...input,
         type: `tuple${arraySize}`,
         components: tupleTypes.map((type, index) => ({
           name: `field${index}`,
-          type: type.trim()
-        }))
+          type: type.trim(),
+        })),
       };
     }
   }
