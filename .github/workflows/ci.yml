@@ -15,7 +15,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Lint
@@ -24,7 +24,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Build
@@ -35,7 +35,7 @@ jobs:
   test-solidity-utils:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up environment
@@ -75,7 +75,7 @@ jobs:
   test-vault:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up environment
@@ -95,7 +95,7 @@ jobs:
   test-pool-utils:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up environment
@@ -115,7 +115,7 @@ jobs:
   test-pool-weighted:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up environment
@@ -135,7 +135,7 @@ jobs:
   test-pool-stable:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up environment
@@ -155,7 +155,7 @@ jobs:
   test-pool-linear:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up environment
@@ -175,7 +175,7 @@ jobs:
   test-liquidity-mining:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up environment
@@ -199,7 +199,7 @@ jobs:
   test-governance-scripts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
