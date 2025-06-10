@@ -47,7 +47,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-solidity-utils test
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-solidity-utils test:forge
+        run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz
 
   test-standalone-utils:
     runs-on: ubuntu-latest
@@ -94,7 +94,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-utils test
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-utils test:forge
+        run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz
 
   test-pool-weighted:
     runs-on: ubuntu-latest
@@ -111,7 +111,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-weighted test
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-weighted test:forge
+        run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz
 
   test-pool-stable:
     runs-on: ubuntu-latest
@@ -159,10 +159,10 @@ jobs:
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Vyper
         run: |
-          pip3 install vyper==0.3.7
+          pip3 install vyper==0.2.16
           vyper --version
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-liquidity-mining test:forge
+        run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
 
   test-governance-scripts:
     runs-on: ubuntu-latest
