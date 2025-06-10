@@ -170,7 +170,7 @@ contract CircuitBreakerLibTest is Test {
         uint256 a,
         uint256 b,
         uint256 maxPercentDelta
-    ) internal override {
+    ) internal pure override {
         if ((b * maxPercentDelta) / 1e18 == 0) {
             assertApproxEqAbs(a, b, 1);
         } else {

@@ -20,12 +20,12 @@ contract AvalancheRootGaugeLibTest is Test {
         minimumBridgeAmount = 10**decimalDifference;
     }
 
-    function testGetMinimumAmount(uint256 amount) external {
+    function testGetMinimumAmount(uint256 amount) external view {
         uint256 minimumAmount = AvalancheRootGaugeLib.removeDust(amount, minimumBridgeAmount);
         assertApproxEqAbs(amount, minimumAmount, minimumBridgeAmount);
     }
 
-    function testBytes32Recipient() external {
+    function testBytes32Recipient() external pure {
         address recipient = 0xBA1bA1Ba1bA1Ba1ba1bA1bA1bA1bA1fFffFFfFfF;
         bytes32 bytes32Recipient = AvalancheRootGaugeLib.bytes32Recipient(recipient);
         assertEq(bytes32Recipient, bytes32(0x000000000000000000000000BA1bA1Ba1bA1Ba1ba1bA1bA1bA1bA1fFffFFfFfF));
