@@ -181,6 +181,10 @@ jobs:
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+      - name: Install Vyper
+        run: |
+          pip3 install vyper
+          vyper --version
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
 
