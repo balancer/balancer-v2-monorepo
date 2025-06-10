@@ -12,6 +12,23 @@ import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VeBoostV2', () => {
+  /* Doesn't work with regular deploy and objects:
+  type CreateBoostCall = {
+    from: string;
+    to: string;
+    amount: BigNumber;
+    start_time: number;
+    end_time: number;
+  };
+
+  type SetApprovalForAllCall = {
+    operator: string;
+    delegator: string;
+  };
+
+  let PreseededBoostCalls: CreateBoostCall[];
+  let PreseededApprovalCalls: SetApprovalForAllCall[]; */
+
   const MAX_PRESEED = 10;
 
   let boost: Contract;
@@ -22,6 +39,24 @@ describe('VeBoostV2', () => {
   });
 
   sharedBeforeEach('deploy veBoostV2', async () => {
+    /* Doesn't work with regular deploy and objects:
+    const args = [
+      ZERO_ADDRESS,
+      new Array<(typeof PreseededBoostCalls)[number]>(MAX_PRESEED).fill({
+        from: ZERO_ADDRESS,
+        to: ZERO_ADDRESS,
+        amount: bn(0),
+        start_time: 0,
+        end_time: 0,
+      }),
+      new Array<(typeof PreseededApprovalCalls)[number]>(MAX_PRESEED).fill({
+        operator: ZERO_ADDRESS,
+        delegator: ZERO_ADDRESS,
+      }),
+    ];
+
+    boost = await deploy('VeBoostV2', { args });*/
+
     const preseededBoostCalls = Array(MAX_PRESEED)
       .fill(null)
       .map(() => [
@@ -40,6 +75,18 @@ describe('VeBoostV2', () => {
       ]);
 
     boost = await deployVyper('VeBoostV2', { args: [ZERO_ADDRESS, preseededBoostCalls, preseededApprovalCalls] });
+  });
+
+  describe('preseed', () => {
+    it('can call preseed', async () => {
+      await boost.preseed();
+    });
+
+    it('cannot be called twice', async () => {
+      await boost.preseed();
+
+      await expect(boost.preseed()).to.be.reverted;
+    });
   });
 
   describe('info', () => {
