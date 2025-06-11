@@ -166,10 +166,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'  # Compatible with Vyper 0.3.1
+          python-version: '3.9'  # Compatible with Vyper 0.3.3
       - name: Install Vyper
         run: |
-          pip3 install vyper==0.3.1
+          pip3 install vyper==0.3.3
           vyper --version
       - name: Set EVM version for compilation
         run: |
