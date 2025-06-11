@@ -46,6 +46,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-solidity-utils test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz
 
@@ -93,6 +95,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-utils test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz
 
@@ -110,6 +114,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-weighted test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz
 
@@ -161,6 +167,8 @@ jobs:
         run: |
           pip3 install vyper==0.2.16
           vyper --version
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
 
