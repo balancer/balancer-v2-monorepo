@@ -24,6 +24,7 @@ contract FixedPointTest is Test {
         assertEq(complement, referenceComplement);
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testMulDown(uint256 a, uint256 b) external {
         uint256 product = a * b;
         if (a != 0 && product / a != b) {
@@ -39,6 +40,7 @@ contract FixedPointTest is Test {
         }
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testMulUp(uint256 a, uint256 b) external {
         uint256 product = a * b;
         if (a != 0 && product / a != b) {
@@ -64,6 +66,7 @@ contract FixedPointTest is Test {
         assertEq(mulUp, referenceMulUp);
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testDivDown(uint256 a, uint256 b) external {
         if (b == 0) {
             vm.expectRevert("BAL#004"); // ZERO_DIVISION
@@ -91,6 +94,7 @@ contract FixedPointTest is Test {
         assertEq(divDown, referenceDivDown);
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testDivUp(uint256 a, uint256 b) external {
         if (b == 0) {
             vm.expectRevert("BAL#004"); // ZERO_DIVISION

@@ -54,6 +54,7 @@ contract MathTest is Test {
         assertEq(min, referenceMin);
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testDivDown(uint256 a, uint256 b) external {
         if (b == 0) {
             vm.expectRevert("BAL#004"); // ZERO_DIVISION
@@ -68,6 +69,7 @@ contract MathTest is Test {
         }
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testDivUp(uint256 a, uint256 b) external {
         if (b == 0) {
             vm.expectRevert("BAL#004"); // ZERO_DIVISION
