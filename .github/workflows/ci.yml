@@ -165,7 +165,7 @@ jobs:
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Vyper
         run: |
-          pip3 install vyper==0.3.8
+          pip3 install vyper==0.3.1
           vyper --version
       - name: Set EVM version for compilation
         run: |
