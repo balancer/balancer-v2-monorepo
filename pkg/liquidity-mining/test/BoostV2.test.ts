@@ -70,7 +70,9 @@ describe('VeBoostV2', () => {
         ZERO_ADDRESS, // delegator
       ]);
 
-    boost = await deployVyper('VeBoostV2', { args: [ZERO_ADDRESS, ZERO_ADDRESS, preseededBoostCalls, preseededApprovalCalls] });
+    boost = await deployVyper('VeBoostV2', {
+      args: [ZERO_ADDRESS, ZERO_ADDRESS, preseededBoostCalls, preseededApprovalCalls],
+    });
   });
 
   describe('preseed', () => {
