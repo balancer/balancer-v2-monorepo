@@ -74,7 +74,7 @@ abstract contract EIP712 {
     }
 
     // solc-ignore-next-line func-mutability
-    function _getChainId() private view returns (uint256 chainId) {
+    function _getChainId() private pure returns (uint256 chainId) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             chainId := chainid()

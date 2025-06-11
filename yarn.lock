@@ -64,6 +64,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@balancer-labs/solidity-toolbox@workspace:*, @balancer-labs/solidity-toolbox@workspace:pvt/solidity-toolbox":
+  version: 0.0.0-use.local
+  resolution: "@balancer-labs/solidity-toolbox@workspace:pvt/solidity-toolbox"
+  dependencies:
+    forge-std: "https://github.com/foundry-rs/forge-std.git#v1.9.7"
+  languageName: unknown
+  linkType: soft
+
 "@balancer-labs/v2-benchmarks@workspace:pvt/benchmarks":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-benchmarks@workspace:pvt/benchmarks"
@@ -212,6 +220,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining"
   dependencies:
+    "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-interfaces": "workspace:*"
@@ -339,6 +348,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-pool-utils@workspace:pkg/pool-utils"
   dependencies:
+    "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-interfaces": "workspace:*"
@@ -383,6 +393,7 @@ __metadata:
   resolution: "@balancer-labs/v2-pool-weighted@workspace:pkg/pool-weighted"
   dependencies:
     "@balancer-labs/balancer-js": "workspace:*"
+    "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-interfaces": "workspace:*"
@@ -426,6 +437,7 @@ __metadata:
   resolution: "@balancer-labs/v2-solidity-utils@workspace:pkg/solidity-utils"
   dependencies:
     "@balancer-labs/balancer-js": "workspace:*"
+    "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-interfaces": "workspace:*"
@@ -6253,6 +6265,13 @@ __metadata:
   version: 0.6.1
   resolution: "forever-agent@npm:0.6.1"
   checksum: b426cf45f0bdea79970a4320cb550b84d0bcd0530d544e0424456f44272a19641a000ea921f8e58dba5511b71f94d95c80692e3d13ce5f0b766f18426430efd5
+  languageName: node
+  linkType: hard
+
+"forge-std@https://github.com/foundry-rs/forge-std.git#v1.9.7":
+  version: 1.9.7
+  resolution: "forge-std@https://github.com/foundry-rs/forge-std.git#commit=77041d2ce690e692d6e03cc812b57d1ddaa4d505"
+  checksum: a55e3b46b86a6f851a2c2354d8519f7bcb03dd7191e832c02dd029d9775ce0bf7154688936855e5bb5a9538d7bbdd6fb6a480d1d675af1a7c848a199992f31ca
   languageName: node
   linkType: hard
 

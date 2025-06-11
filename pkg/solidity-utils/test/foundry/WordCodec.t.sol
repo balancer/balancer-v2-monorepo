@@ -66,6 +66,7 @@ contract WordCodecTest is Test {
         return (input, bits, offset);
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testInsertUint(
         bytes32 word,
         uint256 value,
@@ -89,6 +90,7 @@ contract WordCodecTest is Test {
         }
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testInsertInt(
         bytes32 word,
         int256 value,

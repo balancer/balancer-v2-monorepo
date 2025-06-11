@@ -15,7 +15,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Lint
@@ -24,7 +24,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Build
@@ -35,7 +35,7 @@ jobs:
   test-solidity-utils:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -55,7 +55,7 @@ jobs:
   test-standalone-utils:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -66,16 +66,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-standalone-utils test
+<<<<<<< HEAD
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-standalone-utils test-fuzz
         continue-on-error: true
+=======
+>>>>>>> master
 
   test-vault:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -86,16 +89,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
+<<<<<<< HEAD
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-vault test-fuzz
         continue-on-error: true
+=======
+>>>>>>> master
 
   test-pool-utils:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -115,7 +121,7 @@ jobs:
   test-pool-weighted:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -135,7 +141,7 @@ jobs:
   test-pool-stable:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -146,16 +152,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-stable test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz
-        continue-on-error: true
 
   test-pool-linear:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -166,16 +167,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-linear test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz
-        continue-on-error: true
 
   test-liquidity-mining:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -188,18 +184,11 @@ jobs:
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-      - name: Install Vyper
-        run: |
-          pip3 install vyper
-          vyper --version
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
-        continue-on-error: true
 
   test-governance-scripts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile

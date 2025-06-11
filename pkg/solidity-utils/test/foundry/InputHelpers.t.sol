@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import "../../contracts/helpers/InputHelpers.sol";
 
 contract InputHelpersTest is Test {
+    /// forge-config: default.allow_internal_expect_revert = true
     function testEnsureArrayIsSorted(address[] memory addresses) public {
         bool unsorted = false;
         for (uint256 i = 1; i < addresses.length; ++i) {
