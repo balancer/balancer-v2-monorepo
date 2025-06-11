@@ -26,6 +26,12 @@ event Boost:
     _slope: uint256
     _start: uint256
 
+interface BoostV2:
+    def delegated(addr: address) -> Point: view
+    def received(addr: address) -> Point: view
+    def delegated_slope_changes(addr: address, endtime: uint256) -> uint256: view
+    def received_slope_changes(addr: address, endtime: uint256) -> uint256: view
+
 interface VotingEscrow:
     def balanceOf(_user: address) -> uint256: view
     def totalSupply() -> uint256: view
@@ -39,11 +45,9 @@ struct Point:
     slope: uint256
     ts: uint256
 
-struct CreateBoostCall:
+struct MigrateBoostCall:
     _from: address
     to: address
-    amount: uint256
-    start_time: uint256
     end_time: uint256
 
 struct SetApprovalForAllCall:
@@ -63,7 +67,8 @@ ERC1271_MAGIC_VAL: constant(bytes32) = 0x1626ba7e0000000000000000000000000000000
 
 WEEK: constant(uint256) = 86400 * 7
 
-
+# Previous veBoostV2 instance
+BOOST_V2: immutable(address)
 DOMAIN_SEPARATOR: immutable(bytes32)
 VE: immutable(address)
 
@@ -82,13 +87,14 @@ preseeded: public(bool)
 isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 
 MAX_PRESEEDED_BOOSTS: constant(uint256) = 10
-preseeded_boost_calls: public(CreateBoostCall[MAX_PRESEEDED_BOOSTS])
+preseeded_boost_calls: public(MigrateBoostCall[MAX_PRESEEDED_BOOSTS])
 
 MAX_PRESEEDED_APPROVALS: constant(uint256) = 10
 preseeded_approval_calls: public(SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS])
 
 @external
-def __init__(_ve: address, _preseeded_boost_calls: CreateBoostCall[MAX_PRESEEDED_BOOSTS], _preseeded_approval_calls: SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS]):
+def __init__(_boost_v2: address, _ve: address, _preseeded_boost_calls: MigrateBoostCall[MAX_PRESEEDED_BOOSTS], _preseeded_approval_calls: SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS]):
+    BOOST_V2 = _boost_v2
     DOMAIN_SEPARATOR = keccak256(_abi_encode(EIP712_TYPEHASH, keccak256(NAME), keccak256(VERSION), chain.id, self))
     VE = _ve
 
@@ -196,21 +202,20 @@ def _balance_of(_user: address) -> uint256:
 
 
 @internal
-def _boost(_from: address, _to: address, _amount: uint256, _starttime: uint256, _endtime: uint256):
+def _boost(_from: address, _to: address, _amount: uint256, _endtime: uint256):
     assert _to not in [_from, ZERO_ADDRESS]
     assert _amount != 0
-    assert _endtime > _starttime
     assert _endtime > block.timestamp
     assert _endtime % WEEK == 0
     assert _endtime <= VotingEscrow(VE).locked__end(_from)
 
     # checkpoint delegated point
     point: Point = self._checkpoint_write(_from, True)
-    assert _amount <= VotingEscrow(VE).balanceOf(_from) - (point.bias - point.slope * (_starttime - point.ts))
+    assert _amount <= VotingEscrow(VE).balanceOf(_from) - (point.bias - point.slope * (block.timestamp - point.ts))
 
     # calculate slope and bias being added
-    slope: uint256 = _amount / (_endtime - _starttime)
-    bias: uint256 = slope * (_endtime - _starttime)
+    slope: uint256 = _amount / (_endtime - block.timestamp)
+    bias: uint256 = slope * (_endtime - block.timestamp)
 
     # update delegated point
     point.bias += bias
@@ -230,7 +235,7 @@ def _boost(_from: address, _to: address, _amount: uint256, _starttime: uint256, 
     self.received_slope_changes[_to][_endtime] += slope
 
     log Transfer(_from, _to, _amount)
-    log Boost(_from, _to, bias, slope, _starttime)
+    log Boost(_from, _to, bias, slope, block.timestamp)
 
     # also checkpoint received and delegated
     self.received[_from] = self._checkpoint_write(_from, False)
@@ -245,7 +250,7 @@ def boost(_to: address, _amount: uint256, _endtime: uint256, _from: address = ms
             self.allowance[_from][msg.sender] = allowance - _amount
             log Approval(_from, msg.sender, allowance - _amount)
 
-    self._boost(_from, _to, _amount, block.timestamp, _endtime)
+    self._boost(_from, _to, _amount, _endtime)
 
 @external
 def checkpoint_user(_user: address):
@@ -362,6 +367,11 @@ def symbol() -> String[8]:
 def decimals() -> uint8:
     return 18
 
+@pure
+@external
+def BOOST_V2() -> address:
+    return BOOST_V2
+
 
 @pure
 @external
@@ -384,6 +394,30 @@ def VE() -> address:
 # in the contract's lifetime)
 
 @internal
+def _migrate_boost(_from: address, _to: address, _end_time: uint256):
+    old_delegated_from_point: Point = BoostV2(BOOST_V2).delegated(_from)
+    assert old_delegated_from_point.ts != 0
+
+    old_delegated_to_point: Point = BoostV2(BOOST_V2).delegated(_to)
+    assert old_delegated_to_point.ts != 0
+
+    old_received_from_point: Point = BoostV2(BOOST_V2).received(_from)
+    assert old_received_from_point.ts != 0
+
+    old_received_to_point: Point = BoostV2(BOOST_V2).received(_to)
+    assert old_received_to_point.ts != 0
+
+    self.delegated[_from] = old_delegated_from_point
+    self.delegated[_to] = old_delegated_to_point
+
+    self.received[_from] = old_received_from_point
+    self.received[_to] = old_received_to_point
+
+    self.delegated_slope_changes[_from][_end_time] = BoostV2(BOOST_V2).delegated_slope_changes(_from, _end_time)
+    self.delegated_slope_changes[_to][_end_time] = BoostV2(BOOST_V2).delegated_slope_changes(_to, _end_time)
+    self.received_slope_changes[_to][_end_time] = BoostV2(BOOST_V2).delegated_slope_changes(_to, _end_time)
+
+@internal
 def _setApprovalForAll(_delegator: address, _operator: address):
     self.isApprovedForAll[_delegator][_operator] = True
     log ApprovalForAll(_delegator, _operator)
@@ -394,13 +428,11 @@ def preseed():
     self.preseeded = True
 
     for i in range(MAX_PRESEEDED_BOOSTS):
-        boost_call: CreateBoostCall = self.preseeded_boost_calls[i]
+        boost_call: MigrateBoostCall = self.preseeded_boost_calls[i]
         if boost_call._from != ZERO_ADDRESS:
-            self._boost(
+            self._migrate_boost(
                 boost_call._from,
                 boost_call.to,
-                boost_call.amount,
-                boost_call.start_time,
                 boost_call.end_time
             )
 
