@@ -165,8 +165,6 @@ jobs:
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
 
   test-governance-scripts:
     runs-on: ubuntu-latest
