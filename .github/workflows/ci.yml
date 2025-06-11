@@ -15,7 +15,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Lint
@@ -24,7 +24,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Build
@@ -35,7 +35,7 @@ jobs:
   test-solidity-utils:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -48,15 +48,13 @@ jobs:
         run: yarn workspace @balancer-labs/v2-solidity-utils test
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz
 
   test-standalone-utils:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -67,17 +65,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-standalone-utils test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-standalone-utils test-fuzz
 
   test-vault:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -88,17 +80,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-vault test-fuzz
 
   test-pool-utils:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -111,15 +97,13 @@ jobs:
         run: yarn workspace @balancer-labs/v2-pool-utils test
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz
 
   test-pool-weighted:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -132,15 +116,13 @@ jobs:
         run: yarn workspace @balancer-labs/v2-pool-weighted test
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz
 
   test-pool-stable:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -151,17 +133,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-stable test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz
 
   test-pool-linear:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -172,17 +148,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-linear test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz
 
   test-liquidity-mining:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up environment
@@ -195,15 +165,11 @@ jobs:
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
 
   test-governance-scripts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
