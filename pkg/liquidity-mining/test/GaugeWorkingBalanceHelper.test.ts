@@ -71,7 +71,7 @@ describe('GaugeWorkingBalanceHelper', () => {
       ]);
 
     boost = await deployVyper('VeBoostV2', {
-      args: [votingEscrow.address, preseededBoostCalls, preseededApprovalCalls],
+      args: [ZERO_ADDRESS, votingEscrow.address, preseededBoostCalls, preseededApprovalCalls],
     });
 
     veDelegationProxy = await deploy('VotingEscrowDelegationProxy', {
