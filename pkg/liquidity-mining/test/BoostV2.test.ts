@@ -45,8 +45,6 @@ describe('VeBoostV2', () => {
       new Array<(typeof PreseededBoostCalls)[number]>(MAX_PRESEED).fill({
         from: ZERO_ADDRESS,
         to: ZERO_ADDRESS,
-        amount: bn(0),
-        start_time: 0,
         end_time: 0,
       }),
       new Array<(typeof PreseededApprovalCalls)[number]>(MAX_PRESEED).fill({
@@ -62,8 +60,6 @@ describe('VeBoostV2', () => {
       .map(() => [
         ZERO_ADDRESS, // _from
         ZERO_ADDRESS, // to
-        0, // amount
-        0, // start_time
         0, // end_time
       ]);
 
@@ -74,7 +70,7 @@ describe('VeBoostV2', () => {
         ZERO_ADDRESS, // delegator
       ]);
 
-    boost = await deployVyper('VeBoostV2', { args: [ZERO_ADDRESS, preseededBoostCalls, preseededApprovalCalls] });
+    boost = await deployVyper('VeBoostV2', { args: [ZERO_ADDRESS, ZERO_ADDRESS, preseededBoostCalls, preseededApprovalCalls] });
   });
 
   describe('preseed', () => {
