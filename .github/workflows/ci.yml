@@ -165,8 +165,12 @@ jobs:
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
       - name: Install Vyper
         run: |
-          pip3 install vyper==0.2.16
+          pip3 install vyper==0.3.8
           vyper --version
+      - name: Set EVM version for compilation
+        run: |
+          # Set environment variable for London EVM version
+          echo "VYPER_EVM_VERSION=london" >> $GITHUB_ENV
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
       - name: Run Forge tests
