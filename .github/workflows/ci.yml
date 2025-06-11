@@ -163,6 +163,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'  # Compatible with Vyper 0.3.1
       - name: Install Vyper
         run: |
           pip3 install vyper==0.3.1
