@@ -1,4 +1,4 @@
-# @version 0.3.3
+# @version ^0.3.1
 """
 @title Boost Delegation V2
 @author CurveFi
