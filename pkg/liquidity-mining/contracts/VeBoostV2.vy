@@ -52,7 +52,7 @@ struct MigrateBoostCall:
 
 struct SetApprovalForAllCall:
     operator: address
-    delegator: address # In the actual function call, this is msg.sender
+    delegator: address
 
 NAME: constant(String[32]) = "Vote-Escrowed Boost"
 SYMBOL: constant(String[8]) = "veBoost"
