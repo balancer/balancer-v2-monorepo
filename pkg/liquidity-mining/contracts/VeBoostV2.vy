@@ -82,7 +82,7 @@ delegated_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 received: public(HashMap[address, Point])
 received_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 
-preseeded: public(bool)
+migrated: public(bool)
 
 isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 
@@ -423,9 +423,9 @@ def _setApprovalForAll(_delegator: address, _operator: address):
     log ApprovalForAll(_delegator, _operator)
 
 @external
-def preseed():
-    assert not self.preseeded # dev: already preseeded
-    self.preseeded = True
+def migrate():
+    assert not self.migrated # dev: already migrated
+    self.migrated = True
 
     for i in range(MAX_PRESEEDED_BOOSTS):
         boost_call: MigrateBoostCall = self.preseeded_boost_calls[i]

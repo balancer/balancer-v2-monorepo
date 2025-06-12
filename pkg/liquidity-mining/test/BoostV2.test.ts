@@ -76,14 +76,14 @@ describe('VeBoostV2', () => {
   });
 
   describe('preseed', () => {
-    it('can call preseed', async () => {
-      await boost.preseed();
+    it('can call migration', async () => {
+      await boost.migrate();
     });
 
     it('cannot be called twice', async () => {
-      await boost.preseed();
+      await boost.migrate();
 
-      await expect(boost.preseed()).to.be.reverted;
+      await expect(boost.migrate()).to.be.reverted;
     });
   });
 
