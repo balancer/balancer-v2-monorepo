@@ -415,7 +415,7 @@ def _migrate_boost(_from: address, _to: address, _end_time: uint256):
 
     self.delegated_slope_changes[_from][_end_time] = BoostV2(BOOST_V2).delegated_slope_changes(_from, _end_time)
     self.delegated_slope_changes[_to][_end_time] = BoostV2(BOOST_V2).delegated_slope_changes(_to, _end_time)
-    self.received_slope_changes[_to][_end_time] = BoostV2(BOOST_V2).delegated_slope_changes(_to, _end_time)
+    self.received_slope_changes[_to][_end_time] = BoostV2(BOOST_V2).received_slope_changes(_to, _end_time)
 
 @internal
 def _setApprovalForAll(_delegator: address, _operator: address):
