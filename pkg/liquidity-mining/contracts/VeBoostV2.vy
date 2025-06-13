@@ -48,6 +48,7 @@ struct Point:
 struct MigrateBoostCall:
     _from: address
     to: address
+    start_time: uint256
     end_time: uint256
 
 struct SetApprovalForAllCall:
@@ -394,7 +395,7 @@ def VE() -> address:
 # in the contract's lifetime)
 
 @internal
-def _migrate_boost(_from: address, _to: address, _end_time: uint256):
+def _migrate_boost(_from: address, _to: address, _start_time: uint256, _end_time: uint256):
     old_delegated_from_point: Point = BoostV2(BOOST_V2).delegated(_from)
     assert old_delegated_from_point.ts != 0
 
@@ -413,6 +414,21 @@ def _migrate_boost(_from: address, _to: address, _end_time: uint256):
     self.received[_from] = old_received_from_point
     self.received[_to] = old_received_to_point
 
+    # Copy historical slope changes from start_time to current time in WEEK intervals
+    ts: uint256 = _start_time
+    for _ in range(255):
+        if ts > block.timestamp:
+            break
+
+        self.delegated_slope_changes[_from][ts] = BoostV2(BOOST_V2).delegated_slope_changes(_from, ts)
+        self.delegated_slope_changes[_to][ts] = BoostV2(BOOST_V2).delegated_slope_changes(_to, ts)
+
+        self.received_slope_changes[_from][ts] = BoostV2(BOOST_V2).received_slope_changes(_from, ts)
+        self.received_slope_changes[_to][ts] = BoostV2(BOOST_V2).received_slope_changes(_to, ts)
+
+        ts += WEEK
+
+    # Also ensure we copy the slope change at _end_time
     self.delegated_slope_changes[_from][_end_time] = BoostV2(BOOST_V2).delegated_slope_changes(_from, _end_time)
     self.delegated_slope_changes[_to][_end_time] = BoostV2(BOOST_V2).delegated_slope_changes(_to, _end_time)
 
@@ -435,6 +451,7 @@ def migrate():
             self._migrate_boost(
                 boost_call._from,
                 boost_call.to,
+                boost_call.start_time,
                 boost_call.end_time
             )
 
