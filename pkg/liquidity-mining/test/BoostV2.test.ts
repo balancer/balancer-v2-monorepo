@@ -16,7 +16,6 @@ describe('VeBoostV2', () => {
   type CreateBoostCall = {
     from: string;
     to: string;
-    start_time: number;
     end_time: number;
   };
 
@@ -59,7 +58,6 @@ describe('VeBoostV2', () => {
       .map(() => [
         ZERO_ADDRESS, // _from
         ZERO_ADDRESS, // to
-        0, // start_time
         0, // end_time
       ]);
 
