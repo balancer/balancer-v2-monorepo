@@ -45,11 +45,13 @@ struct Point:
     slope: uint256
     ts: uint256
 
+# Supports one-time migration of existing boosts
 struct MigrateBoostCall:
     _from: address
     to: address
     end_time: uint256
 
+# Supports one-time migration, allowing Stake DAO and Tetu BAL lockers to participate in boosts
 struct SetApprovalForAllCall:
     operator: address
     delegator: address
@@ -58,20 +60,24 @@ NAME: constant(String[32]) = "Vote-Escrowed Boost"
 SYMBOL: constant(String[8]) = "veBoost"
 VERSION: constant(String[8]) = "v2.1.0"
 
-EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
-PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+EIP712_TYPEHASH: constant(bytes32) = keccak256(
+    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+)
+PERMIT_TYPEHASH: constant(bytes32) = keccak256(
+    "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+)
 
 # keccak256("isValidSignature(bytes32,bytes)")[:4] << 224
-ERC1271_MAGIC_VAL: constant(bytes32) = 0x1626ba7e00000000000000000000000000000000000000000000000000000000
-
+ERC1271_MAGIC_VAL: constant(bytes32) = (
+    0x1626ba7e00000000000000000000000000000000000000000000000000000000
+)
 
 WEEK: constant(uint256) = 86400 * 7
 
-# Previous veBoostV2 instance
+# Previous veBoostV2 instance, used for one-time migration
 BOOST_V2: immutable(address)
 DOMAIN_SEPARATOR: immutable(bytes32)
 VE: immutable(address)
-
 
 allowance: public(HashMap[address, HashMap[address, uint256]])
 nonces: public(HashMap[address, uint256])
@@ -82,8 +88,11 @@ delegated_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 received: public(HashMap[address, Point])
 received_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 
+# Flag to ensure migration is only performed once
 migrated: public(bool)
 
+# Checked on calls to `boost`, enabling certain Stake DAO and Tetu accounts
+# to create boosts on behalf of their respective lockers
 isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 
 MAX_PRESEEDED_BOOSTS: constant(uint256) = 10
@@ -92,10 +101,24 @@ preseeded_boost_calls: public(MigrateBoostCall[MAX_PRESEEDED_BOOSTS])
 MAX_PRESEEDED_APPROVALS: constant(uint256) = 10
 preseeded_approval_calls: public(SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS])
 
+
 @external
-def __init__(_boost_v2: address, _ve: address, _preseeded_boost_calls: MigrateBoostCall[MAX_PRESEEDED_BOOSTS], _preseeded_approval_calls: SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS]):
+def __init__(
+    _boost_v2: address,
+    _ve: address,
+    _preseeded_boost_calls: MigrateBoostCall[MAX_PRESEEDED_BOOSTS],
+    _preseeded_approval_calls: SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS]
+):
     BOOST_V2 = _boost_v2
-    DOMAIN_SEPARATOR = keccak256(_abi_encode(EIP712_TYPEHASH, keccak256(NAME), keccak256(VERSION), chain.id, self))
+    DOMAIN_SEPARATOR = keccak256(
+        _abi_encode(
+            EIP712_TYPEHASH,
+            keccak256(NAME),
+            keccak256(VERSION),
+            chain.id,
+            self
+        )
+    )
     VE = _ve
 
     self.preseeded_boost_calls = _preseeded_boost_calls
@@ -211,7 +234,11 @@ def _boost(_from: address, _to: address, _amount: uint256, _endtime: uint256):
 
     # checkpoint delegated point
     point: Point = self._checkpoint_write(_from, True)
-    assert _amount <= VotingEscrow(VE).balanceOf(_from) - (point.bias - point.slope * (block.timestamp - point.ts))
+
+    assert _amount <= (
+        VotingEscrow(VE).balanceOf(_from) - 
+        (point.bias - point.slope * (block.timestamp - point.ts))
+    )
 
     # calculate slope and bias being added
     slope: uint256 = _amount / (_endtime - block.timestamp)
@@ -241,6 +268,7 @@ def _boost(_from: address, _to: address, _amount: uint256, _endtime: uint256):
     self.received[_from] = self._checkpoint_write(_from, False)
     self.delegated[_to] = self._checkpoint_write(_to, True)
 
+
 @external
 def boost(_to: address, _amount: uint256, _endtime: uint256, _from: address = msg.sender):
     if _from != msg.sender and self.isApprovedForAll[_from][msg.sender] == False:
@@ -251,6 +279,7 @@ def boost(_to: address, _amount: uint256, _endtime: uint256, _from: address = ms
             log Approval(_from, msg.sender, allowance - _amount)
 
     self._boost(_from, _to, _amount, _endtime)
+
 
 @external
 def checkpoint_user(_user: address):
@@ -267,7 +296,15 @@ def approve(_spender: address, _value: uint256) -> bool:
 
 
 @external
-def permit(_owner: address, _spender: address, _value: uint256, _deadline: uint256, _v: uint8, _r: bytes32, _s: bytes32) -> bool:
+def permit(
+    _owner: address,
+    _spender: address,
+    _value: uint256,
+    _deadline: uint256,
+    _v: uint8,
+    _r: bytes32,
+    _s: bytes32
+) -> bool:
     assert block.timestamp <= _deadline, 'EXPIRED_SIGNATURE'
 
     nonce: uint256 = self.nonces[_owner]
@@ -280,11 +317,24 @@ def permit(_owner: address, _spender: address, _value: uint256, _deadline: uint2
     )
 
     if _owner.is_contract:
-        sig: Bytes[65] = concat(_abi_encode(_r, _s), slice(convert(_v, bytes32), 31, 1))
+        sig: Bytes[65] = concat(
+            _abi_encode(_r, _s), 
+            slice(convert(_v, bytes32), 31, 1)
+        )
         # reentrancy not a concern since this is a staticcall
-        assert ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL, 'INVALID_SIGNATURE'
+        assert (
+            ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL
+        ), 'INVALID_SIGNATURE'
     else:
-        assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner and _owner != ZERO_ADDRESS, 'INVALID_SIGNATURE'
+        recovered_address: address = ecrecover(
+            digest, 
+            convert(_v, uint256), 
+            convert(_r, uint256), 
+            convert(_s, uint256)
+        )
+        assert (
+            recovered_address == _owner and _owner != ZERO_ADDRESS
+        ), 'INVALID_SIGNATURE'
 
     self.allowance[_owner][_spender] = _value
     self.nonces[_owner] = nonce + 1
@@ -347,7 +397,10 @@ def received_balance(_user: address) -> uint256:
 @external
 def delegable_balance(_user: address) -> uint256:
     point: Point = self._checkpoint_read(_user, True)
-    return VotingEscrow(VE).balanceOf(_user) - (point.bias - point.slope * (block.timestamp - point.ts))
+    current_delegated: uint256 = (
+        point.bias - point.slope * (block.timestamp - point.ts)
+    )
+    return VotingEscrow(VE).balanceOf(_user) - current_delegated
 
 
 @pure
@@ -389,9 +442,47 @@ def DOMAIN_SEPARATOR() -> bytes32:
 def VE() -> address:
     return VE
 
-# Preseeding
-# Some initial boosts are created and blanket approvals granted. This action can only be performed once (ideally early
-# in the contract's lifetime)
+
+# Called once for each existing active boost. We're migrating from a previous
+# version of the contract that is semantically equivalent, and the `boost`
+# function is unchanged (other than the infinite approvals also granted
+# during the migration).
+#
+# Though we can query Dune for all existing boosts - using traces, since the
+# event by itself is insufficient - we cannot simply "replay" the same boost
+# call, since the boost function hard-codes the current timestamp.
+#
+# We could modify the internal `_boost` function to take a start_time, and
+# pass in block.timestamp from the external `boost` - but this doesn't work
+# either, since the checkpoint functions also use the current timestamp.
+#
+# What we need to do is migrate the full contract state, as modified by each
+# boost call. Four storage fields are affected, and thankfully they're all
+# public, so they can be directly read from the previous boost contract:
+# `delegated`, `received`, and the corresponding two "slope_changes"
+# variables.
+#
+# The first two are straightforward, and can simply be copied. The tricky
+# part is getting all required slope changes, since these are historical.
+# Further complicating the copy is the fact that, like mappings in Solidity,
+# HashMaps are not iterable; we need to "know" at migration time which
+# entries might have non-zero values.
+#
+# So, nothing for it but to examine the checkpoint functions in great detail
+# to figure out what values would have been set by the existing boosts. The
+# tricky part of the tricky part is that this doesn't depend *only* on the
+# values of the boost parameters, but also on the previous state of the system!
+#
+# Since everything occurs on WEEK boundaries, you might think all we have to
+# do is copy every week from the start_time to the current timestamp, since
+# we know there can't be entries from the future. But close examination of
+# the checkpoint functions reveals that the history contributing to the
+# current "point" starts at the *last* boost or checkpoint, which is
+# less than or equal to the start_time.
+#
+# So in fact we don't need the start_time at all, and can just start the
+# history at the last checkpoint. (We know there must be one, since we're
+# copying existing boosts, which themselves create a checkpoint.)
 
 @internal
 def _migrate_boost(_from: address, _to: address, _end_time: uint256):
@@ -413,17 +504,20 @@ def _migrate_boost(_from: address, _to: address, _end_time: uint256):
     self.received[_from] = old_received_from_point
     self.received[_to] = old_received_to_point
 
-    # Determine loop bounds using .ts from prior checkpoints
-    start_delegated: uint256 = (old_delegated_from_point.ts / WEEK) * WEEK
-    start_received: uint256 = (old_received_to_point.ts / WEEK) * WEEK
-
     # Copy historical delegated slope values from the first delegated boost
+    # Determine loop bounds using .ts from the prior checkpoints
+    start_delegated: uint256 = (old_delegated_from_point.ts / WEEK) * WEEK
+
+    t: uint256 = start_delegated
     slope_from: uint256 = 0
     slope_to: uint256 = 0
 
-    t: uint256 = start_delegated
     for _ in range(255):
         slope_from = BoostV2(BOOST_V2).delegated_slope_changes(_from, t)
+
+        # This is a potentially expensive call; check for zero to prevent
+        # unnecessary storage writes
+
         if slope_from != 0:
             self.delegated_slope_changes[_from][t] = slope_from
 
@@ -445,6 +539,9 @@ def _migrate_boost(_from: address, _to: address, _end_time: uint256):
         self.delegated_slope_changes[_to][_end_time] = slope_to
 
     # Copy historical received slope values from the first received boost
+    # Determine loop bounds using .ts from the prior checkpoints
+    start_received: uint256 = (old_received_to_point.ts / WEEK) * WEEK
+
     t = start_received
     for _ in range(255):
         slope_from = BoostV2(BOOST_V2).received_slope_changes(_from, t)
@@ -468,10 +565,26 @@ def _migrate_boost(_from: address, _to: address, _end_time: uint256):
     if slope_to != 0:
         self.received_slope_changes[_to][_end_time] = slope_to
 
+
+# Called for each delegator/operator pair initialized in the constructor.
+# The `delegator` is the BAL locker for the protocol (Stake DAO or Tetu),
+# and the `operator` is the account authorized to create boosts "from"
+# the locker contract.
+#
+# This is necessary because the locker contracts themselves cannot call
+# "boost" on this contract.
+
 @internal
 def _setApprovalForAll(_delegator: address, _operator: address):
     self.isApprovedForAll[_delegator][_operator] = True
     log ApprovalForAll(_delegator, _operator)
+
+
+# Migration from veBoost V2 to V2.1. No semantic changes, just migrating current
+# active boosts, and setting infinite approvals for Stake DAO and Tetu accounts,
+# enabling their respective BAL lockers to participate in boosts.
+#
+# This action can only be performed once (ideally early in the contract's lifetime)
 
 @external
 def migrate():
@@ -480,7 +593,9 @@ def migrate():
 
     for i in range(MAX_PRESEEDED_BOOSTS):
         boost_call: MigrateBoostCall = self.preseeded_boost_calls[i]
-        if boost_call._from != ZERO_ADDRESS:
+        # Skip this one if the boost expired after deployment and before migration, or
+        # if we've gone off the end of the valid ones
+        if boost_call._from != ZERO_ADDRESS and boost_call.end_time > block.timestamp:
             self._migrate_boost(
                 boost_call._from,
                 boost_call.to,
