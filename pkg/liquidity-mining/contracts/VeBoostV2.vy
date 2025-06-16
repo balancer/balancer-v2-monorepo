@@ -91,10 +91,6 @@ received_slope_changes: public(HashMap[address, HashMap[uint256, uint256]])
 # Flag to ensure migration is only performed once
 migrated: public(bool)
 
-# Checked on calls to `boost`, enabling certain Stake DAO and Tetu accounts
-# to create boosts on behalf of their respective lockers
-isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
-
 MAX_PRESEEDED_BOOSTS: constant(uint256) = 10
 preseeded_boost_calls: public(MigrateBoostCall[MAX_PRESEEDED_BOOSTS])
 
@@ -271,7 +267,7 @@ def _boost(_from: address, _to: address, _amount: uint256, _endtime: uint256):
 
 @external
 def boost(_to: address, _amount: uint256, _endtime: uint256, _from: address = msg.sender):
-    if _from != msg.sender and self.isApprovedForAll[_from][msg.sender] == False:
+    if _from != msg.sender:
         allowance: uint256 = self.allowance[_from][msg.sender]
         # reduce approval if necessary
         if allowance != MAX_UINT256:
@@ -576,7 +572,7 @@ def _migrate_boost(_from: address, _to: address, _end_time: uint256):
 
 @internal
 def _setApprovalForAll(_delegator: address, _operator: address):
-    self.isApprovedForAll[_delegator][_operator] = True
+    self.allowance[_delegator][_operator] = MAX_UINT256
     log ApprovalForAll(_delegator, _operator)
 
 
