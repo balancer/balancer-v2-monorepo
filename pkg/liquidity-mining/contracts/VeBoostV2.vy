@@ -10,10 +10,6 @@ event Approval:
     _spender: indexed(address)
     _value: uint256
 
-event ApprovalForAll:
-    _owner: indexed(address)
-    _operator: indexed(address)
-
 event Transfer:
     _from: indexed(address)
     _to: indexed(address)
@@ -573,7 +569,7 @@ def _migrate_boost(_from: address, _to: address, _end_time: uint256):
 @internal
 def _setApprovalForAll(_delegator: address, _operator: address):
     self.allowance[_delegator][_operator] = MAX_UINT256
-    log ApprovalForAll(_delegator, _operator)
+    log Approval(_delegator, _operator, MAX_UINT256)
 
 
 # Migration from veBoost V2 to V2.1. No semantic changes, just migrating current
