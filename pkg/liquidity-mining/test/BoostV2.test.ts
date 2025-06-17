@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployVyper } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256 as MAX_DEADLINE, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { signPermit } from '@balancer-labs/balancer-js';
@@ -12,6 +12,23 @@ import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VeBoostV2', () => {
+  /* Doesn't work with regular deploy and objects:
+  type CreateBoostCall = {
+    from: string;
+    to: string;
+    end_time: number;
+  };
+
+  type SetApprovalForAllCall = {
+    operator: string;
+    delegator: string;
+  };
+
+  let PreseededBoostCalls: CreateBoostCall[];
+  let PreseededApprovalCalls: SetApprovalForAllCall[]; */
+
+  const MAX_PRESEED = 10;
+
   let boost: Contract;
   let holder: SignerWithAddress, spender: SignerWithAddress;
 
@@ -20,7 +37,52 @@ describe('VeBoostV2', () => {
   });
 
   sharedBeforeEach('deploy veBoostV2', async () => {
-    boost = await deploy('VeBoostV2', { args: [ZERO_ADDRESS, ZERO_ADDRESS] });
+    /* Doesn't work with regular deploy and objects:
+    const args = [
+      ZERO_ADDRESS,
+      new Array<(typeof PreseededBoostCalls)[number]>(MAX_PRESEED).fill({
+        from: ZERO_ADDRESS,
+        to: ZERO_ADDRESS,
+        end_time: 0,
+      }),
+      new Array<(typeof PreseededApprovalCalls)[number]>(MAX_PRESEED).fill({
+        operator: ZERO_ADDRESS,
+        delegator: ZERO_ADDRESS,
+      }),
+    ];
+
+    boost = await deploy('VeBoostV2', { args });*/
+
+    const preseededBoostCalls = Array(MAX_PRESEED)
+      .fill(null)
+      .map(() => [
+        ZERO_ADDRESS, // _from
+        ZERO_ADDRESS, // to
+        0, // end_time
+      ]);
+
+    const preseededApprovalCalls = Array(MAX_PRESEED)
+      .fill(null)
+      .map(() => [
+        ZERO_ADDRESS, // operator
+        ZERO_ADDRESS, // delegator
+      ]);
+
+    boost = await deployVyper('VeBoostV2', {
+      args: [ZERO_ADDRESS, ZERO_ADDRESS, preseededBoostCalls, preseededApprovalCalls],
+    });
+  });
+
+  describe('preseed', () => {
+    it('can call migration', async () => {
+      await boost.migrate();
+    });
+
+    it('cannot be called twice', async () => {
+      await boost.migrate();
+
+      await expect(boost.migrate()).to.be.reverted;
+    });
   });
 
   describe('info', () => {
@@ -33,7 +95,7 @@ describe('VeBoostV2', () => {
     });
 
     it('sets up the version properly', async () => {
-      expect(await boost.version()).to.be.equal('v2.0.0');
+      expect(await boost.version()).to.be.equal('v2.1.0');
     });
   });
 
