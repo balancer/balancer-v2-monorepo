@@ -27,7 +27,7 @@ import "../RecoveryMode.sol";
 
 /**
  * @dev The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
- * value), so for swaps that need this value, we would have to to fetch it ourselves from the
+ * value), so for swaps that need this value, we would have to fetch it ourselves from the
  * ProtocolFeePercentagesProvider. Additionally, other protocol fee types (such as Yield or AUM) can only be obtained
  * by making said call.
  *

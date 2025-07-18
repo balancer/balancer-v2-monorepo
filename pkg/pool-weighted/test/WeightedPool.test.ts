@@ -68,7 +68,7 @@ describe('WeightedPool', function () {
         // Check that the real invariant is has dropped as a result of the exit.
         expect(realPostExitInvariant).to.be.lt(preExitInvariant);
 
-        // On disabling recovery mode we expect the `lastPostJoinExitInvariant` to be be equal to the current value.
+        // On disabling recovery mode we expect the `lastPostJoinExitInvariant` to be equal to the current value.
         await pool.disableRecoveryMode();
         const updatedLastPostJoinExitInvariant = await pool.getLastPostJoinExitInvariant();
         expect(updatedLastPostJoinExitInvariant).to.be.almostEqual(realPostExitInvariant);

@@ -149,7 +149,7 @@ describe('DistributionScheduler', () => {
           });
 
           context('when no rewards currently exist for this gauge', () => {
-            it('updates the the head node to point at the new node', async () => {
+            it('updates the head node to point at the new node', async () => {
               expect(await getNextNodeKey(HEAD)).to.be.eq(0);
 
               await scheduleDistribution(amount, startTime);
