@@ -138,7 +138,7 @@ contract CircuitBreakerLibTest is Test {
             upperBound
         );
 
-        // We now model the weight of the the token changing so `referenceWeight` becomes `newWeight`.
+        // We now model the weight of the token changing so `referenceWeight` becomes `newWeight`.
         // As a result we can't use the cached bound ratios and have to recalculate them on the fly.
         uint256 dynamicCost = gasleft();
 

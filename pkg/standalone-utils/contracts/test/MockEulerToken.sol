@@ -28,7 +28,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
- * @notice Allows users to to `deposit` into and `withdraw` from an eToken. The eToken
+ * @notice Allows users to `deposit` into and `withdraw` from an eToken. The eToken
  * serves as a receipt Token.
  */
 contract MockEulerToken is IEulerToken, TestToken {
