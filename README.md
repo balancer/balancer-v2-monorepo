@@ -45,7 +45,7 @@ $ nvm use
 This repository uses git submodules; use `--recurse-submodules` option when cloning. For example, using https:
 
 ```bash
-$ git clone --recurse-submodules https://github.com/balancer-labs/balancer-v2-monorepo.git
+$ git clone --recurse-submodules https://github.com/balancer/balancer-v2-monorepo.git
 ```
 
 ## Build and Test
