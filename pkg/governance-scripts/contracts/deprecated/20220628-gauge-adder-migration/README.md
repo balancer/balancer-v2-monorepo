@@ -11,4 +11,4 @@ This contract swaps out the GaugeAdder contract which has permissions to add gau
 
 ## Deployment
 
-[Deployment task here](https://github.com/balancer/balancer-deployments/tasks/scripts/20220721-gauge-adder-migration-coordinator/)
+[Deployment task here](https://github.com/balancer/balancer-deployments/tree/master/v2/scripts/20220721-gauge-adder-migration-coordinator)
