@@ -1,4 +1,4 @@
-# <img src="../../logo.svg" alt="Balancer" height="128px">
+# <img src="../logo.svg" alt="Balancer" height="128px">
 
 # Balancer V2 Audits
 
