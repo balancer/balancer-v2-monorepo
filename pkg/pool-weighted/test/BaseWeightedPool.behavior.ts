@@ -543,7 +543,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
           expect(result.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
         });
 
-        it('fails if more BTP needed', async () => {
+        it('fails if more BPT needed', async () => {
           // Call should fail because we are requesting a max amount lower than the actual needed
           const amountsOut = initialBalances;
           const maximumBptIn = previousBptBalance.div(2);
