@@ -343,7 +343,7 @@ abstract contract NewBasePool is
      * Returns the amount of BPT to mint, and the token amounts the Pool will receive in return.
      *
      * Minted BPT will be sent to `recipient`, except for _getMinimumBpt(), which will be deducted from this amount and
-     * sent to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BTP
+     * sent to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BPT
      * from ever dropping below that value, and ensuring `_onInitializePool` can only be called once in the entire
      * Pool's lifetime.
      *
