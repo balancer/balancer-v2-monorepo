@@ -552,7 +552,7 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-pool-stable]:         exit BPT in for exact tokens out
 ➤ [@balancer-labs/v2-pool-stable]:           ✓ grants exact tokens for bpt (294ms)
 ➤ [@balancer-labs/v2-pool-stable]:           ✓ can tell how much BPT it will have to receive
-➤ [@balancer-labs/v2-pool-stable]:           ✓ fails if more BTP needed
+➤ [@balancer-labs/v2-pool-stable]:           ✓ fails if more BPT needed
 ➤ [@balancer-labs/v2-pool-stable]:           ✓ reverts if paused
 ➤ [@balancer-labs/v2-pool-stable]:       swaps
 ➤ [@balancer-labs/v2-pool-stable]:         given in
@@ -672,7 +672,7 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-pool-stable]:         exit BPT in for exact tokens out
 ➤ [@balancer-labs/v2-pool-stable]:           ✓ grants exact tokens for bpt (257ms)
 ➤ [@balancer-labs/v2-pool-stable]:           ✓ can tell how much BPT it will have to receive
-➤ [@balancer-labs/v2-pool-stable]:           ✓ fails if more BTP needed
+➤ [@balancer-labs/v2-pool-stable]:           ✓ fails if more BPT needed
 ➤ [@balancer-labs/v2-pool-stable]:           ✓ reverts if paused (280ms)
 ➤ [@balancer-labs/v2-pool-stable]:       swaps
 ➤ [@balancer-labs/v2-pool-stable]:         given in
@@ -1198,7 +1198,7 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-pool-weighted]:         exit BPT in for exact tokens out
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ grants exact tokens for bpt
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ can tell how much BPT it will have to receive
-➤ [@balancer-labs/v2-pool-weighted]:           ✓ fails if more BTP needed
+➤ [@balancer-labs/v2-pool-weighted]:           ✓ fails if more BPT needed
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ reverts if paused
 ➤ [@balancer-labs/v2-pool-weighted]:       onSwap
 ➤ [@balancer-labs/v2-pool-weighted]:         given in
@@ -1285,7 +1285,7 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-pool-weighted]:         exit BPT in for exact tokens out
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ grants exact tokens for bpt
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ can tell how much BPT it will have to receive
-➤ [@balancer-labs/v2-pool-weighted]:           ✓ fails if more BTP needed
+➤ [@balancer-labs/v2-pool-weighted]:           ✓ fails if more BPT needed
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ reverts if paused
 ➤ [@balancer-labs/v2-pool-weighted]:       onSwap
 ➤ [@balancer-labs/v2-pool-weighted]:         given in
@@ -1635,7 +1635,7 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-pool-weighted]:         exit BPT in for exact tokens out
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ grants exact tokens for bpt
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ can tell how much BPT it will have to receive
-➤ [@balancer-labs/v2-pool-weighted]:           ✓ fails if more BTP needed
+➤ [@balancer-labs/v2-pool-weighted]:           ✓ fails if more BPT needed
 ➤ [@balancer-labs/v2-pool-weighted]:           ✓ reverts if paused
 ➤ [@balancer-labs/v2-pool-weighted]:       onSwap
 ➤ [@balancer-labs/v2-pool-weighted]:         given in
