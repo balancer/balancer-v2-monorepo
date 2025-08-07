@@ -32,7 +32,7 @@ library ExternalCallLib {
             // - `QueryError(int256[])` (used by `Vault.queryBatchSwap`)
 
             // We only bubble up the revert reason if it doesn't match the any of the selectors for these error
-            // sigatures, otherwise we revert with a new error message flagging that the revert was malicious.
+            // signatures, otherwise we revert with a new error message flagging that the revert was malicious.
             let error := and(
                 mload(add(errorData, 0x20)),
                 0xffffffff00000000000000000000000000000000000000000000000000000000
