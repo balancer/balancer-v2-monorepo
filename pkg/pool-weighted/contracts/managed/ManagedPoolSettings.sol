@@ -67,7 +67,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 95e16; // 95%
 
     // We impose a minimum swap fee to create some buy/sell spread, and prevent the Pool from being drained through
-    // repeated interactions. We should not need this since we explicity always round favoring the Pool, but a minimum
+    // repeated interactions. We should not need this since we explicitly always round favoring the Pool, but a minimum
     // swap fee adds an extra safeguard.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
 

@@ -20,7 +20,7 @@ import "./IStakelessGauge.sol";
 
 /**
  * @title Stakeless Gauge Checkpointer interface
- * @notice Manages checkpoints for L2 and mainnet stakeless root gauges, allowing to perform mutiple checkpoints in a
+ * @notice Manages checkpoints for L2 and mainnet stakeless root gauges, allowing to perform multiple checkpoints in a
  * single call.
  * @dev Supports gauge types registered in `GaugeAdder`.
  * Gauges to be checkpointed need to be added to the controller beforehand.

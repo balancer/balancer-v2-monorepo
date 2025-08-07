@@ -71,7 +71,7 @@ interface IProtocolFeePercentagesProvider {
 
     /**
      * @dev Returns the current percentage value for `feeType`. This is the preferred mechanism for querying these -
-     * whenever possible, use this fucntion instead of e.g. querying the ProtocolFeesCollector.
+     * whenever possible, use this function instead of e.g. querying the ProtocolFeesCollector.
      */
     function getFeeTypePercentage(uint256 feeType) external view returns (uint256);
 

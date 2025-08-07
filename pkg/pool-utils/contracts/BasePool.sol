@@ -76,7 +76,7 @@ abstract contract BasePool is
 
     // `_miscData` is a storage slot that can be used to store unrelated pieces of information. All pools store the
     // recovery mode flag and swap fee percentage, but `miscData` can be extended to store more pieces of information.
-    // The most signficant bit is reserved for the recovery mode flag, and the swap fee percentage is stored in
+    // The most significant bit is reserved for the recovery mode flag, and the swap fee percentage is stored in
     // the next most significant 63 bits, leaving the remaining 192 bits free to store any other information derived
     // pools might need.
     //
