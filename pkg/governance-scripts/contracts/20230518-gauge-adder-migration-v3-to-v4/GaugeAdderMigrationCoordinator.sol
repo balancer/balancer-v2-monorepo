@@ -45,7 +45,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         ILiquidityGaugeFactory _arbitrumRootGaugeFactory,
         ILiquidityGaugeFactory _optimismRootGaugeFactory,
         ILiquidityGaugeFactory _gnosisRootGaugeFactory,
-        ILiquidityGaugeFactory _polygonZkvmMRootGaugeFactory,
+        ILiquidityGaugeFactory _polygonZkEvmRootGaugeFactory,
         address _liquidityMiningCommitteeMultisig,
         address _gaugeCheckpointingMultisig
     ) BaseCoordinator(authorizerAdaptor) {
@@ -56,7 +56,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         arbitrumRootGaugeFactory = _arbitrumRootGaugeFactory;
         optimismRootGaugeFactory = _optimismRootGaugeFactory;
         gnosisRootGaugeFactory = _gnosisRootGaugeFactory;
-        polygonZkEvmRootGaugeFactory = _polygonZkvmMRootGaugeFactory;
+        polygonZkEvmRootGaugeFactory = _polygonZkEvmRootGaugeFactory;
         liquidityMiningCommitteeMultisig = _liquidityMiningCommitteeMultisig;
         gaugeCheckpointingMultisig = _gaugeCheckpointingMultisig;
 
