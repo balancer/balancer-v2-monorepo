@@ -501,7 +501,7 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
             if (nextWeekToCheckpoint >= nextUserPoint.ts && userEpoch <= maxUserEpoch) {
                 // The week being considered is contained in a user epoch after that described by `currentUserPoint`.
                 // We then shift `nextUserPoint` into `currentUserPoint` and query the Point for the next user epoch.
-                // We do this in order to step though epochs until we find the first epoch starting after
+                // We do this in order to step through epochs until we find the first epoch starting after
                 // `nextWeekToCheckpoint`, making the previous epoch the one that contains `nextWeekToCheckpoint`.
                 userEpoch += 1;
                 currentUserPoint = nextUserPoint;
