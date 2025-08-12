@@ -11,7 +11,7 @@ jobs:
   deployment:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -24,7 +24,7 @@ jobs:
   single-pair-swap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -37,7 +37,7 @@ jobs:
   multihop-swap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -50,7 +50,7 @@ jobs:
   join-exit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -63,7 +63,7 @@ jobs:
   relayer:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
