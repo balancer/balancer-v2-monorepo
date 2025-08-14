@@ -11,7 +11,7 @@ describe("Contract under test")
       it("individual tests within a given configuration (e.g., 'caller is owner', 'caller is not owner', etc.)")
 ```
       
-It is important that the text description accurately reflects the content of the test, and that *only* the feature describe is tested. Ideally, the concatenation of descriptive texts for any given test forms a clear, understandable narrative.
+It is important that the text description accurately reflects the content of the test, and that *only* the feature described is tested. Ideally, the concatenation of descriptive texts for any given test forms a clear, understandable narrative.
 
 ## Test Coverage
 
