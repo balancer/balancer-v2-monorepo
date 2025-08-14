@@ -75,7 +75,7 @@ abstract contract LinearPoolRebalancer {
      * @notice Rebalance a Linear Pool from an asset manager to maintain optimal operating conditions.
      * @dev This function performs the same action as `rebalance`, except this also works in scenarios where the Pool
      * is in the no-fee zone. This is done by first taking `extraMain` tokens from the caller, to cover for rounding
-     * errors that are normally offset by acccumulated fees. Any extra tokens unused during the rebalance are sent to
+     * errors that are normally offset by accumulated fees. Any extra tokens unused during the rebalance are sent to
      * the recipient as usual.
      */
     function rebalanceWithExtraMain(address recipient, uint256 extraMain) external returns (uint256) {
