@@ -2,7 +2,7 @@
 
 # Balancer V2 Audits
 
-This directory the reports of audits performed on Balancer smart contracts by different security firms.
+This directory contains the reports of audits performed on Balancer smart contracts by different security firms.
 See the [deployment repo](https://github.com/balancer/balancer-deployments) for all contract versions and statuses.
 
 | :warning: | Audits are not a guarantee of correctness. Some of the contracts were modified after they were audited.      |
