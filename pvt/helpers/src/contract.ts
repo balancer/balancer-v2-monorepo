@@ -1,9 +1,7 @@
-import { ethers } from 'hardhat';
+import { ethers, artifacts, Artifact } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { Artifacts } from 'hardhat/internal/artifacts';
-import { Artifact } from 'hardhat/types';
 import path from 'path';
 import { Dictionary } from 'lodash';
 
@@ -30,7 +28,7 @@ export async function deploy(
 
   const artifact = getArtifact(contract);
 
-  const factory = await ethers.getContractFactoryFromArtifact(artifact, { signer: from, libraries });
+  const factory = await ethers.getContractFactory(artifact.abi, artifact.bytecode, from);
   const instance = await factory.deploy(...args);
 
   return instance.deployed();
@@ -67,7 +65,6 @@ export function getArtifact(contract: string): Artifact {
     artifactsPath = `${packagePath}/artifacts`;
   }
 
-  const artifacts = new Artifacts(artifactsPath);
   return artifacts.readArtifactSync(contract.split('/').slice(-1)[0]);
 }
 
