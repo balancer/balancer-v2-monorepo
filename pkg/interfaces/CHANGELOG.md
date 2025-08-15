@@ -36,7 +36,7 @@
 - Refactor: renamed `IBalancerMinter` to `IMainnetBalancerMinter`.
   - `IMainnetBalancerMinter` now implements reduced version of previous `IBalancerMinter` and `ILMGetters`.
 
-## 0.3.0 (20223-02-08)
+## 0.3.0 (2023-02-08)
 
 ### New Features
 
