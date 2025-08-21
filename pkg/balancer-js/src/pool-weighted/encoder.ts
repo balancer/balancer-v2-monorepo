@@ -66,7 +66,7 @@ export class WeightedPoolEncoder {
   /**
    * Encodes the userData parameter for exiting a WeightedPool by removing a single token in return for an exact amount of BPT
    * @param bptAmountIn - the amount of BPT to be burned
-   * @param enterTokenIndex - the index of the token to removed from the pool
+   * @param exitTokenIndex - the index of the token to removed from the pool
    */
   static exitExactBPTInForOneTokenOut = (bptAmountIn: BigNumberish, exitTokenIndex: number): string =>
     defaultAbiCoder.encode(
