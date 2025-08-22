@@ -21,7 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
 
 /**
  * @notice Forwards calls from LayerZero's system to a custom hook whenever a veBAL balance is updated for a given user
- * in a L2 chain.
+ * on a L2 chain.
  * @dev The delegation contract can be set so that e.g. Child Chain Gauges are updated automatically whenever there is
  * a veBAL balance update.
  */
