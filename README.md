@@ -117,3 +117,6 @@ Most of the Solidity source code is licensed under the GNU General Public Licens
 - All files in the `openzeppelin` directory of the [`v2-solidity-utils`](./pkg/solidity-utils) package are based on the [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) library, and as such are licensed under the MIT License: see [LICENSE](./pkg/solidity-utils/contracts/openzeppelin/LICENSE).
 - The `LogExpMath` contract from the [`v2-solidity-utils`](./pkg/solidity-utils) package is licensed under the MIT License.
 - All other files, including tests and the [`pvt`](./pvt) directory are unlicensed.
+
+## Math References
+- See Balancer AMM math overview: https://docs.balancer.fi/concepts/math/overview
