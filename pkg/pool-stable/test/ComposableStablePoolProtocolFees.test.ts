@@ -281,7 +281,7 @@ describe('ComposableStablePoolProtocolFees', () => {
 
       const PREMINTED_BPT = fp(9e9); // This is the BPT normally stored in the Pool's accounting at the Vault
 
-      // We want a Pool that is relatively balaced so that, with a reasonably high amplification factor, each token has
+      // We want a Pool that is relatively balanced so that, with a reasonably high amplification factor, each token has
       // similar prices
       const MIN_POOL_TOKEN_BALANCE = 150e6;
       const MAX_POOL_TOKEN_BALANCE = 200e6;
@@ -491,7 +491,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               const rates = range(numberOfTokens).map(() => fp(1 + random(MIN_SWAP_RATE_DELTA, MAX_SWAP_RATE_DELTA)));
               await Promise.all(rateProviders.map((rateProvider, i) => rateProvider.mockRate(rates[i])));
 
-              // We need to get the Pool to update the rate cache of all of its tokens, so that there balance change is
+              // We need to get the Pool to update the rate cache of all of its tokens, so that their balance change is
               // seen as a change in rates from old to current.
               await tokens.asyncMap((token) => pool.updateTokenRateCache(token.address));
 
