@@ -639,7 +639,7 @@ describe('LinearPool', function () {
       const expectedBptScalingFactor = FP_ONE;
       const expectedMainTokenScalingFactor = FP_ONE;
 
-      it('adapt the scaling factors with the price rate', async () => {
+      it('adapts the scaling factors with the price rate', async () => {
         const scalingFactors = await pool.getScalingFactors();
 
         const expectedWrappedTokenScalingFactor = scaleRate(await pool.getWrappedTokenRate());
