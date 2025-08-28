@@ -600,7 +600,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * token. The final wrapped token scaling factor is this value multiplied by the wrapped token's decimal scaling
      * factor.
      *
-     * WARNING: care must be take if calling external contracts from here, even `view` or `pure` functions. If said
+     * WARNING: care must be taken if calling external contracts from here, even `view` or `pure` functions. If said
      * calls revert, any revert data must not be bubbled-up directly but instead passed to `bubbleUpNonMaliciousRevert`
      * from `ExternalCallLib` (located in the `v2-pool-utils` package). See the following example:
      *
