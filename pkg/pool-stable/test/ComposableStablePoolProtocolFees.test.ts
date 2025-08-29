@@ -281,7 +281,7 @@ describe('ComposableStablePoolProtocolFees', () => {
 
       const PREMINTED_BPT = fp(9e9); // This is the BPT normally stored in the Pool's accounting at the Vault
 
-      // We want a Pool that is relatively balanced so that, with a reasonably high amplification factor, each token has
+      // We want a Pool that is relatively balanced so that, with a reasonably high amplification factor, each token
       // has similar prices
       const MIN_POOL_TOKEN_BALANCE = 150e6;
       const MAX_POOL_TOKEN_BALANCE = 200e6;
