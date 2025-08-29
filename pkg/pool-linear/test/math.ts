@@ -241,8 +241,8 @@ export function calcWrappedOutPerBptIn(
   return toFp(wrappedOut);
 }
 
-export function calcInvariant(mainNomimalBalance: Decimal, wrappedBalance: Decimal): Decimal {
-  return mainNomimalBalance.add(wrappedBalance);
+export function calcInvariant(mainNominalBalance: Decimal, wrappedBalance: Decimal): Decimal {
+  return mainNominalBalance.add(wrappedBalance);
 }
 
 export function toNominal(real: Decimal, params: Params): Decimal {
