@@ -751,7 +751,7 @@ describe('ComposableStablePoolRates', () => {
         itAdaptsTheScalingFactorsCorrectly();
       });
 
-      context('with price rates belows 1', () => {
+      context('with price rates below 1', () => {
         sharedBeforeEach('mock rate', async () => {
           await allTokens.asyncEach(async (token, i) => {
             if (allRateProviders[i] === ZERO_ADDRESS) return;
