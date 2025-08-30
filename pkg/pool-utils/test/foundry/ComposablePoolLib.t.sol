@@ -55,7 +55,7 @@ contract ComposablePoolLibTest is Test {
 
         assertEq(balances.length, expectedBalancesWithoutBpt.length);
         for (uint256 i = 0; i < expectedBalancesWithoutBpt.length; i++) {
-            assertEq(address(balances[i]), address(expectedBalancesWithoutBpt[i]));
+            assertEq(balances[i], expectedBalancesWithoutBpt[i]);
         }
     }
 }
