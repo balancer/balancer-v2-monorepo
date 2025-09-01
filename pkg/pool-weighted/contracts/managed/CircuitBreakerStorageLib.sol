@@ -154,7 +154,7 @@ library CircuitBreakerStorageLib {
      *
      * If the external price drops, all else being equal, the pool would be arbed until the percent drop in spot
      * price equaled the external price drop. Since during this process the *internal* pool price would be
-     * above market, the arbers would sell cheap tokens to our poor unwitting pool at inflated prices, raising
+     * above market, the arbitrageurs would sell cheap tokens to our poor unwitting pool at inflated prices, raising
      * the balance of the depreciating token, and lowering the balance of another token (WETH in this example).
      *
      * Using weighted math, and assuming for simplicity that the sum of all weights is 1, you can compute the
@@ -174,7 +174,7 @@ library CircuitBreakerStorageLib {
      * of 80% represents 80% of the value of the BPT. An uncorrelated drop in that token's value would drop
      * the value of LP shares much faster than a similar drop in the value of a 20% token. Whatever the value
      * of the bound percentage, as the adjustment factor - B ** (1 - weight) - approaches 1, less adjustment
-     * is necessary: it tracks the relative price movement more closely. Intuitively, this is wny we use the
+     * is necessary: it tracks the relative price movement more closely. Intuitively, this is why we use the
      * complement of the weight. Higher weight = lower exponent = adjustment factor closer to 1.0 = "faster"
      * tracking of value changes.
      *
