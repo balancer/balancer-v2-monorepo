@@ -351,7 +351,7 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
 
     /**
      * @dev Sets the recoveryMode state. The RecoveryModeStateChanged event is emitted in the RecoveryMode
-     * base contract, in `enableRecoveryMode` or `disabledRecoveryMode`, before calling this hook.
+     * base contract, in `enableRecoveryMode` or `disableRecoveryMode`, before calling this hook.
      */
     function _setRecoveryMode(bool enabled) internal virtual override {
         _poolState = LiquidityBootstrappingPoolStorageLib.setRecoveryMode(_poolState, enabled);
