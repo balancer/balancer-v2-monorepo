@@ -471,7 +471,7 @@ describe('ManagedPool', function () {
             const joinSwapResult = await queryExitSwap();
             const joinResult = await queryEquivalentExit();
 
-            // Tokens are leaving the Vault and so is represented as a negative value.
+            // Tokens are leaving the Vault and so are represented as a negative value.
             expect(joinSwapResult[1].mul(-1)).to.be.eq(joinResult.amountsOut[exitTokenIndex]);
           });
         }
