@@ -110,7 +110,7 @@ abstract contract BaseSplitCodeFactory {
     }
 
     /**
-     * @dev Returns the two addresses where the creation code of the contract crated by this factory is stored.
+     * @dev Returns the two addresses where the creation code of the contract created by this factory is stored.
      */
     function getCreationCodeContracts() public view returns (address contractA, address contractB) {
         return (_creationCodeContractA, _creationCodeContractB);
