@@ -19,7 +19,7 @@ $ npm install @balancer-labs/v2-pool-linear
 
 ### Usage
 
-This package includes the [`LinearPool`](./contracts/LinearPool.sol) base condtract. Derived Linear Pool that integrate with the [Aave Protocol](https://aave.com/) and hold [aTokens](https://docs.aave.com/developers/tokens/atoken) as their "Wrapped" token can be found in the [Orb Collective repo](https://github.com/orbcollective/linear-pools).
+This package includes the [`LinearPool`](./contracts/LinearPool.sol) base contract. Derived Linear Pool that integrate with the [Aave Protocol](https://aave.com/) and hold [aTokens](https://docs.aave.com/developers/tokens/atoken) as their "Wrapped" token can be found in the [Orb Collective repo](https://github.com/orbcollective/linear-pools).
 
 However, some users might want to develop their own kind of Linear Pool, potentially integrating with a different protocol. In order to do this, you must inherit the [`LinearPool`](./contracts/LinearPool.sol) contract and implement the `_getWrappedTokenRate()` function:
 
