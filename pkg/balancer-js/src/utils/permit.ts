@@ -25,8 +25,9 @@ export const signPermit = async (
     if (token.version) {
       version = await token.version();
     }
+  // eslint-disable-next-line no-empty
   } catch {
-    // eslint-disable-prev-line no-empty
+    // Version not available, using default
   }
 
   const domain = {
