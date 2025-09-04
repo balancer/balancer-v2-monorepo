@@ -458,7 +458,7 @@ library LogExpMath {
     }
 
     /**
-     * @dev Intrnal high precision (36 decimal places) natural logarithm (ln(x)) with signed 18 decimal fixed point argument,
+     * @dev Internal high precision (36 decimal places) natural logarithm (ln(x)) with signed 18 decimal fixed point argument,
      * for x close to one.
      *
      * Should only be used if x is between LN_36_LOWER_BOUND and LN_36_UPPER_BOUND.
