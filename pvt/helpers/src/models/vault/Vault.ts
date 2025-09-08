@@ -313,7 +313,7 @@ export default class Vault {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
     if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS))
-      throw Error(`Account ${typeof to === 'string' ? to : to.address} already have global permission for ${actionId}`);
+      throw Error(`Account ${typeof to === 'string' ? to : to.address} already has global permission for ${actionId}`);
     return this.authorizer.connect(this.admin).grantPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS);
   }
 
@@ -324,7 +324,7 @@ export default class Vault {
   ): Promise<ContractTransaction | undefined> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), ANY_ADDRESS))
-      throw Error(`Account ${typeof to === 'string' ? to : to.address} already have global permission for ${actionId}`);
+      throw Error(`Account ${typeof to === 'string' ? to : to.address} already has global permission for ${actionId}`);
     if (await this.authorizer.hasPermission(actionId, TypesConverter.toAddress(to), TypesConverter.toAddress(where))) {
       return undefined;
     }
