@@ -37,6 +37,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
+    bytes32 private immutable _setAuthorizerActionId;
 
     // action id => delay
     mapping(bytes32 => uint256) private _grantDelays;
@@ -57,6 +58,10 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     ) TimelockAuthorizerManagement(initialRoot, nextRoot, authorizerAdaptorEntrypoint.getVault(), rootTransferDelay) {
         _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
+
+        _setAuthorizerActionId = IAuthentication(authorizerAdaptorEntrypoint.getVault()).getActionId(
+            IVault.setAuthorizer.selector
+        );
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -150,7 +155,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     function setDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         // If changing the `setAuthorizer` delay itself, then we don't need to compare it to its current value for
         // validity.
-        if (actionId != IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector)) {
+        if (actionId != _setAuthorizerActionId) {
             require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
         }
 
@@ -471,7 +476,6 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * check is therefore simply a way to try to prevent user error, but is not infallible.
      */
     function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
-        bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector);
-        return delay <= _delaysPerActionId[setAuthorizerActionId];
+        return delay <= _delaysPerActionId[_setAuthorizerActionId];
     }
 }
