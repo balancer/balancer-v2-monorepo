@@ -40,7 +40,7 @@ library FixedPoint {
     }
 
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Fixed Point addition is the same as regular checked addition
+        // Fixed Point subtraction is the same as regular checked subtraction
 
         _require(b <= a, Errors.SUB_OVERFLOW);
         uint256 c = a - b;
