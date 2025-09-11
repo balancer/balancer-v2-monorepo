@@ -32,9 +32,9 @@ export function sharedBeforeEach(nameOrFn: string | AsyncFunc, maybeFn?: AsyncFu
       SNAPSHOTS.push(await takeSnapshot());
       initialized = true;
     } else {
-      const shapshot = SNAPSHOTS.pop();
-      if (shapshot === undefined) throw Error('Missing sharedBeforeEach snapshot');
-      await shapshot.restore();
+      const snapshot = SNAPSHOTS.pop();
+      if (snapshot === undefined) throw Error('Missing sharedBeforeEach snapshot');
+      await snapshot.restore();
       SNAPSHOTS.push(await takeSnapshot());
     }
   });
