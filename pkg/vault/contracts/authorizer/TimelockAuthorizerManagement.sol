@@ -87,7 +87,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         //
         //  4) Scheduled delayed executions either target the TimelockAuthorizer directly (such as in
         //    `scheduleRootChange` or `scheduleDelayChange`), in which case this modifier will not revert (as intended,
-        //    given those functions check proper permissions), or explictly forbid targeting the TimelockAuthorizer
+        //    given those functions check proper permissions), or explicitly forbid targeting the TimelockAuthorizer
         //    (in the `schedule` function), making it impossible for the TimelockExecutionHelper to call into it.
         require(msg.sender == address(_executionHelper), "CAN_ONLY_BE_SCHEDULED");
         _;

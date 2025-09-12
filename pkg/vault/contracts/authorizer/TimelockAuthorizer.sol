@@ -37,6 +37,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
     IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
+    bytes32 private immutable _setAuthorizerActionId;
 
     // action id => delay
     mapping(bytes32 => uint256) private _grantDelays;
@@ -57,6 +58,10 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     ) TimelockAuthorizerManagement(initialRoot, nextRoot, authorizerAdaptorEntrypoint.getVault(), rootTransferDelay) {
         _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
         _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
+
+        _setAuthorizerActionId = IAuthentication(authorizerAdaptorEntrypoint.getVault()).getActionId(
+            IVault.setAuthorizer.selector
+        );
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -136,7 +141,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
 
         // Actions with no delay can only be performed by accounts that have the associated permission.
         // However, actions with a non-zero delay cannot be performed by permissioned accounts: they can only be made by
-        // the TimelockAuthorizerExecutionHelper, which works alongisde the TimelockAuthorizer itself to ensure that
+        // the TimelockAuthorizerExecutionHelper, which works alongside the TimelockAuthorizer itself to ensure that
         // executions have been properly scheduled in advance by an authorized party via the `schedule` function.
         return
             _delaysPerActionId[actionId] == 0
@@ -150,7 +155,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     function setDelay(bytes32 actionId, uint256 delay) external override onlyScheduled {
         // If changing the `setAuthorizer` delay itself, then we don't need to compare it to its current value for
         // validity.
-        if (actionId != IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector)) {
+        if (actionId != _setAuthorizerActionId) {
             require(_isDelayShorterThanSetAuthorizer(delay), "DELAY_EXCEEDS_SET_AUTHORIZER");
         }
 
@@ -262,7 +267,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         // Similarly, `setDelay` can only be called if scheduled via `scheduleDelayChange`.
         //
         // For this reason we disallow this function from scheduling calls to functions on the Authorizer to ensure that
-        // these actions can only be scheduled through specialised functions.
+        // these actions can only be scheduled through specialized functions.
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
 
         // We also disallow the TimelockExecutionHelper from attempting to call into itself. Otherwise the above
@@ -319,7 +324,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
         // Note that it is possible for `account` to have permission for an `actionId` in some specific `where`, and
         // then be granted permission over `EVERYWHERE`, resulting in 'duplicate' permissions. This is not an issue per
         // se, but removing these permissions status will require undoing these actions in inverse order.
-        // To avoid these issues, it is recommended to revoke any prior prermissions over specific contracts before
+        // To avoid these issues, it is recommended to revoke any prior permissions over specific contracts before
         // granting an account a global permissions.
 
         _isPermissionGranted[actionId][account][where] = true;
@@ -471,7 +476,6 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * check is therefore simply a way to try to prevent user error, but is not infallible.
      */
     function _isDelayShorterThanSetAuthorizer(uint256 delay) private view returns (bool) {
-        bytes32 setAuthorizerActionId = IAuthentication(getVault()).getActionId(IVault.setAuthorizer.selector);
-        return delay <= _delaysPerActionId[setAuthorizerActionId];
+        return delay <= _delaysPerActionId[_setAuthorizerActionId];
     }
 }
