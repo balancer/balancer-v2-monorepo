@@ -246,6 +246,15 @@ library Errors {
     uint256 internal constant SAFE_CAST_VALUE_CANT_FIT_UINT64 = 442;
     uint256 internal constant UNHANDLED_FEE_TYPE = 443;
     uint256 internal constant BURN_FROM_ZERO = 444;
+    uint256 internal constant VAULT_NOT_SET = 445;
+    uint256 internal constant OWNABLE_UNAUTHORIZED_ACCOUNT = 446;
+    uint256 internal constant OWNABLE_INVALID_OWNER = 447;
+    uint256 internal constant POOL_ALREADY_IN_SET = 448;
+    uint256 internal constant POOL_NOT_IN_SET = 449;
+    uint256 internal constant SENDER_NOT_POOL_SET_MANAGER = 450;
+    uint256 internal constant INVALID_POOL_SET_MANAGER = 451;
+    uint256 internal constant POOL_SET_MANAGER_NOT_UNIQUE = 452;
+    uint256 internal constant INVALID_POOL_SET_ID = 453;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
