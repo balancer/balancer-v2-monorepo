@@ -140,6 +140,7 @@ const balancerErrorCodes: Record<string, string> = {
   '451': 'INVALID_POOL_SET_MANAGER',
   '452': 'POOL_SET_MANAGER_NOT_UNIQUE',
   '453': 'INVALID_POOL_SET_ID',
+  '454': 'POOL_HAS_OWNER',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',

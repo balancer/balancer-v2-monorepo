@@ -255,6 +255,7 @@ library Errors {
     uint256 internal constant INVALID_POOL_SET_MANAGER = 451;
     uint256 internal constant POOL_SET_MANAGER_NOT_UNIQUE = 452;
     uint256 internal constant INVALID_POOL_SET_ID = 453;
+    uint256 internal constant POOL_HAS_OWNER = 454;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
