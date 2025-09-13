@@ -21,7 +21,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.so
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 /// @notice Common code for helper functions that operate on a subset of pools.
-abstract contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication {
+contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication {
+    address private constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
+
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // Counter for generating unique pool set IDs. Must start at 1, since 0 is defined as invalid.
@@ -65,17 +67,24 @@ abstract contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication
     ***************************************************************************/
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function createPoolSet(
-        address initialManager
-    ) external override onlyOwner withValidManager(initialManager) returns (uint256) {
+    function createPoolSet(address initialManager)
+        external
+        override
+        onlyOwner
+        withValidManager(initialManager)
+        returns (uint256)
+    {
         return _createPoolSet(initialManager);
     }
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function createPoolSet(
-        address initialManager,
-        bytes32[] memory newPoolIds
-    ) external override onlyOwner withValidManager(initialManager) returns (uint256 poolSetId) {
+    function createPoolSet(address initialManager, bytes32[] memory newPoolIds)
+        external
+        override
+        onlyOwner
+        withValidManager(initialManager)
+        returns (uint256 poolSetId)
+    {
         poolSetId = _createPoolSet(initialManager);
 
         if (newPoolIds.length > 0) {
@@ -139,14 +148,20 @@ abstract contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication
     ***************************************************************************/
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function addPoolsToSet(uint256 poolSetId, bytes32[] memory newPoolIds) public override onlyOwner withValidPoolSet(poolSetId) {
+    function addPoolsToSet(uint256 poolSetId, bytes32[] memory newPoolIds)
+        public
+        override
+        onlyOwner
+        withValidPoolSet(poolSetId)
+    {
         uint256 numPools = newPoolIds.length;
 
         for (uint256 i = 0; i < numPools; i++) {
             bytes32 poolId = newPoolIds[i];
 
             // Will revert with INVALID_POOL_ID if not a valid pool id.
-            vault.getPool(poolId);
+            (address pool, ) = vault.getPool(poolId);
+            _require(BasePoolAuthorization(pool).getOwner() == _DELEGATE_OWNER, Errors.POOL_HAS_OWNER);
 
             bool addResult = _poolSets[poolSetId].add(poolId);
             _require(addResult, Errors.POOL_ALREADY_IN_SET);
@@ -156,10 +171,12 @@ abstract contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication
     }
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function removePoolsFromSet(
-        uint256 poolSetId,
-        bytes32[] memory poolIds
-    ) public override onlyOwner withValidPoolSet(poolSetId) {
+    function removePoolsFromSet(uint256 poolSetId, bytes32[] memory poolIds)
+        public
+        override
+        onlyOwner
+        withValidPoolSet(poolSetId)
+    {
         uint256 numPools = poolIds.length;
 
         for (uint256 i = 0; i < numPools; i++) {
@@ -187,7 +204,13 @@ abstract contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication
     }
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function getPoolCountForSet(uint256 poolSetId) external view override withValidPoolSet(poolSetId) returns (uint256) {
+    function getPoolCountForSet(uint256 poolSetId)
+        external
+        view
+        override
+        withValidPoolSet(poolSetId)
+        returns (uint256)
+    {
         return _poolSets[poolSetId].length();
     }
 
@@ -197,14 +220,24 @@ abstract contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication
     }
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function isPoolInSet(bytes32 poolId, uint256 poolSetId) external view override withValidPoolSet(poolSetId) returns (bool) {
+    function isPoolInSet(bytes32 poolId, uint256 poolSetId)
+        external
+        view
+        override
+        withValidPoolSet(poolSetId)
+        returns (bool)
+    {
         return _poolSets[poolSetId].contains(poolId);
     }
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function getAllPoolsInSet(
-        uint256 poolSetId
-    ) external view override withValidPoolSet(poolSetId) returns (bytes32[] memory poolIds) {
+    function getAllPoolsInSet(uint256 poolSetId)
+        external
+        view
+        override
+        withValidPoolSet(poolSetId)
+        returns (bytes32[] memory poolIds)
+    {
         return _getPoolsInRange(poolSetId, 0, _poolSets[poolSetId].length());
     }
 
@@ -217,7 +250,11 @@ abstract contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication
         return _getPoolsInRange(poolSetId, from, to);
     }
 
-    function _getPoolsInRange(uint256 poolSetId, uint256 from, uint256 to) internal view returns (bytes32[] memory poolIds) {
+    function _getPoolsInRange(
+        uint256 poolSetId,
+        uint256 from,
+        uint256 to
+    ) internal view returns (bytes32[] memory poolIds) {
         uint256 spanLength = _poolSets[poolSetId].length();
 
         _require(from <= to && to <= spanLength && from < spanLength, Errors.OUT_OF_BOUNDS);
@@ -267,7 +304,11 @@ abstract contract PoolSwapFeeHelper is IPoolSwapFeeHelper, OwnableAuthentication
     ***************************************************************************/
 
     /// @inheritdoc IPoolSwapFeeHelper
-    function setSwapFeePercentage(bytes32 poolId, uint256 swapFeePercentage) public override withValidPoolForSender(poolId) {
+    function setSwapFeePercentage(bytes32 poolId, uint256 swapFeePercentage)
+        public
+        override
+        withValidPoolForSender(poolId)
+    {
         (address pool, ) = vault.getPool(poolId);
 
         BasePool(pool).setSwapFeePercentage(swapFeePercentage);
