@@ -215,7 +215,7 @@ interface IPoolSwapFeeHelper {
     /**
      * @notice Set the swap fee percentage on a given pool.
      * @dev This is a permissioned function. Governance must grant this contract permission to call
-     * `setSwapFeePercentage` on the pool.
+     * `setSwapFeePercentage` on the pool. Since action ids are factory-based, this must be done for each pool type.
      *
      * @param poolId The ID of the pool
      * @param swapFeePercentage The new swap fee percentage
