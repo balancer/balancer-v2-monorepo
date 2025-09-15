@@ -290,7 +290,7 @@ describe('AssetTransfersHandler', function () {
           const recipientBalanceBefore = await ethers.provider.getBalance(recipient.address);
 
           await handler.sendAsset(eth, amount, recipient.address, toInternalBalance);
-          eth;
+
           const recipientBalanceAfter = await ethers.provider.getBalance(recipient.address);
 
           expect(recipientBalanceAfter.sub(recipientBalanceBefore)).to.equal(amount);
