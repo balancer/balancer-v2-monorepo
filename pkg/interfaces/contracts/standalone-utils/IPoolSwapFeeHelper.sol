@@ -193,7 +193,11 @@ interface IPoolSwapFeeHelper {
      * @param to End index
      * @return poolIds List of pool IDs
      */
-    function getPoolsInSet(uint256 poolSetId, uint256 from, uint256 to) external view returns (bytes32[] memory poolIds);
+    function getPoolsInSet(
+        uint256 poolSetId,
+        uint256 from,
+        uint256 to
+    ) external view returns (bytes32[] memory poolIds);
 
     /**
      * @notice Utility function to predict the next pool set id.
