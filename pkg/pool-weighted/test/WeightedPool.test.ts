@@ -65,7 +65,7 @@ describe('WeightedPool', function () {
         await pool.recoveryModeExit({ from: lp, bptIn: lpBptBalance.div(2) });
         const realPostExitInvariant = await pool.estimateInvariant();
 
-        // Check that the real invariant is has dropped as a result of the exit.
+        // Check that the real invariant has dropped as a result of the exit.
         expect(realPostExitInvariant).to.be.lt(preExitInvariant);
 
         // On disabling recovery mode we expect the `lastPostJoinExitInvariant` to be equal to the current value.
