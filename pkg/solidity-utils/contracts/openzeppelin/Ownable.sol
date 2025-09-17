@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-
-// Based on the Ownable library from OpenZeppelin Contracts, altered to reduce runtime gas by dropping
-// support for the GSN.
+// OpenZeppelin Contracts (last updated v5.0.0) (access/Ownable.sol)
 
 pragma solidity ^0.7.0;
 
@@ -12,8 +10,8 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
  * there is an account (an owner) that can be granted exclusive access to
  * specific functions.
  *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
+ * The initial owner is set to the address provided by the deployer. This can
+ * later be changed with {transferOwnership}.
  *
  * This module is used through inheritance. It will make available the modifier
  * `onlyOwner`, which can be applied to your functions to restrict their use to
@@ -24,34 +22,30 @@ abstract contract Ownable {
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    constructor() {
-        _transferOwnership(msg.sender);
+    /// @dev Initializes the contract setting the address provided by the deployer as the initial owner.
+    constructor(address initialOwner) {
+        _require(initialOwner != address(0), Errors.OWNABLE_INVALID_OWNER);
+
+        _transferOwnership(initialOwner);
     }
 
-    /**
-     * @dev Returns the address of the current owner.
-     */
+    /// @dev Throws if called by any account other than the owner.
+    modifier onlyOwner() {
+        _require(owner() == msg.sender, Errors.OWNABLE_UNAUTHORIZED_ACCOUNT);
+        _;
+    }
+
+    /// @dev Returns the address of the current owner.
     function owner() public view virtual returns (address) {
         return _owner;
     }
 
     /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        _require(owner() == msg.sender, Errors.CALLER_IS_NOT_OWNER);
-        _;
-    }
-
-    /**
      * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     * `onlyOwner` functions. Can only be called by the current owner.
      *
      * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
+     * thereby disabling any functionality that is only available to the owner.
      */
     function renounceOwnership() public virtual onlyOwner {
         _transferOwnership(address(0));
@@ -62,7 +56,8 @@ abstract contract Ownable {
      * Can only be called by the current owner.
      */
     function transferOwnership(address newOwner) public virtual onlyOwner {
-        _require(newOwner != address(0), Errors.NEW_OWNER_IS_ZERO);
+        _require(newOwner != address(0), Errors.OWNABLE_INVALID_OWNER);
+
         _transferOwnership(newOwner);
     }
 
@@ -73,6 +68,7 @@ abstract contract Ownable {
     function _transferOwnership(address newOwner) internal virtual {
         address oldOwner = _owner;
         _owner = newOwner;
+
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 }

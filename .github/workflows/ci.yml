@@ -65,6 +65,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-standalone-utils test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-standalone-utils test:forge
 
   test-vault:
     runs-on: ubuntu-latest
