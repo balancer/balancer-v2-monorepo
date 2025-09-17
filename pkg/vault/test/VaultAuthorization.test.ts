@@ -51,7 +51,7 @@ describe('VaultAuthorization', function () {
       vault = await deployVault(authorizer.address);
     });
 
-    context('when the sender is has the permission to do it', () => {
+    context('when the sender has the permission to do it', () => {
       let action: string;
 
       sharedBeforeEach('grant permission', async () => {
