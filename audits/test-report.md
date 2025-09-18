@@ -6262,7 +6262,7 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-vault]:       ✓ has an initial authorizer (368ms)
 ➤ [@balancer-labs/v2-vault]:       ✓ can be initialized to the zero address (410ms)
 ➤ [@balancer-labs/v2-vault]:     change authorizer
-➤ [@balancer-labs/v2-vault]:       when the sender is has the permission to do it
+➤ [@balancer-labs/v2-vault]:       when the sender has the permission to do it
 ➤ [@balancer-labs/v2-vault]:         ✓ can change the authorizer to another address
 ➤ [@balancer-labs/v2-vault]:         ✓ emits an event when authorizer changed
 ➤ [@balancer-labs/v2-vault]:         ✓ can change the authorizer to the zero address

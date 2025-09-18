@@ -52,7 +52,7 @@ describe('VaultAuthorization', function () {
   });
 
   describe('change authorizer', () => {
-    context('when the sender is has the permission to do it', () => {
+    context('when the sender has the permission to do it', () => {
       let action: string;
 
       sharedBeforeEach('set timelock authorizer', async () => {
