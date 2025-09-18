@@ -37,7 +37,7 @@ pragma experimental ABIEncoderV2;
  *   directly, but are instead allowed to schedule future executions for them.
  *
  * Note that the TimelockAuthorizer doesn't use reentrancy guard on its external functions.
- * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
+ * The only function which makes an external non-view call (and so could initiate a reentrancy attack) is `execute`
  * which executes a scheduled execution, protected by the Checks-Effects-Interactions pattern.
  * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
  * is necessary in order to be able to call these.
@@ -299,7 +299,7 @@ interface ITimelockAuthorizer {
      *  - { skip: 5, reverseOrder: false } : returns up to `maxSize` of the oldest entries, skipping the 5 oldest
      *    entries, with the globally sixth oldest at index 0
      *  - { skip: 5, reverseOrder: true } : returns up to `maxSize` of the newest entries, skipping the 5 newest
-     *    entries, with the globally sixth nexest at index 0
+     *    entries, with the globally sixth newest at index 0
      */
     function getScheduledExecutions(
         uint256 skip,

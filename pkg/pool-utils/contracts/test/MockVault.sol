@@ -37,6 +37,12 @@ contract MockVault is IPoolSwapStructs, ReentrancyGuard {
 
     mapping(bytes32 => Pool) private pools;
 
+    mapping(bytes32 => bool) private _isPoolRegistered;
+
+    // We keep an increasing nonce to make Pool IDs unique. It is interpreted as a `uint80`, but storing it as a
+    // `uint256` results in reduced bytecode on reads and writes due to the lack of masking.
+    uint256 private _nextPoolNonce;
+
     event Swap(
         bytes32 indexed poolId,
         IERC20 indexed tokenIn,
@@ -52,6 +58,11 @@ contract MockVault is IPoolSwapStructs, ReentrancyGuard {
         int256[] deltas,
         uint256[] protocolFeeAmounts
     );
+
+    modifier withRegisteredPool(bytes32 poolId) {
+        _ensureRegisteredPool(poolId);
+        _;
+    }
 
     constructor(IAuthorizer authorizer) {
         _authorizer = authorizer;
@@ -92,8 +103,31 @@ contract MockVault is IPoolSwapStructs, ReentrancyGuard {
         managed = pool.managed[token];
     }
 
-    function registerPool(IVault.PoolSpecialization) external view returns (bytes32) {
-        // solhint-disable-previous-line no-empty-blocks
+    function registerPool(IVault.PoolSpecialization specialization)
+        external
+        nonReentrant
+        returns (bytes32)
+    {
+        // Each Pool is assigned a unique ID based on an incrementing nonce. This assumes there will never be more than
+        // 2**80 Pools, and the nonce will not overflow.
+
+        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_nextPoolNonce));
+
+        _require(!_isPoolRegistered[poolId], Errors.INVALID_POOL_ID); // Should never happen as Pool IDs are unique.
+        _isPoolRegistered[poolId] = true;
+
+        _nextPoolNonce += 1;
+
+        return poolId;
+    }
+
+    function getPool(bytes32 poolId)
+        external
+        view
+        withRegisteredPool(poolId)
+        returns (address, IVault.PoolSpecialization)
+    {
+        return (_getPoolAddress(poolId), _getPoolSpecialization(poolId));
     }
 
     function registerTokens(
@@ -240,6 +274,45 @@ contract MockVault is IPoolSwapStructs, ReentrancyGuard {
                 let returndata_size := mload(returnData)
                 revert(add(32, returnData), returndata_size)
             }
+        }
+    }
+
+    // From PoolRegistry
+
+    function _ensureRegisteredPool(bytes32 poolId) internal view {
+        _require(_isPoolRegistered[poolId], Errors.INVALID_POOL_ID);
+    }
+
+    function _toPoolId(
+        address pool,
+        IVault.PoolSpecialization specialization,
+        uint80 nonce
+    ) internal pure returns (bytes32) {
+        bytes32 serialized;
+
+        serialized |= bytes32(uint256(nonce));
+        serialized |= bytes32(uint256(specialization)) << (10 * 8);
+        serialized |= bytes32(uint256(pool)) << (12 * 8);
+
+        return serialized;
+    }
+
+    function _getPoolAddress(bytes32 poolId) internal pure returns (address) {
+        // 12 byte logical shift left to remove the nonce and specialization setting. We don't need to mask,
+        // since the logical shift already sets the upper bits to zero.
+        return address(uint256(poolId) >> (12 * 8));
+    }
+
+    function _getPoolSpecialization(bytes32 poolId) internal pure returns (IVault.PoolSpecialization specialization) {
+        // 10 byte logical shift left to remove the nonce, followed by a 2 byte mask to remove the address.
+        uint256 value = uint256(poolId >> (10 * 8)) & (2**(2 * 8) - 1);
+
+        _require(value < 3, Errors.INVALID_POOL_ID);
+
+        // Because we have checked that `value` is within the enum range, we can use assembly to skip the runtime check.
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            specialization := value
         }
     }
 }

@@ -13,7 +13,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('VaultAuthorization', function () {
-  let authorizer: Contract, vault: Contract;
+  let authorizer: Contract, vault: Contract, basicAuthorizer: Contract;
   let admin: SignerWithAddress, user: SignerWithAddress, other: SignerWithAddress;
   let relayer: SignerWithAddress;
 
@@ -23,8 +23,13 @@ describe('VaultAuthorization', function () {
     [, admin, user, other, relayer] = await ethers.getSigners();
   });
 
+  sharedBeforeEach('deploy vault', async () => {
+    basicAuthorizer = await deploy('v2-solidity-utils/MockBasicAuthorizer', { from: admin });
+    vault = await deployVault(basicAuthorizer.address);
+  });
+
   sharedBeforeEach('deploy authorizer', async () => {
-    const entrypoint = await deploy('MockAuthorizerAdaptorEntrypoint');
+    const entrypoint = await deploy('MockAuthorizerAdaptorEntrypoint', { args: [vault.address] });
     authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, entrypoint.address, MONTH] });
   });
 
@@ -52,7 +57,14 @@ describe('VaultAuthorization', function () {
     });
 
     context('when the sender has the permission to do it', () => {
+    context('when the sender is has the permission to do it', () => {
       let action: string;
+
+      sharedBeforeEach('set timelock authorizer', async () => {
+        action = await actionId(vault, 'setAuthorizer');
+        await basicAuthorizer.connect(admin).grantRole(action, admin.address);
+        await vault.connect(admin).setAuthorizer(authorizer.address);
+      });
 
       sharedBeforeEach('grant permission', async () => {
         action = await actionId(vault, 'setAuthorizer');

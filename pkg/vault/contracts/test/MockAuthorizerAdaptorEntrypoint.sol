@@ -18,8 +18,14 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdapt
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 contract MockAuthorizerAdaptorEntrypoint {
-    function getVault() external pure returns (IVault) {
-        return IVault(0);
+    IVault private immutable _vault;
+
+    constructor(IVault vault) {
+        _vault = vault;
+    }
+
+    function getVault() external view returns (IVault) {
+        return _vault;
     }
 
     function getAuthorizerAdaptor() external pure returns (IAuthorizerAdaptor) {
