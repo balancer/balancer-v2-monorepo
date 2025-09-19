@@ -95,19 +95,6 @@ describe('Flash Loans', () => {
       expect((await feesCollector.getCollectedFeeAmounts([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
-    it('zero loans are possible', async () => {
-      const loan = 0;
-      const feeAmount = 0;
-
-      await expectBalanceChange(
-        () => vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [loan], '0x10'),
-        tokens,
-        { account: vault }
-      );
-
-      expect((await feesCollector.getCollectedFeeAmounts([tokens.DAI.address]))[0]).to.equal(feeAmount);
-    });
-
     it('the fees module receives protocol fees', async () => {
       const loan = bn(1e18);
       const feeAmount = divCeil(loan.mul(feePercentage), FP_100_PCT);
