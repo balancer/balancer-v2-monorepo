@@ -28,6 +28,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
+    uint256 private _totalSupply;
+
     constructor(IVault vault, IVault.PoolSpecialization specialization) {
         _poolId = vault.registerPool(specialization);
         _vault = vault;
@@ -55,6 +57,10 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
 
     function deregisterTokens(IERC20[] memory tokens) external {
         _vault.deregisterTokens(_poolId, tokens);
+    }
+
+    function totalSupply() external view returns (uint256) {
+        return _totalSupply;
     }
 
     event OnJoinPoolCalled(
@@ -96,6 +102,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             userData
         );
 
+        _totalSupply++;
+
         (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
@@ -117,6 +125,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             protocolSwapFeePercentage,
             userData
         );
+
+        _totalSupply--;
 
         (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
