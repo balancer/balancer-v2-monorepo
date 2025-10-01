@@ -71,7 +71,6 @@ library SafeERC20 {
             }
         }
 
-        // Finally we check the returndata size is either zero or true - note that this check will always pass for EOAs.
         _require(returndata.length == 0 || abi.decode(returndata, (bool)), Errors.SAFE_ERC20_CALL_FAILED);
     }
 }
