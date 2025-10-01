@@ -301,6 +301,22 @@ describe('Internal Balance', () => {
           ).to.be.revertedWith('INSUFFICIENT_ETH');
         });
       });
+
+      context('when the asset is not a valid token', () => {
+        it('reverts', async () => {
+          await expect(
+            vault.manageUserBalance([
+              {
+                kind,
+                asset: ANY_ADDRESS,
+                amount: initialBalance,
+                sender: sender.address,
+                recipient: recipient.address,
+              },
+            ])
+          ).to.be.revertedWith('Address: call to non-contract');
+        });
+      });
     });
 
     context('when the sender is a relayer', () => {
