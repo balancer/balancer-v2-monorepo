@@ -314,7 +314,7 @@ describe('Internal Balance', () => {
                 recipient: recipient.address,
               },
             ])
-          ).to.be.revertedWith('Address: call to non-contract');
+          ).to.be.revertedWith('CALL_TO_NON_CONTRACT');
         });
       });
     });

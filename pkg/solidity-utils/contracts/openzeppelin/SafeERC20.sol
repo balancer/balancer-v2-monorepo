@@ -55,7 +55,7 @@ library SafeERC20 {
      * on the return value: the return value is optional (but if data is returned, it must not be false).
      */
     function _callOptionalReturn(address token, bytes memory data) private {
-        require(Address.isContract(token), "Address: call to non-contract");
+        _require(Address.isContract(token), Errors.CALL_TO_NON_CONTRACT);
 
         // We need to perform a low level call here, to bypass Solidity's return data size checking mechanism, since
         // we're implementing it ourselves.
