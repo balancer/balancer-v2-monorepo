@@ -150,7 +150,7 @@ describe('ComposableStablePoolStorage', () => {
           it('returns index', async () => {
             // Note that `bptIndex` could equal 0 which would invalidate this test.
             // Unfortunately we can't control the position of BPT index however we run the test with a
-            // range of different pools so the probablity of it always sitting in the first position is slim.
+            // range of different pools so the probability of it always sitting in the first position is slim.
             for (let index = 0; index < bptIndex; index++) {
               expect(await pool.skipBptIndex(index)).to.be.eq(index);
             }
@@ -167,7 +167,7 @@ describe('ComposableStablePoolStorage', () => {
           it('returns index - 1', async () => {
             // Note that `bptIndex` could equal tokens.length + 1 which would invalidate this test.
             // Unfortunately we can't control the position of BPT index however we run the test with a
-            // range of different pools so the probablity of it always sitting in the last position is slim.
+            // range of different pools so the probability of it always sitting in the last position is slim.
             for (let index = bptIndex + 1; index < tokens.length + 1; index++) {
               expect(await pool.skipBptIndex(index)).to.be.eq(index - 1);
             }
@@ -190,7 +190,7 @@ describe('ComposableStablePoolStorage', () => {
           it('returns index', async () => {
             // Note that `bptIndex` could equal 0 which would invalidate this test.
             // Unfortunately we can't control the position of BPT index however we run the test with a
-            // range of different pools so the probablity of it always sitting in the first position is slim.
+            // range of different pools so the probability of it always sitting in the first position is slim.
             for (let index = 0; index < bptIndex; index++) {
               expect(await pool.addBptIndex(index)).to.be.eq(index);
             }
@@ -201,7 +201,7 @@ describe('ComposableStablePoolStorage', () => {
           it('returns index + 1', async () => {
             // Note that `bptIndex` could equal tokens.length + 1 which would invalidate this test.
             // Unfortunately we can't control the position of BPT index however we run the test with a
-            // range of different pools so the probablity of it always sitting in the last position is slim.
+            // range of different pools so the probability of it always sitting in the last position is slim.
             for (let index = bptIndex; index < tokens.length; index++) {
               expect(await pool.addBptIndex(index)).to.be.eq(index + 1);
             }
