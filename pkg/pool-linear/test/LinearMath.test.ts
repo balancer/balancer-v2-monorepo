@@ -29,20 +29,20 @@ describe('LinearMath', function () {
     it('given main in within lower and upper', async () => {
       const mainIn = fp(5);
       const expected = math.calcBptOutPerMainIn(mainIn, mainBalance, wrappedBalance, bptSupply, params);
-      const bptIn = await mathContract.calcBptOutPerMainIn(mainIn, mainBalance, wrappedBalance, bptSupply, params);
+      const bptOut = await mathContract.calcBptOutPerMainIn(mainIn, mainBalance, wrappedBalance, bptSupply, params);
 
       expect(bn(expected)).to.be.equal(fp(5));
-      expect(bptIn).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
+      expect(bptOut).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
     });
 
     it('given main in over upper', async () => {
       const mainIn = fp(400);
 
       const expected = math.calcBptOutPerMainIn(mainIn, mainBalance, wrappedBalance, bptSupply, params);
-      const bptIn = await mathContract.calcBptOutPerMainIn(mainIn, mainBalance, wrappedBalance, bptSupply, params);
+      const bptOut = await mathContract.calcBptOutPerMainIn(mainIn, mainBalance, wrappedBalance, bptSupply, params);
 
       expect(bn(expected)).to.be.equal(fp(398));
-      expect(bptIn).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
+      expect(bptOut).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
     });
   });
 
