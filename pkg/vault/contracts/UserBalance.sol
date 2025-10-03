@@ -113,8 +113,9 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
             }
         }
 
+        _require(ethWrapped <= msg.value, Errors.INSUFFICIENT_ETH);
         // Handle any remaining ETH.
-        _handleRemainingEth(ethWrapped);
+        _handleRemainingEth();
     }
 
     function _depositToInternalBalance(

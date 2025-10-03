@@ -126,10 +126,8 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
      */
-    function _handleRemainingEth(uint256 amountUsed) internal {
-        _require(msg.value >= amountUsed, Errors.INSUFFICIENT_ETH);
-
-        uint256 excess = msg.value - amountUsed;
+    function _handleRemainingEth() internal {
+        uint256 excess = address(this).balance;
         if (excess > 0) {
             msg.sender.sendValue(excess);
         }

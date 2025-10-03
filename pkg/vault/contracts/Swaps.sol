@@ -103,7 +103,9 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         _sendAsset(singleSwap.assetOut, amountOut, funds.recipient, funds.toInternalBalance);
 
         // If the asset in is ETH, then `amountIn` ETH was wrapped into WETH.
-        _handleRemainingEth(_isETH(singleSwap.assetIn) ? amountIn : 0);
+        if (_isETH(singleSwap.assetIn)) {
+            _handleRemainingEth();
+        }
     }
 
     function batchSwap(
@@ -153,7 +155,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         }
 
         // Handle any used and remaining ETH.
-        _handleRemainingEth(wrappedEth);
+        _handleRemainingEth();
     }
 
     // For `_swapWithPools` to handle both 'given in' and 'given out' swaps, it internally tracks the 'given' amount

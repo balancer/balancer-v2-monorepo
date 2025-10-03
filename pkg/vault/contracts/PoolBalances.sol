@@ -151,6 +151,9 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             _unsafeCastToInt256(amountsInOrOut, positive),
             paidProtocolSwapFeeAmounts
         );
+
+        // Handle any used and remaining ETH.
+        _handleRemainingEth();
     }
 
     /**
@@ -243,9 +246,6 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
                 ? balances[i].increaseCash(amountIn - feeAmount)
                 : balances[i].decreaseCash(feeAmount - amountIn);
         }
-
-        // Handle any used and remaining ETH.
-        _handleRemainingEth(wrappedEth);
     }
 
     /**
