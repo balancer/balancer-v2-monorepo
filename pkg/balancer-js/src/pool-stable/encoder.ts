@@ -31,7 +31,7 @@ export class StablePoolEncoder {
 
   /**
    * Encodes the userData parameter for joining a StablePool with exact token inputs
-   * @param amountsIn - the amounts each of token to deposit in the pool as liquidity
+   * @param amountsIn - the amounts of each token to deposit in the pool as liquidity
    * @param minimumBPT - the minimum acceptable BPT to receive in return for deposited tokens
    */
   static joinExactTokensInForBPTOut = (amountsIn: BigNumberish[], minimumBPT: BigNumberish): string =>
@@ -41,7 +41,7 @@ export class StablePoolEncoder {
     );
 
   /**
-   * Encodes the userData parameter for joining a StablePool with to receive an exact amount of BPT
+   * Encodes the userData parameter for joining a StablePool to receive an exact amount of BPT
    * @param bptAmountOut - the amount of BPT to be minted
    * @param enterTokenIndex - the index of the token to be provided as liquidity
    */
@@ -61,7 +61,7 @@ export class StablePoolEncoder {
   /**
    * Encodes the userData parameter for exiting a StablePool by removing a single token in return for an exact amount of BPT
    * @param bptAmountIn - the amount of BPT to be burned
-   * @param exitTokenIndex - the index of the token to removed from the pool
+   * @param exitTokenIndex - the index of the token to be removed from the pool
    */
   static exitExactBPTInForOneTokenOut = (bptAmountIn: BigNumberish, exitTokenIndex: number): string =>
     defaultAbiCoder.encode(
