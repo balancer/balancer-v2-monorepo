@@ -221,7 +221,7 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     """
     @notice Record global and per-user data to checkpoint
     @param addr User's wallet address. No user checkpoint if 0x0
-    @param old_locked Pevious locked amount / end lock time for the user
+    @param old_locked Previous locked amount / end lock time for the user
     @param new_locked New locked amount / end lock time for the user
     """
     u_old: Point = empty(Point)
