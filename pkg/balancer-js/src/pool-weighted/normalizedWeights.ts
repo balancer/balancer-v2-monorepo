@@ -1,4 +1,4 @@
-import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
+import { BigNumber } from '@ethersproject/bignumber';
 import { Zero, WeiPerEther as ONE } from '@ethersproject/constants';
 
 // Should match MAX_WEIGHTED_TOKENS from v2-helpers/constants
@@ -39,7 +39,3 @@ export function toNormalizedWeights(weights: BigNumber[]): BigNumber[] {
  * @param weights - an array of potentially unnormalized weights
  * @returns a boolean of whether the weights are normalized
  */
-export const isNormalizedWeights = (weights: BigNumberish[]): boolean => {
-  const totalWeight = weights.reduce((total: BigNumber, weight) => total.add(weight), Zero);
-  return totalWeight.eq(ONE);
-};
