@@ -206,9 +206,6 @@ describe('balance allocation', () => {
         await expect(testDecreaseCash(MAX_UINT112.div(2), 0, MAX_UINT112.div(2).add(1))).to.be.revertedWith(
           'SUB_OVERFLOW'
         );
-        await expect(testDecreaseCash(MAX_UINT112.div(2), 0, MAX_UINT112.div(2).add(1))).to.be.revertedWith(
-          'SUB_OVERFLOW'
-        );
       });
     });
   });
