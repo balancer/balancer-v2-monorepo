@@ -26,7 +26,7 @@ export const signPermit = async (
       version = await token.version();
     }
   } catch {
-    // eslint-disable-prev-line no-empty
+    // eslint-disable-next-line no-empty
   }
 
   const domain = {
