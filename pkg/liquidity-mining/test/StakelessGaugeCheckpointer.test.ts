@@ -152,7 +152,7 @@ describe('StakelessGaugeCheckpointer', () => {
         );
       });
 
-      it('reverts getting total gauge gauges', async () => {
+      it('reverts getting total gauges', async () => {
         await expect(stakelessGaugeCheckpointer.getTotalGauges(gaugeType)).to.be.revertedWith('Invalid gauge type');
       });
 
