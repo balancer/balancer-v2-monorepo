@@ -978,7 +978,7 @@ describe('NewBasePool', function () {
           await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request)
         ).wait();
 
-        // total BPT is calculated by the mock initial hook; base pool mint it after substracting the minimum BPT amount.
+        // total BPT is calculated by the mock initial hook; base pool mint it after subtracting the minimum BPT amount.
         const minimumBpt = await pool.getMinimumBpt();
         const totalBptOut = initialBalances.reduce((previous, current) => previous.add(current));
         expectTransferEvent(
