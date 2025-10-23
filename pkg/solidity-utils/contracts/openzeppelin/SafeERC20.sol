@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-// Based on the ReentrancyGuard library from OpenZeppelin Contracts, altered to reduce gas costs.
-// The `safeTransfer` and `safeTransferFrom` functions assume that `token` is a contract (an account with code), and
-// work differently from the OpenZeppelin version if it is not.
+// Based on the SafeERC20 library from OpenZeppelin Contracts, altered to reduce gas costs.
 
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+
+import "./Address.sol";
 
 /**
  * @title SafeERC20
@@ -53,10 +53,10 @@ library SafeERC20 {
     /**
      * @dev Imitates a Solidity high-level call (i.e. a regular function call to a contract), relaxing the requirement
      * on the return value: the return value is optional (but if data is returned, it must not be false).
-     *
-     * WARNING: `token` is assumed to be a contract: calls to EOAs will *not* revert.
      */
     function _callOptionalReturn(address token, bytes memory data) private {
+        _require(Address.isContract(token), Errors.CALL_TO_NON_CONTRACT);
+
         // We need to perform a low level call here, to bypass Solidity's return data size checking mechanism, since
         // we're implementing it ourselves.
         // solhint-disable-next-line avoid-low-level-calls
@@ -71,7 +71,6 @@ library SafeERC20 {
             }
         }
 
-        // Finally we check the returndata size is either zero or true - note that this check will always pass for EOAs
         _require(returndata.length == 0 || abi.decode(returndata, (bool)), Errors.SAFE_ERC20_CALL_FAILED);
     }
 }
