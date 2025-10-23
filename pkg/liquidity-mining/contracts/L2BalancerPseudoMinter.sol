@@ -97,7 +97,7 @@ contract L2BalancerPseudoMinter is BalancerMinter, SingletonAuthentication {
     }
 
     /**
-     * @dev Checkpoints given gauge and updates the internal accounting with the total tokens that should be transfered
+     * @dev Checkpoints given gauge and updates the internal accounting with the total tokens that should be transferred
      * to the user since the start.
      *
      * @param gauge Gauge to checkpoint and query for total tokens to be transferred.
