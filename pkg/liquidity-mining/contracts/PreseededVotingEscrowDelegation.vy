@@ -864,7 +864,7 @@ def adjusted_balance_of(_account: address) -> uint256:
     # since we took the absolute value of our delegated boost, it now instead of
     # becoming negative is positive, and will continue to increase ...
     # meaning if we keep a negative outstanding delegated balance for long
-    # enought it will not only decrease our vecrv_balance but also our received
+    # enough it will not only decrease our vecrv_balance but also our received
     # boost, however we return the maximum between our adjusted balance and 0
     # when delegating boost, received boost isn't used for determining how
     # much we can delegate.

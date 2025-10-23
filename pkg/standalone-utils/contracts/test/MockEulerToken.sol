@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 // Functionality required is onDeposit it needs to pull ERC20s out
 // of users wallet and transfer into Euler protocol. Similar
-// to on withdrawl. it needs to pull funds from EulerProtocol
+// to on withdrawal. it needs to pull funds from EulerProtocol
 // and send back to users wallet (the underlying token)
 
 import "../relayer/interfaces/IMockEulerProtocol.sol";
