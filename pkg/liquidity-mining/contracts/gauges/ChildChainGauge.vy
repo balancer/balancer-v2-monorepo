@@ -754,7 +754,7 @@ def authorizer_adaptor() -> address:
 
 @external
 def initialize(_lp_token: address, _version: String[128]):
-    assert self.lp_token == ZERO_ADDRESS, "ALREADY_INITIALIZED"  # dev: already initialzed
+    assert self.lp_token == ZERO_ADDRESS, "ALREADY_INITIALIZED"  # dev: already initialized
 
     self.lp_token = _lp_token
     self.version = _version
