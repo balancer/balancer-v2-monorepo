@@ -25,3 +25,7 @@ pkg/balancer-js/src/typechain/*
 # Forge
 forge-artifacts/
 forge-cache/
+
+# zk-solc
+artifacts-zk/
+cache-zk/
