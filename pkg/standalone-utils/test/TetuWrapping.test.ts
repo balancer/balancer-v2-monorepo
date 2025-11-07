@@ -761,7 +761,7 @@ describe('TetuWrapping', function () {
           liquidityProvider: senderUser.address,
         });
 
-        // DAI transfered to recipient
+        // DAI transferred to recipient
         expectTransferEvent(receipt, { from: xDAI.address, to: relayer.address }, DAIToken);
         expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, DAIToken);
       });
@@ -771,7 +771,7 @@ describe('TetuWrapping', function () {
         expect(BPTBalanceAfter).to.be.eq(0);
       });
 
-      it('DAI transfered to recipient user', async () => {
+      it('DAI transferred to recipient user', async () => {
         const DAIBalanceAfter = await DAIToken.balanceOf(recipientUser);
         expect(DAIBalanceAfter).to.be.gt(0);
       });

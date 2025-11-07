@@ -705,7 +705,7 @@ describe('GearboxWrapping', function () {
           liquidityProvider: senderUser.address,
         });
 
-        // DAI transfered to recipient
+        // DAI transferred to recipient
         expectTransferEvent(receipt, { from: gearboxVault.address, to: recipientUser.address }, DAIToken);
       });
 
@@ -714,7 +714,7 @@ describe('GearboxWrapping', function () {
         expect(BPTBalanceAfter).to.be.eq(0);
       });
 
-      it('DAI transfered to recipient user', async () => {
+      it('DAI transferred to recipient user', async () => {
         const DAIBalanceAfter = await DAIToken.balanceOf(recipientUser);
         expect(DAIBalanceAfter).to.be.gt(0);
       });

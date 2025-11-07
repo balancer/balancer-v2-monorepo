@@ -288,7 +288,7 @@ library CircuitBreakerStorageLib {
 
     /**
      * @notice Update the cached adjusted bounds, given a new weight.
-     * @dev This might be used when weights are adjusted, pre-emptively updating the cache to improve performance
+     * @dev This might be used when weights are adjusted, preemptively updating the cache to improve performance
      * of operations after the weight change completes. Note that this does not update the BPT price: this is still
      * relative to the last call to `setCircuitBreaker`. The intent is only to optimize the automatic bounds
      * adjustments due to changing weights.
