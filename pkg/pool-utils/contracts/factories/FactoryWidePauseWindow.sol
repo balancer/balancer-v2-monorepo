@@ -39,7 +39,7 @@ contract FactoryWidePauseWindow {
     constructor(uint256 initialPauseWindowDuration, uint256 bufferPeriodDuration) {
         // New pools will check on deployment that the durations given are within the bounds specified by
         // `TemporarilyPausable`. Since it is now possible for a factory to pass in arbitrary values here,
-        // pre-emptively verify that these durations are valid for pool creation.
+        // preemptively verify that these durations are valid for pool creation.
         // (Otherwise, you would be able to deploy a useless factory where `create` would always revert.)
 
         _require(
