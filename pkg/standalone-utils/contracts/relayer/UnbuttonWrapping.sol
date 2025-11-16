@@ -32,8 +32,8 @@ import "./IBaseRelayerLibrary.sol";
 abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
     /// @param wrapperToken The address of the wrapper.
     /// @param sender The address of sender.
-    /// @param sender The address of recipient.
-    /// @param uAmount The underling token amount to be deposited into the wrapper.
+    /// @param recipient The address of recipient.
+    /// @param uAmount The underlying token amount to be deposited into the wrapper.
     /// @param outputReference Chained output reference.
     function wrapUnbuttonToken(
         IUnbuttonToken wrapperToken,
@@ -53,7 +53,7 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
 
     /// @param wrapperToken The address of the wrapper.
     /// @param sender The address of sender.
-    /// @param sender The address of recipient.
+    /// @param recipient The address of recipient.
     /// @param amount The amount of wrapped tokens to be burnt for underlying tokens.
     /// @param outputReference Chained output reference.
     function unwrapUnbuttonToken(
