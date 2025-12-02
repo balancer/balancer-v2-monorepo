@@ -342,7 +342,7 @@ describe('ChildChainGauge', () => {
 
         // All the rewards are available in the gauge at this point.
         // We claim only the selected ones by sending the indices that correspond to them, but we monitor the balance
-        // change of all the rewards inconditionally. This way, we ensure that only the selected rewards are transferred
+        // change of all the rewards unconditionally. This way, we ensure that only the selected rewards are transferred
         // and the remaining ones are not affected.
         await expectBalanceChange(claimFunction, addedRewards, expectedBalanceChanges);
       });

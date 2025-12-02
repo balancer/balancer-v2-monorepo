@@ -849,7 +849,7 @@ describe('FeeDistributor', () => {
             );
 
             context('when the array of tokens contains duplicates', () => {
-              it('ignores the second occurence of the token address', async () => {
+              it('ignores the second occurrence of the token address', async () => {
                 expect(await feeDistributor.callStatic.claimTokens(user1.address, tokens.addresses)).to.be.almostEqual(
                   tokenAmounts.map((amount) => amount.div(3))
                 );
