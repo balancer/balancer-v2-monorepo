@@ -136,7 +136,7 @@ interface IStaticATokenLM is IERC20 {
     ) external returns (uint256, uint256);
 
     /**
-     * @notice Utility method to get the current aToken balance of an user, from his staticAToken balance
+     * @notice Utility method to get the current aToken balance of a user, from their staticAToken balance
      * @param account The address of the user
      * @return uint256 The aToken balance
      **/
