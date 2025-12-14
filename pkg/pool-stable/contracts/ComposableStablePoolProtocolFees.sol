@@ -150,7 +150,7 @@ abstract contract ComposableStablePoolProtocolFees is
         //   │   original value      │   │   │   │   │  last post join-exit invariant
         //   └───────────────────────┘ ──┘ ──┘ ──┘ ──┘
         //
-        // Each invariant should be larger than its precedessor. In case any rounding error results in them being
+        // Each invariant should be larger than its predecessor. In case any rounding error results in them being
         // smaller, we adjust the subtraction to equal 0.
 
         // Note: in the unexpected scenario where the rates of the tokens shrink over time instead of growing (i.e. if
