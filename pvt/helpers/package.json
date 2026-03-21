@@ -16,7 +16,7 @@
     "decimal.js": "^10.4.2",
     "ethereumjs-util": "^7.1.5",
     "ethers": "^5.7.2",
-    "hardhat": "^2.12.5",
+    "hardhat": "^2.26.2",
     "lodash.frompairs": "^4.0.1",
     "prettier": "^2.7.1",
     "ts-node": "^10.9.1",
