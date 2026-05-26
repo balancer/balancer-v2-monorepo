@@ -15,6 +15,7 @@ export default {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      hardfork: hardhatBaseConfig.hardfork,
     },
   },
   solidity: {

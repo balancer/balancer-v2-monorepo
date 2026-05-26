@@ -84,3 +84,8 @@ export const warnings = {
     default: 'error',
   },
 };
+
+// The frozen contracts compile for the Istanbul EVM, but the test suite targets the Shanghai era: some tests use
+// PUSH0 (added in Shanghai) while still assuming pre-Cancun `selfdestruct` semantics (code is cleared, before
+// EIP-6780). Shanghai is the only hardfork that satisfies both, and matches what hardhat used before this upgrade.
+export const hardfork = 'shanghai';
