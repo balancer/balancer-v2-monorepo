@@ -102,7 +102,7 @@ $ yarn test-fuzz
 
 Multiple independent reviews and audits were performed by [Certora](https://www.certora.com/), [OpenZeppelin](https://openzeppelin.com/) and [Trail of Bits](https://www.trailofbits.com/). The latest reports from these engagements are located in the [`audits`](./audits) directory.
 
-Bug bounties apply to most of the smart contracts hosted in this repository: head to [Balancer V2 Bug Bounty](https://immunefi.com/bug-bounty/balancer/information/) in Immunefi to learn more.
+Most of the contracts in this repository are no longer covered by a bug bounty. The [Balancer Bug Bounty](https://immunefi.com/bounty/balancer/) program's assets in scope moved to Balancer V3 in June 2026, and what remains from V2 is limited to the weighted pools and to the gauges that still distribute third-party incentives. Read [`SECURITY.md`](./SECURITY.md) before reporting anything, and check the program's assets list for the authoritative set.
 
 All core smart contracts are immutable, and cannot be upgraded. See page 6 of the [Trail of Bits audit](https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/audits/trail-of-bits/2021-04-02.pdf):
 
