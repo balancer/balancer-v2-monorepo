@@ -1126,6 +1126,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fastify/busboy@npm:^2.0.0":
+  version: 2.1.1
+  resolution: "@fastify/busboy@npm:2.1.1"
+  checksum: d4fe0b8632216b126ff9f23a31d1e364aed870a26e55896cd2504fa13a6631f3f12b8ebb914f917b42493e896103af5613a3ad091888ddc62267ca43be7561ee
+  languageName: node
+  linkType: hard
+
 "@gar/promisify@npm:^1.1.3":
   version: 1.1.3
   resolution: "@gar/promisify@npm:1.1.3"
@@ -3666,15 +3673,6 @@ __metadata:
   version: 3.3.0
   resolution: "builtin-modules@npm:3.3.0"
   checksum: 69bd2a742dc2aa7e69fc39b3289123e642c693705b8532ceab120e66496ec7cc599e3bd1352c09b45571910fa923c101abe8e1e36e0bc652e4397b19e6efb0e6
-  languageName: node
-  linkType: hard
-
-"busboy@npm:^1.6.0":
-  version: 1.6.0
-  resolution: "busboy@npm:1.6.0"
-  dependencies:
-    streamsearch: "npm:^1.1.0"
-  checksum: 4f9b97d97465ab8d7da3f9ee34129e4e92e473451547f3960224f209249b2546006c0bc66842932c0646c98247facf7f3341a20966114fadd234434e319411ad
   languageName: node
   linkType: hard
 
@@ -11289,13 +11287,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"streamsearch@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "streamsearch@npm:1.1.0"
-  checksum: 8d7c4b5046cf7ff528421d6e2ee0d8335da82a34edca4c58e2022390f4f73be1c83deeb14010bf939bb71e7990bd06367ca0382b3c6df1b932ecb1b98bb50e22
-  languageName: node
-  linkType: hard
-
 "strict-uri-encode@npm:^1.0.0":
   version: 1.1.0
   resolution: "strict-uri-encode@npm:1.1.0"
@@ -12049,11 +12040,11 @@ __metadata:
   linkType: hard
 
 "undici@npm:^5.14.0":
-  version: 5.22.0
-  resolution: "undici@npm:5.22.0"
+  version: 5.29.0
+  resolution: "undici@npm:5.29.0"
   dependencies:
-    busboy: "npm:^1.6.0"
-  checksum: c70a76499323a23e8e131e33af1e6de4e1e0d3e483ca434f02cff434b14455dcc76daa68510d401fd8c86a31f9c96fe99f6c33b688dd23c9b3319e676487d393
+    "@fastify/busboy": "npm:^2.0.0"
+  checksum: 512ca6e247ffca657dea81aba26f64ea1aee9ec03be059dc103788535e839363d16c156af6eb45dad4aa54de73c733ae7adce541e4f60ae51f5ca0fb589ca64b
   languageName: node
   linkType: hard
 
