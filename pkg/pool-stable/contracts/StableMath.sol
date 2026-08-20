@@ -391,7 +391,7 @@ library StableMath {
         uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
 
         // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
-        return nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
+        return nonTaxableAmount.add(taxableAmount.mulUp(FixedPoint.ONE - swapFeePercentage));
     }
 
     // This function calculates the balance of a given token (tokenIndex)
